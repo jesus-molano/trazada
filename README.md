@@ -42,7 +42,11 @@ uv run ruff check && uv run pytest
 
 ## Datos
 
-Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). El pipeline se ejecuta en local (IP residencial) y publica los ficheros en un Worker de Cloudflare separado.
+Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). El pipeline se ejecuta en local (IP residencial) y publica los ficheros en un Worker de Cloudflare separado con `pnpm data:deploy`. Ese comando sube solo las sesiones publicables, nunca las de desarrollo; con `--dry-run` muestra la lista sin subir nada.
+
+## Rendimiento
+
+Objetivos, método (`/replay?s=…&bench=1`) y cifras en [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ## Licencia
 
