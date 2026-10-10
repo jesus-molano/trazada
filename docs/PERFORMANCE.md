@@ -95,6 +95,30 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 
 **Pendiente tuyo**: el bench con estelas en el iPad (`pnpm local --lan`, `/replay?s=…&bench=1` tras elegir «Capas → Estelas → Velocidad», que se recuerda) y el escenario «todas las capas» de `perf.spec.ts`, que se añade al cerrar la Tanda 4.
 
+**Tanda 2 (H14: gráficas de carrera, colores de sector, vista previa del timeline y zonas de DRS).** Se mide la base (Tanda 1) contra la Tanda 2 con lo de por defecto, en las mismas condiciones y con dos rondas alternas. Las dos sesiones locales son de 2026, así que las zonas de DRS no se dibujan (en 2026 ni se calculan) y la hoja de análisis está cerrada, como al abrir el replay.
+
+- **Escena**: mismas draw calls (8) y triángulos (Bélgica 15.292; Japón 13.254). Con zonas de DRS (sesiones de 2018–2025), la capa suma 1 draw call: una malla con todas las zonas y `forceSinglePass` (lo vigilan `zones.test.ts` y `drs.spec.ts`; sin zonas o apagada, 0). **Pendiente tuyo**: medirla con una sesión de 2023–2025.
+- **Encuadre**: la clasificación es 30 px más ancha por las marcas de sector, así que el circuito se encuadra un poco más a la derecha. La captura de la prueba `@screenshot` cambia en un 2,8 % de los píxeles (mismas draw calls y triángulos): hay que regenerar la referencia con el workflow «Snapshots».
+- **Por frame**: el JS por frame no se mueve fuera del ruido (1,7–2,4 ms en todos los casos). Las marcas de sector se actualizan con la clasificación (6,7 Hz): en Bélgica a ×16, la tarea por frame pasa de 8,2–9,5 a 9,4–10,8 ms y el layout de 0,62–0,74 a 0,71–0,83 ms; a ×1 y en Japón, lo mismo que la base. El p95 se mueve un escalón de vsync arriba o abajo según la ronda, como en las tandas anteriores.
+- **Hoja de análisis abierta**: la escena no se redibuja (`setSceneHidden`; `analysis.spec.ts` comprueba que el contador de renders no sube reproduciendo). Las gráficas solo se recalculan cuando el reloj cruza un instante que cambia lo que muestran.
+- **Vista previa**: nada por frame del reloj; como mucho una consulta por frame de pantalla al mover el puntero y ningún render de la escena (`preview.spec.ts`).
+- **Precálculos** (hilo principal, perezosos con `rt.ext`; Node, mín.–máx. de 7 repeticiones con los datos completos):
+
+| Sesión | Sectores | Vista previa (primero) | Consulta de la vista previa | Race trace | Ritmo (todos) | Stints (todos) | Zonas de DRS (worker) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Japón 2026 carrera (dev) | 1,7–7,2 ms (mediana 1,9) | 0,8–5,8 ms (mediana 2,2) | 1,4 µs | 0,2–0,9 ms | 0,3–1,8 ms | 0,05–1,0 ms | 0,3 ms (2026: no se calcula) |
+| Bélgica 2026 Libres 1 | 0,9–1,7 ms (mediana 1,0) | 1,0–3,3 ms (mediana 1,4) | 1,3 µs | 0,04 ms | 0,6–1,7 ms | 0,03 ms | 0,04 ms (ídem) |
+
+  Las zonas de DRS de una carrera de 2018–2025 se calculan en el Web Worker de carga: 33–70 ms en una carrera sintética de 20 coches × 2 h (533.000 muestras), medido por el worker del ítem 11.
+- **Peso del JS**: +19 KB con gzip en total (478 → 497 KB). El chunk del replay crece 14 KB (la hoja de análisis, las pestañas y la vista previa; uPlot ya estaba) y el del Web Worker de carga 3 KB (zonas de DRS).
+
+| Sesión | Velocidad | p95 base | p95 Tanda 2 | JS/frame base | JS/frame Tanda 2 | Tarea/frame base | Tarea/frame Tanda 2 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Bélgica 2026 Libres 1 | ×1 | 117–133 ms | 117–133 ms | 1,7–1,9 ms | 1,7–1,8 ms | 6,0–6,3 ms | 6,1–6,7 ms |
+| Ídem | ×16 | 133–150 ms | 133–167 ms | 2,1–2,2 ms | 2,1–2,4 ms | 8,2–9,5 ms | 9,4–10,8 ms |
+| Japón 2026 carrera (dev) | ×1 | 117–133 ms | 133 ms | 1,9–2,0 ms | 1,9–2,1 ms | 5,6–6,3 ms | 5,8–6,6 ms |
+| Ídem | ×16 | 133–167 ms | 133–150 ms | 2,0–2,1 ms | 2,0–2,1 ms | 8,3 ms | 8,5–8,8 ms |
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.

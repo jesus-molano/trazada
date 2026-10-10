@@ -36,6 +36,10 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Al terminar la sesión, un resumen: los tres primeros según el cronometraje, la vuelta rápida y, en carrera, las paradas con su tiempo en el pit lane.
 - Cada sesión se retoma donde la dejaste, con el coche y la velocidad que tenías, y la portada ofrece «Seguir viendo» (se guarda en el navegador de cada dispositivo).
 - Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
+- Colores de sector (morado, verde y amarillo) en la clasificación y en el panel del coche, calculados con los tiempos de sector oficiales.
+- Hoja «Análisis» con el race trace, el ritmo vuelta a vuelta y los stints de neumáticos, todo con los tiempos oficiales. Las vueltas con boxes, coche de seguridad o anuladas se marcan, no se quitan, y «Sin spoilers» enseña solo lo que ha pasado hasta el momento del replay.
+- Al pasar el ratón (o el dedo) por el timeline, una tarjeta con la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y lo que pasó cerca de ese instante.
+- Zonas de DRS sobre la pista (menú «Capas»), deducidas de la telemetría, en las temporadas con DRS (hasta 2025).
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
 - Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
 - En español e inglés, tema oscuro, escritorio y tablet.
@@ -60,6 +64,8 @@ En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruid
 - La pista tiene una anchura genérica de 14 m, no la de cada circuito. De lejos, la pista y los coches tienen un tamaño mínimo en pantalla.
 - El coche 3D es genérico: lleva el color del equipo y, en los neumáticos, el del compuesto que da el cronometraje (gris si no hay dato).
 - Las estelas son los últimos 3 s del mismo movimiento que se dibuja para el coche, así que también van sobre la línea central y se cortan donde el coche no se dibuja. Por velocidad, cada punto lleva la última velocidad medida de hace 2 s como mucho, sin interpolar; si no hay ninguna, gris.
+- Las zonas de DRS se deducen de dónde llevaron los coches el DRS abierto según su telemetría: no son las líneas oficiales, que ninguna fuente da, y llevan «Estimado». En 2026 no hay DRS ni canal por coche, así que no se dibujan.
+- Los colores de sector los calcula Trazada con los tiempos oficiales de cada sector: no son las marcas del cronometraje, que la fuente no trae.
 - Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
 
 ## Estado
