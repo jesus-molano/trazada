@@ -83,6 +83,11 @@ export interface Manifest {
     elevation: 'real' | 'flat'
     timingStream?: 'present' | 'absent'
     marshalSectors?: 'present' | 'absent'
+    /**
+     * Desde 1.1.0: meteorología en `events.weather` (`present`) o la fuente no la trae (`absent`). Sin el campo, la
+     * sesión se generó con un pipeline anterior: no se sabe si había meteorología (volver a descargarla).
+     */
+    weather?: 'present' | 'absent'
   }
   quality: {
     coverage: Record<string, { pos: number; car: number }>

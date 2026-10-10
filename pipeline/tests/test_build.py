@@ -14,7 +14,7 @@ from synthetic import L, synthetic_session
 from trazada_pipeline import schema
 from trazada_pipeline.build import BuildReport, build_session, coverage_ratio, playback_window
 from trazada_pipeline.encode import trzb
-from trazada_pipeline.sources.base import CircuitInfo, SessionData
+from trazada_pipeline.sources.base import WEATHER_COLUMNS, CircuitInfo, SessionData
 
 #: Campos que FastF1 trae de Ergast/Jolpica (CC BY-NC-SA) o fotos: nunca deben aparecer en los datos.
 FORBIDDEN_KEYS = {
@@ -83,6 +83,55 @@ def test_estimated_fields_come_from_the_source(tmp_path: Path) -> None:
     report = build_session(data, tmp_path)
     manifest = json.loads(report.manifest_path.read_text())
     assert manifest["quality"]["estimated"] == ["positions", "trackStatus"]
+
+
+def _events(report: BuildReport) -> dict:
+    ref = json.loads(report.manifest_path.read_text())["files"]["events"]
+    return json.loads(gzip.decompress((report.manifest_path.parent / ref["path"]).read_bytes()))
+
+
+def test_without_weather_the_channel_is_absent(built) -> None:
+    """La fuente no trae meteorología: el manifest lo dice (`absent`) y events.json no la lleva."""
+    _, _, report = built
+    assert json.loads(report.manifest_path.read_text())["channels"]["weather"] == "absent"
+    assert "weather" not in _events(report)
+
+
+def test_weather_reaches_events_cut_to_the_playback(tmp_path: Path) -> None:
+    """D36: las muestras de la reproducción y la vigente al empezar; null sigue siendo null (nunca 0)."""
+    data, _ = synthetic_session()
+    data.session_type, data.session_name, data.total_laps = "fp1", "Practice 1", None
+    data.session_start_ms = 300_000  # la reproducción empieza 2 min antes: en 180 000
+    start, end, _ = playback_window(data)
+    assert start == 180_000
+    times = list(range(30_000, end + 180_000, 60_000))  # una por minuto, de antes del inicio a después
+    rows = [
+        {
+            "t_ms": t,
+            "air_c": None if i == 4 else 20.0 + i / 10,
+            "track_c": 30.5,
+            "humidity": 50.0,
+            "pressure_hpa": 1013.2,
+            "rain": i % 7 == 0,
+            "wind_ms": 1.0,
+            "wind_deg": 90,
+        }
+        for i, t in enumerate(times)
+    ]
+    data.weather = pd.DataFrame(rows, columns=list(WEATHER_COLUMNS), dtype=object)
+    report = build_session(data, tmp_path)
+    manifest = json.loads(report.manifest_path.read_text())
+    assert manifest["channels"]["weather"] == "present"
+    assert manifest["schemaVersion"] == schema.schema_version()
+    assert manifest["minReader"] == "1.0.0"  # cambio aditivo (1.1.0): un lector 1.0.0 lo lee y lo ignora
+    w = _events(report)["weather"]
+    schema.validate("events", _events(report))
+    assert w["t"][0] == 150_000  # la última anterior al inicio
+    assert all(start <= t <= end for t in w["t"][1:])
+    assert w["t"] == [t for t in times if start - 60_000 < t <= end]
+    assert len({len(col) for col in w.values()}) == 1
+    assert w["airC"][w["t"].index(times[4])] is None
+    assert w["rain"] == [i % 7 == 0 for i, t in enumerate(times) if start - 60_000 < t <= end]
 
 
 def test_files_decode_and_motion_is_monotone(built) -> None:

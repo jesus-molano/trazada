@@ -9,7 +9,8 @@ antes de la ventana:
   real: el lector toma la última fila con t ≤ reloj, así que no hace falta moverla);
 - todas las vueltas empezadas antes del final de la ventana (vueltas completadas y mejor vuelta);
 - todos los mensajes de dirección de carrera anteriores al final de la ventana (el recuento del feed, las
-  banderas azules de los segundos previos y los mensajes de vuelta anulada son los de la sesión).
+  banderas azules de los segundos previos y los mensajes de vuelta anulada son los de la sesión);
+- de la meteorología (si la hay), la última muestra anterior al inicio de la ventana: la vigente al empezar.
 
 Las variantes son estados **inventados solo para los tests** (el catálogo las marca `dev` y su manifest
 lleva la nota `e2e-variant`). Reutilizan los ficheros del extracto:
@@ -118,17 +119,35 @@ def _trim_timing(dec: trzb.Decoded, a: int, b: int) -> dict[str, dict[str, np.nd
     }
 
 
+def _trim_weather(weather: dict[str, list[Any]], a: int, b: int) -> dict[str, list[Any]] | None:
+    """Las muestras de la ventana y la última anterior a su inicio (la vigente al empezar), como el build."""
+    t = weather["t"]
+    keep = [i for i, v in enumerate(t) if a <= v <= b]
+    before = [i for i, v in enumerate(t) if v < a]
+    if before:
+        keep.insert(0, before[-1])
+    if not keep:
+        return None
+    return {key: [col[i] for i in keep] for key, col in weather.items()}
+
+
 def _trim_events(events: dict[str, Any], a: int, b: int) -> dict[str, Any]:
     def overlaps(w: dict[str, Any]) -> bool:
         return w["fromMs"] <= b and (w["toMs"] is None or w["toMs"] >= a)
 
-    return {
+    out = {
         **events,
         # También los anteriores a la ventana: el feed muestra todos los mensajes con t ≤ reloj.
         "raceControl": [e for e in events["raceControl"] if e["t"] <= b],
         "sectorFlags": [w for w in events["sectorFlags"] if overlaps(w)],
         "windows": [w for w in events["windows"] if overlaps(w)],
     }
+    weather = _trim_weather(events["weather"], a, b) if "weather" in events else None
+    if weather is None:
+        out.pop("weather", None)
+    else:
+        out["weather"] = weather
+    return out
 
 
 def make_e2e_fixture(
@@ -158,6 +177,10 @@ def make_e2e_fixture(
     if out_v1.exists():
         shutil.rmtree(out_v1)
     folder = out_v1 / "sessions" / session
+    trimmed_events = _trim_events(events, a, b)
+    channels = dict(manifest["channels"])
+    if "weather" in channels:  # un manifest anterior a 1.1.0 no lo declara: se deja igual
+        channels["weather"] = "present" if "weather" in trimmed_events else "absent"
     new_files = {
         "motion": write_hashed(
             folder,
@@ -185,9 +208,7 @@ def make_e2e_fixture(
             "events",
             ".json.gz",
             trzb.gzip_bytes(
-                json.dumps(_trim_events(events, a, b), ensure_ascii=False, separators=(",", ":")).encode(
-                    "utf-8"
-                )
+                json.dumps(trimmed_events, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             ),
             layout="events@1",
         ),
@@ -206,6 +227,7 @@ def make_e2e_fixture(
         **manifest,
         "generatedAt": "2026-01-01T00:00:00Z",
         "session": {**manifest["session"], "playback": {**pb, "startMs": a, "endMs": b}},
+        "channels": channels,
         "quality": {**manifest["quality"], "notes": [*manifest["quality"].get("notes", []), EXTRACT_NOTE]},
         "files": new_files,
     }

@@ -15,7 +15,7 @@ from synthetic import synthetic_session
 from trazada_pipeline.build import build_session
 from trazada_pipeline.encode import trzb
 from trazada_pipeline.fixtures import FIXTURE_MAX_BYTES, make_e2e_fixture
-from trazada_pipeline.sources.base import RC_COLUMNS, STREAM_COLUMNS
+from trazada_pipeline.sources.base import RC_COLUMNS, STREAM_COLUMNS, WEATHER_COLUMNS
 
 SESSION = "2026/00-synthetic/fp1"
 WINDOW = {"start_min": 4.0, "minutes": 2.0}  # la ventana empieza con la sesión en marcha
@@ -26,6 +26,9 @@ EARLY_RC = [
     (100_000, "Other", "2", "CAR 2 (BBB) TIME 1:31.000 DELETED - TRACK LIMITS AT TURN 4"),
     (A_MS - 3_000, "Flag", "3", "WAVED BLUE FLAG FOR CAR 3 (CCC) TIMED AT 10:03:57"),
 ]
+#: Meteorología sintética: una muestra por minuto, a los 10 s de cada minuto; una, sin temperatura de pista.
+WEATHER_MS = [10_000 + 60_000 * m for m in range(10)]
+WEATHER_GAP_MS = WEATHER_MS[5]
 
 
 def _tower(laps: pd.DataFrame) -> pd.DataFrame:
@@ -53,6 +56,11 @@ def source(tmp_path_factory: pytest.TempPathFactory) -> Path:
         columns=list(RC_COLUMNS),
     )
     data.race_control = pd.concat([early, data.race_control], ignore_index=True).sort_values("t_ms")
+    data.weather = pd.DataFrame(
+        [(t, 21.5, None if t == WEATHER_GAP_MS else 33.0, 60.0, 1010.0, False, 2.0, 180) for t in WEATHER_MS],
+        columns=list(WEATHER_COLUMNS),
+        dtype=object,
+    )
     root = tmp_path_factory.mktemp("src")
     build_session(data, root)
     return root
@@ -129,6 +137,27 @@ def test_fixture_tower_and_laps_match_the_full_session(source: Path, extract: tu
     assert ext["laps"]["startMs"].max() <= b
     assert max(e["t"] for e in ext_rc) <= b < max(e["t"] for e in full_rc)
     assert summary["bytes"] <= FIXTURE_MAX_BYTES
+
+
+def _events(root: Path) -> dict[str, Any]:
+    manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
+    ref = json.loads(manifest_path.read_text())["files"]["events"]
+    return json.loads(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes()))
+
+
+def test_fixture_weather_is_the_window_plus_the_sample_in_force(source: Path, extract: tuple) -> None:
+    """D36: la meteorología del extracto es la de la sesión en la ventana, más la vigente al empezar."""
+    out, summary = extract
+    a, b = summary["window"]
+    full, ext = _events(source)["weather"], _events(out)["weather"]
+    assert full["t"] == WEATHER_MS
+    lead = max(t for t in WEATHER_MS if t < a)
+    assert ext["t"] == [lead, *(t for t in WEATHER_MS if a <= t <= b)]
+    for key, col in ext.items():
+        assert col == [full[key][full["t"].index(t)] for t in ext["t"]], key
+    assert ext["trackC"][ext["t"].index(WEATHER_GAP_MS)] is None  # sin dato sigue siendo null
+    manifest = json.loads((out / "v1" / "sessions" / SESSION / "manifest.json").read_text())
+    assert manifest["channels"]["weather"] == "present"
 
 
 def test_fixture_variants_are_marked_test_only(source: Path, extract: tuple) -> None:

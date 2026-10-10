@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trazada_pipeline import __version__, schema
+from trazada_pipeline import __version__, schema, weather
 from trazada_pipeline.circuit import registry
 from trazada_pipeline.circuit.build import (
     GEOMETRY_VERSION,
@@ -433,6 +433,10 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         int(n): float(s) for n, s in zip(circuit.corners["number"], circuit.corners["s"], strict=True)
     }
     events = build_events(data.race_control, data.track_status, end_ms, corner_s)
+    # Meteorología (D36): opcional; la del intervalo de reproducción y la última muestra anterior a su inicio.
+    weather_events = weather.to_events(weather.window(data.weather, start_ms, end_ms))
+    if weather_events is not None:
+        events["weather"] = weather_events
     schema.validate("events", events)
 
     folder = _session_dir(v1, data)
@@ -510,6 +514,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
             "elevation": "real" if elev_ok else "flat",
             "timingStream": "present" if data.stream is not None and len(data.stream) else "absent",
             "marshalSectors": "present" if circuit.marshal_sectors is not None else "absent",
+            "weather": "present" if "weather" in events else "absent",
         },
         "quality": {
             "coverage": coverage,

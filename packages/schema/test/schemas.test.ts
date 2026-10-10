@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 import { describe, expect, it } from 'vitest'
-import { assertManifest, canRead, ManifestError, QUALITY_NOTE_CODES } from '../src'
+import { assertManifest, canRead, ManifestError, MIN_READER, QUALITY_NOTE_CODES, SCHEMA_VERSION } from '../src'
 
 const read = (p: string) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), 'utf8'))
 
@@ -35,6 +35,37 @@ describe('JSON Schemas', () => {
     expect(validate(m)).toBe(false) // sin texto
   })
 
+  it('meteorología (1.1.0): opcional en eventos y en el manifest, con null como «sin dato»', () => {
+    const events = validator('events.schema.json')
+    const withWeather = read('examples/events.example.json')
+    expect(withWeather.weather.airC).toContain(null)
+    expect(events(withWeather)).toBe(true)
+    // Unos eventos de 1.0.0 (sin meteorología) siguen siendo válidos.
+    const { weather: _weather, ...old } = withWeather
+    expect(events({ ...old, schemaVersion: '1.0.0' })).toBe(true)
+    // Lluvia sí/no, nunca intensidad; dirección en grados enteros 0–359; humedad 0–100.
+    for (const [key, bad] of [
+      ['rain', [0.4, false, null]],
+      ['windDeg', [360, 0, null]],
+      ['windDeg', [12.5, 0, null]],
+      ['humidity', [101, 50, null]],
+      ['pressureHpa', [0, 966, null]],
+      ['windMs', [-1, 0, null]],
+    ] as const) {
+      expect(events({ ...withWeather, weather: { ...withWeather.weather, [key]: bad } }), `${key}: ${bad}`).toBe(false)
+    }
+    const { windDeg: _deg, ...missing } = withWeather.weather
+    expect(events({ ...withWeather, weather: missing })).toBe(false)
+
+    const manifest = validator('manifest.schema.json')
+    const m = read('examples/manifest.example.json')
+    expect(m.channels.weather).toBe('present')
+    expect(manifest({ ...m, channels: { ...m.channels, weather: 'absent' } })).toBe(true)
+    const { weather: _channel, ...oldChannels } = m.channels
+    expect(manifest({ ...m, channels: oldChannels })).toBe(true)
+    expect(manifest({ ...m, channels: { ...m.channels, weather: 'partial' } })).toBe(false)
+  })
+
   it('el manifest rechaza el nombre oficial con patrocinadores en campos no previstos', () => {
     const validate = validator('manifest.schema.json')
     const m = read('examples/manifest.example.json')
@@ -53,6 +84,11 @@ describe('compatibilidad de versiones (minReader)', () => {
   it('assertManifest acepta el ejemplo y rechaza majors no soportados', () => {
     const m = read('examples/manifest.example.json')
     expect(() => assertManifest(m, '1.0.0')).not.toThrow()
+    // Datos 1.1.0 (meteorología) con lector mínimo 1.0.0: un lector 1.0.0 los lee e ignora lo que no conoce.
+    expect(m.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(MIN_READER).toBe('1.0.0')
+    expect(m.minReader).toBe(MIN_READER)
+    expect(() => assertManifest(m, SCHEMA_VERSION)).not.toThrow()
     const future = { ...m, schemaVersion: '2.0.0', minReader: '2.0.0' }
     try {
       assertManifest(future, '1.0.0')

@@ -1,6 +1,6 @@
 {
   "schema": "trazada.events",
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "raceControl": [
     {
       "t": 1000,
@@ -15,5 +15,15 @@
     }
   ],
   "sectorFlags": [{ "sector": 21, "flag": "YELLOW", "fromMs": 500, "toMs": 900 }],
-  "windows": [{ "kind": "sc", "fromMs": 600, "toMs": 800 }]
+  "windows": [{ "kind": "sc", "fromMs": 600, "toMs": 800 }],
+  "weather": {
+    "t": [400, 60400, 120400],
+    "airC": [23.6, 23.7, null],
+    "trackC": [41.2, 41.1, 40.8],
+    "humidity": [45.0, 45.4, 46.1],
+    "pressureHpa": [966.7, 966.5, null],
+    "rain": [false, true, null],
+    "windMs": [1.5, 2.2, null],
+    "windDeg": [330, 317, null]
+  }
 }
