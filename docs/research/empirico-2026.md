@@ -126,3 +126,20 @@ Dimensionado (**Estimado**):
 4. Medir el peso de una carrera real con el formato definitivo (hito H1 del plan).
 
 Los scripts de análisis (cargador seguro de `.ff1pkl`, unidades, lateralidad, interpolación, tamaño) están en el scratchpad de la sesión. Los paso al repo al aprobar el plan si quieres conservarlos.
+
+## 11. Accesibilidad de las fuentes desde la nube (medido en GitHub Actions)
+
+El 2026-10-10, el job `probe` del CI (runner `ubuntu-latest`, ubuntu-24.04) obtuvo estos códigos HTTP:
+
+| Fuente | HTTP |
+|---|---|
+| `livetiming.formula1.com/static/2026/Index.json` (F1, la que usa FastF1) | **403** |
+| `livetiming-mirror.fastf1.dev/static/2026/Index.json` (espejo de FastF1) | 404 |
+| `api.openf1.org/v1/sessions?year=2026&session_type=Race` | **200** |
+| `api.multiviewer.app/api/v1/circuits` | **200** |
+| `api.jolpi.ca/ergast/f1/2026.json` | 200 |
+
+**Conclusiones:**
+- **R1 confirmado de primera mano**: F1 bloquea los runners de GitHub, así que la ingesta con FastF1 no puede ejecutarse en Actions.
+- El espejo de FastF1 no sirve de alternativa.
+- OpenF1 y MultiViewer sí responden desde la nube. Es el camino viable para automatizar la publicación de 2023 en adelante en una fase posterior (adaptador `OpenF1Source`) y para obtener los marcadores de circuito.
