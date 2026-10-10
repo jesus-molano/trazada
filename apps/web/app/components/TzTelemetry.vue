@@ -4,10 +4,16 @@
  * existe y mini gráficas de los últimos 20 s. Los valores se escriben por frame en el DOM. Sin muestra vigente
  * del coche seleccionado (también justo al cambiar de coche), cada celda dice «—» y las gráficas se vacían:
  * nunca quedan cifras ni trazos de otro coche u otro instante.
+ *
+ * Dos vistas (ítem 1, D31): «En vivo» (lo anterior) y «Comparar» (TzCompare: este coche frente a otro, con la
+ * diferencia por distancia, las trazas y el fantasma). El botón de la cabecera cambia de una a otra sin sumar alto
+ * al panel; Mayús+clic en la clasificación abre la comparación con ese coche y Esc la cierra (prioridad 60).
  */
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
 import { drsState, Telemetry, type TelemetrySample } from '~/engine/telemetry/telemetry'
+import { ESC_PRIORITY, registerEscape } from '~/replay/keys'
+import { useCompareStore } from '~/stores/compare'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
 const CHART_WINDOW_S = 20
@@ -15,6 +21,9 @@ const CHART_INTERVAL_MS = 66 // ~15 Hz
 
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
+const compare = useCompareStore()
+/** Vista «Comparar» en lugar de la telemetría en vivo. */
+const comparing = computed(() => compare.tab === 'compare')
 const rt = getRuntime()!
 const telemetry = new Telemetry(rt.session.car)
 const drsChannel = rt.session.manifest.channels.drs === 'present'
@@ -71,7 +80,8 @@ function paintNoData() {
 
 function paint(timeMs: number) {
   const car = playback.selectedCar
-  if (!car) return
+  // En la vista «Comparar», las celdas y las mini gráficas no están montadas.
+  if (!car || comparing.value) return
   const s = telemetry.sampleAt(car, timeMs, sample)
   if (hasSample.value !== !!s) hasSample.value = !!s
   if (!s) {
@@ -127,11 +137,17 @@ function drawCharts(car: string, timeMs: number) {
 }
 
 let off: (() => void) | null = null
+let offEscape: (() => void) | null = null
 onMounted(() => {
   off = rt.onFrame(paint)
+  // Esc cierra antes la comparación que el seguimiento y la selección (ESC_PRIORITY).
+  offEscape = registerEscape(ESC_PRIORITY.compare, { active: () => comparing.value, run: () => compare.close() })
   rt.requestFrame()
 })
-onBeforeUnmount(() => off?.())
+onBeforeUnmount(() => {
+  off?.()
+  offEscape?.()
+})
 watch(
   () => playback.selectedCar,
   () => {
@@ -139,6 +155,13 @@ watch(
     rt.requestFrame()
   },
 )
+// De vuelta a «En vivo», las mini gráficas se montan vacías: se pintan en el frame siguiente.
+watch(comparing, (on) => {
+  if (on) return
+  lastChart = -Infinity
+  chartsCleared = true
+  rt.requestFrame()
+})
 </script>
 
 <template>
@@ -153,6 +176,18 @@ watch(
     <header class="tz-tel__head">
       <span class="tz-tel__tla">{{ driver.tla }}</span>
       <span class="tz-tel__name">{{ driver.first }} {{ driver.last }}</span>
+      <!-- «En vivo» / «Comparar»: un conmutador en la cabecera (una fila más no cabría a 1280×800). -->
+      <button
+        type="button"
+        class="tz-tel__compare"
+        :aria-pressed="comparing"
+        :aria-label="t('compare.tab')"
+        :title="t('compare.tabHint')"
+        data-testid="compare-toggle"
+        @click="compare.setTab(comparing ? 'live' : 'compare')"
+      >
+        <TzIcon name="compare" size="sm" />
+      </button>
       <button
         type="button"
         class="tz-tel__follow"
@@ -170,62 +205,65 @@ watch(
 
     <p v-if="telemetryEstimated" class="tz-tel__estimated"><TzEstimated field="telemetry" /></p>
     <TzLapInfo :car="driver.number" />
-    <p v-if="!hasSample" class="tz-tel__nodata" data-testid="telemetry-nodata">{{ t('telemetry.noData') }}</p>
+    <TzCompare v-if="comparing" />
+    <template v-else>
+      <p v-if="!hasSample" class="tz-tel__nodata" data-testid="telemetry-nodata">{{ t('telemetry.noData') }}</p>
 
-    <dl class="tz-tel__grid" :class="{ 'is-stale': !hasSample }">
-      <div class="tz-tel__cell tz-tel__cell--big">
-        <dt>{{ t('telemetry.speed') }}</dt>
-        <dd><span ref="speedEl" class="tz-tabular" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
-      </div>
-      <div class="tz-tel__cell">
-        <dt>{{ t('telemetry.gear') }}</dt>
-        <dd ref="gearEl" class="tz-tabular" data-testid="tel-gear">—</dd>
-      </div>
-      <div class="tz-tel__cell">
-        <dt>{{ t('telemetry.rpm') }}</dt>
-        <dd ref="rpmEl" class="tz-tabular" data-testid="tel-rpm">—</dd>
-      </div>
-      <div class="tz-tel__cell tz-tel__cell--wide">
-        <dt>{{ t('telemetry.throttle') }}</dt>
-        <dd>
-          <span ref="throttleTrack" class="tz-tel__bar" data-known="false" aria-hidden="true"><span ref="throttleBar" /></span>
-          <span ref="throttleEl" class="tz-tabular" data-testid="tel-throttle">—</span>
-        </dd>
-      </div>
-      <div class="tz-tel__cell">
-        <dt>{{ t('telemetry.brake') }}</dt>
-        <dd ref="brakeEl" class="tz-tel__brake" data-on="none" :title="t('telemetry.brakeHint')" data-testid="tel-brake">—</dd>
-      </div>
-      <div class="tz-tel__cell tz-tel__cell--full">
-        <dt>{{ t('telemetry.drsLabel') }}</dt>
-        <dd v-if="drsChannel" ref="drsEl" class="tz-tel__drs" data-state="none" data-testid="tel-drs">—</dd>
-        <dd v-else class="tz-tel__drs-na" data-testid="tel-drs-unavailable">
-          {{ t('telemetry.drsUnavailable', { season }) }}
-          <details class="tz-tel__why">
-            <summary>{{ t('telemetry.drsWhy') }}</summary>
-            <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
-          </details>
-        </dd>
-      </div>
-    </dl>
+      <dl class="tz-tel__grid" :class="{ 'is-stale': !hasSample }">
+        <div class="tz-tel__cell tz-tel__cell--big">
+          <dt>{{ t('telemetry.speed') }}</dt>
+          <dd><span ref="speedEl" class="tz-tabular" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
+        </div>
+        <div class="tz-tel__cell">
+          <dt>{{ t('telemetry.gear') }}</dt>
+          <dd ref="gearEl" class="tz-tabular" data-testid="tel-gear">—</dd>
+        </div>
+        <div class="tz-tel__cell">
+          <dt>{{ t('telemetry.rpm') }}</dt>
+          <dd ref="rpmEl" class="tz-tabular" data-testid="tel-rpm">—</dd>
+        </div>
+        <div class="tz-tel__cell tz-tel__cell--wide">
+          <dt>{{ t('telemetry.throttle') }}</dt>
+          <dd>
+            <span ref="throttleTrack" class="tz-tel__bar" data-known="false" aria-hidden="true"><span ref="throttleBar" /></span>
+            <span ref="throttleEl" class="tz-tabular" data-testid="tel-throttle">—</span>
+          </dd>
+        </div>
+        <div class="tz-tel__cell">
+          <dt>{{ t('telemetry.brake') }}</dt>
+          <dd ref="brakeEl" class="tz-tel__brake" data-on="none" :title="t('telemetry.brakeHint')" data-testid="tel-brake">—</dd>
+        </div>
+        <div class="tz-tel__cell tz-tel__cell--full">
+          <dt>{{ t('telemetry.drsLabel') }}</dt>
+          <dd v-if="drsChannel" ref="drsEl" class="tz-tel__drs" data-state="none" data-testid="tel-drs">—</dd>
+          <dd v-else class="tz-tel__drs-na" data-testid="tel-drs-unavailable">
+            {{ t('telemetry.drsUnavailable', { season }) }}
+            <details class="tz-tel__why">
+              <summary>{{ t('telemetry.drsWhy') }}</summary>
+              <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
+            </details>
+          </dd>
+        </div>
+      </dl>
 
-    <TzMiniChart
-      ref="speedChart"
-      :label="t('telemetry.chartSpeed')"
-      :series="[{ label: t('telemetry.speed'), color: token('--tz-chart-speed'), scale: 'speed' }]"
-      :ranges="{ speed: [0, 360] }"
-      :window-s="CHART_WINDOW_S"
-    />
-    <TzMiniChart
-      ref="pedalChart"
-      :label="t('telemetry.chartPedals')"
-      :series="[
-        { label: t('telemetry.throttle'), color: token('--tz-chart-throttle'), scale: 'pct' },
-        { label: t('telemetry.brakeOnOff'), color: token('--tz-chart-brake'), scale: 'onoff', stepped: true },
-      ]"
-      :ranges="{ pct: [0, 105], onoff: [0, 4] }"
-      :window-s="CHART_WINDOW_S"
-    />
+      <TzMiniChart
+        ref="speedChart"
+        :label="t('telemetry.chartSpeed')"
+        :series="[{ label: t('telemetry.speed'), color: token('--tz-chart-speed'), scale: 'speed' }]"
+        :ranges="{ speed: [0, 360] }"
+        :window-s="CHART_WINDOW_S"
+      />
+      <TzMiniChart
+        ref="pedalChart"
+        :label="t('telemetry.chartPedals')"
+        :series="[
+          { label: t('telemetry.throttle'), color: token('--tz-chart-throttle'), scale: 'pct' },
+          { label: t('telemetry.brakeOnOff'), color: token('--tz-chart-brake'), scale: 'onoff', stepped: true },
+        ]"
+        :ranges="{ pct: [0, 105], onoff: [0, 4] }"
+        :window-s="CHART_WINDOW_S"
+      />
+    </template>
   </section>
 </template>
 
@@ -269,6 +307,7 @@ watch(
   white-space: nowrap;
 }
 
+.tz-tel__compare,
 .tz-tel__follow,
 .tz-tel__close {
   padding: 2px var(--tz-space-2);
@@ -279,6 +318,15 @@ watch(
   cursor: pointer;
 }
 
+/* Solo icono (con nombre accesible y título): el mismo alto que «Seguir», sin sumar una fila al panel. */
+.tz-tel__compare {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  align-self: stretch;
+}
+
+.tz-tel__compare[aria-pressed='true'],
 .tz-tel__follow[aria-pressed='true'] {
   border-color: var(--tz-accent);
   color: var(--tz-accent-strong);
