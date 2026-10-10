@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mapHalfWidth, MIN_TRACK_PX } from './mapWidth'
 
 describe('anchura de mapa', () => {
-  it('de cerca, la anchura real', () => {
+  it('de cerca, la anchura en metros (la genérica de 14 m)', () => {
     // 20 px por metro: 14 m son 280 px, muy por encima del mínimo.
     expect(mapHalfWidth(7, MIN_TRACK_PX, 20, 20)).toBe(7)
   })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SessionType } from '@trazada/schema'
 import type { ComponentPublicInstance } from 'vue'
-import type { SessionView } from '~/manager/model'
+import { DATA_DELAY_MIN, type SessionView } from '~/manager/model'
 
 const props = defineProps<{ type: SessionType; view: SessionView }>()
 const emit = defineEmits<{ download: []; cancel: [id: string] }>()
@@ -12,6 +12,8 @@ const job = computed(() =>
   props.view.kind === 'queued' || props.view.kind === 'running' || props.view.kind === 'error' ? props.view.job : null,
 )
 const pct = computed(() => Math.round(job.value?.pct ?? 0))
+/** La hora de una sesión futura es aproximada (inicio del calendario + duración típica + margen): se explica. */
+const futureHint = computed(() => t('manager.availableFromHint', { delay: DATA_DELAY_MIN }))
 const barStyle = computed(() => ({ transform: `scaleX(${pct.value / 100})` }))
 /** Mensaje del error y, después, el registro (sin repetir el mensaje si el registro ya lo trae). */
 const details = computed(() => {
@@ -120,9 +122,13 @@ watch(
     :data-testid="`session-${type}`"
   >
     <span class="tz-session__name">{{ name }}</span>
-    <span class="tz-session__note">{{
-      view.at ? t('manager.availableFrom', { date: formatDateTime(view.at, locale) }) : t('manager.notYet')
-    }}</span>
+    <template v-if="view.at">
+      <span class="tz-session__note" :title="futureHint" data-testid="available-from">{{
+        t('manager.availableFrom', { date: formatDateTime(view.at, locale) })
+      }}</span>
+      <span class="tz-visually-hidden">{{ futureHint }}</span>
+    </template>
+    <span v-else class="tz-session__note">{{ t('manager.notYet') }}</span>
   </div>
 
   <div

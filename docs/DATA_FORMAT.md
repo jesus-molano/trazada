@@ -101,6 +101,7 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
+- `quality.notes`: avisos del pipeline al procesar la sesión, en texto libre (español). El front los muestra en la cabecera del replay: traduce los que reconoce (`apps/web/app/data/quality-notes.ts`; un test comprueba que esos textos siguen en el código del pipeline) y de los demás enseña el texto original. Nunca se esconden.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
 
 ## Estado de la versión 1
