@@ -19,7 +19,7 @@
  * `buildLapTable` (`engine/analysis/lapTable.ts`).
  */
 import { ENUMS, type DecodedTrzb, type DriverInfo, type SessionEvents, type SessionType } from '@trazada/schema'
-import { buildLapTable, type CarLaps, type LapTable, segmentAt } from '../analysis/lapTable'
+import { buildLapTable, type CarLaps, lastCompletedIndex, type LapTable, segmentAt } from '../analysis/lapTable'
 import type { CarState } from '../replay/ReplayModel'
 
 export { qualifyingSegments } from '../analysis/lapTable'
@@ -47,6 +47,73 @@ export interface LeaderboardRow {
   inPit: boolean
   noSignal: boolean
   blueFlag: boolean
+}
+
+/**
+ * Reglas del orden en la línea de meta (carrera sin torre), compartidas con la vista previa del timeline: lo que
+ * cuenta de cada coche en t son sus vueltas completadas (pasos por meta reales, sin los registros residuales de un
+ * retirado: ver `buildLapTable`) y cuándo cruzó la línea por última vez.
+ */
+export interface LineKey {
+  /** Vueltas completadas en t (número de la última vuelta con paso por meta real); 0 sin ninguna. */
+  done: number
+  /** Último paso por meta (ms de sesión); Infinity sin ninguno. */
+  cross: number
+}
+
+/** Vueltas completadas y último paso por meta de un coche en t (`lastCompletedIndex`). */
+export function lineKeyAt(laps: CarLaps | undefined, t: number): LineKey {
+  const k = laps ? lastCompletedIndex(laps, t) : -1
+  return k < 0 ? { done: 0, cross: Infinity } : { done: laps!.lap[k]!, cross: laps!.crossMs[k]! }
+}
+
+/**
+ * Orden en la línea: primero quien ha completado más vueltas; con las mismas, quien cruzó antes. 0 es un empate que
+ * estas reglas no deshacen (la clasificación lo deshace con la posición en pista; la vista previa del timeline no, y
+ * lo deja sin dato).
+ */
+export function compareAtLine(a: LineKey, b: LineKey): number {
+  return b.done - a.done || (a.cross === b.cross ? 0 : a.cross - b.cross)
+}
+
+/**
+ * Reglas del orden por mejor vuelta (libres y clasificación sin torre), compartidas con la vista previa del timeline:
+ * la última tanda en la que el coche tiene una vuelta válida en t (con tiempo oficial y no anulada a esa hora) y su
+ * mejor vuelta en esa tanda. Fuera de clasificación hay una sola tanda (la 0).
+ */
+export interface BestLapKey {
+  /** Última tanda con vuelta válida; −1 sin ninguna. */
+  seg: number
+  /** Mejor vuelta (ms) en esa tanda; Infinity sin ninguna. */
+  best: number
+}
+
+/** Última tanda con vuelta válida y mejor vuelta en ella, de un coche en t. */
+export function bestLapKeyAt(laps: CarLaps | undefined, t: number): BestLapKey {
+  let seg = -1
+  let best = Infinity
+  if (!laps) return { seg, best }
+  for (let k = 0; k < laps.lap.length; k++) {
+    const end = laps.crossMs[k]!
+    if (!(end > 0 && end <= t)) continue
+    const ms = laps.lapMs[k]!
+    const s = laps.segment[k]!
+    if (ms > 0 && s >= 0 && laps.deletedFrom[k]! > t) {
+      if (s > seg) {
+        seg = s
+        best = ms
+      } else if (s === seg && ms < best) best = ms
+    }
+  }
+  return { seg, best }
+}
+
+/**
+ * Orden por mejor vuelta: primero la tanda más reciente con tiempo (en clasificación, los que siguen en la tanda en
+ * curso antes que los eliminados); dentro de ella, la vuelta más rápida. 0 es un empate que estas reglas no deshacen.
+ */
+export function compareByBestLap(a: BestLapKey, b: BestLapKey): number {
+  return b.seg - a.seg || (a.best === b.best ? 0 : a.best - b.best)
 }
 
 interface StreamRows {
@@ -163,30 +230,16 @@ export class LeaderboardEngine {
     for (const d of this.drivers) {
       const st = stateOf.get(d.number)
       const laps = this.laps.get(d.number)
-      let done = 0
-      let cross = Infinity
+      // Vueltas completadas y último paso por meta (orden en la línea); última tanda con vuelta válida y su mejor
+      // vuelta (orden por mejor vuelta; fuera de clasificación, una sola tanda).
+      const line = lineKeyAt(laps, t)
+      const best = bestLapKeyAt(laps, t)
       let lap = 0
       let compound = 'UNKNOWN'
       let tyreLife: number | null = null
-      // Última tanda con vuelta válida y su mejor vuelta (fuera de clasificación, una sola tanda).
-      let seg = -1
-      let segBest = Infinity
       if (laps) {
-        // Vueltas completadas en t y vuelta en curso
+        // Vuelta en curso
         for (let k = 0; k < laps.lap.length; k++) {
-          const end = laps.crossMs[k]!
-          if (end > 0 && end <= t) {
-            done = laps.lap[k]!
-            cross = end
-            const ms = laps.lapMs[k]!
-            const s = laps.segment[k]!
-            if (ms > 0 && s >= 0 && laps.deletedFrom[k]! > t) {
-              if (s > seg) {
-                seg = s
-                segBest = ms
-              } else if (s === seg && ms < segBest) segBest = ms
-            }
-          }
           if (laps.startMs[k]! >= 0 && laps.startMs[k]! <= t) {
             lap = laps.lap[k]!
             compound = ENUMS.compound[laps.compound[k]!] ?? 'UNKNOWN'
@@ -206,15 +259,13 @@ export class LeaderboardEngine {
         lap,
         compound,
         tyreLife,
-        bestLapMs: seg >= 0 && seg === current ? segBest : null,
+        bestLapMs: best.seg >= 0 && best.seg === current ? best.best : null,
         inPit: !!st?.visible && st.inPit,
         noSignal: !st?.visible,
         blueFlag: blue.has(d.number),
-        _done: done,
-        _cross: cross,
+        _line: line,
+        _best: best,
         _s: st?.visible ? st.s : -Infinity,
-        _seg: seg,
-        _segBest: segBest,
       })
     }
 
@@ -231,7 +282,7 @@ export class LeaderboardEngine {
       if (r.gapMs !== null && r.gapMs < 0) r.gapMs = null
       if (r.intervalMs !== null && r.intervalMs < 0) r.intervalMs = null
     }
-    return rows.map(({ _done, _cross, _s, _seg, _segBest, ...r }) => r)
+    return rows.map(({ _line, _best, _s, ...r }) => r)
   }
 
   private applyStream(t: number, rows: Work[]): void {
@@ -250,26 +301,28 @@ export class LeaderboardEngine {
 
   /** Carrera sin torre: orden en la línea de meta y gaps con los tiempos de paso. */
   private orderAtLine(rows: Work[]): void {
-    rows.sort((a, b) => b._done - a._done || a._cross - b._cross || b._s - a._s)
+    // Las reglas compartidas (`compareAtLine`) y, a igualdad exacta, la posición en pista.
+    rows.sort((a, b) => compareAtLine(a._line, b._line) || b._s - a._s)
     const leader = rows[0]
     rows.forEach((r, i) => {
+      const { done, cross } = r._line
       r.position = i + 1
       // Sin paso por meta, el puesto en la lista no es una posición (p. ej. antes de la salida).
-      r.positionKnown = r._done > 0
-      if (!leader || r._done === 0) return
+      r.positionKnown = done > 0
+      if (!leader || done === 0) return
       // Vueltas perdidas: solo si está doblado. Lo está si el líder ya había completado más vueltas cuando el
       // coche cruzó la línea por última vez, o si el líder le saca dos líneas o más (al menos una vuelta). Si el
       // líder solo acaba de cruzar la línea siguiente, no está doblado: el gap de esta vuelta aún no se conoce.
-      r.lapsBehind = Math.max(0, this.doneAt(leader.car, r._cross) - r._done, leader._done - r._done - 1)
-      const leaderCross = this.crossingOf(leader.car, r._done)
-      r.gapMs = leader._done === r._done && leaderCross !== null ? r._cross - leaderCross : null
+      r.lapsBehind = Math.max(0, this.doneAt(leader.car, cross) - done, leader._line.done - done - 1)
+      const leaderCross = this.crossingOf(leader.car, done)
+      r.gapMs = leader._line.done === done && leaderCross !== null ? cross - leaderCross : null
       const ahead = rows[i - 1]
       if (ahead) {
-        const aheadCross = this.crossingOf(ahead.car, r._done)
-        r.intervalMs = aheadCross !== null ? r._cross - aheadCross : null
+        const aheadCross = this.crossingOf(ahead.car, done)
+        r.intervalMs = aheadCross !== null ? cross - aheadCross : null
       }
     })
-    if (leader && leader._done > 0) {
+    if (leader && leader._line.done > 0) {
       leader.gapMs = 0
       leader.intervalMs = null
     }
@@ -295,10 +348,11 @@ export class LeaderboardEngine {
    * tiempo en la tanda en curso y después los eliminados (o sin tiempo aún), cada uno por su última tanda.
    */
   private orderByBestLap(rows: Work[]): void {
-    rows.sort((a, b) => b._seg - a._seg || a._segBest - b._segBest || b._s - a._s)
+    // Las reglas compartidas (`compareByBestLap`) y, a igualdad exacta, la posición en pista.
+    rows.sort((a, b) => compareByBestLap(a._best, b._best) || b._s - a._s)
     rows.forEach((r, i) => {
       r.position = i + 1
-      r.positionKnown = r._seg >= 0
+      r.positionKnown = r._best.seg >= 0
     })
     this.bestLapGaps(rows)
   }
@@ -317,4 +371,4 @@ export class LeaderboardEngine {
   }
 }
 
-type Work = LeaderboardRow & { _done: number; _cross: number; _s: number; _seg: number; _segBest: number }
+type Work = LeaderboardRow & { _line: LineKey; _best: BestLapKey; _s: number }

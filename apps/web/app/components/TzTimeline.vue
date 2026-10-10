@@ -3,10 +3,15 @@
  * Timeline de la sesión. El cabezal se mueve escribiendo `transform` en cada frame (sin reactividad);
  * los marcadores son estáticos. Arrastrable con ratón y táctil (Pointer Events + captura). Debajo de las marcas,
  * los carriles de otras funciones (hueco `components/timeline-lanes/`, D29).
+ *
+ * Vista previa (ítem 16, `TzTimelinePreview`): al pasar el ratón (o el lápiz), al arrastrar con el dedo y con el foco
+ * del teclado (sobre el cabezal), una tarjeta con lo que pasaba en ese instante. Se recalcula como mucho una vez por
+ * frame de pantalla y solo mientras el puntero se mueve (nada por frame del reloj); Esc la oculta.
  */
 import { SEEK_STEP_LARGE_MS, SEEK_STEP_MS } from '~/composables/useReplayShortcuts'
 import { formatClock } from '~/engine/format/time'
 import { clockOrigin, leaderLapAt } from '~/engine/timeline/markers'
+import { createTimelinePreview, PREVIEW_EXT, type PreviewAt, type TimelinePreview } from '~/engine/timeline/preview'
 import { TIMELINE_LANES } from '~/slots/timeline-lanes'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -22,7 +27,6 @@ const tla = new Map(rt.drivers.map((d) => [d.number, d.tla]))
 const track = ref<HTMLElement | null>(null)
 const head = ref<HTMLElement | null>(null)
 const fill = ref<HTMLElement | null>(null)
-const hover = ref<{ x: number; label: string } | null>(null)
 const dragging = ref(false)
 
 const pct = (ms: number) => `${(((ms - clock.startMs) / clock.duration) * 100).toFixed(4)}%`
@@ -56,29 +60,137 @@ function fractionAt(clientX: number): number {
   return Math.min(1, Math.max(0, (clientX - r.left) / r.width))
 }
 
+// --- Vista previa (ítem 16) ---
+/** Marcadores que entran en la tarjeta: a menos de estos px del instante. */
+const MARKER_PX = 8
+type CardSource = 'pointer' | 'touch' | 'focus'
+const previewId = useId()
+/**
+ * Lo último que pintó la tarjeta y si se ve. Cambia al ritmo del puntero o del estado grueso, nunca por frame. Al
+ * ocultarse conserva su contenido mientras se desvanece (una sola tarjeta, sin duplicados al volver enseguida).
+ */
+const preview = shallowRef<{ at: PreviewAt; x: number; width: number } | null>(null)
+const previewShown = ref(false)
+/** De dónde sale el instante: el puntero (ratón o lápiz encima), el dedo arrastrando o el cabezal con el foco. */
+let source: CardSource | null = null
+/** El foco llegó con el teclado (no con un clic): la tarjeta sigue al cabezal. */
+let keyboardFocus = false
+let model: TimelinePreview | null = null
+/** Precálculo perezoso, uno por runtime (`rt.ext`): la primera vez que hace falta. */
+const previewModel = () => (model ??= rt.ext(PREVIEW_EXT, createTimelinePreview))
+/** Un cálculo por frame de pantalla como mucho: el puntero puede mandar varios movimientos por frame. */
+let raf = 0
+let pending: { clientX: number; from: CardSource } | null = null
+
+function showAt(ms: number, from: CardSource) {
+  const width = track.value?.getBoundingClientRect().width ?? 0
+  if (!(width > 0)) return
+  const f = (ms - clock.startMs) / clock.duration
+  const toleranceMs = (MARKER_PX / width) * clock.duration
+  source = from
+  preview.value = { at: previewModel().at(ms, toleranceMs), x: f * width, width }
+  previewShown.value = true
+}
+
+function schedule(clientX: number, from: CardSource) {
+  pending = { clientX, from }
+  if (!raf) raf = requestAnimationFrame(flush)
+}
+
+function flush() {
+  raf = 0
+  const p = pending
+  pending = null
+  if (p && track.value) showAt(clock.startMs + fractionAt(p.clientX) * clock.duration, p.from)
+}
+
+function cancelPending() {
+  cancelAnimationFrame(raf)
+  raf = 0
+  pending = null
+}
+
+function hidePreview() {
+  cancelPending()
+  source = null
+  previewShown.value = false
+}
+
+/** La tarjeta sobre el cabezal (foco del teclado), o nada si el foco no vino del teclado. */
+function followHead() {
+  cancelPending()
+  if (keyboardFocus) showAt(playback.timeMs, 'focus')
+  else hidePreview()
+}
+
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0 && event.pointerType === 'mouse') return
   track.value!.setPointerCapture(event.pointerId)
   dragging.value = true
   clock.seekToFraction(fractionAt(event.clientX))
   track.value!.focus({ preventScroll: true })
+  if (event.pointerType === 'touch') schedule(event.clientX, 'touch')
 }
 
 function onPointerMove(event: PointerEvent) {
   const f = fractionAt(event.clientX)
   if (dragging.value) clock.seekToFraction(f)
-  if (event.pointerType === 'mouse') {
-    const r = track.value!.getBoundingClientRect()
-    hover.value = { x: f * r.width, label: label(clock.startMs + f * clock.duration) }
-  }
+  // Ratón y lápiz: al pasar por encima. Dedo: solo mientras arrastra (sobre el dedo).
+  if (event.pointerType !== 'touch') schedule(event.clientX, 'pointer')
+  else if (dragging.value) schedule(event.clientX, 'touch')
 }
 
 function onPointerUp(event: PointerEvent) {
   if (track.value?.hasPointerCapture(event.pointerId)) track.value.releasePointerCapture(event.pointerId)
   dragging.value = false
+  if (event.pointerType === 'touch') {
+    followHead()
+    return
+  }
+  // Un arrastre con el ratón que se suelta fuera de la pista: ya no está encima.
+  const r = track.value?.getBoundingClientRect()
+  if (r && (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom)) {
+    followHead()
+  }
 }
 
+function onPointerLeave(event: PointerEvent) {
+  // Con el dedo, la captura la suelta `pointerup`; al salir un ratón, vuelve al cabezal si el foco es del teclado.
+  if (event.pointerType !== 'touch' && !dragging.value) followHead()
+}
+
+function onFocus() {
+  try {
+    keyboardFocus = track.value?.matches(':focus-visible') ?? false
+  } catch {
+    keyboardFocus = false
+  }
+  if (keyboardFocus && source !== 'pointer') followHead()
+}
+
+function onBlur() {
+  keyboardFocus = false
+  if (source === 'focus') hidePreview()
+}
+
+// Con el foco del teclado, la tarjeta sigue al cabezal al ritmo del estado grueso (flechas, Inicio, Fin…).
+watch(
+  () => playback.timeMs,
+  () => {
+    if (source === 'focus') followHead()
+  },
+)
+
 function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    // Se oculta sin mover el foco (vuelve con la siguiente tecla o al mover el puntero).
+    if (previewShown.value) {
+      event.preventDefault()
+      hidePreview()
+    }
+    return
+  }
+  if (keyboardFocus && source === null) source = 'focus'
   const step = event.shiftKey ? SEEK_STEP_LARGE_MS : SEEK_STEP_MS
   const actions: Record<string, () => void> = {
     ArrowLeft: () => clock.seekBy(-step),
@@ -105,11 +217,16 @@ onMounted(() => {
     if (fill.value) fill.value.style.transform = `scaleX(${f.toFixed(5)})`
   })
 })
-onBeforeUnmount(() => off?.())
+onBeforeUnmount(() => {
+  off?.()
+  cancelPending()
+})
 </script>
 
 <template>
   <div class="tz-timeline">
+    <!-- Marco de la pista: la tarjeta de la vista previa va fuera del slider (sus hijos son presentacionales). -->
+    <div class="tz-timeline__frame">
     <div
       ref="track"
       class="tz-timeline__track"
@@ -121,12 +238,15 @@ onBeforeUnmount(() => off?.())
       :aria-valuemax="Math.round(clock.duration / 1000)"
       :aria-valuenow="valueNow"
       :aria-valuetext="valueText"
+      :aria-describedby="previewShown ? previewId : undefined"
       data-testid="timeline"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
-      @pointerleave="hover = null"
+      @pointerleave="onPointerLeave"
+      @focus="onFocus"
+      @blur="onBlur"
       @keydown="onKeydown"
     >
       <div class="tz-timeline__rail">
@@ -194,9 +314,15 @@ onBeforeUnmount(() => off?.())
       <div class="tz-timeline__headlane" aria-hidden="true">
         <div ref="head" class="tz-timeline__head"><span /></div>
       </div>
-      <div v-if="hover" class="tz-timeline__hover tz-tabular" :style="{ transform: `translateX(${hover.x}px)` }">
-        {{ hover.label }}
-      </div>
+    </div>
+    <TzTimelinePreview
+      v-if="preview"
+      :id="previewId"
+      :at="preview.at"
+      :x="preview.x"
+      :width="preview.width"
+      :visible="previewShown"
+    />
     </div>
   </div>
 </template>
@@ -204,6 +330,10 @@ onBeforeUnmount(() => off?.())
 <style scoped>
 .tz-timeline {
   padding-top: var(--tz-space-5);
+}
+
+.tz-timeline__frame {
+  position: relative;
 }
 
 .tz-timeline__track {
@@ -374,17 +504,4 @@ onBeforeUnmount(() => off?.())
   box-shadow: 0 0 0 1px var(--tz-bg);
 }
 
-.tz-timeline__hover {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 4px);
-  padding: 2px var(--tz-space-2);
-  border-radius: var(--tz-radius-sm);
-  background: var(--tz-surface-3);
-  font-family: var(--tz-font-mono);
-  font-size: var(--tz-text-xs);
-  white-space: nowrap;
-  pointer-events: none;
-  translate: -50% 0;
-}
 </style>

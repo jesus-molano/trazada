@@ -1,0 +1,17 @@
+{
+  "preview": {
+    "lap": "Lap {lap}/{total} · {time}",
+    "lapNoTotal": "Lap {lap} · {time}",
+    "leader": "Leader",
+    "bestLap": "Best lap",
+    "noData": "no data",
+    "basisTower": "official tower",
+    "basisLine": "line crossings",
+    "basisBestLap": "valid laps",
+    "clear": "No flags",
+    "pit": "Enters the pit lane: {tla}",
+    "windowStart": "{what} (start)",
+    "markerAt": "{what} · {time}",
+    "more": "+{n} more"
+  }
+}

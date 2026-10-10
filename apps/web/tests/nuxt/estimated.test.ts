@@ -9,9 +9,11 @@ import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
+import TzTimelinePreview from '~/components/TzTimelinePreview.vue'
 import TzTrackStatus from '~/components/TzTrackStatus.vue'
 import type { LoadedSession } from '~/data/types'
 import { ESTIMATED_FIELDS, type EstimatedField } from '~/engine/estimated'
+import { createTimelinePreview, PREVIEW_EXT } from '~/engine/timeline/preview'
 import { createReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
@@ -123,9 +125,13 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     usePlaybackStore().detach()
   },
   async trackStatus() {
-    await fixtureRuntime(['trackStatus'])
+    const rt = await fixtureRuntime(['trackStatus'])
     const w = await mountSuspended(TzTrackStatus)
     expect(label(w, 'trackStatus').exists()).toBe(true)
+    // La vista previa del timeline (ítem 16): el estado de pista de cualquier instante también es deducido.
+    const at = rt.ext(PREVIEW_EXT, createTimelinePreview).at(rt.clock.startMs)
+    const card = await mountSuspended(TzTimelinePreview, { props: { at, x: 0, width: 400, visible: true } })
+    expect(label(card, 'trackStatus').exists()).toBe(true)
     usePlaybackStore().detach()
     await fixtureRuntime([])
     const clean = await mountSuspended(TzTrackStatus)
