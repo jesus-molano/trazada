@@ -1,0 +1,63 @@
+{
+  "analysis": {
+    "button": "Analysis",
+    "buttonHint": "Session charts from the official timing: race trace, lap-by-lap pace and tyres",
+    "title": "Lap analysis",
+    "close": "Close the analysis",
+    "tabsLabel": "Charts",
+    "tabs": {
+      "raceTrace": "Race trace",
+      "pace": "Pace",
+      "stints": "Tyres"
+    },
+    "noSpoilers": "No spoilers: up to now",
+    "noSpoilersHint": "On: the charts only use data up to the player's current time. Turn it off to see the whole session.",
+    "legend": "Drivers: show or hide their series",
+    "lapShort": "L{lap}",
+    "noLaps": "No data: this session has no timed laps.",
+    "nothingYet": "No data up to this moment yet. Move the player forward or turn off «No spoilers».",
+    "identify": "Each series carries its driver's code; the second driver of each team is dashed.",
+    "raceTrace": {
+      "chart": "Race trace: gap to the leader at each line crossing, lap by lap",
+      "axis": "Gap to the leader at the line (s), per lap",
+      "basis": "Difference between the official line-crossing times of each lap, with no fuel correction or smoothing. The leader of each lap is at the top. A lapped car can be more than a lap behind; a car that stops crossing the line ends its series.",
+      "onlyRace": "The race trace only makes sense in races and sprints: in practice and qualifying every driver runs on their own and there is no on-track gap to compare lap by lap. See «Pace» or «Tyres»."
+    },
+    "pace": {
+      "chartLap": "Pace: official time of each lap, per lap",
+      "chartTime": "Pace: official time of each lap, by the session time when it ends",
+      "axisLap": "Lap time, per lap",
+      "axisTime": "Lap time, by session time",
+      "basis": "Official lap times, with no fuel correction or smoothing. Laps that are not useful to compare pace are marked, not removed.",
+      "markNormal": "● representative lap",
+      "markExcluded": "○ excluded: pit, SC, VSC, red flag or lap 1",
+      "markDeleted": "✕ deleted (from the race control message)",
+      "noTime": "No official time: {n} lap (not drawn) | No official time: {n} laps (not drawn)",
+      "lap1": "Lap 1: no official time (start from the grid).",
+      "noTrackStatus": "No per-lap track status: laps under SC, VSC or red flag cannot be marked.",
+      "outside": "{n} lap is outside the pace scale. | {n} laps are outside the pace scale.",
+      "showAll": "Show all",
+      "showPace": "Pace scale",
+      "nothingShown": "Pick a driver in the legend to see their pace."
+    },
+    "stints": {
+      "label": "Tyre stints per driver",
+      "basisRace": "One stint per set of tyres according to the timing, from its first to its last lap. Press one to go to its start.",
+      "basisRuns": "One stint per run on track according to the timing, from pit exit to pit entry. Press one to go to its start.",
+      "bar": "{driver}: {compound}, {laps}; {tyre}; {state}",
+      "laps": "lap {from} | laps {from}–{to}",
+      "open": "ongoing",
+      "tyreLife": "set with {from}–{to} laps",
+      "tyreLifeNoData": "set age: no data",
+      "tyreLifeHint": "Laps on the tyre set according to the timing (TyreLife). A used set can carry laps from other sessions (practice or qualifying), so it is not the age in this session.",
+      "tyreLifeLabel": "Set age",
+      "new": "new",
+      "used": "used",
+      "freshNoData": "new or used: no data",
+      "usedKey": "Striped: used set",
+      "compoundNoData": "compound: no data",
+      "noStints": "no data",
+      "compounds": "Compounds"
+    }
+  }
+}
