@@ -4,7 +4,15 @@ import { fakeTrzb, loadFixture } from '../../testing/fixture'
 import { carTracks } from '../replay/motion'
 import { type CarState, ReplayModel } from '../replay/ReplayModel'
 import { circuitModel } from '../track/circuit'
-import { BLUE_FLAG_MS, LeaderboardEngine } from './leaderboard'
+import { buildLapTable } from '../analysis/lapTable'
+import {
+  BLUE_FLAG_MS,
+  bestLapKeyAt,
+  compareAtLine,
+  compareByBestLap,
+  LeaderboardEngine,
+  lineKeyAt,
+} from './leaderboard'
 
 const drivers: DriverInfo[] = ['1', '44', '16'].map((n) => ({
   number: n,
@@ -176,6 +184,29 @@ describe('leaderboard con torre', () => {
     // En t = 200,5 s, 44 aún no tiene vuelta válida; 16 lleva 91,000 y 1 lleva 90,000 (la mejor).
     expect(rows.map((r) => r.bestLapMs)).toEqual([null, 91000, 90000])
     expect(rows.map((r) => r.gapMs)).toEqual([null, 1000, 0])
+  })
+})
+
+describe('reglas compartidas (las usa la vista previa del timeline)', () => {
+  const cars = buildLapTable('race', timing, []).cars
+
+  it('línea de meta: vueltas completadas y último paso; más vueltas primero y, a igualdad, quien cruzó antes', () => {
+    expect(lineKeyAt(cars.get('1'), 50_000)).toEqual({ done: 0, cross: Infinity })
+    expect(lineKeyAt(cars.get('1'), 100_000)).toEqual({ done: 1, cross: 90_000 })
+    expect(lineKeyAt(undefined, 100_000)).toEqual({ done: 0, cross: Infinity })
+    expect(compareAtLine({ done: 2, cross: 200 }, { done: 1, cross: 100 })).toBeLessThan(0)
+    expect(compareAtLine({ done: 2, cross: 100 }, { done: 2, cross: 200 })).toBeLessThan(0)
+    // Empate: 0 (nunca NaN), también sin ningún paso por meta.
+    expect(compareAtLine({ done: 2, cross: 100 }, { done: 2, cross: 100 })).toBe(0)
+    expect(compareAtLine({ done: 0, cross: Infinity }, { done: 0, cross: Infinity })).toBe(0)
+  })
+
+  it('mejor vuelta: última tanda con vuelta válida y su mejor tiempo; empate en 0', () => {
+    expect(bestLapKeyAt(cars.get('1'), 100_000)).toEqual({ seg: -1, best: Infinity }) // la vuelta 1 no tiene tiempo
+    expect(bestLapKeyAt(cars.get('1'), 300_000)).toEqual({ seg: 0, best: 90_000 })
+    expect(compareByBestLap({ seg: 1, best: 95_000 }, { seg: 0, best: 90_000 })).toBeLessThan(0)
+    expect(compareByBestLap({ seg: 0, best: 90_000 }, { seg: 0, best: 91_000 })).toBeLessThan(0)
+    expect(compareByBestLap({ seg: -1, best: Infinity }, { seg: -1, best: Infinity })).toBe(0)
   })
 })
 

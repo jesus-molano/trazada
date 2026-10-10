@@ -1,0 +1,17 @@
+{
+  "preview": {
+    "lap": "Vuelta {lap}/{total} · {time}",
+    "lapNoTotal": "Vuelta {lap} · {time}",
+    "leader": "Líder",
+    "bestLap": "Mejor vuelta",
+    "noData": "sin dato",
+    "basisTower": "torre oficial",
+    "basisLine": "paso por meta",
+    "basisBestLap": "vueltas válidas",
+    "clear": "Sin banderas",
+    "pit": "Entra en el pit lane: {tla}",
+    "windowStart": "{what} (inicio)",
+    "markerAt": "{what} · {time}",
+    "more": "+{n} más"
+  }
+}
