@@ -110,6 +110,36 @@ test('cerca de una bandera: el marcador y el chip de estado de ese instante, sin
   expect(await serious(page)).toEqual([])
 })
 
+test('con la hoja de análisis abierta, la tarjeta sale por encima de la hoja (nada la tapa)', async ({ page }) => {
+  await openReplay(page)
+  await page.getByTestId('analysis-button').click()
+  await expect(page.getByTestId('analysis-sheet')).toBeVisible()
+  const { startMs, endMs } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs }))
+  const p = await pointAt(page, startMs + 0.5 * (endMs - startMs))
+  await page.mouse.move(p.x, p.y)
+  await expect(card(page)).toBeVisible()
+  const sheetBox = (await page.getByTestId('analysis-sheet').boundingBox())!
+  const c = (await card(page).boundingBox())!
+  // La tarjeta sube por encima del dock, sobre la hoja (si no, este test no probaría nada).
+  expect(c.y).toBeLessThan(sheetBox.y + sheetBox.height)
+  // Lo que se ve en cada esquina de la tarjeta es la tarjeta (sin `pointer-events: none` solo para preguntarlo).
+  const topmost = await card(page).evaluate((el) => {
+    const e = el as HTMLElement
+    e.style.pointerEvents = 'auto'
+    const r = e.getBoundingClientRect()
+    const corners = [
+      [r.left + 2, r.top + 2],
+      [r.right - 2, r.top + 2],
+      [r.left + 2, r.bottom - 2],
+      [r.right - 2, r.bottom - 2],
+    ]
+    const ok = corners.every(([x, y]) => e.contains(document.elementFromPoint(x!, y!)))
+    e.style.pointerEvents = ''
+    return ok
+  })
+  expect(topmost).toBe(true)
+})
+
 test('mirar el timeline en pausa no pide renders a la escena', async ({ page }) => {
   await openReplay(page)
   let before = -1

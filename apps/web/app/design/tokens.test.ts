@@ -117,10 +117,12 @@ describe('tokens de diseño', () => {
     expect(declared(low, '--tz-panel-pad')).toBe('var(--tz-space-3)')
     expect(declared(low, '--tz-row-h')).toBe('24px')
     expect(declared(low, '--tz-text-num-xl')).toBe('30px')
+    expect(declared(low, '--tz-chart-h')).toBe('54px')
     expect(declared(mediaRoot('pointer: coarse'), '--tz-hit-min')).toBe('44px')
     // Fuera de las media queries, los valores cómodos.
     expect(token('--tz-panel-pad')).toBe('16px')
     expect(token('--tz-row-h')).toBe('28px')
+    expect(token('--tz-chart-h')).toBe('64px')
     expect(token('--tz-hit-min')).toBe('32px')
   })
 

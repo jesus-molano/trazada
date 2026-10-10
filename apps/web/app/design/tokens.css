@@ -231,6 +231,8 @@
     --tz-panel-pad: var(--tz-space-3);
     --tz-row-h: 24px;
     --tz-text-num-xl: 30px;
+    /* Gráficas de telemetría algo más bajas: en 800 px de alto caben enteras con los sectores de la vuelta. */
+    --tz-chart-h: 54px;
   }
 }
 

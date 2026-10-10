@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
  * Mini gráfica (uPlot, Canvas 2D) de una ventana deslizante. Los datos llegan por `setData` desde el
- * panel (sin reactividad de Vue sobre los arrays).
+ * panel (sin reactividad de Vue sobre los arrays). Alto de `--tz-chart-h` (más bajo con la densidad compacta).
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
+import { token } from '~/design/tokens'
 
 const props = defineProps<{
   label: string
@@ -18,6 +19,10 @@ const props = defineProps<{
 const host = ref<HTMLElement | null>(null)
 let plot: uPlot | null = null
 let ro: ResizeObserver | null = null
+let resize: (() => void) | null = null
+
+/** Alto del trazado (px): el token de densidad, que cambia con el alto de la ventana. */
+const chartHeight = () => Number.parseFloat(token('--tz-chart-h'))
 
 function setData(data: uPlot.AlignedData): void {
   // Con las escalas fijas (rangos de props), «resetScales» las deja igual; lo importante es que uPlot rehaga
@@ -37,7 +42,7 @@ onMounted(() => {
   plot = new uPlot(
     {
       width: el.clientWidth || 240,
-      height: 64,
+      height: chartHeight(),
       legend: { show: false },
       cursor: { show: false },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },
@@ -61,12 +66,16 @@ onMounted(() => {
     [new Float64Array(0), ...props.series.map(() => new Float64Array(0))],
     el,
   )
-  ro = new ResizeObserver(() => plot?.setSize({ width: el.clientWidth, height: 64 }))
+  // El ancho sigue al panel; el alto, a la densidad (una ventana más baja no cambia el ancho del panel).
+  resize = () => plot?.setSize({ width: el.clientWidth, height: chartHeight() })
+  ro = new ResizeObserver(resize)
   ro.observe(el)
+  window.addEventListener('resize', resize)
 })
 
 onBeforeUnmount(() => {
   ro?.disconnect()
+  if (resize) window.removeEventListener('resize', resize)
   plot?.destroy()
   plot = null
 })

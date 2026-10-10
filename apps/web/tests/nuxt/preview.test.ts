@@ -226,6 +226,22 @@ describe('TzTimeline con vista previa', () => {
     expect(track.attributes('aria-describedby')).toBeUndefined()
   })
 
+  it('dedo: el foco que da el toque no es del teclado aunque el navegador lo marque :focus-visible; al soltar, se oculta', async () => {
+    const { w, track } = await mountTimeline()
+    const el = track.element as HTMLElement
+    // Chromium marca :focus-visible un focus() por script sin interacción previa de ratón (el del toque, que
+    // `pointerdown` da antes que el propio navegador); el foco llega en el mismo instante, como en el navegador.
+    vi.spyOn(el, 'matches').mockImplementation((sel: string) => sel === ':focus-visible')
+    el.focus = () => void el.dispatchEvent(new FocusEvent('focus'))
+    await track.trigger('pointerdown', { clientX: 300, pointerType: 'touch', button: 0, pointerId: 1 })
+    await frame()
+    await nextTick()
+    expect(shown(w)).toBe(true)
+    await track.trigger('pointerup', { clientX: 300, pointerType: 'touch', pointerId: 1 })
+    await nextTick()
+    expect(shown(w)).toBe(false)
+  })
+
   it('la vista previa usa su propio estado de pista: el del reloj no cambia', async () => {
     const { r, track } = await mountTimeline()
     // El bucle del runtime ya ha pintado el instante del reloj (en pausa no vuelve a calcularlo).

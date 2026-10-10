@@ -20,6 +20,9 @@ async function open(page: Page) {
 const changed = (page: Page) => page.locator('[data-testid="leaderboard"] [data-change]')
 
 test('en las primeras vueltas la torre cambia: flechas con su texto, que un seek borra', async ({ page }) => {
+  // El primer cambio llega unos 26 s de pared después de darle a reproducir (×4), más la carga de la carrera: el tope
+  // de 30 s por defecto se quedaba justo (29,9 s antes de la Tanda 2) y cortaba la espera de 60 s de abajo.
+  test.setTimeout(90_000)
   await open(page)
   const lap2 = await page.evaluate(() => window.__trazada!.markers.laps.find((l) => l.lap === 2)?.t ?? null)
   expect(lap2).not.toBeNull()

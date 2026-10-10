@@ -75,6 +75,11 @@ const previewShown = ref(false)
 let source: CardSource | null = null
 /** El foco llegó con el teclado (no con un clic): la tarjeta sigue al cabezal. */
 let keyboardFocus = false
+/**
+ * El foco lo está dando `onPointerDown` (ratón, lápiz o dedo): nunca es del teclado. Chromium marca :focus-visible un
+ * focus() por script sin una interacción previa de ratón, como el de un toque (que llega antes que el del navegador).
+ */
+let pointerFocusing = false
 let model: TimelinePreview | null = null
 /** Precálculo perezoso, uno por runtime (`rt.ext`): la primera vez que hace falta. */
 const previewModel = () => (model ??= rt.ext(PREVIEW_EXT, createTimelinePreview))
@@ -128,7 +133,14 @@ function onPointerDown(event: PointerEvent) {
   track.value!.setPointerCapture(event.pointerId)
   dragging.value = true
   clock.seekToFraction(fractionAt(event.clientX))
-  track.value!.focus({ preventScroll: true })
+  // Con el puntero ya no se usa el teclado: al soltar, la tarjeta no se queda sobre el cabezal.
+  keyboardFocus = false
+  pointerFocusing = true
+  try {
+    track.value!.focus({ preventScroll: true })
+  } finally {
+    pointerFocusing = false
+  }
   if (event.pointerType === 'touch') schedule(event.clientX, 'touch')
 }
 
@@ -160,6 +172,7 @@ function onPointerLeave(event: PointerEvent) {
 }
 
 function onFocus() {
+  if (pointerFocusing) return
   try {
     keyboardFocus = track.value?.matches(':focus-visible') ?? false
   } catch {

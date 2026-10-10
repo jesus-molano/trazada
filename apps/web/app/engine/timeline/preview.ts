@@ -1,6 +1,6 @@
 /**
- * Vista previa del timeline (ítem 16): qué pasaba en un instante cualquiera de la sesión, para la tarjeta que sale al
- * pasar el puntero, el dedo o el foco por el timeline. TS puro (sin Vue ni three) y solo con datos reales:
+ * Vista previa del timeline (ítem 16, D46): qué pasaba en un instante cualquiera de la sesión, para la tarjeta que sale
+ * al pasar el puntero, el dedo o el foco por el timeline. TS puro (sin Vue ni three) y solo con datos reales:
  *
  * - Vuelta: la del líder (`leaderLapAt`, la misma que el dock) en carrera y sprint, con las totales del manifest si
  *   las trae. Fuera de carrera no hay vuelta de sesión: la tarjeta enseña el reloj visible (`clockMs`).
