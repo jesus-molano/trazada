@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, resetStorage } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const scene = (page: Page) =>
@@ -120,7 +120,7 @@ test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }
   // Las referencias se generan en el contenedor de CI (workflow "Snapshots"); otro Chromium da píxeles distintos.
   test.skip(!process.env.CI, 'las capturas de referencia solo se comparan en CI')
   test.skip(process.env.SKIP_SCREENSHOTS === 'true', 'el workflow Snapshots está regenerando las referencias')
-  await page.addInitScript(() => localStorage.clear())
+  await resetStorage(page)
   await openScene(page)
   await page.mouse.move(0, 0)
   // Solo el lienzo: se oculta la interfaz superpuesta (y el chip con el tiempo de carga, que varía).

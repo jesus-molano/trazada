@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, markTipsSeen } from './helpers'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
@@ -40,6 +40,7 @@ test.describe('gestor de datos local', () => {
   })
 
   const open = async (page: Page, query: string) => {
+    await markTipsSeen(page)
     await page.goto(`${base}/${query}`)
     await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
     await expect(page.getByTestId('manager')).toBeAttached()
