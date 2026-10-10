@@ -241,7 +241,7 @@ Etapas: `probe → fetch (FastF1, caché) → circuito canónico → proyección
 - El repo solo admite **extractos mínimos de datos reales**, ≤ 1 MB en total, bajo `DATA_NOTICE.md`:
   - un *golden set* de ≥ 300 mensajes de race control etiquetados a mano (2023–2026);
   - 2–3 vueltas de 3 coches de dos sesiones;
-  - una sesión e2e recortada de 5 vueltas con todos los coches (~0,3 MB).
+  - una sesión e2e recortada de 5 vueltas con todos los coches (~0,3 MB). Lleva, de antes de la ventana, la última fila de la torre de cada coche y las vueltas ya empezadas: su clasificación y sus contadores son los que hubo (lo comprueba `pipeline/tests/test_fixtures.py`). Sus variantes de estado (fp2, fp3, q, race) son inventadas, van marcadas `dev` en el catálogo y con la nota `e2e-variant`, y nunca deben salir en capturas como si fueran sesiones reales. El generador falla si el total pasa de 1 MB.
 - Las sesiones completas **solo se usan en local**, con tests marcados `@local` que leen `data/`.
 - Para el resto de tests unitarios hay **generadores sintéticos**: trazados, ruido de muestreo, huecos, pit lane y cruce de `s = 0`.
 - En CI se ejecuta todo menos `@local`. El e2e sirve la sesión recortada desde el mismo origen.

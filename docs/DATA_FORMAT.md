@@ -115,6 +115,8 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
   | `dev-circuit` | El circuito usa fuentes de desarrollo: la sesión queda como dev. | `circuit` |
   | `dev-source`, `merged-telemetry`, `track-status-from-race-control` | Fuente de desarrollo (TracingInsights) y sus limitaciones. | — |
   | `dev-corners` | Curvas y rotación de una copia de desarrollo de MultiViewer. | — |
+  | `e2e-extract` | Extracto recortado del fixture e2e (`trazada e2e-fixture`). | — |
+  | `e2e-variant` | Variante del fixture e2e inventada para probar un estado (no disponible, versión, fichero corrupto): no es una sesión real. | — |
 
   Un lector debe tolerar códigos que no conoce (un aviso genérico, nunca el `text` en español). En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
 

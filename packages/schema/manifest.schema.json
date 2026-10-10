@@ -144,7 +144,9 @@
             "length-vs-official",
             "no-corners",
             "finish-line-fallback",
-            "lights-out-unknown"
+            "lights-out-unknown",
+            "e2e-extract",
+            "e2e-variant"
           ],
           "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
         },

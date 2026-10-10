@@ -38,6 +38,8 @@ export const QUALITY_NOTE_CODES = [
   'no-corners',
   'finish-line-fallback',
   'lights-out-unknown',
+  'e2e-extract',
+  'e2e-variant',
 ] as const
 export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
 
