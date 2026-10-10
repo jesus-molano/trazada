@@ -503,6 +503,7 @@ Trampas:
 | D20 | **2026 = 22 coches; N variable** | Es el dato real. | — |
 | D21 | **Circuito canónico por trazado**, compartido entre sesiones | `s` es comparable entre sesiones y temporadas, como necesita el heatmap. Hay menos ficheros. | Línea central por sesión: los orígenes y longitudes difieren entre sesiones. |
 | D23 | **Uso personal y privado** (2026-10-10): no se publica ningún dato; la app se usa en local (`pnpm local`, con `--lan` para la red de casa) | Lo pidió el usuario: proyecto totalmente personal y «lo que sea legal». Usar los datos para uno mismo es legal; publicarlos sería redistribuirlos sin licencia (F1 y MultiViewer). | Despliegue público en Cloudflare (D1/D2), que queda en pausa; si algún día se despliega, solo con control de acceso. |
+| D24 | **Despliegue privado con contraseña** (2026-10-10): una Worker de Cloudflare (`deploy/private/`) con la app y los datos publicables, accesible solo con contraseña (cookie HMAC, `run_worker_first`) | El usuario quiere verla en una URL sin dejar de ser uso personal (D23). Workers Free: gratis y sin tarjeta, y el límite de 100 000 peticiones al día sobra. | Vercel: la protección con contraseña es de pago (Pro). Cloudflare Access: pide un método de pago incluso en el plan gratis. Público (D1/D2): descartado por D23. |
 | D22 | **Etiquetas (curvas y siglas) en DOM proyectado** en cada render, en lugar de troika-three-text | Texto nítido con las fuentes de la app (woff2, sin convertir a woff/ttf para troika), accesible, i18n directo, 0 draw calls. Coste: escribir `transform` en ~45 nodos por frame (solo capa de composición). | troika `BatchedText`: necesita fuentes woff/ttf autoalojadas y el `unicodeFontsURL`, y no aporta nada para ~45 etiquetas. |
 
 ## 7. Riesgos
@@ -746,7 +747,7 @@ Mientras tanto, desarrollo con la **caché real de Bélgica FP1 2026**, que ya t
 
 ### 9.3 Cuentas y secretos (gratis; los creas tú)
 
-- **Cloudflare**: *ya no hace falta (D23)*. Solo si algún día se despliega, y de forma privada: `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` como secretos del repo, y `wrangler login` en tu PC.
+- **Cloudflare**: solo para verla en una URL privada (D24). Basta una cuenta gratis y `pnpm dlx wrangler@4 login` en tu PC. No hacen falta secretos en el repo, porque se despliega desde tu PC con `pnpm deploy:private`.
 - **Hugging Face**: un dataset privado y un `HF_TOKEN` en tu PC.
 
 ### 9.4 Postura legal — **respondida (D23)**
@@ -775,6 +776,10 @@ Con D23 (uso personal) ya no hacen falta cuentas ni despliegue. Queda esto:
    - Portátil de referencia: `…&bench=1`.
    - Pégame el JSON de "Copiar resultados" y actualizo la tabla.
 4. **iPad real**: tocar un coche y arrastrar el timeline (en e2e ya pasa con el perfil táctil).
+5. **Opcional, verla en una URL privada (D24)**:
+   - Crea una cuenta gratis de Cloudflare (sin tarjeta).
+   - Ejecuta `pnpm dlx wrangler@4 login` y después `pnpm deploy:private`. La primera vez te pide elegir el subdominio de workers.dev y la contraseña, de 12 caracteres o más.
+   - Abre `https://trazada-privada.<tu-subdominio>.workers.dev`.
 
 ### 9.6 GSAP
 

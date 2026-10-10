@@ -20,8 +20,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Datos preparados para desplegar (scripts/stage-data.mjs)
+# Datos preparados para desplegar (scripts/stage-data.mjs) y estado local de wrangler
 deploy/.staging/
+.wrangler/
+.dev.vars
 
 # Playwright
 test-results/

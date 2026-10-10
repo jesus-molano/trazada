@@ -8,7 +8,7 @@ Replay 3D y análisis de carreras, web estática y coste cero. **Fuente de verda
 - **Datos honestos**: lo estimado lleva la etiqueta "Estimado" (componente común) y nunca se presenta como real. No inventes datos: si falta un dato, se muestra "sin dato/sin señal".
 - **Un reloj maestro**: todo cuelga del tiempo de sesión en ms (`SessionClock`). Las fuentes se normalizan a ese reloj en el pipeline; las horas dentro de los textos de race control se ignoran.
 - **Rendimiento**: un único contexto WebGL (`TresCanvas` + `ViewRegistry` con scissor). Nada de datos por frame en la reactividad de Vue: motor TS puro mutado en sitio, `shallowRef`/`markRaw`, Pinia solo para estado grueso. Parseo y precálculo en Web Workers con transferibles.
-- **Legal**: proyecto no oficial. Sin logos, libreas, fotos (se descarta `HeadshotUrl`), tipografía oficial ni "F1"/"Formula 1" en nombres de producto, paquetes, dominios o cuentas. Mostrar `EventName` corto, nunca `OfficialEventName`. Disclaimer en footer y README. Sin campos de Jolpica en los datos publicados. Ninguna función de IA sobre datos de F1. Los datos nunca van en git salvo extractos mínimos de test (`DATA_NOTICE.md`). **Uso personal y privado (D23)**: no se publica ningún dato ni se despliega en público; la app se usa con `pnpm local`.
+- **Legal**: proyecto no oficial. Sin logos, libreas, fotos (se descarta `HeadshotUrl`), tipografía oficial ni "F1"/"Formula 1" en nombres de producto, paquetes, dominios o cuentas. Mostrar `EventName` corto, nunca `OfficialEventName`. Disclaimer en footer y README. Sin campos de Jolpica en los datos publicados. Ninguna función de IA sobre datos de F1. Los datos nunca van en git salvo extractos mínimos de test (`DATA_NOTICE.md`). **Uso personal y privado (D23)**: no se publica ningún dato ni se despliega en público. La app se usa con `pnpm local` o, en una URL, solo detrás de la contraseña de la Worker privada (D24, `deploy/private/worker.mjs`). Nunca desplegar sin ese control de acceso.
 - **UX**: tema oscuro con tokens (`apps/web/app/design/tokens.css`); movimiento solo con los tokens (`design/motion.ts`), respetando `prefers-reduced-motion`; todo texto visible vía i18n (es/en; ESLint `no-raw-text` lo impone); estados de carga, vacío y error cuidados; desktop first sin romperse en tablet.
 
 ## Entorno
@@ -30,6 +30,9 @@ pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
 pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
 pnpm local [--lan] [--build]  # uso personal (D23): app + data/ en http://127.0.0.1:3000 (--lan: red de casa)
+pnpm deploy:private [--dry-run]  # URL privada con contraseña (D24): Worker deploy/private (app + datos publicables)
+# e2e del despliegue privado: E2E_PRIVATE_URL=… E2E_PRIVATE_PASSWORD=… pnpm e2e private
+#   (en local: pnpm dlx wrangler@4 dev --config deploy/private/wrangler.jsonc --var ACCESS_PASSWORD:…)
 # Bench: /replay?s=<sesión>&bench=1 (benchSeconds, benchWarmup, benchRate, governor=off); docs/PERFORMANCE.md
 pnpm perf:table               # tabla de peso por sesión en docs/PERFORMANCE.md (desde data/v1)
 pnpm data:deploy --dry-run    # prepara deploy/.staging/data (solo publicable) sin subir nada

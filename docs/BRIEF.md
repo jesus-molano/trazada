@@ -122,3 +122,9 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
   - **La app se usa en local**: `pnpm local` sirve la app y los datos de `data/` en tu PC, y con `--lan` también en tu red de casa (por ejemplo, para el iPad).
   - **Sin despliegue público.** El despliegue en Cloudflare (D1/D2, `pnpm data:deploy`, workflow "Deploy app") queda en pausa: no hacen falta cuentas, y sin secretos el workflow no hace nada. Si algún día se quisiera desplegar, tendría que ser privado (con control de acceso). Por si acaso, la app ya no se puede indexar: `robots.txt` y `noindex`.
   - **MultiViewer y F1**: no hace falta pedir permiso ni escribir a F1, porque no se redistribuye nada. Las curvas y los sectores de comisarios de MultiViewer se usan como entrada del pipeline en tu PC. Se mantienen el disclaimer, la ausencia de logos y fotos y el resto de reglas.
+- **2026-10-10** — **D24, despliegue privado con contraseña** (el usuario quiere verla en una URL):
+  - **Dónde**: una sola Worker de Cloudflare (`trazada-privada`, plan Workers Free, sin tarjeta) que sirve la app y las sesiones publicables, y **solo con contraseña**.
+  - **Cómo funciona el acceso**: cookie HttpOnly firmada con HMAC y válida 30 días; cambiar la contraseña invalida las sesiones; sin el secreto configurado no sirve nada. Todo pasa por la Worker (`run_worker_first`) y nada es indexable.
+  - **Por qué no las alternativas**: Vercel cobra la protección con contraseña (Pro), y Cloudflare Access pide un método de pago incluso en el plan gratis.
+  - **Legal**: sigue siendo uso personal (D23), porque no se redistribuye nada.
+  - **Cómo se despliega**: desde tu PC con `pnpm deploy:private`.

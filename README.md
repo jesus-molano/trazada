@@ -49,7 +49,18 @@ pnpm local          # http://127.0.0.1:3000 con los datos de data/
 pnpm local --lan    # también en tu red de casa (p. ej. el iPad)
 ```
 
-El despliegue en Cloudflare (`deploy/`, `pnpm data:deploy`) queda preparado pero en pausa (decisión D23 en `docs/PLAN.md`).
+### Verla en una URL (privada, con contraseña)
+
+Para entrar desde cualquier sitio sin publicar nada (D24), la app y tus sesiones van a una Worker de Cloudflare (gratis y sin tarjeta) que solo se abre con tu contraseña:
+
+```bash
+pnpm dlx wrangler@4 login   # la primera vez: cuenta gratis de Cloudflare
+pnpm deploy:private         # compila, sube y, la primera vez, pide la contraseña (12+ caracteres)
+```
+
+Después abre `https://trazada-privada.<tu-subdominio>.workers.dev`. Para cambiar la contraseña (cierra todas las sesiones): `pnpm dlx wrangler@4 secret put ACCESS_PASSWORD --config deploy/private/wrangler.jsonc`.
+
+El despliegue público (`deploy/app`, `deploy/data`, `pnpm data:deploy`) queda en pausa (D23).
 
 ## Rendimiento
 

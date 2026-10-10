@@ -15,6 +15,7 @@
     "e2e": "pnpm --filter @trazada/web e2e",
     "data:deploy": "node scripts/data-deploy.mjs",
     "perf:table": "node scripts/perf-table.mjs",
-    "local": "node scripts/local.mjs"
+    "local": "node scripts/local.mjs",
+    "deploy:private": "node scripts/deploy-private.mjs"
   }
 }
