@@ -4,12 +4,12 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, resetStorage } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
 async function open(page: Page) {
-  await page.addInitScript(() => localStorage.clear())
+  await resetStorage(page)
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
 }

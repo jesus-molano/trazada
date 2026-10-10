@@ -7,7 +7,12 @@ export default withNuxt(
   {
     settings: {
       'vue-i18n': {
-        localeDir: './i18n/locales/*.json',
+        // Un fichero por namespace en i18n/locales/<idioma>/ (D29): el idioma es el nombre de la carpeta.
+        localeDir: {
+          pattern: './i18n/locales/*/*.json',
+          localeKey: 'path',
+          localePattern: String.raw`^.*[\\/](?<locale>[A-Za-z0-9-_]+)[\\/][^\\/]+\.json$`,
+        },
         messageSyntaxVersion: '^11.0.0',
       },
     },
@@ -18,7 +23,7 @@ export default withNuxt(
       // Claves que se usan con nombre dinámico (t(`session.${type}`), etc.).
       '@intlify/vue-i18n/no-unused-keys': [
         'warn',
-        { extensions: ['.ts', '.vue'], ignores: ['/^session\\./', '/^replay\\.stage\\./', '/^replay\\.error\\./', '/^timeline\\.(flag|window)\\./', '/^compound\\./', '/^telemetry\\.drs\\./', '/^rc\\.kind\\./', '/^estimated\\.(fields|hints)\\./', '/^trackStatus\\.(neutral|sector)\\./', '/^manager\\.(phase|error)\\./', '/^howDrawn\\./', '/^sessionNotes\\.note\\./'] },
+        { extensions: ['.ts', '.vue'], ignores: ['/^session\\./', '/^replay\\.stage\\./', '/^replay\\.error\\./', '/^timeline\\.(flag|window)\\./', '/^compound\\./', '/^telemetry\\.drs\\./', '/^rc\\.kind\\./', '/^estimated\\.(fields|hints)\\./', '/^trackStatus\\.(neutral|sector)\\./', '/^manager\\.(phase|error)\\./', '/^howDrawn\\./', '/^sessionNotes\\.note\\./', '/^scene\\.toolGroups\\./'] },
       ],
       '@intlify/vue-i18n/no-v-html': 'error',
     },

@@ -50,14 +50,39 @@ export interface ReplayRuntime {
   setInvalidate(fn: (() => void) | null): void
   /** Pide un frame aunque el reloj esté en pausa (selección, cámara…). */
   requestFrame(): void
+  /**
+   * La escena está tapada (p. ej. por la hoja de análisis): no se le piden frames y la GPU descansa. El reloj, el
+   * modelo y los oyentes de frame siguen igual (la clasificación y el timeline no se paran). Al destaparla, un frame.
+   */
+  setSceneHidden(hidden: boolean): void
+  readonly sceneHidden: boolean
+  /**
+   * Extensión perezosa y memoizada (D29): la primera llamada con `key` crea el valor con `factory(rt)` (un precálculo
+   * de una función: momentos, zonas de DRS, sectores…) y las siguientes devuelven ese mismo valor, sin llamar a
+   * `factory`. Vive lo que el runtime: si el valor tiene `dispose()`, se llama al desecharlo.
+   */
+  ext<T>(key: string, factory: (rt: ReplayRuntime) => T): T
   readonly frames: number
   dispose(): void
 }
 
-export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
+export interface ReplayRuntimeOptions {
+  /**
+   * Instante inicial (ms de sesión), p. ej. para reanudar donde se dejó: el primer frame ya es ese, sin pasar por el
+   * de por defecto. Se ajusta al intervalo de reproducción; si no es un número finito, se usa el de por defecto.
+   */
+  initialMs?: number
+}
+
+/** Instante inicial por defecto: el inicio de la reproducción o, en carrera, un poco antes de la salida. */
+export function defaultInitialMs(playback: { startMs: number; lightsOutMs?: number | null }): number {
+  return playback.lightsOutMs != null ? Math.max(playback.startMs, playback.lightsOutMs - PRE_START_MS) : playback.startMs
+}
+
+export function createReplayRuntime(session: LoadedSession, options: ReplayRuntimeOptions = {}): ReplayRuntime {
   const { playback, type } = session.manifest.session
   const initial =
-    playback.lightsOutMs != null ? Math.max(playback.startMs, playback.lightsOutMs - PRE_START_MS) : playback.startMs
+    options.initialMs !== undefined && Number.isFinite(options.initialMs) ? options.initialMs : defaultInitialMs(playback)
   const clock = new SessionClock(playback.startMs, playback.endMs, initial)
   const markers = buildTimelineMarkers(type, session.timing, session.events, playback.endMs)
   const circuit = circuitModel(session.circuit)
@@ -68,6 +93,10 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
   const offsets = new Float32Array(model.states.length)
   let separation = false
   let separatedCars = 0
+  let sceneHidden = false
+  /** Extensiones de `ext`; `PENDING` mientras se crea una (para detectar una que se pide a sí misma). */
+  const exts = new Map<string, unknown>()
+  const PENDING = Symbol('pending')
 
   const frameListeners = new Set<(t: number) => void>()
   const coarseListeners = new Set<(s: CoarseState) => void>()
@@ -104,7 +133,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
       trackState.update(t)
       if (separation) separatedCars = lateralOffsets(model.states, circuit.centerline.length, offsets)
       for (const l of frameListeners) l(t)
-      invalidate?.()
+      if (!sceneHidden) invalidate?.()
       if (clock.playing && now - lastCoarse >= COARSE_INTERVAL_MS) {
         lastCoarse = now
         pushCoarse()
@@ -114,7 +143,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
   }
   raf = requestAnimationFrame(loop)
 
-  return {
+  const rt: ReplayRuntime = {
     session,
     clock,
     markers,
@@ -153,6 +182,31 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     requestFrame() {
       dirty = true
     },
+    setSceneHidden(hidden) {
+      if (hidden === sceneHidden) return
+      sceneHidden = hidden
+      if (!hidden) dirty = true
+    },
+    get sceneHidden() {
+      return sceneHidden
+    },
+    ext<T>(key: string, factory: (rt: ReplayRuntime) => T): T {
+      if (exts.has(key)) {
+        const value = exts.get(key)
+        if (value === PENDING) throw new Error(`rt.ext('${key}'): la extensión se pide a sí misma mientras se crea`)
+        return value as T
+      }
+      if (disposed) throw new Error(`rt.ext('${key}'): el runtime ya se desechó`)
+      exts.set(key, PENDING)
+      try {
+        const value = factory(rt)
+        exts.set(key, value)
+        return value
+      } catch (error) {
+        exts.delete(key)
+        throw error
+      }
+    },
     get frames() {
       return frames
     },
@@ -163,6 +217,12 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
       frameListeners.clear()
       coarseListeners.clear()
       invalidate = null
+      for (const value of exts.values()) {
+        const d = (value as { dispose?: unknown } | null)?.dispose
+        if (typeof d === 'function') d.call(value)
+      }
+      exts.clear()
     },
   }
+  return rt
 }

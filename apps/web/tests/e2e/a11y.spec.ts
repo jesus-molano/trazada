@@ -1,7 +1,7 @@
 /** Accesibilidad (axe-core, WCAG 2.1 A/AA): ninguna infracción seria o crítica. */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, resetStorage } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
@@ -23,7 +23,7 @@ test('portada y selector', async ({ page }) => {
 })
 
 test('replay listo, con telemetría, dirección de carrera y etiquetas Estimado', async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear())
+  await resetStorage(page)
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
   // Al final de la sesión: el feed de dirección de carrera está lleno (región con scroll).

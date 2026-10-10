@@ -2,6 +2,7 @@
 import { parseSessionId } from '~/data/session-id'
 import { installDebugHandle } from '~/replay/debug'
 import { createReplayRuntime } from '~/replay/runtime'
+import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 
@@ -91,6 +92,10 @@ onBeforeUnmount(() => {
       <!-- Avisos de calidad del pipeline (quality.notes del manifest), si los hay. -->
       <TzSessionNotes v-if="session.status === 'ready'" :key="`notes-${session.id}`" :notes="session.manifest?.quality.notes" />
       <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
+      <!-- Botones y chips de otras funciones (hueco components/replay-header/, D29). -->
+      <template v-if="playback.attached">
+        <component :is="h.component" v-for="h in REPLAY_HEADER" :key="`${h.name}-${session.id}`" />
+      </template>
       <!-- La escena teletransporta aquí sus herramientas (altura, separación y etiquetas "Estimado"). -->
       <div id="tz-scene-tools" class="tz-replay__tools" />
     </header>
@@ -107,6 +112,10 @@ onBeforeUnmount(() => {
       </aside>
     </div>
     <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
+    <!-- Hojas, tarjetas y avisos de otras funciones (hueco components/replay-overlays/, D29). -->
+    <template v-if="playback.attached">
+      <component :is="o.component" v-for="o in REPLAY_OVERLAYS" :key="`${o.name}-${session.id}`" />
+    </template>
     <TzBench v-if="benchMode && sceneEnabled" :key="`bench-${session.id}`" />
   </section>
 </template>

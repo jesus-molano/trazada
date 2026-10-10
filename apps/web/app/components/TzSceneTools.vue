@@ -1,12 +1,14 @@
 <script setup lang="ts">
 /**
- * Herramientas de la escena: exageración de altura, separación visual de coches, la explicación de qué es
- * dato y qué es modelo en lo que se dibuja («Cómo se dibuja») y las etiquetas "Estimado" de lo que la escena
- * pinta sin ser dato real (opciones del usuario y campos del manifest).
+ * Herramientas de la escena: exageración de altura, separación visual de coches, las de cada función agrupadas en
+ * «Capas» y «Cámara» (hueco `components/scene-tools/`, D29), la explicación de qué es dato y qué es modelo en lo que
+ * se dibuja («Cómo se dibuja») y las etiquetas "Estimado" de lo que la escena pinta sin ser dato real (opciones del
+ * usuario y campos del manifest).
  */
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { SCENE_TOOLS } from '~/slots/scene-tools'
 import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
 
 const props = defineProps<{ flat: boolean; estimated: readonly string[] }>()
@@ -58,6 +60,17 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
       {{ t('scene.separation') }}
     </button>
     <span v-if="flat" class="tz-tools__flat" :title="t('scene.flatHint')">{{ t('scene.flat') }}</span>
+    <div
+      v-for="g in SCENE_TOOLS"
+      :key="g.group"
+      class="tz-tools__group"
+      role="group"
+      :aria-label="t(`scene.toolGroups.${g.group}`)"
+      :data-testid="`tool-group-${g.group}`"
+    >
+      <span class="tz-tools__label">{{ t(`scene.toolGroups.${g.group}`) }}</span>
+      <component :is="tool.component" v-for="tool in g.tools" :key="tool.name" />
+    </div>
     <TzDisclosure :label="t('howDrawn.button')" testid="how-drawn">
       <p class="tz-how__title">{{ t('howDrawn.title') }}</p>
       <p id="tz-how-data" class="tz-how__heading">{{ t('howDrawn.dataTitle') }}</p>

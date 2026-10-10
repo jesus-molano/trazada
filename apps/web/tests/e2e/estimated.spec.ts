@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, resetStorage } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
@@ -18,7 +18,7 @@ async function expectLabel(page: Page, field: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear())
+  await resetStorage(page)
 })
 
 test('exageración de altura y separación visual: Estimado mientras están activas', async ({ page }) => {

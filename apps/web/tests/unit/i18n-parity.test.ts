@@ -1,11 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { BASE_NAMESPACE, loadMessages, loadNamespace, LOCALES_DIR, type Messages, namespaces } from '../../i18n/messages'
 
-type Messages = { [key: string]: string | Messages }
-
-function load(locale: string): Messages {
-  return JSON.parse(readFileSync(new URL(`../../i18n/locales/${locale}.json`, import.meta.url), 'utf8'))
-}
+const LOCALES = ['es', 'en']
 
 function keys(obj: Messages, prefix = ''): string[] {
   return Object.entries(obj).flatMap(([k, v]) =>
@@ -14,13 +11,37 @@ function keys(obj: Messages, prefix = ''): string[] {
 }
 
 describe('i18n', () => {
-  it('es y en tienen exactamente las mismas claves', () => {
-    expect(keys(load('en')).sort()).toEqual(keys(load('es')).sort())
+  it('hay una carpeta por idioma y nada más en locales/', () => {
+    expect(readdirSync(LOCALES_DIR).sort()).toEqual([...LOCALES].sort())
+  })
+
+  it('es y en tienen los mismos namespaces (un fichero por namespace, base incluido)', () => {
+    expect(namespaces('es')).toContain(BASE_NAMESPACE)
+    expect(namespaces('en')).toEqual(namespaces('es'))
+  })
+
+  it('cada namespace que no es base tiene una sola raíz, con su nombre', () => {
+    for (const locale of LOCALES) {
+      for (const ns of namespaces(locale).filter((n) => n !== BASE_NAMESPACE)) {
+        expect(Object.keys(loadNamespace(locale, ns)), `${locale}/${ns}.json`).toEqual([ns])
+      }
+    }
+  })
+
+  it('ninguna raíz se repite entre ficheros (se fusionarían en silencio)', () => {
+    for (const locale of LOCALES) expect(() => loadMessages(locale)).not.toThrow()
+  })
+
+  it('es y en tienen exactamente las mismas claves, también fichero a fichero', () => {
+    expect(keys(loadMessages('en')).sort()).toEqual(keys(loadMessages('es')).sort())
+    for (const ns of namespaces('es')) {
+      expect(keys(loadNamespace('en', ns)).sort(), ns).toEqual(keys(loadNamespace('es', ns)).sort())
+    }
   })
 
   it('ningún mensaje está vacío', () => {
-    for (const locale of ['es', 'en']) {
-      const messages = load(locale)
+    for (const locale of LOCALES) {
+      const messages = loadMessages(locale)
       for (const key of keys(messages)) {
         const value = key.split('.').reduce<Messages | string>((acc, part) => (acc as Messages)[part]!, messages)
         expect(value, `${locale}:${key}`).not.toBe('')

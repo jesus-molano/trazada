@@ -1,11 +1,13 @@
 <script setup lang="ts">
 /**
  * Timeline de la sesión. El cabezal se mueve escribiendo `transform` en cada frame (sin reactividad);
- * los marcadores son estáticos. Arrastrable con ratón y táctil (Pointer Events + captura).
+ * los marcadores son estáticos. Arrastrable con ratón y táctil (Pointer Events + captura). Debajo de las marcas,
+ * los carriles de otras funciones (hueco `components/timeline-lanes/`, D29).
  */
 import { SEEK_STEP_LARGE_MS, SEEK_STEP_MS } from '~/composables/useReplayShortcuts'
 import { formatClock } from '~/engine/format/time'
 import { clockOrigin, leaderLapAt } from '~/engine/timeline/markers'
+import { TIMELINE_LANES } from '~/slots/timeline-lanes'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
 const { t } = useI18n()
@@ -111,7 +113,7 @@ onBeforeUnmount(() => off?.())
     <div
       ref="track"
       class="tz-timeline__track"
-      :class="{ 'is-dragging': dragging }"
+      :class="{ 'is-dragging': dragging, 'has-lanes': TIMELINE_LANES.length > 0 }"
       role="slider"
       tabindex="0"
       :aria-label="t('timeline.label')"
@@ -185,6 +187,9 @@ onBeforeUnmount(() => off?.())
           :style="{ left: pct(p.inMs) }"
           data-marker="pit-selected"
         />
+      </div>
+      <div v-if="TIMELINE_LANES.length" class="tz-timeline__lanes">
+        <component :is="lane.component" v-for="lane in TIMELINE_LANES" :key="lane.name" />
       </div>
       <div class="tz-timeline__headlane" aria-hidden="true">
         <div ref="head" class="tz-timeline__head"><span /></div>
@@ -329,6 +334,18 @@ onBeforeUnmount(() => off?.())
   height: 7px;
   opacity: 1;
   outline: 1px solid var(--tz-bg);
+}
+
+/* Carriles extra (timeline-lanes/): en el flujo, bajo las marcas; la pista crece con ellos y el cabezal los cruza. */
+.tz-timeline__track.has-lanes {
+  height: auto;
+  min-height: 36px;
+}
+
+.tz-timeline__lanes {
+  display: grid;
+  gap: 2px;
+  padding-top: 36px;
 }
 
 /* El cabezal se mueve con translateX(% del ancho de la pista): su carril lo recorta para no desbordar. */

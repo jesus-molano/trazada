@@ -3,11 +3,11 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { QUALITY_NOTE_CODES } from '@trazada/schema'
 import { describe, expect, it } from 'vitest'
+import { loadMessages } from '../../i18n/messages'
 import { classifyLegacy, LEGACY_NOTES, noteKey, qualityNotes } from './quality-notes'
 
 type Tree = { [k: string]: string | Tree }
-const locale = (lang: string) =>
-  JSON.parse(readFileSync(new URL(`../../i18n/locales/${lang}.json`, import.meta.url), 'utf8')) as Tree
+const locale = (lang: string) => loadMessages(lang) as Tree
 const noteTexts = (lang: string) => ((locale(lang).sessionNotes as Tree).note ?? {}) as Tree
 
 /** Todo el código Python del pipeline, para comprobar que los textos antiguos reconocidos siguen saliendo de ahí. */

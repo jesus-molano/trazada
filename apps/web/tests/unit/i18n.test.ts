@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { loadMessages } from '../../i18n/messages'
 
 type Tree = { [k: string]: string | Tree }
-const load = (lang: string) => JSON.parse(readFileSync(new URL(`../../i18n/locales/${lang}.json`, import.meta.url), 'utf8')) as Tree
+const load = (lang: string) => loadMessages(lang) as Tree
 
 function flatten(tree: Tree, prefix = ''): Map<string, string> {
   const out = new Map<string, string>()

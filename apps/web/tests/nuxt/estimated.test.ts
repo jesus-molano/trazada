@@ -5,6 +5,7 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
@@ -55,6 +56,19 @@ function raceRuntime(timeMs: number) {
 }
 
 const label = (w: VueWrapper, field: EstimatedField) => w.find(`[data-testid="estimated"][data-field="${field}"]`)
+
+/**
+ * Campo registrado antes que el componente que lo pinta (Tanda 0, D29): la etiqueta común lleva su texto y su
+ * explicación propios, no el nombre del campo ni la explicación genérica. El ítem que lo pinte sustituye este caso
+ * por uno sobre su componente (comparación, mapa de calor, zonas de DRS).
+ */
+async function registeredOnly(field: EstimatedField) {
+  const w = await mountSuspended(TzEstimated, { props: { field } })
+  const { t } = useNuxtApp().$i18n
+  expect(label(w, field).text()).toContain(t(`estimated.fields.${field}`))
+  expect(label(w, field).attributes('title')).toBe(t(`estimated.hints.${field}`))
+  expect(label(w, field).attributes('title')).not.toBe(t('estimated.hintUnknown'))
+}
 
 const CASES: Record<EstimatedField, () => Promise<void>> = {
   async elevation() {
@@ -116,6 +130,12 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     expect(clean.find('[data-testid="estimated"]').exists()).toBe(false)
     usePlaybackStore().detach()
   },
+  // Comparación de dos pilotos (ítem 1, D31): diferencia en vivo con el GPS.
+  lapDelta: () => registeredOnly('lapDelta'),
+  // Mapa de calor (ítem 2, D32): ganador de cada minisector.
+  minisectors: () => registeredOnly('minisectors'),
+  // Zonas de DRS (ítem 11, D38): deducidas de la telemetría.
+  drsZones: () => registeredOnly('drsZones'),
 }
 
 describe('etiqueta Estimado', () => {

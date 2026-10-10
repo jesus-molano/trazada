@@ -73,8 +73,9 @@ test.describe('coche 3D (D28)', () => {
     await expect.poll(async () => (await stats(page)).carLod.detail).toBeGreaterThanOrEqual(1)
     const s = await stats(page)
     expect(s.carTriangles).toBeLessThanOrEqual(1600)
-    // PLAN §2.5: < 30 draw calls y < 150 000 triángulos.
-    expect(s.drawCalls).toBeLessThanOrEqual(13)
+    // PLAN §2.5: < 30 draw calls y < 150 000 triángulos. Tope: 13 de la escena base más lo de cada capa activa (D29).
+    expect(s.drawCalls).toBeLessThanOrEqual(13 + s.layers.reduce((n, l) => n + l.drawCalls, 0))
+    expect(s.drawCalls).toBeLessThan(30)
     expect(s.triangles).toBeLessThan(60_000)
   })
 

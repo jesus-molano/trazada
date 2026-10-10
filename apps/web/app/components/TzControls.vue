@@ -48,6 +48,9 @@ const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 
       </button>
     </div>
 
+    <!-- Botones de otras funciones (hueco components/replay-dock/, que monta TzReplayDock). -->
+    <slot />
+
     <p class="tz-readout tz-tabular" data-testid="time-readout">
       <span v-if="isRace && totalLaps" class="tz-readout__lap">{{ t('controls.lap', { lap, total: totalLaps }) }}</span>
       <span class="tz-readout__clock" :aria-label="t('controls.elapsed')">{{ elapsed }}</span>

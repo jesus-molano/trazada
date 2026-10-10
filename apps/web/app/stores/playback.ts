@@ -65,12 +65,6 @@ export const usePlaybackStore = defineStore('playback', () => {
     runtime?.requestFrame()
   }
 
-  /** Esc: primero sale del seguimiento (vista general); después, deselecciona. */
-  function escape(): void {
-    if (following.value) setFollowing(false)
-    else if (selectedCar.value) selectCar(null)
-  }
-
   /** ↑ (−1) / ↓ (+1) recorren el orden; sin selección, empiezan por el primero o el último. */
   function selectRelative(step: 1 | -1): void {
     const list = order.value
@@ -99,6 +93,5 @@ export const usePlaybackStore = defineStore('playback', () => {
     selectCar,
     selectRelative,
     setFollowing,
-    escape,
   }
 })

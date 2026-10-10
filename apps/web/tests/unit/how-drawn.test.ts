@@ -6,11 +6,10 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SEGMENT_GAP_MS } from '../../app/engine/interp/hermite'
+import { loadMessages } from '../../i18n/messages'
 
 type Tree = { [k: string]: string | Tree }
-const howDrawn = (lang: string) =>
-  (JSON.parse(readFileSync(new URL(`../../i18n/locales/${lang}.json`, import.meta.url), 'utf8')) as Tree)
-    .howDrawn as Record<string, string>
+const howDrawn = (lang: string) => (loadMessages(lang) as Tree).howDrawn as Record<string, string>
 const projection = readFileSync(
   new URL('../../../../pipeline/src/trazada_pipeline/projection.py', import.meta.url),
   'utf8',

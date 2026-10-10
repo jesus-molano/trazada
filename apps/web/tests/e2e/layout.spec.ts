@@ -3,7 +3,7 @@
  * coche lo selecciona y arrastrar el timeline con el dedo mueve el reloj.
  */
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, resetStorage } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const PANELS = [
@@ -72,7 +72,7 @@ for (const vp of VIEWPORTS) {
     test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch })
 
     test('sin scroll horizontal en la página ni en los paneles (también con telemetría y Estimado)', async ({ page }) => {
-      await page.addInitScript(() => localStorage.clear())
+      await resetStorage(page)
       await open(page)
       expect(await overflowing(page)).toEqual([])
       await page.locator('[data-testid="leaderboard"] [data-car]').nth(9).getByRole('button').click()
