@@ -32,6 +32,23 @@ export function clampFollowDistance(d: number): number {
   return Math.min(FOLLOW_MAX_DISTANCE_M, Math.max(FOLLOW_MIN_DISTANCE_M, d))
 }
 
+/**
+ * Persecución de la realización automática (ítem 9): la misma cámara, mirando al centro de una pareja (o a un coche)
+ * con el rumbo del de detrás. La distancia crece con la separación para que quepan los dos: con el pitch fijo, el de
+ * detrás tiene que quedar delante de la cámara al menos ~0,6 veces la separación, o se sale por abajo.
+ */
+export const CHASE_MIN_DISTANCE_M = 40
+export const CHASE_MAX_DISTANCE_M = 180
+export const CHASE_LEADER_DISTANCE_M = 55
+const CHASE_BASE_M = 30
+const CHASE_GAP_K = 1.3
+
+/** Distancia de la persecución de una pareja separada `gapM` metros. */
+export function pairChaseDistance(gapM: number): number {
+  const g = Number.isFinite(gapM) ? Math.max(0, gapM) : 0
+  return Math.min(CHASE_MAX_DISTANCE_M, Math.max(CHASE_MIN_DISTANCE_M, CHASE_BASE_M + CHASE_GAP_K * g))
+}
+
 const TAU = Math.PI * 2
 const wrap = (a: number) => {
   const r = (a + Math.PI) % TAU
