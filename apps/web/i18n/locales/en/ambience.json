@@ -1,0 +1,22 @@
+{
+  "ambience": {
+    "label": "Ambience",
+    "off": "Off",
+    "on": "On",
+    "phases": {
+      "day": "Day",
+      "dusk": "Twilight",
+      "night": "Night"
+    },
+    "state": "{phase} · sun at {deg}°",
+    "decorative": "Decorative: sun position, not the weather",
+    "noLocation": "No location data: neutral background",
+    "noTime": "No time data: neutral background",
+    "hintLabel": "What the ambience shows",
+    "hint": "It is decorative. The sky follows the sun's elevation over the circuit at each moment of the session, computed from its UTC time and the circuit's position (NOAA formulas): day with the sun above {day}°, twilight between {night}° and {day}° and night below. It is not the weather: no clouds or rain, which are not in the data.",
+    "hintFog": "The fog only fades the far part of the track (at most {pct}); cars, flags, trails and the other layers keep their colour. At night the track gets a little lighter, as if floodlit.",
+    "hintSource": "Circuit position: the centre of its outline in bacinger/f1-circuits (MIT licence), rounded to 0.01°.",
+    "hintNoLocation": "We do not know where this circuit is (it is not among the bacinger/f1-circuits outlines): without its position the sun cannot be computed, so the scene keeps the usual neutral background.",
+    "hintNoTime": "The session has no valid UTC time: without it the sun cannot be computed, so the scene keeps the usual neutral background."
+  }
+}

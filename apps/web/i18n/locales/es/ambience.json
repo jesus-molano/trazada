@@ -1,0 +1,22 @@
+{
+  "ambience": {
+    "label": "Ambiente",
+    "off": "No",
+    "on": "Sí",
+    "phases": {
+      "day": "Día",
+      "dusk": "Crepúsculo",
+      "night": "Noche"
+    },
+    "state": "{phase} · sol a {deg}°",
+    "decorative": "Decorativo: posición del sol, no el tiempo",
+    "noLocation": "Sin dato de ubicación: fondo neutro",
+    "noTime": "Sin dato de hora: fondo neutro",
+    "hintLabel": "Qué muestra el ambiente",
+    "hint": "Es decorativo. El cielo sigue la altura del sol sobre el circuito en cada momento de la sesión, calculada con su hora UTC y la posición del circuito (fórmulas de la NOAA): día con el sol por encima de {day}°, crepúsculo entre {night}° y {day}° y noche por debajo. No es el tiempo que hacía: ni nubes ni lluvia, que no están en los datos.",
+    "hintFog": "La niebla solo atenúa la parte lejana de la pista (como mucho un {pct}); los coches, las banderas, las estelas y las demás capas conservan su color. De noche la pista se aclara un poco, como con focos.",
+    "hintSource": "Posición del circuito: el centro de su trazado en bacinger/f1-circuits (licencia MIT), redondeado a 0,01°.",
+    "hintNoLocation": "No se sabe dónde está este circuito (no está entre los trazados de bacinger/f1-circuits): sin su posición no se puede calcular el sol, así que la escena se queda con el fondo neutro de siempre.",
+    "hintNoTime": "La sesión no trae una hora UTC válida: sin ella no se puede calcular el sol, así que la escena se queda con el fondo neutro de siempre."
+  }
+}

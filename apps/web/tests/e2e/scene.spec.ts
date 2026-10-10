@@ -132,6 +132,12 @@ test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }
 })
 
 test.describe('legibilidad del mapa', () => {
+  // Las medidas buscan el borde de la pista hasta dar con el fondo liso (`--tz-scene-bg`): con el ambiente (ítem 10),
+  // el fondo es un degradado. El ambiente no cambia la geometría; su legibilidad la comprueba ambience.spec.ts.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('trazada.ambience', JSON.stringify({ on: false, _v: 1 })))
+  })
+
   for (const vp of [
     { name: 'escritorio 1440×900', width: 1440, height: 900 },
     { name: 'iPad vertical 768×1024', width: 768, height: 1024 },
