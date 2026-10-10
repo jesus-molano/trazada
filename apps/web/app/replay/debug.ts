@@ -39,8 +39,31 @@ export const sceneStats = {
     box: { x0: number; x1: number; y0: number; y1: number }
     free: { x0: number; x1: number; y0: number; y1: number }
   },
-  /** Semianchura con la que se dibuja la pista ahora (m): la real de cerca, mayor al alejarse. */
-  trackHalfWidthM: 0,
+}
+
+/** Punto del eje de la pista en pantalla (px CSS de la página), con lo que la escena debería dibujar ahí. */
+export interface TrackScreenSample {
+  s: number
+  /** Posición canónica (m), para descartar puntos con coches cerca. */
+  wx: number
+  wy: number
+  x: number
+  y: number
+  /** Dirección de la normal de la pista en pantalla (unitaria). */
+  nx: number
+  ny: number
+  /** Anchura que debería tener la pista en pantalla (px), según `mapHalfWidth`. */
+  expectedPx: number
+  /** Anchura real (14 m) en pantalla (px), y la que tendría vista de frente (sin escorzo) a esa profundidad. */
+  realPx: number
+  frontalPx: number
+  /** A menos de 40 m del pit lane (allí se juntan las dos cintas). */
+  nearPit: boolean
+}
+
+/** Sondas que registra la escena para los e2e (fuera de `sceneStats`, que se copia entero). */
+export const sceneProbe = {
+  trackScreen: null as null | ((stepM: number) => TrackScreenSample[]),
 }
 
 export interface TrazadaHandle {
@@ -67,6 +90,8 @@ export interface TrazadaHandle {
   readonly bench: unknown
   /** Estado de los coches en el último frame (copia). */
   cars(): { car: string; visible: boolean; inPit: boolean; s: number; x: number; y: number }[]
+  /** Eje de la pista proyectado con la cámara actual, cada `stepM` metros (solo los puntos delante de ella). */
+  trackScreen(stepM: number): TrackScreenSample[]
 }
 
 declare global {
@@ -113,6 +138,7 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
       return (window as Window & { __trazadaBench?: unknown }).__trazadaBench ?? null
     },
     cars: () => rt.model.states.map(({ car, visible, inPit, s, x, y }) => ({ car, visible, inPit, s, x, y })),
+    trackScreen: (stepM: number) => sceneProbe.trackScreen?.(stepM) ?? [],
   }
   return () => {
     delete window.__trazada

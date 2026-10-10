@@ -144,6 +144,39 @@ test.describe('girar la tablet', () => {
     await page.close()
   })
 
+  test('girar mientras se sigue a un coche: al dejar de seguirlo, la vista general es la del tamaño nuevo', async ({ browser }) => {
+    const pick = (page: Page) => page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+    const landscape = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true })
+    await open(landscape)
+    await pick(landscape)
+    await landscape.waitForTimeout(500)
+    const expected = await camera(landscape)
+    await landscape.close()
+
+    const page = await browser.newPage({ viewport: { width: 768, height: 1024 }, hasTouch: true })
+    await open(page)
+    await pick(page)
+    await page.getByTestId('follow-toggle').click()
+    await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await page.waitForTimeout(300)
+    await page.getByTestId('follow-toggle').click()
+    await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('overview')
+    await expect.poll(async () => close(await camera(page), expected), { timeout: 5000 }).toBe(true)
+    await page.close()
+  })
+
+  test('la barra de arriba cambia de alto (avisos de pista): la cámara no salta', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await open(page)
+    await page.waitForTimeout(500)
+    const before = await camera(page)
+    await page.addStyleTag({ content: '.tz-replay__bar { padding-bottom: 28px !important; }' })
+    await page.waitForTimeout(500)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    expect(await camera(page)).toEqual(before)
+  })
+
   test('si el usuario ha movido la cámara, girar no se la recoloca', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 })
     await open(page)

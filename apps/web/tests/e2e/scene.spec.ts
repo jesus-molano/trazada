@@ -5,6 +5,90 @@ const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const scene = (page: Page) =>
   page.evaluate(() => ({ ...window.__trazada!.scene })) as Promise<NonNullable<Window['__trazada']>['scene']>
 
+type TrackScreenSample = ReturnType<NonNullable<Window['__trazada']>['trackScreen']>[number]
+
+const median = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!
+
+/** Puntos del eje de la pista dentro del lienzo, lejos del pit lane y de los coches (que taparían la medida). */
+async function freeSamples(page: Page, stepM: number): Promise<TrackScreenSample[]> {
+  return page.evaluate((stepM) => {
+    const t = window.__trazada!
+    const c = document.querySelector('[data-testid="scene"] canvas')!.getBoundingClientRect()
+    const cars = t.cars().filter((car) => car.visible)
+    return t
+      .trackScreen(stepM)
+      .filter((p) => !p.nearPit && p.x > c.left + 40 && p.x < c.right - 40 && p.y > c.top + 40 && p.y < c.bottom - 40)
+      .filter((p) => cars.every((car) => Math.hypot(car.x - p.wx, car.y - p.wy) > 45))
+  }, stepM)
+}
+
+/**
+ * Anchura de la cinta en pantalla (px) en cada punto: distancia entre sus dos bordes (las líneas claras que la
+ * delimitan), buscados desde el eje a lo largo de su normal en pantalla hasta dar con el fondo. Sobre una
+ * captura con la interfaz superpuesta oculta.
+ */
+async function trackThickness(page: Page, samples: TrackScreenSample[]): Promise<number[]> {
+  return (await measureTrack(page, samples)).map((m) => m.width)
+}
+
+/** Anchura (ver arriba) y color en el eje de cada punto. */
+async function measureTrack(page: Page, samples: TrackScreenSample[]): Promise<{ width: number; rgb: number[] }[]> {
+  await page.mouse.move(0, 0)
+  await page.addStyleTag({ content: `${HIDE_UI} { visibility: hidden !important; }` })
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  const png = (await page.screenshot()).toString('base64')
+  return page.evaluate(
+    async ({ png, samples }) => {
+      const img = new Image()
+      img.src = `data:image/png;base64,${png}`
+      await img.decode()
+      const k = img.width / window.innerWidth
+      const cv = document.createElement('canvas')
+      cv.width = img.width
+      cv.height = img.height
+      const g = cv.getContext('2d')!
+      g.drawImage(img, 0, 0)
+      const data = g.getImageData(0, 0, cv.width, cv.height).data
+      g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--tz-scene-bg').trim()
+      const bg = [1, 3, 5].map((i) => parseInt(String(g.fillStyle).slice(i, i + 2), 16))
+      /** Suma de canales del píxel y si es fondo. */
+      const pixel = (x: number, y: number): [number, boolean] => {
+        const px = Math.round(x * k)
+        const py = Math.round(y * k)
+        if (px < 0 || py < 0 || px >= cv.width || py >= cv.height) return [0, true]
+        const i = (py * cv.width + px) * 4
+        const d = Math.abs(data[i]! - bg[0]!) + Math.abs(data[i + 1]! - bg[1]!) + Math.abs(data[i + 2]! - bg[2]!)
+        return [data[i]! + data[i + 1]! + data[i + 2]!, d < 30]
+      }
+      return samples.map((s) => {
+        const limit = Math.max(80, s.realPx)
+        // El borde es el píxel más claro antes del fondo (las líneas de borde son más claras que la cinta); se
+        // toma el centro de ese píxel (el tramo de pasos que caen en él), no su primer paso.
+        const edge = (dir: number) => {
+          let best = -1
+          let first = 0
+          let last = 0
+          for (let t = 0; t < limit; t += 0.25) {
+            const [lum, isBg] = pixel(s.x + dir * s.nx * t, s.y + dir * s.ny * t)
+            if (isBg) break
+            if (lum > best) [best, first, last] = [lum, t, t]
+            else if (lum === best && t - last <= 0.25) last = t
+          }
+          return (first + last) / 2
+        }
+        const px = Math.round(s.x * k)
+        const py = Math.round(s.y * k)
+        const i = (py * cv.width + px) * 4
+        return { width: edge(1) + edge(-1), rgb: [data[i]!, data[i + 1]!, data[i + 2]!] }
+      })
+    },
+    { png, samples },
+  )
+}
+
+const HIDE_UI =
+  '.tz-replay__bar, .tz-replay__side, [data-testid="replay-dock"], [data-testid="scene-tools"], [data-testid="leaderboard"], .tz-labels, .tz-cars'
+
 async function openScene(page: Page) {
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
@@ -81,14 +165,52 @@ test.describe('legibilidad del mapa', () => {
     })
   }
 
-  test('la pista tiene un mínimo de anchura en pantalla de lejos y su anchura real de cerca', async ({ page }) => {
+  for (const vp of [
+    { name: 'escritorio 1440×900', width: 1440, height: 900 },
+    { name: 'iPad vertical 768×1024', width: 768, height: 1024 },
+  ]) {
+    test(`${vp.name}: la pista se ve con al menos 7 px también en la parte lejana del circuito`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      await openScene(page)
+      await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
+      await page.waitForTimeout(600)
+      const samples = await freeSamples(page, 20)
+      // La parte de arriba de la pantalla es la más lejana (la cámara mira al norte, inclinada).
+      const ys = samples.map((p) => p.y).sort((a, b) => a - b)
+      const far = samples.filter((p) => p.y <= ys[Math.floor(ys.length * 0.3)]!)
+      expect(far.length).toBeGreaterThan(10)
+      for (const p of samples) expect(p.expectedPx).toBeGreaterThanOrEqual(7 - 1e-6)
+      const widths = await trackThickness(page, far)
+      const msg = widths.join(' ')
+      // Lo que se dibuja es lo que dice la cuenta (shader ≙ mapHalfWidth), también lejos y en escorzo.
+      // (La medida es al píxel: ±0,5 px por borde.)
+      expect(median(widths.map((w, i) => Math.abs(w - far[i]!.expectedPx))), msg).toBeLessThan(0.75)
+      expect(widths.filter((w) => w >= 6).length / widths.length, msg).toBeGreaterThan(0.85)
+    })
+  }
+
+  test('donde el pit lane se junta con la pista, manda la pista (el pit no la tapa)', async ({ page }) => {
+    await openScene(page)
+    const samples = (await page.evaluate(() => window.__trazada!.trackScreen(2))).filter((p) => p.nearPit)
+    expect(samples.length).toBeGreaterThan(20)
+    // Color del eje de la pista en cada punto: la pista es gris azulada (verde ≥ rojo); el pit, violeta.
+    const purple = (await measureTrack(page, samples)).filter(({ rgb }) => rgb[0]! > rgb[1]! + 4).length
+    expect(purple).toBe(0)
+  })
+
+  test('siguiendo a un coche, la pista se ve con su anchura real (no se ensancha de cerca)', async ({ page }) => {
     await openScene(page)
     await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
-    await expect.poll(async () => (await scene(page)).trackHalfWidthM).toBeGreaterThan(7.5)
     await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
     await page.getByTestId('follow-toggle').click()
     await expect.poll(async () => (await scene(page)).cameraMode, { timeout: 5000 }).toBe('follow')
-    await expect.poll(async () => (await scene(page)).trackHalfWidthM, { timeout: 5000 }).toBe(7)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    const near = (await freeSamples(page, 5)).filter((p) => p.realPx > 20 && p.realPx < 150)
+    expect(near.length).toBeGreaterThan(3)
+    for (const p of near) expect(p.expectedPx).toBeCloseTo(p.realPx, 3)
+    const ratios = (await trackThickness(page, near)).map((w, i) => w / near[i]!.realPx)
+    expect(median(ratios), ratios.join(' ')).toBeGreaterThan(0.9)
+    expect(median(ratios), ratios.join(' ')).toBeLessThan(1.1)
   })
 
   test('las siglas de los coches no se pisan (con los coches juntos se ve la del que va delante)', async ({ page }) => {

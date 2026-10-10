@@ -4,13 +4,15 @@
  * disponibilidad de WebGL 2 y la pérdida/recuperación del contexto.
  */
 import type { TresContext } from '@tresjs/core'
-import type { PerspectiveCamera, WebGLRenderer } from 'three'
+import { type PerspectiveCamera, Vector3, type WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { token } from '~/design/tokens'
 import { QualityGovernor } from '~/engine/perf/QualityGovernor'
 import { cornerAnchor } from '~/engine/track/circuit'
-import { fitCircuit, frameCircuit, type Insets } from '~/engine/track/framing'
-import { sceneStats } from '~/replay/debug'
+import { type Fit, fitCircuit, frameCircuit, type Insets } from '~/engine/track/framing'
+import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
+import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
@@ -61,9 +63,13 @@ const distance = initial.distance
 const cameraPosition = initial.position
 const camera = shallowRef<PerspectiveCamera | null>(null)
 
-/** Elementos de la interfaz que tapan el lienzo (y cuyo tamaño, si cambia, obliga a reencuadrar). */
+/**
+ * Elementos de la interfaz cuyo tamaño, si cambia, obliga a reencuadrar. La barra de arriba no: cambia de
+ * alto durante la reproducción (los avisos de estado de pista entran y salen) y la cámara saltaría; su alto
+ * se mide igualmente en cada encuadre, y la holgura de arriba absorbe esas variaciones.
+ */
 const INSET_SOURCES =
-  '.tz-replay__bar, [data-testid="scene-tools"], [data-testid="replay-dock"], [data-testid="leaderboard"], .tz-replay__stage > *, .tz-replay__side > *'
+  '[data-testid="replay-dock"], [data-testid="leaderboard"], .tz-replay__stage > *, .tz-replay__side > *'
 const FRAME_PAD_TOP_PX = 36
 const FRAME_PAD_PX = 18
 
@@ -160,8 +166,11 @@ let resizeObserver: ResizeObserver | null = null
 let lastSize = ''
 let interacting = false
 let userMoved = false
+/** El lienzo o los paneles cambiaron mientras la cámara seguía a un coche: la vista general guardada ya no vale. */
+let staleOverview = false
 
-function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
+/** Encuadre de la vista general para el tamaño actual; ajusta los límites de cámara y controles para que quepa. */
+function fitOverview(cam: PerspectiveCamera, el: HTMLCanvasElement): Fit {
   const f = fitCircuit({
     points: footprint,
     groundY: flat ? 0 : zMid,
@@ -171,6 +180,18 @@ function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
     insets: insets(el),
   })
   sceneStats.framing = { box: f.box, free: f.free }
+  // Si no, controls.update() recortaría la distancia (y el circuito se saldría del hueco) o lo cortaría el far.
+  if (controls) controls.maxDistance = Math.max(controls.maxDistance, f.distance * 1.5)
+  if (cam.far < f.distance * 3) {
+    cam.far = f.distance * 3
+    cam.updateProjectionMatrix()
+  }
+  staleOverview = false
+  return f
+}
+
+function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
+  const f = fitOverview(cam, el)
   cam.position.set(...f.position)
   cam.lookAt(...f.target)
   if (controls) {
@@ -179,11 +200,31 @@ function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
   }
 }
 
-/** Lo que determina el encuadre: tamaño del lienzo y huecos de la interfaz (redondeados, sin temblores). */
+/**
+ * Para el rig, al volver de seguir a un coche: la vista general recalculada si el lienzo o los paneles
+ * cambiaron mientras tanto (y el usuario no la había movido a mano); si no, null (vuelve a la guardada).
+ */
+function refreshOverview(): { position: Vector3; target: Vector3 } | null {
+  const cam = camera.value
+  if (!staleOverview || userMoved || !cam || !canvasEl) return null
+  const f = fitOverview(cam, canvasEl)
+  return { position: new Vector3(...f.position), target: new Vector3(...f.target) }
+}
+
+/** El rig ha vuelto a la vista general: si algo cambió durante la vuelta, se reencuadra ya. */
+function onOverview() {
+  const cam = camera.value
+  if (staleOverview && !userMoved && cam && canvasEl) {
+    frameOverview(cam, canvasEl)
+    ctx?.renderer.invalidate()
+  }
+}
+
+/** Lo que determina el encuadre: tamaño del lienzo y huecos laterales e inferior (redondeados, sin temblores). */
 function layoutKey(el: HTMLCanvasElement): string {
   const i = insets(el)
   const r = (v: number) => Math.round(v * 200)
-  return `${el.clientWidth}x${el.clientHeight}|${r(i.left)},${r(i.right)},${r(i.top)},${r(i.bottom)}`
+  return `${el.clientWidth}x${el.clientHeight}|${r(i.left)},${r(i.right)},${r(i.bottom)}`
 }
 
 /** El lienzo o los paneles han cambiado de tamaño (p. ej. la clasificación se llena después del primer encuadre). */
@@ -193,10 +234,70 @@ function onResize() {
   const key = layoutKey(canvasEl)
   if (key === lastSize) return
   lastSize = key
-  // `enabled` es false mientras la cámara sigue a un coche (TzCameraRig).
-  if (userMoved || !controls.enabled) return
+  if (userMoved) return
+  // `enabled` es false mientras la cámara sigue a un coche (TzCameraRig): se reencuadra al volver.
+  if (!controls.enabled) {
+    staleOverview = true
+    return
+  }
   frameOverview(cam, canvasEl)
   ctx?.renderer.invalidate()
+}
+
+/** Sonda para los e2e: el eje de la pista en pantalla y la anchura con la que debería dibujarse ahí. */
+const pitPoints = (() => {
+  const pit = model.pitlane
+  if (!pit) return new Float32Array(0)
+  const out = new Float32Array(pit.count * 2)
+  const p = { x: 0, y: 0, z: 0 }
+  for (let i = 0; i < pit.count; i++) {
+    pit.vertex(i, p)
+    out[i * 2] = p.x
+    out[i * 2 + 1] = p.y
+  }
+  return out
+})()
+function trackScreen(stepM: number): TrackScreenSample[] {
+  const cam = camera.value
+  if (!cam || !canvasEl) return []
+  const rect = canvasEl.getBoundingClientRect()
+  const k = yScale.value
+  const path = model.centerline
+  const p = { x: 0, y: 0, z: 0, tx: 1, ty: 0 }
+  const c = new Vector3()
+  const a = new Vector3()
+  const b = new Vector3()
+  const out: TrackScreenSample[] = []
+  const at = (v: Vector3, x: number, y: number, z: number) => v.set(x, (flat ? 0 : z) * k, -y)
+  for (let s = 0; s < path.length; s += Math.max(1, stepM)) {
+    path.sample(s, p)
+    const depth = -at(c, p.x, p.y, p.z).applyMatrix4(cam.matrixWorldInverse).z
+    if (depth <= cam.near) continue
+    at(c, p.x, p.y, p.z).project(cam)
+    at(a, p.x - p.ty, p.y + p.tx, p.z).project(cam)
+    at(b, p.x + p.ty, p.y - p.tx, p.z).project(cam)
+    const dx = ((a.x - b.x) / 2) * rect.width
+    const dy = (-(a.y - b.y) / 2) * rect.height
+    const len = Math.hypot(dx, dy)
+    const pxPerM = len / 2
+    const frontal = (0.5 * rect.height * cam.projectionMatrix.elements[5]!) / depth
+    let nearPit = false
+    for (let i = 0; i < pitPoints.length && !nearPit; i += 2) nearPit = Math.hypot(pitPoints[i]! - p.x, pitPoints[i + 1]! - p.y) < 40
+    out.push({
+      s,
+      wx: p.x,
+      wy: p.y,
+      x: rect.left + ((c.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - c.y) / 2) * rect.height,
+      nx: dx / (len || 1),
+      ny: dy / (len || 1),
+      expectedPx: 2 * mapHalfWidth(TRACK_WIDTH_M / 2, MIN_TRACK_PX, pxPerM, frontal) * pxPerM,
+      realPx: TRACK_WIDTH_M * pxPerM,
+      frontalPx: TRACK_WIDTH_M * frontal,
+      nearPit,
+    })
+  }
+  return out
 }
 
 function detach() {
@@ -239,6 +340,7 @@ function onReady(context: TresContext) {
     resizeObserver.observe(canvasEl)
     for (const el of document.querySelectorAll(INSET_SOURCES)) resizeObserver.observe(el)
   }
+  sceneProbe.trackScreen = trackScreen
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0
   sceneStats.pitSamplesLengthM = model.meta.quality?.pitSamplesLengthM ?? 0
   sceneStats.corners = cornerLabels.length
@@ -310,6 +412,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   offFrames?.()
+  sceneProbe.trackScreen = null
   detach()
   sceneStats.ready = false
   getRuntime()?.setInvalidate(null)
@@ -330,7 +433,14 @@ onBeforeUnmount(() => {
       @error="onError"
     >
       <TresPerspectiveCamera ref="camera" :position="cameraPosition" :fov="FOV" :near="2" :far="distance * 6" />
-      <TzCameraRig :controls="controlsRef" :y-scale="yScale" :flat="flat" @invalidate="ctx?.renderer.invalidate()" />
+      <TzCameraRig
+        :controls="controlsRef"
+        :y-scale="yScale"
+        :flat="flat"
+        :refresh-overview="refreshOverview"
+        @invalidate="ctx?.renderer.invalidate()"
+        @overview="onOverview"
+      />
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
         <TzTrackFlags :model="model" :flat="flat" />

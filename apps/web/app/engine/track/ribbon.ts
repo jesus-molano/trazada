@@ -15,11 +15,15 @@ export interface RibbonGeometry {
   /** Bordes izquierdo y derecho como tiras de puntos (para líneas). */
   left: Float32Array
   right: Float32Array
-  /** Eje de la cinta y normal izquierda en planta (three), para cambiar la anchura sin rehacerla. */
+  /** Eje de la cinta y normal izquierda en planta (three), por punto de la línea. */
   center: Float32Array
   normal: Float32Array
-  /** Semianchura con la que están escritas `positions`, `left` y `right` (m). */
-  half: number
+  /**
+   * Por vértice de la cinta (izquierdo, derecho): su punto del eje y su normal hacia fuera. Con ellos, el
+   * shader de anchura de mapa ensancha la cinta en pantalla sin tocar `positions`.
+   */
+  mapCenter: Float32Array
+  mapNormal: Float32Array
 }
 
 export function toThree(x: number, y: number, z: number, out: Float32Array, offset: number): void {
@@ -75,32 +79,26 @@ export function buildRibbon(path: TrackPath, width: number, flat = false): Ribbo
     const [l0, r0, l1, r1] = [i * 2, i * 2 + 1, j * 2, j * 2 + 1]
     indices.set([l0, r0, l1, r0, r1, l1], i * 6)
   }
-  const ribbon: RibbonGeometry = { positions, shade, indices, left, right, center, normal, half: 0 }
-  setRibbonHalfWidth(ribbon, width / 2)
-  return ribbon
+  const half = width / 2
+  const mapCenter = new Float32Array(n * 6)
+  const mapNormal = new Float32Array(n * 6)
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < 3; k++) {
+      const c = center[i * 3 + k]!
+      const nk = normal[i * 3 + k]!
+      positions[i * 6 + k] = left[i * 3 + k] = c + nk * half
+      positions[i * 6 + 3 + k] = right[i * 3 + k] = c - nk * half
+      mapCenter[i * 6 + k] = mapCenter[i * 6 + 3 + k] = c
+      mapNormal[i * 6 + k] = nk
+      mapNormal[i * 6 + 3 + k] = -nk
+    }
+  }
+  return { positions, shade, indices, left, right, center, normal, mapCenter, mapNormal }
 }
 
-/**
- * Reescribe en sitio la cinta (y sus bordes) con otra semianchura, con la misma forma: así la pista puede
- * ensancharse en pantalla al alejarse sin rehacer la malla.
- */
-export function setRibbonHalfWidth(r: RibbonGeometry, half: number): void {
-  const { center, normal, positions, left, right } = r
-  const n = center.length / 3
-  for (let i = 0; i < n; i++) {
-    const cx = center[i * 3]!
-    const cy = center[i * 3 + 1]!
-    const cz = center[i * 3 + 2]!
-    const nx = normal[i * 3]! * half
-    const nz = normal[i * 3 + 2]! * half
-    positions[i * 6] = left[i * 3] = cx + nx
-    positions[i * 6 + 1] = left[i * 3 + 1] = cy
-    positions[i * 6 + 2] = left[i * 3 + 2] = cz + nz
-    positions[i * 6 + 3] = right[i * 3] = cx - nx
-    positions[i * 6 + 4] = right[i * 3 + 1] = cy
-    positions[i * 6 + 5] = right[i * 3 + 2] = cz - nz
-  }
-  r.half = half
+/** Normal hacia fuera de un borde (izquierdo: la normal; derecho: la contraria), por punto de la línea. */
+export function edgeNormal(r: RibbonGeometry, side: 'left' | 'right'): Float32Array {
+  return side === 'left' ? r.normal : r.normal.map((v) => -v || 0)
 }
 
 /**

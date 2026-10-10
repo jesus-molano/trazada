@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRibbon, rangeIndices } from './ribbon'
+import { buildRibbon, edgeNormal, rangeIndices } from './ribbon'
 import { newSample, TrackPath } from './TrackPath'
 
 /** Círculo de radio 100 m con 628 vértices (~1 m de paso) y una rampa de 10 m de altura. */
@@ -59,6 +59,25 @@ describe('cinta', () => {
     }
     expect(Math.max(...g.shade)).toBe(1)
     expect(Math.min(...g.shade)).toBe(0)
+  })
+
+  it('anchura de mapa: cada vértice es su punto del eje más la semianchura real por su normal hacia fuera', () => {
+    const g = buildRibbon(circle(80), 14)
+    for (let v = 0; v < g.positions.length / 3; v++) {
+      const [px, py, pz] = g.positions.subarray(v * 3, v * 3 + 3)
+      const [cx, cy, cz] = g.mapCenter.subarray(v * 3, v * 3 + 3)
+      const [nx, ny, nz] = g.mapNormal.subarray(v * 3, v * 3 + 3)
+      expect(Math.hypot(nx!, ny!, nz!)).toBeCloseTo(1, 5)
+      expect(Math.abs(ny!)).toBe(0) // en planta: la exageración de altura no la toca
+      expect(px).toBeCloseTo(cx! + nx! * 7, 4)
+      expect(py).toBeCloseTo(cy!, 4)
+      expect(pz).toBeCloseTo(cz! + nz! * 7, 4)
+    }
+    // Los dos vértices de un punto comparten eje y tienen normales opuestas (mismo ensanche a cada lado).
+    expect([...g.mapCenter.subarray(0, 3)]).toEqual([...g.mapCenter.subarray(3, 6)])
+    expect(g.mapNormal[0]).toBeCloseTo(-g.mapNormal[3]!, 6)
+    expect(edgeNormal(g, 'right')[0]).toBeCloseTo(-g.normal[0]!, 6)
+    expect(edgeNormal(g, 'left')).toBe(g.normal)
   })
 
   it('plana: altura 0', () => {

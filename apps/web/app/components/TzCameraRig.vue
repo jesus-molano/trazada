@@ -13,8 +13,14 @@ import { FollowCamera } from '~/engine/camera/FollowCamera'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
-const props = defineProps<{ controls: MapControls | null; yScale: number; flat: boolean }>()
-const emit = defineEmits<{ invalidate: [] }>()
+const props = defineProps<{
+  controls: MapControls | null
+  yScale: number
+  flat: boolean
+  /** Vista general recalculada (si el lienzo cambió mientras se seguía a un coche); null para volver a la guardada. */
+  refreshOverview?: () => { position: Vector3; target: Vector3 } | null
+}>()
+const emit = defineEmits<{ invalidate: []; overview: [] }>()
 
 const rt = getRuntime()!
 const playback = usePlaybackStore()
@@ -83,6 +89,7 @@ function startTween(to: 'follow' | 'overview') {
         c.enabled = true
         c.update()
       }
+      emit('overview')
     }
     emit('invalidate')
   }
@@ -126,10 +133,16 @@ function transition(to: 'follow' | 'overview') {
     setMode('overview')
     const c = mapControls()
     if (c) c.enabled = true
+    emit('overview')
     emit('invalidate')
     return
   }
   saveOverview = false
+  const fresh = props.refreshOverview?.()
+  if (fresh) {
+    overviewPos.copy(fresh.position)
+    overviewTarget.copy(fresh.target)
+  }
   startTween('overview')
 }
 

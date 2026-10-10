@@ -4,7 +4,9 @@
  * (sin reactividad por frame). Un clic selecciona el coche.
  *
  * Sin amontonarse: si dos siglas se pisan, se muestra la del coche que va por delante (y siempre la del
- * coche elegido); el coche se sigue dibujando y se puede elegir en la clasificación o con un clic.
+ * coche elegido); el coche se sigue dibujando y se puede elegir en la clasificación o con un clic. Con
+ * histéresis: una sigla visible conserva su sitio frente a una oculta, y una oculta necesita algo más de
+ * hueco para volver a mostrarse (si no, en un tren de coches parpadearían en cada frame).
  */
 import { type Camera, Vector3 } from 'three'
 import type { CarState } from '~/engine/replay/ReplayModel'
@@ -15,14 +17,17 @@ const playback = usePlaybackStore()
 const root = ref<HTMLElement | null>(null)
 const v = new Vector3()
 
-/** Separación de la sigla sobre el coche (px) y holgura entre siglas. */
+/** Separación de la sigla sobre el coche (px), holgura entre siglas y holgura extra para volver a mostrarse. */
 const LIFT_PX = 14
 const GAP_PX = 2
+const REVEAL_PX = 6
 const sx: number[] = []
 const sy: number[] = []
 const on: boolean[] = []
 const order: number[] = []
 const placed: number[] = []
+/** Sigla visible en el frame anterior. */
+const shown: boolean[] = []
 /** Tamaño de cada sigla: el texto no cambia, se mide una vez (leerlo en cada frame forzaría el layout). */
 const sizes = new WeakMap<HTMLElement, [number, number]>()
 
@@ -57,11 +62,13 @@ function update(camera: Camera, width: number, height: number, yScale: number, f
     const sa = props.states[a]!
     const sb = props.states[b]!
     if ((sa.car === selected) !== (sb.car === selected)) return sa.car === selected ? -1 : 1
+    if (!!shown[a] !== !!shown[b]) return shown[a] ? -1 : 1
     return sb.s - sa.s
   })
   placed.length = 0
   for (let i = 0; i < n; i++) {
     const node = nodes[i] as HTMLElement | undefined
+    if (!on[i]) shown[i] = false
     if (node && !on[i]) node.style.visibility = 'hidden'
   }
   for (const i of order) {
@@ -75,13 +82,15 @@ function update(camera: Camera, width: number, height: number, yScale: number, f
     let free = props.states[i]!.car === selected
     if (!free) {
       free = true
+      const gap = shown[i] ? GAP_PX : GAP_PX + REVEAL_PX
       for (let k = 0; k < placed.length; k += 4) {
-        if (x0 < placed[k + 2]! + GAP_PX && x1 > placed[k]! - GAP_PX && y0 < placed[k + 3]! + GAP_PX && y1 > placed[k + 1]! - GAP_PX) {
+        if (x0 < placed[k + 2]! + gap && x1 > placed[k]! - gap && y0 < placed[k + 3]! + gap && y1 > placed[k + 1]! - gap) {
           free = false
           break
         }
       }
     }
+    shown[i] = free
     node.style.visibility = free ? 'visible' : 'hidden'
     if (!free) continue
     placed.push(x0, y0, x1, y1)

@@ -1,30 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { screenHalfWidth, viewDistance, widthChanged, worldPerPixel } from './mapWidth'
+import { mapHalfWidth, MIN_TRACK_PX } from './mapWidth'
 
 describe('anchura de mapa', () => {
-  it('metros por píxel crecen con la distancia', () => {
-    const a = worldPerPixel(1000, 35, 800)
-    expect(worldPerPixel(2000, 35, 800)).toBeCloseTo(2 * a)
-    expect(a).toBeCloseTo((2 * 1000 * Math.tan((17.5 * Math.PI) / 180)) / 800)
+  it('de cerca, la anchura real', () => {
+    // 20 px por metro: 14 m son 280 px, muy por encima del mínimo.
+    expect(mapHalfWidth(7, MIN_TRACK_PX, 20, 20)).toBe(7)
   })
 
-  it('de cerca, la anchura real; de lejos, el mínimo en píxeles', () => {
-    expect(screenHalfWidth(7, 40, 35, 800, 7)).toBe(7)
-    const far = screenHalfWidth(7, 4000, 35, 800, 7)
-    expect(far).toBeGreaterThan(7)
-    expect(far / worldPerPixel(4000, 35, 800)).toBeCloseTo(3.5)
+  it('de lejos, el mínimo en píxeles (también en escorzo)', () => {
+    // 0,25 px por metro: la pista real serían 3,5 px; se dibuja con 7.
+    const half = mapHalfWidth(7, MIN_TRACK_PX, 0.25, 0.25)
+    expect(2 * half * 0.25).toBeCloseTo(MIN_TRACK_PX)
+    // Un tramo lejano visto en escorzo (la mitad de píxeles por metro a lo ancho) también llega a 7 px.
+    const foreshortened = mapHalfWidth(7, MIN_TRACK_PX, 0.125, 0.25)
+    expect(2 * foreshortened * 0.125).toBeCloseTo(MIN_TRACK_PX)
   })
 
-  it('distancia al suelo en la dirección de mira', () => {
-    const s = Math.SQRT1_2
-    expect(viewDistance({ x: 0, y: 100, z: 0 }, { x: 0, y: -1, z: 0 }, 0)).toBeCloseTo(100)
-    expect(viewDistance({ x: 0, y: 100, z: 0 }, { x: 0, y: -s, z: -s }, 0)).toBeCloseTo(100 * Math.SQRT2)
-    // Mirando al horizonte: la altura (no infinito).
-    expect(viewDistance({ x: 0, y: 100, z: 0 }, { x: 0, y: 0, z: -1 }, 0)).toBe(100)
-  })
-
-  it('solo se reescribe la malla con cambios de más de un 3 %', () => {
-    expect(widthChanged(10, 10.2)).toBe(false)
-    expect(widthChanged(10, 10.5)).toBe(true)
+  it('casi de canto no crece sin límite', () => {
+    const edgeOn = mapHalfWidth(7, MIN_TRACK_PX, 0.001, 0.25)
+    expect(edgeOn).toBeCloseTo(mapHalfWidth(7, MIN_TRACK_PX, 0.3 * 0.25, 0.25))
+    expect(mapHalfWidth(7, MIN_TRACK_PX, 0, 0)).toBe(7)
   })
 })
