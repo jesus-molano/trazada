@@ -54,6 +54,12 @@ export interface ChartSpec {
   xIncrs: readonly number[] | null
   formatX: (v: number) => string
   formatY: (v: number) => string
+  /**
+   * Siglas en columna, a la derecha (ejes por vuelta: las series avanzan juntas). Las que acaban antes (un doblado va
+   * una o más vueltas por detrás) llevan un punto en su final y una guía punteada hasta su sigla: ninguna queda a
+   * media gráfica. Sin columna (eje por hora), cada sigla va junto a su final.
+   */
+  labelColumn?: boolean
 }
 
 /** Marcas del eje x por vuelta: vueltas enteras. */
@@ -130,19 +136,70 @@ export function seriesEnd(spec: ChartSpec, group: string): SeriesEnd | null {
   return value === null || value === undefined ? null : { index, value }
 }
 
+/** Dónde va la sigla de un final: en la columna de la derecha, junto al final, o ninguna (solo la marca de fin). */
+export type LabelPlace = 'column' | 'inline' | 'none'
+
 export interface EndPoint extends SeriesEnd {
   group: ChartGroup
-  /** Con sigla; si no (serie que acaba antes, sin destacar), solo la marca de fin. */
-  label: boolean
+  place: LabelPlace
 }
 
-/** Final de cada serie visible, y si lleva la sigla o solo la marca de fin (ver `ChartGroup.stopped`). */
+/**
+ * Final de cada serie visible, y dónde va su sigla: una serie que acaba antes (`ChartGroup.stopped`) solo lleva la
+ * marca de fin, salvo destacada (entonces, junto a su final: con el resto atenuado no hay confusión, y una guía hasta
+ * la columna cruzaría media gráfica); las demás, en la columna (`ChartSpec.labelColumn`) o junto a su final.
+ */
 export function endPoints(spec: ChartSpec): EndPoint[] {
   const out: EndPoint[] = []
   for (const group of spec.groups) {
     if (!group.visible) continue
     const end = seriesEnd(spec, group.key)
-    if (end) out.push({ ...end, group, label: !group.stopped || group.emphasis })
+    if (!end) continue
+    const place: LabelPlace = group.stopped ? (group.emphasis ? 'inline' : 'none') : spec.labelColumn ? 'column' : 'inline'
+    out.push({ ...end, group, place })
+  }
+  return out
+}
+
+export interface LabelSpot {
+  /** Final de la serie (px). */
+  x: number
+  y: number
+  place: 'column' | 'inline'
+}
+
+export interface PlacedLabel {
+  /** Donde empieza el rótulo (px): la columna o el propio final. */
+  x: number
+  /** Altura del rótulo, separada de las demás. */
+  y: number
+  /** Acaba antes de la columna: punto en su final y guía punteada hasta el rótulo. */
+  leader: boolean
+}
+
+/**
+ * Posición de cada sigla (en píxeles, en el orden de entrada): las de la columna, todas en la x del final más a la
+ * derecha (con guía las que acaban antes); las demás, junto a su final. Cada grupo se separa en vertical sin pisarse
+ * (`spreadLabels`), dentro de [lo, hi].
+ */
+export function placeLabels(spots: readonly LabelSpot[], gap: number, lo: number, hi: number): PlacedLabel[] {
+  const out = new Array<PlacedLabel>(spots.length)
+  let colX = -Infinity
+  for (const s of spots) if (s.place === 'column' && s.x > colX) colX = s.x
+  for (const place of ['column', 'inline'] as const) {
+    const idx = spots.flatMap((s, i) => (s.place === place ? [i] : []))
+    const ys = spreadLabels(
+      idx.map((i) => spots[i]!.y),
+      gap,
+      lo,
+      hi,
+    )
+    idx.forEach((i, k) => {
+      const s = spots[i]!
+      // Medio píxel de margen: dos finales en la misma vuelta no llevan guía por redondeos.
+      const leader = place === 'column' && s.x < colX - 0.5
+      out[i] = { x: place === 'column' ? colX : s.x, y: ys[k]!, leader }
+    })
   }
   return out
 }

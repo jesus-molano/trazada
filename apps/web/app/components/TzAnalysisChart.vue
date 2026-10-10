@@ -14,7 +14,7 @@
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { type ChartSpec, DIM_ALPHA, endPoints, nearestIndex, seriesEnd, spreadLabels } from '~/analysis/chart'
+import { type ChartSpec, DIM_ALPHA, endPoints, type LabelSpot, nearestIndex, placeLabels, seriesEnd } from '~/analysis/chart'
 import { token } from '~/design/tokens'
 
 const props = defineProps<{
@@ -58,6 +58,8 @@ function canDraw(): boolean {
 }
 
 const DASH = [6, 4]
+/** Opacidad de la guía de una sigla en columna (respecto a la de su serie). */
+const LEADER_ALPHA = 0.55
 
 /** Aspas para las vueltas anuladas (puntos a medida de uPlot). */
 const crossPoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) => {
@@ -117,14 +119,16 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
 }
 
 /**
- * Rótulo (sigla) al final de cada serie visible, sin pisarse, con una marca del color de su equipo. Una serie que
- * acaba antes que las demás (el coche dejó de pasar por meta) lleva solo una marca de fin: su sigla quedaría suelta a
- * media gráfica; la leyenda dice hasta qué vuelta llega (y con el coche destacado, sí lleva sigla).
+ * Siglas de las series visibles, sin pisarse, con una marca del color de su equipo (`placeLabels`). Por vuelta, en una
+ * columna a la derecha: la serie que acaba antes (un doblado) lleva un punto en su final y una guía punteada hasta su
+ * sigla, así que ninguna queda suelta a media gráfica. Una serie que acaba mucho antes (el coche dejó de pasar por meta)
+ * lleva solo una marca de fin; la leyenda dice hasta qué vuelta llega (y con el coche destacado, lleva sigla junto a su
+ * final).
  */
 function drawEndLabels(u: uPlot, spec: ChartSpec) {
   const r = uPlot.pxRatio
   const dimmed = spec.groups.some((g) => g.visible && g.emphasis)
-  const entries: { label: string; color: string; alpha: number; x: number; y: number }[] = []
+  const labels: { label: string; color: string; alpha: number; spot: LabelSpot }[] = []
   const ends: { color: string; alpha: number; x: number; y: number }[] = []
   for (const e of endPoints(spec)) {
     const x = u.valToPos(spec.x[e.index]!, 'x', true)
@@ -133,9 +137,9 @@ function drawEndLabels(u: uPlot, spec: ChartSpec) {
     if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue
     const mark = { color: e.group.color, alpha: dimmed && !e.group.emphasis ? DIM_ALPHA : 1, x, y }
     if (e.group.stopped) ends.push(mark)
-    if (e.label) entries.push({ ...mark, label: e.group.label })
+    if (e.place !== 'none') labels.push({ ...mark, label: e.group.label, spot: { x, y, place: e.place } })
   }
-  if (!entries.length && !ends.length) return
+  if (!labels.length && !ends.length) return
   const ctx = u.ctx
   ctx.save()
   // Marca de fin: un trazo corto perpendicular a la línea, con el color del equipo.
@@ -144,8 +148,8 @@ function drawEndLabels(u: uPlot, spec: ChartSpec) {
     ctx.fillStyle = e.color
     ctx.fillRect(e.x - r, e.y - 5 * r, 2 * r, 10 * r)
   }
-  const ys = spreadLabels(
-    entries.map((e) => e.y),
+  const placed = placeLabels(
+    labels.map((l) => l.spot),
     11 * r,
     u.bbox.top + 5 * r,
     u.bbox.top + u.bbox.height - 5 * r,
@@ -153,13 +157,30 @@ function drawEndLabels(u: uPlot, spec: ChartSpec) {
   ctx.font = `${10 * r}px ${token('--tz-font-sans')}`
   ctx.textBaseline = 'middle'
   const text = token('--tz-text')
-  entries.forEach((e, k) => {
-    const lx = e.x + 6 * r
-    ctx.globalAlpha = e.alpha
-    ctx.fillStyle = e.color
-    ctx.fillRect(lx, ys[k]! - r, 5 * r, 2 * r)
+  labels.forEach((l, k) => {
+    const p = placed[k]!
+    const lx = p.x + 6 * r
+    ctx.globalAlpha = l.alpha
+    ctx.fillStyle = l.color
+    ctx.strokeStyle = l.color
+    if (p.leader) {
+      // Punto en el final y guía punteada (fina, a media opacidad: no es dato) hasta el rótulo.
+      ctx.beginPath()
+      ctx.arc(l.spot.x, l.spot.y, 2.5 * r, 0, 2 * Math.PI)
+      ctx.fill()
+      ctx.globalAlpha = l.alpha * LEADER_ALPHA
+      ctx.lineWidth = r
+      ctx.setLineDash([2 * r, 3 * r])
+      ctx.beginPath()
+      ctx.moveTo(l.spot.x + 4 * r, l.spot.y)
+      ctx.lineTo(lx - r, p.y)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.globalAlpha = l.alpha
+    }
+    ctx.fillRect(lx, p.y - r, 5 * r, 2 * r)
     ctx.fillStyle = text
-    ctx.fillText(e.label, lx + 7 * r, ys[k]!)
+    ctx.fillText(l.label, lx + 7 * r, p.y)
   })
   ctx.restore()
 }

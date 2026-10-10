@@ -1,6 +1,6 @@
 import type { DriverInfo } from '@trazada/schema'
 import { describe, expect, it } from 'vitest'
-import { type ChartGroup, type ChartSpec, driverStyles, endPoints, lastValueIndex, nearestIndex, spreadLabels } from './chart'
+import { type ChartGroup, type ChartSpec, driverStyles, endPoints, lastValueIndex, nearestIndex, placeLabels, spreadLabels } from './chart'
 
 const driver = (number: string, tla: string, team: string, color = '#123456'): DriverInfo => ({
   number,
@@ -43,7 +43,7 @@ describe('gráficas de análisis', () => {
     expect(lastValueIndex([[null], [null]])).toBe(-1)
   })
 
-  it('final de cada serie visible: con sigla, salvo la que acaba antes (solo marca de fin) si no está destacada', () => {
+  it('final de cada serie visible y dónde va su sigla: la que acaba antes, solo marca de fin (destacada, junto a su final)', () => {
     const group = (key: string, extra: Partial<ChartGroup> = {}): ChartGroup => ({
       key,
       label: key.toUpperCase(),
@@ -53,7 +53,7 @@ describe('gráficas de análisis', () => {
       emphasis: false,
       ...extra,
     })
-    const spec = (groups: ChartGroup[]): ChartSpec => ({
+    const spec = (groups: ChartGroup[], labelColumn?: boolean): ChartSpec => ({
       x: [1, 2, 3, 4],
       series: [
         { group: 'a', mark: 'line', values: [0, 0, 0, 0] },
@@ -69,14 +69,40 @@ describe('gráficas de análisis', () => {
       xIncrs: null,
       formatX: String,
       formatY: String,
+      labelColumn,
     })
-    const ends = (groups: ChartGroup[]) => endPoints(spec(groups)).map((e) => [e.group.key, e.index, e.value, e.label])
-    expect(ends([group('a'), group('b', { stopped: true }), group('c'), group('d')])).toEqual([
-      ['a', 3, 0, true],
-      ['b', 1, 2, false],
-      ['c', 3, 6, true],
+    const ends = (groups: ChartGroup[], labelColumn?: boolean) =>
+      endPoints(spec(groups, labelColumn)).map((e) => [e.group.key, e.index, e.value, e.place])
+    const all = [group('a'), group('b', { stopped: true }), group('c'), group('d')]
+    expect(ends(all)).toEqual([
+      ['a', 3, 0, 'inline'],
+      ['b', 1, 2, 'none'],
+      ['c', 3, 6, 'inline'],
     ])
-    // Destacado, la serie que acaba antes sí lleva su sigla; oculta, nada.
-    expect(ends([group('a', { visible: false }), group('b', { stopped: true, emphasis: true })])).toEqual([['b', 1, 2, true]])
+    expect(ends(all, true)).toEqual([
+      ['a', 3, 0, 'column'],
+      ['b', 1, 2, 'none'],
+      ['c', 3, 6, 'column'],
+    ])
+    // Destacada, la serie que acaba antes lleva su sigla junto a su final (también con columna); oculta, nada.
+    expect(ends([group('a', { visible: false }), group('b', { stopped: true, emphasis: true })], true)).toEqual([['b', 1, 2, 'inline']])
+  })
+
+  it('siglas en columna: todas en la x del final más a la derecha, con guía las que acaban antes; sin pisarse', () => {
+    const placed = placeLabels(
+      [
+        { x: 500, y: 100, place: 'column' },
+        { x: 420, y: 104, place: 'column' }, // doblado: acaba antes
+        { x: 499.8, y: 300, place: 'column' }, // misma vuelta (redondeo): sin guía
+        { x: 200, y: 102, place: 'inline' }, // destacado que acaba antes: junto a su final
+      ],
+      11,
+      0,
+      400,
+    )
+    expect(placed.map((p) => p.x)).toEqual([500, 500, 500, 200])
+    expect(placed.map((p) => p.leader)).toEqual([false, true, false, false])
+    // Las de la columna se separan entre sí (11 px); la de junto a su final, aparte (no la empujan).
+    expect(placed.map((p) => p.y)).toEqual([100, 111, 300, 102])
   })
 })

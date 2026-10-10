@@ -74,6 +74,7 @@ const spec = computed<ChartSpec>(() => {
     xIncrs: LAP_INCRS,
     formatX: (v: number) => t('analysis.lapShort', { lap: v }),
     formatY: (v: number) => (v === 0 ? '0' : `+${secFmt.value.format(v)}`),
+    labelColumn: true,
   })
 })
 

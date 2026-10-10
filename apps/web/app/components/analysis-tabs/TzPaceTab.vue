@@ -108,6 +108,7 @@ const spec = computed<ChartSpec>(() => {
     xIncrs: axis === 'lap' ? LAP_INCRS : TIME_INCRS,
     formatX: axis === 'lap' ? (v: number) => t('analysis.lapShort', { lap: v }) : (v: number) => formatClock(v),
     formatY: (v: number) => formatLapTime(v * 1000, locale.value),
+    labelColumn: axis === 'lap',
   })
 })
 
