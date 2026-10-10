@@ -1,0 +1,145 @@
+import { expect, type Page, test } from '@playwright/test'
+import { gotoApp } from './helpers'
+
+const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
+
+/** Evalúa `fn(window.__trazada)` en la página (las funciones no viajan como argumento). */
+const handle = <T>(page: Page, fn: (h: NonNullable<Window['__trazada']>) => T) =>
+  page.evaluate(`(${fn.toString()})(window.__trazada)`) as Promise<T>
+
+async function openReplay(page: Page) {
+  await gotoApp(page, FP1)
+  await expect(page.getByTestId('replay-dock')).toBeVisible({ timeout: 15_000 })
+  await page.locator('body').click({ position: { x: 5, y: 300 } }) // foco fuera de controles
+}
+
+test.describe('atajos de teclado', () => {
+  test('espacio, 1–5, ←/→ con y sin Shift, ↑/↓', async ({ page }) => {
+    await openReplay(page)
+    expect(await handle(page, (h) => h.playing)).toBe(false)
+    await page.keyboard.press(' ')
+    await expect.poll(() => handle(page, (h) => h.playing)).toBe(true)
+    await page.keyboard.press(' ')
+    await expect.poll(() => handle(page, (h) => h.playing)).toBe(false)
+
+    for (const [key, rate] of [['3', 4], ['5', 16], ['2', 2], ['4', 8], ['1', 1]] as const) {
+      await page.keyboard.press(key)
+      await expect.poll(() => handle(page, (h) => h.rate)).toBe(rate)
+    }
+    await expect(page.getByTestId('rate-1')).toHaveAttribute('aria-pressed', 'true')
+
+    const t0 = await handle(page, (h) => h.timeMs)
+    await page.keyboard.press('ArrowRight')
+    expect(await handle(page, (h) => h.timeMs)).toBe(t0 + 5000)
+    await page.keyboard.press('Shift+ArrowRight')
+    expect(await handle(page, (h) => h.timeMs)).toBe(t0 + 35_000)
+    await page.keyboard.press('ArrowLeft')
+    expect(await handle(page, (h) => h.timeMs)).toBe(t0 + 30_000)
+    await page.keyboard.press('Shift+ArrowLeft')
+    expect(await handle(page, (h) => h.timeMs)).toBe(t0)
+
+    const drivers = await handle(page, (h) => h.drivers.map((d) => d.number))
+    await page.keyboard.press('ArrowDown')
+    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[0])
+    await page.keyboard.press('ArrowDown')
+    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[1])
+    await page.keyboard.press('ArrowUp')
+    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[0])
+  })
+
+  test('no se disparan con el foco en un input o en el slider', async ({ page }) => {
+    await openReplay(page)
+    await page.evaluate(() => {
+      const input = document.createElement('input')
+      input.dataset.testid = 'probe-input'
+      document.body.append(input)
+    })
+    await page.getByTestId('probe-input').focus()
+    const t0 = await handle(page, (h) => h.timeMs)
+    for (const key of [' ', '3', 'ArrowRight', 'ArrowDown']) await page.keyboard.press(key)
+    expect(await handle(page, (h) => [h.playing, h.rate, h.timeMs, h.selectedCar])).toEqual([false, 1, t0, null])
+
+    // En el slider: sus flechas mueven el tiempo una sola vez y el espacio no reproduce.
+    await page.getByTestId('timeline').focus()
+    await page.keyboard.press('ArrowRight')
+    expect(await handle(page, (h) => h.timeMs)).toBe(t0 + 5000)
+    await page.keyboard.press(' ')
+    await page.keyboard.press('4')
+    expect(await handle(page, (h) => [h.playing, h.rate])).toEqual([false, 1])
+  })
+})
+
+test.describe('timeline', () => {
+  test('arrastrar con el ratón mueve el reloj', async ({ page }) => {
+    await openReplay(page)
+    const box = (await page.getByTestId('timeline').boundingBox())!
+    const { startMs, endMs } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs }))
+    const y = box.y + box.height / 2
+    await page.mouse.move(box.x + box.width * 0.25, y)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.5, y, { steps: 5 })
+    await page.mouse.move(box.x + box.width * 0.75, y, { steps: 5 })
+    await page.mouse.up()
+    const t = await handle(page, (h) => h.timeMs)
+    expect(Math.abs(t - (startMs + 0.75 * (endMs - startMs)))).toBeLessThan((endMs - startMs) * 0.01)
+  })
+
+  test('los marcadores pintados coinciden con los recuentos', async ({ page }) => {
+    await openReplay(page)
+    const m = await handle(page, (h) => ({
+      laps: h.markers.laps.filter((l) => l.t >= h.startMs && l.t <= h.endMs).length,
+      flags: h.markers.flags.filter((f) => f.t >= h.startMs && f.t <= h.endMs).length,
+      pits: h.markers.pits.filter((p) => p.inMs >= h.startMs && p.inMs <= h.endMs).length,
+    }))
+    await expect(page.locator('[data-marker="lap"]')).toHaveCount(m.laps)
+    await expect(page.locator('[data-marker="flag"]')).toHaveCount(m.flags)
+    await expect(page.locator('[data-marker="pit"]')).toHaveCount(m.pits)
+    expect(m.pits).toBeGreaterThan(0)
+  })
+
+  test('en pausa, un seek vuelve a renderizar la escena', async ({ page }) => {
+    await openReplay(page)
+    await expect(page.locator('[data-testid="scene"] canvas')).toBeVisible()
+    await expect.poll(() => handle(page, (h) => h.renders)).toBeGreaterThan(0)
+    await page.waitForTimeout(300)
+    const before = await handle(page, (h) => h.renders)
+    await page.waitForTimeout(300)
+    expect(await handle(page, (h) => h.renders)).toBe(before) // en pausa no se renderiza en bucle
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(() => handle(page, (h) => h.renders)).toBeGreaterThan(before)
+  })
+
+  test('con prefers-reduced-motion las transiciones son instantáneas', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await openReplay(page)
+    const duration = await page
+      .getByTestId('rate-2')
+      .evaluate((el) => getComputedStyle(el).transitionDuration.split(',').map((d) => d.trim()))
+    expect(duration.every((d) => d === '0s')).toBe(true)
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    const normal = await page.getByTestId('rate-2').evaluate((el) => getComputedStyle(el).transitionDuration)
+    expect(normal).not.toBe('0s')
+  })
+})
+
+test.describe('táctil', () => {
+  test.use({ hasTouch: true })
+
+  test('arrastrar con el dedo mueve el reloj', async ({ page }) => {
+    await openReplay(page)
+    const box = (await page.getByTestId('timeline').boundingBox())!
+    const { startMs, endMs } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs }))
+    const y = box.y + box.height / 2
+    const cdp = await page.context().newCDPSession(page)
+    const touch = (type: string, x: number) =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }],
+      })
+    await touch('touchStart', box.x + box.width * 0.2)
+    for (const f of [0.3, 0.4, 0.5, 0.6]) await touch('touchMove', box.x + box.width * f)
+    await touch('touchEnd', box.x + box.width * 0.6)
+    const t = await handle(page, (h) => h.timeMs)
+    expect(Math.abs(t - (startMs + 0.6 * (endMs - startMs)))).toBeLessThan((endMs - startMs) * 0.01)
+  })
+})

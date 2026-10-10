@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { parseSessionId } from '~/data/session-id'
+import { installDebugHandle } from '~/replay/debug'
+import { createReplayRuntime } from '~/replay/runtime'
+import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const session = useSessionStore()
+const playback = usePlaybackStore()
+useReplayShortcuts()
 
 const id = computed(() => (typeof route.query.s === 'string' ? route.query.s : ''))
 const parsed = computed(() => parseSessionId(id.value))
@@ -18,11 +23,21 @@ useHead({ title })
 
 // La escena (y three.js) se monta un frame después de "listo": su coste no entra en la carga de datos.
 const sceneEnabled = ref(false)
+let removeDebug: (() => void) | null = null
 watch(
   () => session.status,
   (status) => {
-    if (status !== 'ready') sceneEnabled.value = false
-    else requestAnimationFrame(() => (sceneEnabled.value = true))
+    removeDebug?.()
+    removeDebug = null
+    if (status !== 'ready' || !session.data) {
+      sceneEnabled.value = false
+      playback.detach()
+      return
+    }
+    const rt = createReplayRuntime(session.data)
+    playback.attach(rt)
+    removeDebug = installDebugHandle(rt, () => playback.selectedCar)
+    requestAnimationFrame(() => (sceneEnabled.value = true))
   },
 )
 
@@ -37,7 +52,11 @@ const readyDetail = computed(() => {
 
 onMounted(() => void session.load(id.value))
 watch(id, (value) => void session.load(value))
-onBeforeUnmount(() => session.unload())
+onBeforeUnmount(() => {
+  removeDebug?.()
+  playback.detach()
+  session.unload()
+})
 </script>
 
 <template>
@@ -62,6 +81,8 @@ onBeforeUnmount(() => session.unload())
     <div v-if="session.status === 'loading' || session.status === 'error'" class="tz-replay__center">
       <TzLoadPanel />
     </div>
+
+    <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
   </section>
 </template>
 
@@ -94,6 +115,8 @@ onBeforeUnmount(() => session.unload())
 
 .tz-replay__status {
   display: inline-flex;
+  flex: none;
+  white-space: nowrap;
   align-items: center;
   gap: var(--tz-space-2);
   margin: 0;
@@ -115,6 +138,20 @@ onBeforeUnmount(() => session.unload())
 .tz-replay__detail {
   font-weight: var(--tz-weight-regular);
   color: var(--tz-text-muted);
+}
+
+@media (width < 640px) {
+  .tz-replay__bar {
+    align-items: flex-start;
+  }
+
+  .tz-replay__title {
+    font-size: var(--tz-text-lg);
+  }
+
+  .tz-replay__detail {
+    display: none;
+  }
 }
 
 .tz-replay__center {

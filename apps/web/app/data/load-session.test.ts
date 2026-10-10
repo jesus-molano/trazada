@@ -1,35 +1,12 @@
 import { readFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
 import { SCHEMA_VERSION } from '@trazada/schema'
 import { describe, expect, it } from 'vitest'
+import { FIXTURE_ROOT as ROOT, fixtureFetch } from '../testing/fixture'
 import { type LoadOptions, loadSession, transferablesOf } from './load-session'
 import { LoadError } from './types'
 
-const ROOT = fileURLToPath(new URL('../../tests/fixtures/data/', import.meta.url))
 const BASE = 'http://datos.test/data/'
 const EVENT = 'v1/sessions/2026/10-spa-francorchamps'
-
-/** fetch que sirve el fixture e2e desde disco (con 404 y fallos inyectables). */
-function fixtureFetch(opts: { fail?: RegExp; chunk?: number } = {}): typeof fetch {
-  return (async (input: string | URL | Request) => {
-    const url = new URL(String(input))
-    if (opts.fail?.test(url.pathname)) throw new TypeError('network down')
-    const rel = url.pathname.replace(/^\/data\//, '')
-    try {
-      const bytes = await readFile(ROOT + rel)
-      const chunk = opts.chunk ?? bytes.byteLength
-      const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          for (let i = 0; i < bytes.byteLength; i += chunk) controller.enqueue(new Uint8Array(bytes.subarray(i, i + chunk)))
-          controller.close()
-        },
-      })
-      return new Response(stream, { status: 200 })
-    } catch {
-      return new Response('not found', { status: 404 })
-    }
-  }) as typeof fetch
-}
 
 const load = (session: string, fetchImpl = fixtureFetch(), onProgress?: LoadOptions['onProgress']) =>
   loadSession(`${BASE}${EVENT}/${session}/manifest.json`, `2026/10-spa-francorchamps/${session}`, SCHEMA_VERSION, {

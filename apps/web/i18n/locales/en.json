@@ -62,6 +62,34 @@
     "contextLostHint": "Trying to recover it…",
     "recover": "Restart the map"
   },
+  "controls": {
+    "region": "Playback controls",
+    "play": "Play",
+    "pause": "Pause",
+    "keySpace": "space",
+    "rate": "Speed",
+    "rateKey": "Key {key}",
+    "lap": "Lap {lap}/{total}",
+    "elapsed": "Elapsed time"
+  },
+  "timeline": {
+    "label": "Session timeline",
+    "atLap": "Lap {lap} · {time}",
+    "lapStart": "Start of lap {lap}",
+    "pit": "Pit stop: {tla}",
+    "window": {
+      "sc": "Safety car",
+      "vsc": "Virtual safety car",
+      "vsc-ending": "Virtual safety car ending",
+      "red": "Red flag"
+    },
+    "flag": {
+      "red_flag": "Red flag",
+      "chequered_flag": "Chequered flag",
+      "sector_yellow": "Yellow flag",
+      "sector_double_yellow": "Double yellow flag"
+    }
+  },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
   }

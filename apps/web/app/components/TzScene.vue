@@ -4,6 +4,8 @@
  * pérdida/recuperación del contexto; la escena llega en H5.
  */
 import type { TresContext } from '@tresjs/core'
+import { sceneStats } from '~/replay/debug'
+import { getRuntime } from '~/stores/playback'
 
 const { t } = useI18n()
 const supported = ref<boolean | null>(null)
@@ -34,6 +36,10 @@ function onRestored() {
   ctx?.renderer.invalidate()
 }
 
+function onRender() {
+  sceneStats.renders++
+}
+
 function detach() {
   canvasEl?.removeEventListener('webglcontextlost', onLost)
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
@@ -43,6 +49,8 @@ function detach() {
 function onReady(context: TresContext) {
   detach()
   ctx = context
+  // Modo on-demand: el runtime pide un frame en cada tick con reproducción y tras cada seek.
+  getRuntime()?.setInvalidate(() => context.renderer.invalidate())
   canvasEl = context.renderer.instance.domElement as HTMLCanvasElement
   canvasEl.addEventListener('webglcontextlost', onLost)
   canvasEl.addEventListener('webglcontextrestored', onRestored)
@@ -62,7 +70,10 @@ function remount() {
 onMounted(() => {
   supported.value = hasWebGL2()
 })
-onBeforeUnmount(detach)
+onBeforeUnmount(() => {
+  detach()
+  getRuntime()?.setInvalidate(null)
+})
 </script>
 
 <template>
@@ -74,6 +85,7 @@ onBeforeUnmount(detach)
       render-mode="on-demand"
       :dpr="[1, 2]"
       @ready="onReady"
+      @render="onRender"
       @error="onError"
     >
       <TresPerspectiveCamera :position="[0, 900, 900]" :look-at="[0, 0, 0]" :far="20000" />
@@ -101,10 +113,11 @@ onBeforeUnmount(detach)
   z-index: var(--tz-z-canvas);
 }
 
+/* Arriba, bajo la cabecera del replay: el dock de controles ocupa la parte inferior. */
 .tz-scene__notice {
   position: absolute;
   left: 50%;
-  bottom: var(--tz-space-8);
+  top: 72px;
   transform: translateX(-50%);
   width: min(480px, calc(100% - 2 * var(--tz-space-6)));
   padding: var(--tz-space-4) var(--tz-space-6);
