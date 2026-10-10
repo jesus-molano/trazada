@@ -145,10 +145,14 @@ const sectorsTitle = computed(() => `${sectorText.lap(sectors.value)}\n${sectorT
   margin: 0;
 }
 
-/* La pista no alarga la línea (su zona táctil sigue entera): el panel de telemetría no pierde alto. */
+/*
+ * La pista no alarga la línea (su zona táctil sigue entera): el panel de telemetría no pierde alto. Su texto, con la
+ * letra de la interfaz, no con la de las cifras de la línea.
+ */
 .tz-lap__hint {
   margin-block: -6px;
   margin-inline-start: auto;
+  font-family: var(--tz-font-sans);
 }
 
 .tz-lap__sector {

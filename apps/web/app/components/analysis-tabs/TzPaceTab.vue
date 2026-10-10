@@ -14,6 +14,7 @@ import { type ChartGroup, type ChartSeries, type ChartSpec, driverStyles, LAP_IN
 import { outsideRange, pace, paceAxis, paceChart, paceEventTimes, representativeRange } from '~/engine/analysis/pace'
 import { lapStartMs, leaderLapAt } from '~/engine/analysis/raceTrace'
 import { formatClock, formatLapTime } from '~/engine/format/time'
+import { clockOrigin } from '~/engine/timeline/markers'
 import { token } from '~/design/tokens'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -27,6 +28,11 @@ const axis = paceAxis(table)
 const styles = driverStyles(rt.drivers)
 const unknownColor = token('--tz-team-unknown')
 const { startMs: playStart, endMs: playEnd } = rt.session.manifest.session.playback
+/**
+ * Origen del reloj visible (el del dock): el eje por hora va en el reloj del reproductor, no en la hora interna de la
+ * sesión, así que sus marcas caen en minutos redondos del dock.
+ */
+const origin = clockOrigin(rt.session.manifest.session.type, rt.session.timing, rt.session.manifest.session.playback)
 /** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
 const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
 /** Por defecto: el coche elegido y los cinco primeros de la clasificación al abrir la pestaña. */
@@ -87,10 +93,10 @@ const spec = computed<ChartSpec>(() => {
     // La sesión entera (su duración no es un spoiler); sin corte, también lo que acabe después de la reproducción.
     const lo = Math.min(playStart, c.x[0] ?? playStart)
     const hi = Math.max(playEnd, st.noSpoilers.value ? playEnd : (c.x[c.x.length - 1] ?? playEnd))
-    xRange = [lo, hi > lo ? hi : lo + 1]
+    xRange = [lo - origin, (hi > lo ? hi : lo + 1) - origin]
   }
   return markRaw({
-    x: c.x,
+    x: axis === 'lap' ? c.x : c.x.map((v) => v - origin),
     series,
     groups,
     xRange,
@@ -103,7 +109,7 @@ const spec = computed<ChartSpec>(() => {
 })
 
 /** Línea del instante actual: la vuelta en curso del primero (por vuelta) o el reloj (por instante). */
-const cursorX = computed(() => (axis === 'lap' ? leadLap.value : playback.timeMs))
+const cursorX = computed(() => (axis === 'lap' ? leadLap.value : playback.timeMs - origin))
 
 function pick(i: number) {
   const c = chart.value

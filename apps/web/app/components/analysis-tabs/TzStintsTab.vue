@@ -13,6 +13,7 @@ import { driverStyles } from '~/analysis/chart'
 import { leaderLapAt } from '~/engine/analysis/raceTrace'
 import { type Stint, stintEventTimes, stints } from '~/engine/analysis/stints'
 import { formatClock } from '~/engine/format/time'
+import { clockOrigin } from '~/engine/timeline/markers'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -25,6 +26,8 @@ const race = table.race
 const season = rt.session.manifest.session.season
 const styles = driverStyles(rt.drivers)
 const { startMs: playStart, endMs: playEnd } = rt.session.manifest.session.playback
+/** Origen del reloj visible (el del dock): en libres, el eje se rotula igual que el reproductor. */
+const origin = clockOrigin(rt.session.manifest.session.type, rt.session.timing, rt.session.manifest.session.playback)
 /** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
 const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
 let maxLap = 0
@@ -133,7 +136,7 @@ const cursorStyle = computed(() => {
 })
 const axisText = computed(() => {
   const [d0, d1] = domain.value
-  return race ? [t('analysis.lapShort', { lap: 1 }), t('analysis.lapShort', { lap: d1 })] : [formatClock(d0), formatClock(d1)]
+  return race ? [t('analysis.lapShort', { lap: 1 }), t('analysis.lapShort', { lap: d1 })] : [formatClock(d0 - origin), formatClock(d1 - origin)]
 })
 
 function seek(ms: number | null) {

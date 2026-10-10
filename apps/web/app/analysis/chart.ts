@@ -53,7 +53,7 @@ export interface ChartSpec {
 
 /** Marcas del eje x por vuelta: vueltas enteras. */
 export const LAP_INCRS: readonly number[] = [1, 2, 5, 10, 20, 50, 100]
-/** Marcas del eje x por instante (ms de sesión): minutos redondos. */
+/** Marcas del eje x por instante (ms del reloj del dock, no de la hora interna de la sesión): minutos redondos. */
 export const TIME_INCRS: readonly number[] = [60_000, 120_000, 300_000, 600_000, 900_000, 1_800_000, 3_600_000]
 
 /** Opacidad de las series no destacadas cuando hay alguna destacada. */

@@ -15,6 +15,9 @@ import TzAnalysisButton from '~/components/replay-header/TzAnalysisButton.vue'
 import TzAnalysis from '~/components/replay-overlays/TzAnalysis.vue'
 import type { ChartSpec } from '~/analysis/chart'
 import { useAnalysis } from '~/composables/useAnalysis'
+import { stints } from '~/engine/analysis/stints'
+import { formatClock } from '~/engine/format/time'
+import { clockOrigin } from '~/engine/timeline/markers'
 import type { LoadedSession } from '~/data/types'
 import { ESC_PRIORITY, handleEscape, registerEscape } from '~/replay/keys'
 import { createReplayRuntime, type ReplayRuntime } from '~/replay/runtime'
@@ -264,6 +267,34 @@ describe('libres (fixture)', () => {
     expect(spec.groups.filter((g) => g.emphasis)).toHaveLength(1)
   })
 
+  it('el eje por hora (ritmo y neumáticos) se rotula con el reloj del dock, no con la hora interna de la sesión', async () => {
+    attach()
+    const s = rt.session.manifest.session
+    const origin = clockOrigin(s.type, rt.session.timing, s.playback)
+    // Si el origen fuera 0, la prueba no distinguiría las dos horas.
+    expect(formatClock(origin + 90_000)).not.toBe(formatClock(90_000))
+    const { sheet } = await mountBoth()
+    await openSheet()
+    // Ritmo: el eje va en el reloj del dock (sus marcas caen en minutos redondos del reproductor), con la línea del
+    // instante actual en el mismo reloj.
+    const chart = sheet.findComponent(TzAnalysisChart)
+    const spec = chart.props('spec') as ChartSpec
+    expect(spec.formatX(90_000)).toBe(formatClock(90_000))
+    expect(chart.props('cursorX')).toBe(usePlaybackStore().timeMs - origin)
+    expect(spec.xRange![0]).toBeLessThanOrEqual(chart.props('cursorX') as number)
+    expect(spec.xRange![1]).toBeGreaterThanOrEqual(chart.props('cursorX') as number)
+
+    // Neumáticos, con la sesión entera: el eje va del primer instante (reproducción o stint) al último.
+    await selectTab('stints')
+    $('[data-testid="analysis-spoilers"]')!.click()
+    await settle()
+    const all = stints(rt.leaderboard.lapTable).flatMap((c) => c.stints)
+    const lo = Math.min(s.playback.startMs, ...all.map((x) => x.startMs).filter(Number.isFinite))
+    const hi = Math.max(s.playback.endMs, ...all.map((x) => x.endMs).filter(Number.isFinite))
+    const labels = $$('.tz-stints__axis span').map((e) => e.textContent!.trim())
+    expect(labels).toEqual([formatClock(lo - origin), formatClock(hi - origin)])
+  })
+
   it('un clic en una vuelta del ritmo salta a su inicio', async () => {
     attach()
     rt.clock.seek(rt.clock.endMs)
@@ -271,15 +302,18 @@ describe('libres (fixture)', () => {
     await openSheet()
     const chart = sheet.findComponent(TzAnalysisChart)
     const spec = chart.props('spec') as ChartSpec
+    // Las x van en el reloj del dock: el instante de sesión es x + origen.
+    const s = rt.session.manifest.session
+    const origin = clockOrigin(s.type, rt.session.timing, s.playback)
     // La última vuelta que acaba dentro de la reproducción.
     let i = -1
     spec.x.forEach((x, k) => {
-      if (x <= rt.clock.endMs && x > rt.clock.startMs + 120_000) i = k
+      if (x + origin <= rt.clock.endMs && x + origin > rt.clock.startMs + 120_000) i = k
     })
     expect(i).toBeGreaterThan(0)
     chart.vm.$emit('pick', i)
     await settle()
-    expect(rt.clock.timeMs).toBeLessThan(spec.x[i]!)
+    expect(rt.clock.timeMs).toBeLessThan(spec.x[i]! + origin)
     expect(rt.clock.timeMs).toBeGreaterThanOrEqual(rt.clock.startMs)
   })
 

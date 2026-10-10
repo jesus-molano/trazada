@@ -269,4 +269,6 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
     - **Telemetría a 1280×800**: la línea de sectores del panel del coche cortaba la segunda gráfica. Con la densidad compacta (alto ≤ 860 px), las gráficas miden 54 px en vez de 64: `--tz-chart-h`, que ahora lee `TzMiniChart`.
     - **Vista previa sobre la hoja de análisis**: la tarjeta sale del dock hacia arriba y la hoja la tapaba. El dock pasa a `--tz-z-panels` + 2, por encima de la hoja; el dock en sí no pisa el escenario.
     - **Un toque en el timeline no es foco de teclado**: Chromium marca `:focus-visible` el `focus()` que da el propio toque, y al soltar el dedo la tarjeta se quedaba sobre el cabezal.
+    - **Ejes por hora del análisis con el reloj del dock**: en libres y clasificación, el ritmo y los neumáticos rotulaban la hora interna de la sesión (1:01:30 con el dock en 48:00). Ahora van en el reloj visible (`clockOrigin`), como el dock y la vista previa, con las marcas en minutos redondos del dock.
+    - **La pista ⓘ de los sectores** del panel del coche va con la letra de la interfaz, no con la de las cifras.
     - **Encuadre**: la clasificación más ancha mueve el encuadre de la escena (≈ 2,8 % de los píxeles de la captura `@screenshot`, con las mismas draw calls y triángulos). Hay que regenerar la referencia con el workflow «Snapshots».
