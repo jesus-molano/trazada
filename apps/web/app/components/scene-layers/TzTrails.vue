@@ -91,6 +91,9 @@ const material = mapWidth(
     transparent: true,
     depthWrite: false,
     side: DoubleSide,
+    // Transparente y de doble cara, three.js la pintaría en dos pasadas (caras traseras y luego delanteras), dos draw
+    // calls. Es una cinta plana: no hay caras que ordenar, así que basta una (1 draw call, como dice sceneStats.trails).
+    forceSinglePass: true,
     toneMapped: false,
     fog: false,
     // Coplanaria con la pista: siempre por encima (más que las banderas de sector, −2).

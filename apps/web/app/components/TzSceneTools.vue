@@ -4,12 +4,19 @@
  * «Capas» y «Cámara» (hueco `components/scene-tools/`, D29), la explicación de qué es dato y qué es modelo en lo que
  * se dibuja («Cómo se dibuja») y las etiquetas "Estimado" de lo que la escena pinta sin ser dato real (opciones del
  * usuario y campos del manifest).
+ *
+ * Cada grupo del hueco es un menú (un botón que despliega sus controles): así la cabecera ocupa lo mismo por muchas
+ * herramientas que tenga el grupo y sigue cabiendo en una fila a 1280 px (con una cabecera partida, la escena y la
+ * telemetría pierden alto).
  */
+import type { IconName } from '~/design/icons'
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
-import { SCENE_TOOLS } from '~/slots/scene-tools'
+import { SCENE_TOOLS, type SceneToolGroup } from '~/slots/scene-tools'
 import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
+
+const GROUP_ICONS: Record<SceneToolGroup, IconName> = { layers: 'layers', camera: 'camera' }
 
 const props = defineProps<{ flat: boolean; estimated: readonly string[] }>()
 const { t } = useI18n()
@@ -60,17 +67,23 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
       {{ t('scene.separation') }}
     </button>
     <span v-if="flat" class="tz-tools__flat" :title="t('scene.flatHint')">{{ t('scene.flat') }}</span>
-    <div
+    <TzDisclosure
       v-for="g in SCENE_TOOLS"
       :key="g.group"
-      class="tz-tools__group"
-      role="group"
-      :aria-label="t(`scene.toolGroups.${g.group}`)"
-      :data-testid="`tool-group-${g.group}`"
+      :label="t(`scene.toolGroups.${g.group}`)"
+      :icon="GROUP_ICONS[g.group]"
+      :testid="`tools-${g.group}`"
+      tools
     >
-      <span class="tz-tools__label">{{ t(`scene.toolGroups.${g.group}`) }}</span>
-      <component :is="tool.component" v-for="tool in g.tools" :key="tool.name" />
-    </div>
+      <div
+        class="tz-tools__menu"
+        role="group"
+        :aria-label="t(`scene.toolGroups.${g.group}`)"
+        :data-testid="`tool-group-${g.group}`"
+      >
+        <component :is="tool.component" v-for="tool in g.tools" :key="tool.name" />
+      </div>
+    </TzDisclosure>
     <TzDisclosure :label="t('howDrawn.button')" testid="how-drawn">
       <p class="tz-how__title">{{ t('howDrawn.title') }}</p>
       <p id="tz-how-data" class="tz-how__heading">{{ t('howDrawn.dataTitle') }}</p>
@@ -121,6 +134,14 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   padding: 0 var(--tz-space-2);
   font-size: var(--tz-text-xs);
   color: var(--tz-text-muted);
+}
+
+/* Controles de un grupo del hueco, uno por línea dentro de su menú. */
+.tz-tools__menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--tz-space-2);
 }
 
 .tz-tools__btn {

@@ -42,6 +42,13 @@ async function openScene(page: Page) {
   await twoFrames(page)
 }
 
+/** Las estelas van en el menú «Capas» de las herramientas de escena: lo abre si está cerrado. */
+async function openLayers(page: Page) {
+  const button = page.getByTestId('tools-layers')
+  if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click()
+  await expect(page.getByTestId('trails-tool')).toBeVisible()
+}
+
 /** Espera a que el contador de renders deje de moverse (subida de geometría, ajustes de tamaño) y lo devuelve. */
 async function settledRenders(page: Page): Promise<number> {
   let before = -1
@@ -61,6 +68,7 @@ async function settledRenders(page: Page): Promise<number> {
 
 test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del presupuesto; se recuerdan al recargar', async ({ page }) => {
   await openScene(page)
+  await openLayers(page)
   await expect(page.getByTestId('trails-off')).toHaveAttribute('aria-pressed', 'true')
   const off = await trails(page)
   expect(off).toMatchObject({ mode: 'off', cars: 0, points: 0, drawCalls: 0, triangles: 0, fogged: false })
@@ -97,6 +105,7 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
   await expect(page.getByTestId('trails-team')).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(async () => (await trails(page)).points).toBeGreaterThan(0)
 
+  await openLayers(page)
   await page.getByTestId('trails-speed').click()
   await expect(page.getByTestId('trails-legend')).toBeVisible()
   await expect(page.getByTestId('trails-legend')).toContainText(/80.330 km\/h/)
@@ -115,6 +124,7 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
 
 test('la punta de cada estela es su coche, también tras un seek en pausa', async ({ page }) => {
   await openScene(page)
+  await openLayers(page)
   await page.getByTestId('trails-team').click()
   await expect.poll(async () => (await trails(page)).points).toBeGreaterThan(0)
   for (const offset of [T_MS + 7000, T_MS - 20_000]) {
@@ -133,6 +143,7 @@ test('la punta de cada estela es su coche, también tras un seek en pausa', asyn
 
 test('con estelas, en pausa no se renderiza en bucle; un seek vuelve a renderizar', async ({ page }) => {
   await openScene(page)
+  await openLayers(page)
   await page.getByTestId('trails-speed').click()
   await expect.poll(async () => (await trails(page)).points).toBeGreaterThan(0)
   const before = await settledRenders(page)
@@ -144,6 +155,12 @@ test('con estelas, en pausa no se renderiza en bucle; un seek vuelve a renderiza
 
 test('la herramienta y su leyenda son accesibles; la pista explica qué es dato', async ({ page }) => {
   await openScene(page)
+  // El menú «Capas»: botón con aria-expanded y, dentro, el grupo con su nombre.
+  const menu = page.getByTestId('tools-layers')
+  await expect(menu).toHaveAttribute('aria-expanded', 'false')
+  await openLayers(page)
+  await expect(menu).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('group', { name: /^(Capas|Layers)$/ })).toContainText(/(Estelas|Trails)/)
   await page.getByTestId('trails-speed').click()
   await page.getByTestId('trails-hint').click()
   await expect(page.getByTestId('trails-hint-panel')).toBeVisible()
@@ -155,4 +172,14 @@ test('la herramienta y su leyenda son accesibles; la pista explica qué es dato'
     .analyze()
   const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)
   expect(serious).toEqual([])
+
+  // Esc cierra primero la pista ⓘ (el menú sigue abierto) y después el menú, con el foco de vuelta en su botón.
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('trails-hint-panel')).toBeHidden()
+  await expect(page.getByTestId('trails-tool')).toBeVisible()
+  await page.getByTestId('trails-team').focus()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('trails-tool')).toBeHidden()
+  await expect(menu).toHaveAttribute('aria-expanded', 'false')
+  await expect(menu).toBeFocused()
 })

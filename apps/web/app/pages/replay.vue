@@ -236,6 +236,14 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
 }
 
+/* Portátiles (< 1360 px): el tamaño y el tiempo de carga quedan en el título del chip; así la cabecera cabe en una
+ * fila y la escena y la telemetría no pierden alto. */
+@media (width < 1360px) {
+  .tz-replay__detail {
+    display: none;
+  }
+}
+
 @media (width < 640px) {
   .tz-replay__bar {
     align-items: flex-start;
@@ -243,10 +251,6 @@ onBeforeUnmount(() => {
 
   .tz-replay__title {
     font-size: var(--tz-text-lg);
-  }
-
-  .tz-replay__detail {
-    display: none;
   }
 }
 

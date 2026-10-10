@@ -4,6 +4,7 @@
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import TzLeaderboard from '~/components/TzLeaderboard.vue'
 import TzReplayDock from '~/components/TzReplayDock.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
@@ -93,6 +94,43 @@ describe('huecos por glob con componentes', () => {
     expect(groups[1]!.attributes('aria-label')).toMatch(/^(Cámara|Camera)$/)
     expect(fakes(groups[0]!)).toEqual(['TzTrailsTool', 'TzHeatTool'])
     expect(fakes(groups[1]!)).toEqual(['TzTvTool'])
+  })
+
+  it('herramientas de escena: cada grupo es un menú (botón con icono que despliega sus controles; Esc lo cierra)', async () => {
+    const w = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] }, attachTo: document.body })
+    const button = w.find('[data-testid="tools-layers"]')
+    const panel = w.find('[data-testid="tools-layers-panel"]')
+    expect(button.element.tagName).toBe('BUTTON')
+    expect(button.text()).toMatch(/^(Capas|Layers)$/)
+    expect(button.find('svg').attributes('data-icon')).toBe('layers')
+    expect(w.find('[data-testid="tools-camera"] svg').attributes('data-icon')).toBe('camera')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(button.attributes('aria-controls')).toBe(panel.attributes('id'))
+    // El panel solo contiene controles: el grupo con nombre está dentro; el panel no es una región ni se enfoca.
+    expect(panel.attributes('role')).toBeUndefined()
+    expect(panel.attributes('tabindex')).toBeUndefined()
+    expect(panel.find('[role="group"]').attributes('data-testid')).toBe('tool-group-layers')
+    expect((panel.element as HTMLElement).style.display).toBe('none')
+
+    await button.trigger('click')
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect((panel.element as HTMLElement).style.display).toBe('')
+
+    // Un Esc que ya atendió algo de dentro (una pista ⓘ abierta) no cierra el menú.
+    const handled = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    handled.preventDefault()
+    panel.find('[data-fake="TzTrailsTool"]').element.dispatchEvent(handled)
+    await nextTick()
+    expect(button.attributes('aria-expanded')).toBe('true')
+
+    // Esc: se cierra y el foco vuelve al botón.
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    panel.find('[data-fake="TzTrailsTool"]').element.dispatchEvent(esc)
+    await nextTick()
+    expect(esc.defaultPrevented).toBe(true)
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(button.element)
+    w.unmount()
   })
 
   it('clasificación: cada fila monta sus celdas con row y preset; solo las de ese diseño, con su ancho', async () => {

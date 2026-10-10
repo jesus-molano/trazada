@@ -7,11 +7,16 @@
  * Si no cabe en la ventana (tablet, cabecera partida), se desplaza en horizontal hasta que quepa.
  * `name`: nombre accesible (y título) más largo que el texto visible, si hace falta ahorrar sitio; debe
  * empezar por el texto visible (WCAG 2.5.3).
+ * `icon`: icono del registro en lugar de «ⓘ» (p. ej. `layers` para el menú «Capas» de las herramientas de escena).
+ * `tools`: el panel lleva controles, no texto. Su contenido pone su propio rol y nombre (un `role="group"`), así que
+ * el panel no es una región ni se enfoca, y mide lo que sus controles.
  */
-const props = withDefaults(defineProps<{ label: string; name?: string; testid: string; align?: 'start' | 'end' }>(), {
-  name: undefined,
-  align: 'end',
-})
+import type { IconName } from '~/design/icons'
+
+const props = withDefaults(
+  defineProps<{ label: string; name?: string; testid: string; align?: 'start' | 'end'; icon?: IconName; tools?: boolean }>(),
+  { name: undefined, align: 'end', icon: undefined, tools: false },
+)
 
 const open = ref(false)
 const panelId = `${props.testid}-panel-${useId()}`
@@ -42,7 +47,8 @@ async function toggle() {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape' || !open.value) return
+  // Un Esc ya atendido dentro (una pista ⓘ abierta en el panel) cierra solo eso.
+  if (event.key !== 'Escape' || !open.value || event.defaultPrevented) return
   // Los atajos del replay ignoran un evento ya atendido: este Esc no saca de la cámara de seguimiento.
   event.preventDefault()
   open.value = false
@@ -76,7 +82,8 @@ onBeforeUnmount(() => {
       :data-testid="testid"
       @click="toggle"
     >
-      <svg class="tz-disclosure__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <TzIcon v-if="icon" :name="icon" size="sm" class="tz-disclosure__icon" />
+      <svg v-else class="tz-disclosure__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
         <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5" />
         <rect x="7.25" y="7" width="1.5" height="4.5" rx="0.75" fill="currentColor" />
         <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
@@ -88,10 +95,11 @@ onBeforeUnmount(() => {
       :id="panelId"
       ref="panel"
       class="tz-disclosure__panel"
+      :class="{ 'is-tools': tools }"
       :style="panelStyle"
-      role="region"
-      :aria-label="name ?? label"
-      tabindex="0"
+      :role="tools ? undefined : 'region'"
+      :aria-label="tools ? undefined : (name ?? label)"
+      :tabindex="tools ? undefined : 0"
       :data-testid="`${testid}-panel`"
     >
       <slot />
@@ -149,6 +157,15 @@ onBeforeUnmount(() => {
   color: var(--tz-text);
   text-align: left;
   white-space: normal;
+}
+
+/* Controles (menú de herramientas): lo que midan, sin recortar las pistas ⓘ que lleven dentro. */
+.tz-disclosure__panel.is-tools {
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--tz-space-4));
+  max-height: none;
+  overflow: visible;
+  padding: var(--tz-space-2) var(--tz-space-3);
 }
 
 .is-end .tz-disclosure__panel {
