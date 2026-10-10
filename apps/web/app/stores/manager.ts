@@ -89,8 +89,10 @@ export const useManagerStore = defineStore('manager', () => {
     jobs.value = list
     let fresh = false
     for (const j of list) {
-      if (j.state === 'done' && !doneSeen.has(j.id)) {
-        doneSeen.add(j.id)
+      // Los ids vuelven a empezar en 1 si se reinicia `pnpm local`: la fecha de creación los distingue.
+      const key = `${j.id}@${j.createdAt}`
+      if (j.state === 'done' && !doneSeen.has(key)) {
+        doneSeen.add(key)
         fresh = true
       }
     }

@@ -69,8 +69,12 @@ function viewOf(e: BrowseEvent, s: BrowseSession) {
   return sessionView(s, job, now.value, manager.available)
 }
 
+/** Sesiones ya descargadas (también las que no se pueden reproducir por falta de posiciones). */
 function builtCount(e: BrowseEvent): number {
-  return e.sessions.filter((s) => viewOf(e, s).kind === 'link').length
+  return e.sessions.filter((s) => {
+    const kind = viewOf(e, s).kind
+    return kind === 'link' || kind === 'unavailable'
+  }).length
 }
 
 const eventMissing = computed(() =>
@@ -86,6 +90,32 @@ const seasonRacesMissing = computed(() =>
 
 function download(e: BrowseEvent, session: SessionType) {
   void manager.enqueue([{ season: season.value, round: e.round, session }])
+}
+
+// Los botones de bloque y «Cancelar todo» desaparecen al usarlos: el foco pasa a un sitio estable.
+const cancelAllButton = ref<HTMLButtonElement | null>(null)
+const sessionsHeading = ref<HTMLElement | null>(null)
+async function keepFocus(action: Promise<void>, ...targets: (() => HTMLElement | null)[]) {
+  await action
+  await nextTick()
+  if (document.activeElement && document.activeElement !== document.body) return
+  for (const target of targets) {
+    const el = target()
+    if (el?.isConnected) {
+      el.focus()
+      return
+    }
+  }
+}
+function enqueueBulk(items: Parameters<typeof manager.enqueue>[0]) {
+  void keepFocus(
+    manager.enqueue(items),
+    () => cancelAllButton.value,
+    () => sessionsHeading.value,
+  )
+}
+function cancelAll() {
+  void keepFocus(manager.cancelAll(), () => sessionsHeading.value)
 }
 
 const queue = computed(() => queueSummary(manager.jobs))
@@ -139,10 +169,11 @@ const queueText = computed(() => {
         <div v-if="queue.active > 0" class="tz-manager__queue" data-testid="download-queue">
           <span class="tz-manager__text">{{ queueText }}</span>
           <button
+            ref="cancelAllButton"
             type="button"
             class="tz-button tz-button--quiet tz-manager__action"
             data-testid="cancel-all"
-            @click="manager.cancelAll()"
+            @click="cancelAll()"
           >
             {{ t('manager.cancelAll') }}
           </button>
@@ -180,7 +211,7 @@ const queueText = computed(() => {
               class="tz-button tz-button--quiet tz-manager__action"
               :title="t('manager.downloadHint')"
               data-testid="download-season-races"
-              @click="manager.enqueue(seasonRacesMissing)"
+              @click="enqueueBulk(seasonRacesMissing)"
             >
               {{ t('manager.downloadSeasonRaces', seasonRacesMissing.length) }}
             </button>
@@ -204,7 +235,9 @@ const queueText = computed(() => {
                     :title="t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })"
                     :data-testid="`built-${e.slug}`"
                   >
-                    {{ t('manager.built', { built: builtCount(e), total: e.sessions.length }) }}
+                    <span aria-hidden="true">{{
+                      t('manager.built', { built: builtCount(e), total: e.sessions.length })
+                    }}</span>
                     <span class="tz-visually-hidden">{{
                       t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })
                     }}</span>
@@ -221,7 +254,7 @@ const queueText = computed(() => {
 
         <section class="tz-sessions" :aria-label="t('selector.sessions')">
           <div class="tz-heading-row">
-            <h2 class="tz-heading" aria-live="polite">
+            <h2 ref="sessionsHeading" class="tz-heading" tabindex="-1" aria-live="polite">
               {{ selectedEvent ? selectedEvent.event : t('selector.sessions') }}
             </h2>
             <button
@@ -230,7 +263,7 @@ const queueText = computed(() => {
               class="tz-button tz-button--quiet tz-manager__action"
               :title="t('manager.downloadHint')"
               data-testid="download-event"
-              @click="manager.enqueue(eventMissing)"
+              @click="enqueueBulk(eventMissing)"
             >
               {{ t('manager.downloadEvent', eventMissing.length) }}
             </button>
@@ -381,6 +414,10 @@ const queueText = computed(() => {
 
 .tz-heading-row .tz-heading {
   margin: 0;
+}
+
+.tz-heading[tabindex='-1']:focus {
+  outline: none;
 }
 
 .tz-event__top {

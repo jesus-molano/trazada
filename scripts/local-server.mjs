@@ -161,86 +161,128 @@ function lastLine(lines) {
   return ''
 }
 
+/** Orden que mata un árbol de procesos en Windows (uv.exe → trazada.exe → python.exe). */
+export function windowsTreeKill(pid) {
+  return ['taskkill', ['/pid', String(pid), '/T', '/F']]
+}
+
+function killQuietly(child, sig) {
+  try {
+    child.kill(sig)
+  } catch {
+    // ya había terminado
+  }
+}
+
 /**
  * Lanza el pipeline con argumentos fijos y sin shell. `onLine(line, stream)` recibe cada línea de salida.
- * Devuelve `{ done, kill }`: `done` se resuelve con `{ code, signal, spawnError, timedOut }`.
+ * Devuelve `{ done, kill }`: `done` se resuelve con `{ code, signal, spawnError, timedOut }` y nunca se queda
+ * colgado: si tras matar el proceso algún nieto mantiene abiertas las tuberías, se da por terminado igualmente.
+ * `pipeline.platform` y `pipeline.killGraceMs` solo existen para los tests.
  */
 function runPipeline(pipeline, args, { onLine, timeoutMs }) {
-  let child
+  const platform = pipeline.platform ?? process.platform
+  const graceMs = pipeline.killGraceMs ?? KILL_GRACE_MS
+  let child = null
   let timedOut = false
   let finished = false
-  let graceTimer = null
-  const done = new Promise((resolveDone) => {
-    try {
-      child = spawn(pipeline.command, [...pipeline.args, ...args], {
-        cwd: pipeline.cwd,
-        env: { ...process.env, ...pipeline.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8', NO_COLOR: '1' },
-        stdio: ['ignore', 'pipe', 'pipe'],
-        shell: false,
-        windowsHide: true,
-        // En Unix, grupo de procesos propio: al cancelar se para también el Python que lanza `uv run`.
-        detached: process.platform !== 'win32',
-      })
-    } catch (err) {
-      resolveDone({ code: null, signal: null, spawnError: err, timedOut })
-      return
-    }
-    let closedStreams = 0
-    let exit = null
-    const settle = () => {
-      if (finished || exit === null || closedStreams < 2) return
-      finished = true
-      clearTimeout(timer)
-      clearTimeout(graceTimer)
-      resolveDone({ ...exit, timedOut })
-    }
-    for (const [stream, name] of [
-      [child.stdout, 'stdout'],
-      [child.stderr, 'stderr'],
-    ]) {
-      stream.setEncoding('utf8')
-      const rl = createInterface({ input: stream, crlfDelay: Infinity })
-      rl.on('line', (line) => onLine(line.slice(0, MAX_OUTPUT_LINE), name))
-      rl.on('close', () => {
-        closedStreams++
-        settle()
-      })
-    }
-    child.on('error', (err) => {
-      if (finished) return
-      finished = true
-      clearTimeout(timer)
-      clearTimeout(graceTimer)
-      resolveDone({ code: null, signal: null, spawnError: err, timedOut })
-    })
-    child.on('exit', (code, signal) => {
-      exit = { code, signal, spawnError: null }
-      settle()
-    })
-    const timer = setTimeout(() => {
-      timedOut = true
-      kill()
-    }, timeoutMs)
+  let killRequested = false
+  let exit = null
+  let closedStreams = 0
+  let resolveDone
+  const done = new Promise((r) => {
+    resolveDone = r
   })
+  const timers = new Set()
+  const later = (fn, ms) => {
+    const timer = setTimeout(fn, ms)
+    timer.unref?.()
+    timers.add(timer)
+  }
+  const finish = (result) => {
+    if (finished) return
+    finished = true
+    for (const timer of timers) clearTimeout(timer)
+    resolveDone(result)
+  }
+  const settle = () => {
+    if (exit !== null && closedStreams >= 2) finish({ ...exit, timedOut })
+  }
+
   function signalChild(sig) {
     if (!child?.pid || finished) return
-    try {
-      if (process.platform !== 'win32') process.kill(-child.pid, sig)
-      else child.kill(sig)
-    } catch {
+    if (platform === 'win32') {
+      // child.kill solo mataría uv.exe: trazada.exe y python.exe seguirían vivos y con las tuberías abiertas.
       try {
-        child.kill(sig)
+        const [cmd, cmdArgs] = windowsTreeKill(child.pid)
+        spawn(cmd, cmdArgs, { stdio: 'ignore', windowsHide: true, shell: false }).on('error', () =>
+          killQuietly(child, sig),
+        )
       } catch {
-        // ya había terminado
+        killQuietly(child, sig)
       }
+      return
+    }
+    try {
+      // Grupo de procesos propio (detached): se para también el Python que lanza `uv run`.
+      process.kill(-child.pid, sig)
+    } catch {
+      killQuietly(child, sig)
     }
   }
+
   function kill() {
+    if (finished || killRequested) return
+    killRequested = true
     signalChild('SIGTERM')
-    clearTimeout(graceTimer)
-    graceTimer = setTimeout(() => signalChild('SIGKILL'), KILL_GRACE_MS)
-    graceTimer.unref?.()
+    later(() => {
+      signalChild('SIGKILL')
+      later(() => finish({ ...(exit ?? { code: null, signal: 'SIGKILL', spawnError: null }), timedOut }), graceMs)
+    }, graceMs)
   }
+
+  try {
+    child = spawn(pipeline.command, [...pipeline.args, ...args], {
+      cwd: pipeline.cwd,
+      env: {
+        ...process.env,
+        ...pipeline.env,
+        PYTHONUNBUFFERED: '1',
+        PYTHONIOENCODING: 'utf-8',
+        // Modo UTF-8 de Python: en Windows, open() sin codificación usaría cp1252.
+        PYTHONUTF8: '1',
+        NO_COLOR: '1',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+      windowsHide: true,
+      detached: platform !== 'win32',
+    })
+  } catch (err) {
+    finish({ code: null, signal: null, spawnError: err, timedOut })
+    return { done, kill }
+  }
+  for (const [stream, name] of [
+    [child.stdout, 'stdout'],
+    [child.stderr, 'stderr'],
+  ]) {
+    stream.setEncoding('utf8')
+    const rl = createInterface({ input: stream, crlfDelay: Infinity })
+    rl.on('line', (line) => onLine(line.slice(0, MAX_OUTPUT_LINE), name))
+    rl.on('close', () => {
+      closedStreams++
+      settle()
+    })
+  }
+  child.on('error', (err) => finish({ code: null, signal: null, spawnError: err, timedOut }))
+  child.on('exit', (code, signal) => {
+    exit = { code, signal, spawnError: null }
+    settle()
+  })
+  later(() => {
+    timedOut = true
+    kill()
+  }, timeoutMs)
   return { done, kill }
 }
 
@@ -384,16 +426,18 @@ export function createJobQueue({ pipeline, dataDir, timeoutMs = BUILD_TIMEOUT_MS
     })
   }
 
-  /** Cancela (en cola o en curso) o, si ya terminó, lo quita de la lista. */
+  /**
+   * Cancela un trabajo en cola o en curso. Si ya terminó no hace nada: un «Cancelar» que llega justo después de
+   * acabar no debe borrar el resultado (la interfaz no releería el catálogo ni vería el error).
+   */
   function remove(id) {
-    const i = jobs.findIndex((j) => j.id === id)
-    if (i < 0) return false
-    const job = jobs[i]
+    const job = jobs.find((j) => j.id === id)
+    if (!job) return false
     if (job.state === 'queued') finish(job, 'cancelled', { code: 'cancelled', message: '' })
     else if (job.state === 'running') {
       job.cancelled = true
       job.handle?.kill()
-    } else jobs.splice(i, 1)
+    }
     return true
   }
 
@@ -412,15 +456,25 @@ export function createJobQueue({ pipeline, dataDir, timeoutMs = BUILD_TIMEOUT_MS
 export function createScheduleCache({ pipeline, cacheDir, timeoutMs = SCHEDULE_TIMEOUT_MS, ttlMs = SCHEDULE_TTL_MS }) {
   const entries = new Map()
 
+  const running = new Set()
+
   async function fetchSchedule(season) {
     const out = []
     const err = []
     const args = ['schedule', String(season)]
     if (cacheDir) args.push('--cache', cacheDir)
-    const { code, spawnError, timedOut } = await runPipeline(pipeline, args, {
+    const handle = runPipeline(pipeline, args, {
       timeoutMs,
       onLine: (line, stream) => (stream === 'stdout' ? out : err).push(line),
-    }).done
+    })
+    running.add(handle)
+    let result
+    try {
+      result = await handle.done
+    } finally {
+      running.delete(handle)
+    }
+    const { code, spawnError, timedOut } = result
     if (spawnError) return { error: { code: 'pipeline', message: text(spawnError.message, MAX_LINE) } }
     if (timedOut) return { error: { code: 'timeout', message: '' } }
     const errorLine = out.map(parseEventLine).find((ev) => ev?.kind === 'error')
@@ -451,6 +505,10 @@ export function createScheduleCache({ pipeline, cacheDir, timeoutMs = SCHEDULE_T
         })
       entries.set(season, { ...entry, pending })
       return pending
+    },
+    /** Para los calendarios que se estén descargando (al cerrar el servidor). */
+    close() {
+      for (const handle of running) handle.kill()
     },
   }
 }
@@ -601,6 +659,7 @@ export function createLocalServer({ appDir, dataDir, manager = null }) {
   /** Para el servidor y cancela las descargas (también el proceso en curso). */
   server.shutdown = () => {
     queue?.close()
+    schedules?.close()
     server.close()
     server.closeAllConnections?.()
   }

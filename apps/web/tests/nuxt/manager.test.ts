@@ -1,7 +1,9 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import TzSessionRow from '~/components/TzSessionRow.vue'
 import type { Job } from '~/manager/model'
+import { useCatalogStore } from '~/stores/catalog'
+import { useManagerStore } from '~/stores/manager'
 
 const job = (over: Partial<Job>): Job => ({
   id: '7',
@@ -13,6 +15,7 @@ const job = (over: Partial<Job>): Job => ({
   phase: null,
   error: null,
   result: null,
+  createdAt: '2026-10-10T08:00:00.000Z',
   ...over,
 })
 
@@ -77,5 +80,55 @@ describe('TzSessionRow (gestor de datos local)', () => {
     expect(row.attributes('aria-disabled')).toBe('true')
     expect(row.text()).toMatch(/(Disponible desde|Available from)/)
     expect(w.find('button').exists()).toBe(false)
+  })
+})
+
+describe('TzSessionRow: el foco del teclado no se pierde al cambiar de estado', () => {
+  it('Descargar → Cancelar → Reintentar es el mismo botón; al terminar, el foco pasa al enlace', async () => {
+    const w = await mountSuspended(TzSessionRow, {
+      props: { type: 'fp1', view: { kind: 'download' } },
+      attachTo: document.body,
+    })
+    const button = w.find('[data-testid="download-fp1"]').element as HTMLButtonElement
+    button.focus()
+    await w.setProps({ view: { kind: 'queued', job: job({}) } })
+    expect(w.find('[data-testid="cancel-fp1"]').element).toBe(button)
+    expect(document.activeElement).toBe(button)
+    await w.setProps({ view: { kind: 'error', job: job({ state: 'error', error: { code: 'failed', message: '' } }) } })
+    expect(w.find('[data-testid="retry-fp1"]').element).toBe(button)
+    await w.setProps({ view: { kind: 'link', to: '/replay?s=2026/03-suzuka/fp1', bytes: null, dev: false } })
+    await nextTick()
+    expect(document.activeElement).toBe(w.find('a[data-testid="session-fp1"]').element)
+    w.unmount()
+  })
+})
+
+describe('store del gestor', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('relee el catálogo cuando termina una descarga, también si el servidor reinició los ids', async () => {
+    let jobs = [{ ...job({ state: 'done' }), createdAt: '2026-10-10T08:00:00.000Z' }]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const body = url.endsWith('/api/status') ? { manager: true } : url.startsWith('/api/jobs') ? { jobs } : {}
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+      }),
+    )
+    const catalog = useCatalogStore()
+    const refresh = vi.spyOn(catalog, 'refresh').mockResolvedValue()
+    const manager = useManagerStore()
+    const unsubscribe = manager.subscribe()
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+    // Mismo id "1" tras reiniciar `pnpm local`, pero otro trabajo: hay que releer otra vez.
+    jobs = [{ ...job({ state: 'done' }), createdAt: '2026-10-10T09:30:00.000Z' }]
+    await manager.cancel('99')
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(2))
+    // El mismo trabajo visto de nuevo no relee.
+    await manager.cancel('99')
+    expect(refresh).toHaveBeenCalledTimes(2)
+    unsubscribe()
   })
 })

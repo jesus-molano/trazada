@@ -100,7 +100,7 @@ def make_e2e_fixture(
     """Escribe el extracto en `out_data/v1/...` (borra lo anterior) y devuelve un resumen."""
     src_v1 = src_data / "v1"
     src_dir = src_v1 / "sessions" / session
-    manifest = json.loads((src_dir / "manifest.json").read_text())
+    manifest = json.loads((src_dir / "manifest.json").read_text(encoding="utf-8"))
     if manifest["pipeline"]["source"] in ("tracinginsights-dev",):
         raise ValueError("el fixture e2e solo puede salir de una fuente publicable (no dev)")
     files = manifest["files"]
@@ -160,7 +160,7 @@ def make_e2e_fixture(
     dst_circuit.mkdir(parents=True)
     shutil.copy2(src_circuit_file, dst_circuit / src_circuit_file.name)
     pointer = {"file": {**files["circuit"], "path": src_circuit_file.name}}
-    (dst_circuit / "circuit.json").write_text(json.dumps(pointer, indent=2) + "\n")
+    (dst_circuit / "circuit.json").write_text(json.dumps(pointer, indent=2) + "\n", encoding="utf-8")
     new_files["circuit"] = files["circuit"]
 
     fixture = {
@@ -174,7 +174,9 @@ def make_e2e_fixture(
         "files": new_files,
     }
     schema.validate("manifest", fixture)
-    (folder / "manifest.json").write_text(json.dumps(fixture, ensure_ascii=False, indent=2) + "\n")
+    (folder / "manifest.json").write_text(
+        json.dumps(fixture, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
     # Variantes de estado (mismo evento)
     event_dir = folder.parent
@@ -186,7 +188,7 @@ def make_e2e_fixture(
     unsupported = {**fixture, "schemaVersion": "99.0.0", "minReader": "99.0.0", "files": shared}
     (event_dir / "fp3").mkdir()
     (event_dir / "fp3" / "manifest.json").write_text(
-        json.dumps(unsupported, ensure_ascii=False, indent=2) + "\n"
+        json.dumps(unsupported, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
     no_position = {**fixture, "session": {**fixture["session"], "status": "no-position"}, "files": shared}
@@ -259,7 +261,9 @@ def make_e2e_fixture(
         ],
     }
     schema.validate("catalog", catalog)
-    (out_v1 / "catalog.json").write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n")
+    (out_v1 / "catalog.json").write_text(
+        json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     total = sum(p.stat().st_size for p in out_v1.rglob("*") if p.is_file())
     return {"window": [a, b], "bytes": total, "files": {k: v["bytes"] for k, v in new_files.items()}}
 
@@ -267,7 +271,7 @@ def make_e2e_fixture(
 def _country(src_v1: Path, s: dict[str, Any]) -> str:
     cat = src_v1 / "catalog.json"
     if cat.exists():
-        for season in json.loads(cat.read_text())["seasons"]:
+        for season in json.loads(cat.read_text(encoding="utf-8"))["seasons"]:
             for ev in season["events"]:
                 if season["season"] == s["season"] and ev["round"] == s["round"]:
                     return str(ev["country"])

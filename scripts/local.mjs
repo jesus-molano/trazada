@@ -53,7 +53,10 @@ server.on('error', (err) => {
   console.error(`No se pudo arrancar el servidor: ${err.message}`)
   process.exit(1)
 })
-for (const sig of ['SIGINT', 'SIGTERM']) {
+// SIGHUP: se cierra la ventana del terminal (el pipeline va en su propio grupo y no la recibiría).
+// SIGBREAK: Ctrl+Pausa en Windows.
+const signals = ['SIGINT', 'SIGTERM', 'SIGHUP', ...(process.platform === 'win32' ? ['SIGBREAK'] : [])]
+for (const sig of signals) {
   process.on(sig, () => {
     server.shutdown()
     // Deja unos instantes para que el pipeline en curso reciba la señal.

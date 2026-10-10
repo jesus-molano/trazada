@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SessionType } from '@trazada/schema'
+import type { ComponentPublicInstance } from 'vue'
 import type { SessionView } from '~/manager/model'
 
 const props = defineProps<{ type: SessionType; view: SessionView }>()
@@ -20,11 +21,70 @@ const details = computed(() => {
     .filter((line): line is string => !!line)
     .join('\n')
 })
+
+/**
+ * Una sola acción por fila (Descargar, Cancelar o Reintentar) en el mismo <button>: al cambiar de estado se
+ * actualiza en sitio y el foco del teclado no se pierde.
+ */
+const action = computed(() => {
+  const v = props.view
+  if (v.kind === 'download') {
+    return {
+      text: t('manager.download'),
+      label: t('manager.downloadSession', { session: name.value }),
+      title: t('manager.downloadHint'),
+      testid: `download-${props.type}`,
+      quiet: false,
+      run: () => emit('download'),
+    }
+  }
+  if (v.kind === 'error') {
+    return {
+      text: t('manager.retry'),
+      label: t('manager.retrySession', { session: name.value }),
+      title: undefined,
+      testid: `retry-${props.type}`,
+      quiet: false,
+      run: () => emit('download'),
+    }
+  }
+  if (v.kind === 'queued' || v.kind === 'running') {
+    const id = v.job.id
+    return {
+      text: t('manager.cancel'),
+      label: t('manager.cancelSession', { session: name.value }),
+      title: undefined,
+      testid: `cancel-${props.type}`,
+      quiet: true,
+      run: () => emit('cancel', id),
+    }
+  }
+  return null
+})
+
+// Si el foco estaba en la fila y la fila cambia de elemento (p. ej. la descarga termina y pasa a ser un enlace),
+// se lleva al nuevo control en vez de dejarlo caer al <body>.
+const root = ref<HTMLElement | ComponentPublicInstance | null>(null)
+const rootEl = (): HTMLElement | null =>
+  root.value instanceof HTMLElement ? root.value : ((root.value?.$el as HTMLElement | undefined) ?? null)
+watch(
+  () => props.view.kind,
+  async () => {
+    const had = rootEl()?.contains(document.activeElement) ?? false
+    if (!had) return
+    await nextTick()
+    const el = rootEl()
+    if (!el || el.contains(document.activeElement)) return
+    ;(el.matches('a, button') ? el : (el.querySelector<HTMLElement>('a, button') ?? el)).focus()
+  },
+  { flush: 'pre' },
+)
 </script>
 
 <template>
   <NuxtLink
     v-if="view.kind === 'link'"
+    ref="root"
     :to="view.to"
     class="tz-session"
     data-state="link"
@@ -37,8 +97,10 @@ const details = computed(() => {
 
   <div
     v-else-if="view.kind === 'unavailable'"
+    ref="root"
     class="tz-session is-disabled"
     aria-disabled="true"
+    tabindex="-1"
     data-state="unavailable"
     :title="t('selector.unavailableHint')"
     :data-testid="`session-${type}`"
@@ -50,8 +112,10 @@ const details = computed(() => {
 
   <div
     v-else-if="view.kind === 'future'"
+    ref="root"
     class="tz-session is-disabled"
     aria-disabled="true"
+    tabindex="-1"
     data-state="future"
     :data-testid="`session-${type}`"
   >
@@ -63,74 +127,47 @@ const details = computed(() => {
 
   <div
     v-else
+    ref="root"
     class="tz-session"
     :class="`is-${view.kind}`"
     :data-state="view.kind"
     :data-testid="`session-${type}`"
   >
     <span class="tz-session__name">{{ name }}</span>
-
-    <button
-      v-if="view.kind === 'download'"
-      type="button"
-      class="tz-button tz-session__action"
-      :title="t('manager.downloadHint')"
-      :aria-label="t('manager.downloadSession', { session: name })"
-      :data-testid="`download-${type}`"
-      @click="emit('download')"
-    >
-      {{ t('manager.download') }}
-    </button>
-
-    <template v-else-if="view.kind === 'queued'">
-      <span class="tz-badge">{{ t('manager.queued') }}</span>
-      <button
-        type="button"
-        class="tz-button tz-button--quiet tz-session__action"
-        :aria-label="t('manager.cancelSession', { session: name })"
-        :data-testid="`cancel-${type}`"
-        @click="emit('cancel', view.job.id)"
-      >
-        {{ t('manager.cancel') }}
-      </button>
-    </template>
-
+    <span v-if="view.kind === 'queued'" class="tz-badge">{{ t('manager.queued') }}</span>
     <template v-else-if="view.kind === 'running'">
       <span class="tz-session__note">{{ t(`manager.phase.${view.job.phase ?? 'start'}`) }}</span>
       <span class="tz-session__pct tz-tabular">{{ t('manager.progress', { pct }) }}</span>
-      <button
-        type="button"
-        class="tz-button tz-button--quiet tz-session__action"
-        :aria-label="t('manager.cancelSession', { session: name })"
-        :data-testid="`cancel-${type}`"
-        @click="emit('cancel', view.job.id)"
-      >
-        {{ t('manager.cancel') }}
-      </button>
-      <span
-        class="tz-session__progress"
-        role="progressbar"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        :aria-valuenow="pct"
-        :aria-label="t('manager.progressLabel', { session: name })"
-        :data-testid="`progress-${type}`"
-      >
-        <span class="tz-session__bar" :style="barStyle" />
-      </span>
     </template>
+    <span v-else-if="view.kind === 'error'" class="tz-badge tz-badge--error">{{ t('manager.failedBadge') }}</span>
 
-    <template v-else-if="view.kind === 'error'">
-      <span class="tz-badge tz-badge--error">{{ t('manager.failedBadge') }}</span>
-      <button
-        type="button"
-        class="tz-button tz-session__action"
-        :aria-label="t('manager.retrySession', { session: name })"
-        :data-testid="`retry-${type}`"
-        @click="emit('download')"
-      >
-        {{ t('manager.retry') }}
-      </button>
+    <button
+      v-if="action"
+      type="button"
+      class="tz-button tz-session__action"
+      :class="{ 'tz-button--quiet': action.quiet }"
+      :title="action.title"
+      :aria-label="action.label"
+      :data-testid="action.testid"
+      @click="action.run()"
+    >
+      {{ action.text }}
+    </button>
+
+    <span
+      v-if="view.kind === 'running'"
+      class="tz-session__progress"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-valuenow="pct"
+      :aria-label="t('manager.progressLabel', { session: name })"
+      :data-testid="`progress-${type}`"
+    >
+      <span class="tz-session__bar" :style="barStyle" />
+    </span>
+
+    <template v-if="view.kind === 'error'">
       <p class="tz-session__error" :data-testid="`error-${type}`">
         {{ t(`manager.error.${view.job.error?.code ?? 'failed'}`) }}
       </p>
@@ -164,6 +201,10 @@ a.tz-session:hover {
 .tz-session.is-disabled {
   color: var(--tz-text-faint);
   cursor: not-allowed;
+}
+
+.tz-session[tabindex='-1']:focus {
+  outline: none;
 }
 
 .tz-session.is-running,

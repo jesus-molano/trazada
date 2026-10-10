@@ -214,6 +214,41 @@ def test_error_codes() -> None:
     assert error_code(requests.exceptions.ReadTimeout("x")) == "network"
     assert error_code(RateLimitExceededError("x")) == "ratelimit"
     assert error_code(ValueError("x")) == "failed"
+    # FastF1 se traga los fallos de red: si los registró, el fallo final (vacía o genérico) es de red.
+    assert error_code(EmptySessionError("vacía"), network=True) == "network"
+    assert error_code(ValueError("Failed to load any schedule data."), network=True) == "network"
+    # Y la causa encadenada también cuenta (load_schedule relanza con `from`).
+    try:
+        try:
+            raise requests.exceptions.ConnectionError("sin red")
+        except requests.exceptions.ConnectionError as inner:
+            raise RuntimeError("No se pudo leer el calendario") from inner
+    except RuntimeError as outer:
+        assert error_code(outer) == "network"
+
+
+def test_swallowed_network_errors_are_detected() -> None:
+    """FastF1 registra el fallo de red en DEBUG con la traza y sigue: el manejador lo ve igualmente."""
+    handler = attach_fastf1(None)
+    try:
+        try:
+            raise requests.exceptions.ConnectionError("sin red")
+        except requests.exceptions.ConnectionError as exc:
+            logging.getLogger("fastf1.req").debug("Traceback for failure in car data", exc_info=exc)
+    finally:
+        detach_fastf1(handler)
+    assert handler.network is True
+
+
+def test_sprint_qualifying_identifier_follows_the_event() -> None:
+    from trazada_pipeline.sources.fastf1_source import fastf1_identifier
+
+    ev2023 = pd.Series({"Session1": "Practice 1", "Session2": "Qualifying", "Session3": "Sprint Shootout"})
+    ev2024 = pd.Series({"Session1": "Practice 1", "Session2": "Sprint Qualifying", "Session3": "Sprint"})
+    assert fastf1_identifier(ev2023, "sq") == "Sprint Shootout"
+    assert fastf1_identifier(ev2024, "sq") == "Sprint Qualifying"
+    assert fastf1_identifier(ev2024, "race") == "R"
+    assert fastf1_identifier(pd.Series({"Session1": "Practice 1"}), "sq") == "SQ"
 
 
 def _fake_report(data: Path) -> BuildReport:
@@ -274,6 +309,24 @@ def test_build_progress_reports_classified_errors(monkeypatch: pytest.MonkeyPatc
         {"code": "empty", "message": "EmptySessionError: FastF1 devolvió una sesión vacía"}
     ]
     assert _lines(result.stdout, "result") == []
+
+
+def test_build_progress_reports_network_when_fastf1_swallowed_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def fake_build(*_a, **_k):
+        try:
+            raise requests.exceptions.ConnectionError("sin red")
+        except requests.exceptions.ConnectionError as exc:
+            logging.getLogger("fastf1.api").debug("Traceback for failure in timing data", exc_info=exc)
+        raise EmptySessionError("FastF1 devolvió una sesión vacía")
+
+    monkeypatch.setattr(cli, "_build", fake_build)
+    result = CliRunner().invoke(
+        cli.app, ["build", "2026", "10", "fp2", "--data", str(tmp_path), "--progress"]
+    )
+    assert result.exit_code == 1
+    assert _lines(result.stdout, "error")[0]["code"] == "network"
 
 
 def test_build_rejects_unknown_session(tmp_path: Path) -> None:

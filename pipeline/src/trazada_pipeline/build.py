@@ -176,7 +176,8 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         # resultado es idéntico tanto si el circuito se acaba de construir como si ya existía.
         circuit = load_circuit(layout.circuit_id, v1)
         assert circuit is not None
-    circuit_ref = json.loads((v1 / "circuits" / layout.circuit_id / "circuit.json").read_text())["file"]
+    pointer = v1 / "circuits" / layout.circuit_id / "circuit.json"
+    circuit_ref = json.loads(pointer.read_text(encoding="utf-8"))["file"]
     if circuit.dev and not data.dev:
         # Un circuito con fuentes de desarrollo contamina la sesión: queda como dev y no se publica.
         data = replace(data, dev=True)
@@ -355,7 +356,7 @@ SESSION_ORDER = list(SESSION_NAMES)
 def update_catalog(v1: Path, data: SessionData, manifest_path: Path, status: str, total_bytes: int) -> None:
     path = v1 / "catalog.json"
     catalog = (
-        json.loads(path.read_text())
+        json.loads(path.read_text(encoding="utf-8"))
         if path.exists()
         else {"schema": "trazada.catalog", "schemaVersion": schema.schema_version(), "seasons": []}
     )

@@ -101,7 +101,8 @@ def build(
         )
     except Exception as exc:
         traceback.print_exc()
-        emit("error", {"code": error_code(exc), "message": f"{type(exc).__name__}: {exc}"})
+        code = error_code(exc, network=handler.network)
+        emit("error", {"code": code, "message": f"{type(exc).__name__}: {exc}"})
         raise typer.Exit(1) from None
     finally:
         detach_fastf1(handler)
@@ -158,15 +159,19 @@ def schedule(
     """Calendario de la temporada en una línea JSON: Grandes Premios y sesiones con su hora de inicio UTC."""
     import traceback
 
-    from trazada_pipeline.progress import emit, error_code
+    from trazada_pipeline.progress import attach_fastf1, detach_fastf1, emit, error_code
     from trazada_pipeline.schedule import load_schedule
 
+    handler = attach_fastf1(None)  # solo para saber si los fallos fueron de red
     try:
         events = load_schedule(season, cache or DEFAULT_CACHE)
     except Exception as exc:
         traceback.print_exc()
-        emit("error", {"code": error_code(exc), "message": f"{type(exc).__name__}: {exc}"})
+        code = error_code(exc, network=handler.network)
+        emit("error", {"code": code, "message": f"{type(exc).__name__}: {exc}"})
         raise typer.Exit(1) from None
+    finally:
+        detach_fastf1(handler)
     typer.echo(json.dumps({"season": season, "events": events}, ensure_ascii=False))
 
 
@@ -247,11 +252,11 @@ def probe(timeout: float = typer.Option(10.0)) -> None:
 def _referenced(v1: Path) -> set[Path]:
     refs: set[Path] = set()
     for manifest in v1.glob("sessions/*/*/*/manifest.json"):
-        doc = json.loads(manifest.read_text())
+        doc = json.loads(manifest.read_text(encoding="utf-8"))
         for f in doc["files"].values():
             refs.add((manifest.parent / f["path"]).resolve())
     for pointer in v1.glob("circuits/*/circuit.json"):
-        refs.add((pointer.parent / json.loads(pointer.read_text())["file"]["path"]).resolve())
+        refs.add((pointer.parent / json.loads(pointer.read_text(encoding="utf-8"))["file"]["path"]).resolve())
     return refs
 
 
@@ -279,7 +284,7 @@ def prune(
 def catalog(data: Path = typer.Option(DEFAULT_DATA), public: bool = typer.Option(False)) -> None:
     """Muestra el catálogo; con --public falla si contiene sesiones de desarrollo (antes de publicar)."""
     path = data / "v1" / "catalog.json"
-    doc = json.loads(path.read_text())
+    doc = json.loads(path.read_text(encoding="utf-8"))
     dev = []
     for season in doc["seasons"]:
         for ev in season["events"]:

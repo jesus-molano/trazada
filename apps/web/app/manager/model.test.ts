@@ -68,6 +68,7 @@ const job = (over: Partial<Job>): Job => ({
   phase: null,
   error: null,
   result: null,
+  createdAt: '2026-10-10T08:00:00.000Z',
   ...over,
 })
 

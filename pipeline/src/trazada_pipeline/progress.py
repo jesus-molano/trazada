@@ -61,14 +61,31 @@ class Progress:
         emit("progress", {"pct": pct, "phase": phase, "step": step})
 
 
-class FastF1ProgressHandler(logging.Handler):
-    """Traduce los logs de FastF1 a pasos de descarga."""
+#: Excepciones que indican que no hay red (por nombre de clase, para no importar requests aquí).
+NETWORK_ERRORS = frozenset({"ConnectionError", "Timeout", "ConnectTimeout", "ReadTimeout", "TimeoutError"})
 
-    def __init__(self, progress: Progress) -> None:
-        super().__init__(logging.INFO)
+
+def _is_network(exc: BaseException | None) -> bool:
+    return exc is not None and bool(NETWORK_ERRORS & {cls.__name__ for cls in type(exc).__mro__})
+
+
+class FastF1ProgressHandler(logging.Handler):
+    """Traduce los logs de FastF1 a pasos de descarga y detecta los fallos de red.
+
+    FastF1 se traga los errores de descarga (los registra en DEBUG con la traza): `network` se activa si
+    alguno era de red, para explicar el fallo final como «sin conexión» y no como un error genérico.
+    """
+
+    def __init__(self, progress: Progress | None) -> None:
+        super().__init__(logging.DEBUG)
         self.progress = progress
+        self.network = False
 
     def emit(self, record: logging.LogRecord) -> None:
+        if record.exc_info and _is_network(record.exc_info[1]):
+            self.network = True
+        if self.progress is None or record.levelno < logging.INFO:
+            return
         try:
             msg = record.getMessage().lower()
         except Exception:  # un log mal formado no debe tumbar la descarga
@@ -79,11 +96,11 @@ class FastF1ProgressHandler(logging.Handler):
                 return
 
 
-def attach_fastf1(progress: Progress) -> FastF1ProgressHandler:
+def attach_fastf1(progress: Progress | None) -> FastF1ProgressHandler:
     """Escucha los logs de FastF1 (también antes de importarlo: FastF1 configura después su logger)."""
     logger = logging.getLogger("fastf1")
-    if logger.getEffectiveLevel() > logging.INFO:
-        logger.setLevel(logging.INFO)
+    if logger.getEffectiveLevel() > logging.DEBUG:
+        logger.setLevel(logging.DEBUG)
     handler = FastF1ProgressHandler(progress)
     logger.addHandler(handler)
     return handler
@@ -93,15 +110,26 @@ def detach_fastf1(handler: FastF1ProgressHandler) -> None:
     logging.getLogger("fastf1").removeHandler(handler)
 
 
-def error_code(exc: BaseException) -> str:
-    """Clasifica un fallo para que la interfaz explique qué hacer (el mensaje va aparte, como registro)."""
+def error_code(exc: BaseException, *, network: bool = False) -> str:
+    """Clasifica un fallo para que la interfaz explique qué hacer (el mensaje va aparte, como registro).
+
+    `network`: FastF1 registró fallos de red mientras cargaba; un fallo posterior genérico o de sesión vacía
+    se debe casi seguro a eso.
+    """
     from trazada_pipeline.sources.fastf1_source import EmptySessionError
 
-    if isinstance(exc, EmptySessionError):
-        return "empty"
-    names = {cls.__name__ for cls in type(exc).__mro__}
+    chain: list[BaseException] = []
+    cur: BaseException | None = exc
+    while cur is not None and len(chain) < 8:  # la causa original (raise … from exc) también cuenta
+        chain.append(cur)
+        cur = cur.__cause__ or cur.__context__
+    names = {cls.__name__ for e in chain for cls in type(e).__mro__}
     if "RateLimitExceededError" in names:
         return "ratelimit"
-    if names & {"ConnectionError", "Timeout", "RequestException", "TimeoutError"}:
+    if any(_is_network(e) for e in chain) or "RequestException" in names:
         return "network"
+    if network:
+        return "network"
+    if isinstance(exc, EmptySessionError):
+        return "empty"
     return "failed"

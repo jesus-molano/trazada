@@ -65,7 +65,9 @@ def save_circuit(c: Circuit, v1_root: Path) -> dict[str, Any]:
     folder.mkdir(parents=True, exist_ok=True)
     raw = trzb.encode("circuit", circuit_tables(c), circuit_meta(c))
     ref = write_hashed(folder, "circuit", ".trzb.gz", trzb.gzip_bytes(raw), layout="circuit@1")
-    (folder / "circuit.json").write_text(json.dumps({"file": ref, "meta": circuit_meta(c)}, indent=2) + "\n")
+    (folder / "circuit.json").write_text(
+        json.dumps({"file": ref, "meta": circuit_meta(c)}, indent=2) + "\n", encoding="utf-8"
+    )
     return ref
 
 
@@ -73,7 +75,7 @@ def load_circuit(circuit_id: str, v1_root: Path) -> Circuit | None:
     pointer = v1_root / "circuits" / circuit_id / "circuit.json"
     if not pointer.exists():
         return None
-    info = json.loads(pointer.read_text())
+    info = json.loads(pointer.read_text(encoding="utf-8"))
     data = gzip.decompress((pointer.parent / info["file"]["path"]).read_bytes())
     dec = trzb.decode(data)
     meta = dec.meta

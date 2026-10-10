@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   apiRejection,
+  createJobQueue,
   createLocalServer,
   isLoopbackAddress,
   parseEventLine,
@@ -15,6 +16,7 @@ import {
   parseSchedule,
   parseSeason,
   resolveStatic,
+  windowsTreeKill,
   // @ts-expect-error módulo JS de scripts/ sin tipos
 } from '../../../../scripts/local-server.mjs'
 
@@ -68,6 +70,20 @@ async function waitFor<T>(fn: () => Promise<T | null | undefined | false>, timeo
     if (value) return value
     if (Date.now() - start > timeoutMs) throw new Error('timeout esperando la condición')
     await new Promise((r) => setTimeout(r, 30))
+  }
+}
+
+/** ¿Sigue vivo? Un zombi (muerto pero sin recoger por su nuevo padre) cuenta como muerto. */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+  } catch {
+    return false
+  }
+  try {
+    return !/^\d+ \(.*\) Z/.test(readFileSync(`/proc/${pid}/stat`, 'utf8'))
+  } catch {
+    return true
   }
 }
 
@@ -326,8 +342,9 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     expect(retryId).not.toBe(id)
     expect(await jobOf(port, id)).toBeUndefined()
     await waitFor(async () => (await jobOf(port, retryId))?.state === 'error')
+    // Un «Cancelar» que llega cuando ya terminó no borra el resultado.
     expect((await call(port, `/api/jobs/${retryId}`, { method: 'DELETE' })).status).toBe(200)
-    expect(await jobOf(port, retryId)).toBeUndefined()
+    expect((await jobOf(port, retryId))?.state).toBe('error')
   })
 
   it('cancelar para el proceso en curso (y sus hijos) y deja pasar al siguiente', async () => {
@@ -341,8 +358,21 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     const pid = Number(await waitFor(async () => existsSync(pidFile) && readFileSync(pidFile, 'utf8')))
     expect((await call(port, `/api/jobs/${hang!.id}`, { method: 'DELETE' })).status).toBe(200)
     await waitFor(async () => (await jobOf(port, hang!.id))?.state === 'cancelled')
-    expect(() => process.kill(pid, 0)).toThrow()
+    await waitFor(async () => !alive(pid), 3000)
     await waitFor(async () => (await jobOf(port, next!.id))?.state === 'done')
+  })
+
+  it('cancelar mata también los nietos que heredan las tuberías (grupo de procesos)', async () => {
+    const pidFile = join(data, 'tree.pids')
+    rmSync(pidFile, { force: true })
+    const res = await postJobs(port, [{ season: 2026, round: 10, session: 'sprint' }])
+    const id = res.json().jobs[0].id as string
+    const pids = (await waitFor(async () => existsSync(pidFile) && readFileSync(pidFile, 'utf8')))
+      .split(' ')
+      .map(Number)
+    await call(port, `/api/jobs/${id}`, { method: 'DELETE' })
+    await waitFor(async () => (await jobOf(port, id))?.state === 'cancelled')
+    await waitFor(async () => pids.every((pid) => !alive(pid)), 3000)
   })
 
   it('sin gestor, /api no existe (servidor de los e2e)', async () => {
@@ -352,5 +382,71 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     expect((await call(p, '/api/status')).status).toBe(404)
     plain.shutdown()
     appendFileSync(join(root, 'done'), 'ok')
+  })
+})
+
+describe('la cola nunca se queda bloqueada', () => {
+  it('Windows: el árbol se mata con taskkill /T', () => {
+    expect(windowsTreeKill(1234)).toEqual(['taskkill', ['/pid', '1234', '/T', '/F']])
+  })
+
+  it('si un nieto sigue con las tuberías abiertas tras matar al hijo, el trabajo termina igualmente', async () => {
+    // Emula Windows sin taskkill: solo muere el proceso hijo y el nieto conserva stdout/stderr abiertos.
+    const root = mkdtempSync(join(tmpdir(), 'trazada-tree-'))
+    const data = join(root, 'data')
+    cpSync(FIXTURE_DATA, data, { recursive: true })
+    const queue = createJobQueue({
+      pipeline: { command: process.execPath, args: [FAKE], cwd: root, platform: 'win32', killGraceMs: 100 },
+      dataDir: data,
+    })
+    const [hang, next] = queue.enqueue([
+      { season: 2026, round: 10, session: 'sprint' },
+      { season: 2026, round: 3, session: 'fp2' },
+    ]) as { id: string }[]
+    const pidFile = join(data, 'tree.pids')
+    const [, grandchild] = (await waitFor(async () => existsSync(pidFile) && readFileSync(pidFile, 'utf8')))
+      .split(' ')
+      .map(Number)
+    try {
+      const start = Date.now()
+      queue.remove(hang!.id)
+      const state = (id: string) => (queue.list() as { id: string; state: string }[]).find((j) => j.id === id)?.state
+      await waitFor(async () => state(hang!.id) === 'cancelled', 3000)
+      expect(Date.now() - start).toBeLessThan(2000)
+      expect(alive(grandchild!)).toBe(true) // sigue vivo: la cola no lo ha esperado
+      await waitFor(async () => state(next!.id) === 'done', 10_000)
+    } finally {
+      try {
+        process.kill(grandchild!, 'SIGKILL')
+      } catch {
+        // ya había terminado
+      }
+      queue.close()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('al cerrar el servidor se paran también los calendarios en curso', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'trazada-sched-'))
+    mkdirSync(join(root, 'public'))
+    const server = createLocalServer({
+      appDir: join(root, 'public'),
+      dataDir: root,
+      manager: { pipeline: { command: process.execPath, args: [FAKE], cwd: root }, scheduleCacheDir: root },
+    }) as Server & { shutdown: () => void }
+    process.env.FAKE_SCHEDULE_HANG = '1'
+    try {
+      await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+      const p = (server.address() as AddressInfo).port
+      void call(p, '/api/schedule?season=2026').catch(() => null)
+      const pid = Number(
+        await waitFor(async () => existsSync(join(root, 'schedule.pid')) && readFileSync(join(root, 'schedule.pid'), 'utf8')),
+      )
+      server.shutdown()
+      await waitFor(async () => !alive(pid), 3000)
+    } finally {
+      delete process.env.FAKE_SCHEDULE_HANG
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

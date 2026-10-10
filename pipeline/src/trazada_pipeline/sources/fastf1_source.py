@@ -58,6 +58,17 @@ def event_slug(round_number: int, event_name: str, location: str) -> str:
     return slugify(event_name if round_number == 0 else location)
 
 
+def fastf1_identifier(event: Any, session_type: str) -> str:
+    """Nombre de sesión que se pide a FastF1. La clasificación sprint se llamó «Sprint Shootout» en 2023 y
+    FastF1 no acepta «SQ» para esos eventos: se usa el nombre real que trae el propio evento."""
+    if session_type == "sq":
+        for i in range(1, 6):
+            name = event.get(f"Session{i}") if hasattr(event, "get") else None
+            if isinstance(name, str) and SESSION_TYPE_BY_NAME.get(name) == "sq":
+                return name
+    return FASTF1_SESSION[session_type]
+
+
 class EmptySessionError(RuntimeError):
     """FastF1 devolvió una sesión sin datos (p. ej. por un 403 de F1 a una IP de nube)."""
 
@@ -287,10 +298,19 @@ def load_fastf1(
     if offline:
         fastf1.Cache.offline_mode(True)
 
-    session = fastf1.get_session(season, event, FASTF1_SESSION[session_type])
+    from fastf1.exceptions import DataNotLoadedError
+
+    identifier = FASTF1_SESSION[session_type]
+    if session_type == "sq":
+        identifier = fastf1_identifier(fastf1.get_event(season, event), session_type)
+    session = fastf1.get_session(season, event, identifier)
     session.load(laps=True, telemetry=True, weather=False, messages=True)
 
-    if session.t0_date is None or not session.pos_data or not session.car_data or session.laps.empty:
+    try:
+        empty = session.t0_date is None or not session.pos_data or not session.car_data or session.laps.empty
+    except DataNotLoadedError:  # FastF1 se traga los fallos de descarga y deja la sesión sin cargar
+        empty = True
+    if empty:
         raise EmptySessionError(
             f"{season} {event} {session_type}: FastF1 devolvió una sesión vacía. "
             "Si estás en una IP de nube, F1 responde 403 (ejecuta el pipeline desde una IP residencial)."

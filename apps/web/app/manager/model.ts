@@ -51,6 +51,8 @@ export interface Job {
   phase: 'download' | 'process' | null
   error: { code: JobErrorCode; message: string } | null
   result: { session: string | null; status: string; bytes: number | null } | null
+  /** Cuándo se creó (ISO 8601): junto con el id, identifica el trabajo aunque el servidor se reinicie. */
+  createdAt: string
   /** Últimas líneas del registro del pipeline (solo si falló). */
   log?: string[]
 }
@@ -264,6 +266,7 @@ export function parseJob(v: unknown): Job | null {
           bytes: typeof res.bytes === 'number' ? res.bytes : null,
         }
       : null,
+    createdAt: typeof v.createdAt === 'string' ? v.createdAt : '',
     log: Array.isArray(v.log) ? v.log.filter((l): l is string => typeof l === 'string') : undefined,
   }
 }

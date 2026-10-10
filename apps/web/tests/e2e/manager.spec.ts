@@ -82,14 +82,17 @@ test.describe('gestor de datos local', () => {
     await expect(q).toHaveAttribute('data-state', 'error', { timeout: 15_000 })
   })
 
-  test('una descarga en curso se puede cancelar', async ({ page }) => {
+  test('una descarga en curso se puede cancelar, con el teclado y sin perder el foco', async ({ page }) => {
     await open(page, '?season=2026&event=10-spa-francorchamps')
     const sq = page.getByTestId('session-sq')
     await expect(sq).toHaveAttribute('data-state', 'download')
-    await page.getByTestId('download-sq').click()
+    await page.getByTestId('download-sq').focus()
+    await page.keyboard.press('Enter')
     await expect(sq).toHaveAttribute('data-state', 'running')
-    await page.getByTestId('cancel-sq').click()
+    await expect(page.getByTestId('cancel-sq')).toBeFocused()
+    await page.keyboard.press('Enter')
     await expect(sq).toHaveAttribute('data-state', 'download', { timeout: 10_000 })
+    await expect(page.getByTestId('download-sq')).toBeFocused()
   })
 
   test('las sesiones futuras no se ofrecen; las carreras que faltan, en bloque', async ({ page }) => {
@@ -101,8 +104,12 @@ test.describe('gestor de datos local', () => {
     // Pasadas sin generar: solo la de Suzuka (Bélgica ya está; Abu Dabi es futura).
     const bulk = page.getByTestId('download-season-races')
     await expect(bulk).toContainText('1')
-    await bulk.click()
+    await bulk.focus()
+    await page.keyboard.press('Enter')
     await expect(page.getByTestId('download-queue')).toBeVisible()
+    // El botón de bloque desaparece: el foco pasa a «Cancelar todo», no se pierde.
+    await expect(bulk).toHaveCount(0)
+    await expect(page.getByTestId('cancel-all')).toBeFocused()
     await page.getByTestId('event-suzuka').click()
     await expect(page.getByTestId('session-race')).toHaveAttribute('data-state', 'link', { timeout: 15_000 })
     await expect(page.getByTestId('download-season-races')).toHaveCount(0)

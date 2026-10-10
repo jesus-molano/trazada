@@ -84,4 +84,4 @@ def load_schedule(season: int, cache_dir: Path) -> list[dict[str, Any]]:
             continue
         if len(frame):
             return schedule_events(frame)
-    raise RuntimeError(f"No se pudo leer el calendario de {season}: {last}")
+    raise RuntimeError(f"No se pudo leer el calendario de {season}: {last}") from last

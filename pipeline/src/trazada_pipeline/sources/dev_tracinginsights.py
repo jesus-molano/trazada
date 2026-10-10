@@ -68,7 +68,7 @@ def _is_int(a: np.ndarray) -> np.ndarray:
 
 def load_ti_corners(path: Path) -> CircuitInfo:
     """`corners.json` de TracingInsights (curvas y rotación de MultiViewer, sin sectores de comisarios)."""
-    c = json.loads(Path(path).read_text())
+    c = json.loads(Path(path).read_text(encoding="utf-8"))
     return CircuitInfo(
         corners=pd.DataFrame(
             {
@@ -92,7 +92,7 @@ def load_tracinginsights(
     session_dir = Path(session_dir)
     event = session_dir.parent.name
     session_type = SESSION_TYPE_BY_DIR[session_dir.name]
-    drivers_raw = json.loads((session_dir / "drivers.json").read_text())["drivers"]
+    drivers_raw = json.loads((session_dir / "drivers.json").read_text(encoding="utf-8"))["drivers"]
 
     drivers: list[Driver] = []
     pos: dict[str, pd.DataFrame] = {}
@@ -115,7 +115,7 @@ def load_tracinginsights(
         lt_path = session_dir / tla / "laptimes.json"
         if not lt_path.exists():
             continue
-        lt = json.loads(lt_path.read_text())
+        lt = json.loads(lt_path.read_text(encoding="utf-8"))
         n = len(lt["lap"])
         lap_start = {}
         for i in range(n):
@@ -157,7 +157,7 @@ def load_tracinginsights(
             f = session_dir / tla / f"{lap}_tel.json"
             if not f.exists():
                 continue
-            tel = json.loads(f.read_text())["tel"]
+            tel = json.loads(f.read_text(encoding="utf-8"))["tel"]
             t = np.array([_num(v) if _num(v) is not None else np.nan for v in tel["time"]])
             t_ms = np.rint((lst + t) * 1000)
             cols = {
@@ -208,7 +208,7 @@ def load_tracinginsights(
         pd.DataFrame(lap_rows, columns=list(LAP_COLUMNS)).sort_values(["car", "lap"]).reset_index(drop=True)
     )
 
-    rc_raw = json.loads((session_dir / "rcm.json").read_text())
+    rc_raw = json.loads((session_dir / "rcm.json").read_text(encoding="utf-8"))
     n = len(rc_raw["msg"])
 
     def col(k: str) -> list[Any]:

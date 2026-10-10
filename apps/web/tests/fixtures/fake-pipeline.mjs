@@ -2,9 +2,12 @@
 // (mismas líneas `::progress/::result/::error`) sin red ni Python. Comportamiento por sesión en `build`:
 //   q   → falla como una sesión vacía de F1 (código "empty")
 //   sq  → no termina nunca (para probar cancelar)
+//   sprint → como sq, pero con un nieto que hereda las tuberías (como python bajo `uv run`)
 //   resto → progreso por pasos y la sesión entra en <data>/v1/catalog.json
 // Variables: FAKE_STEP_MS (pausa entre pasos), FAKE_SCHEDULE_FAIL=1 (el calendario falla por red),
-// FAKE_SCHEDULE_BIG=1 (calendario de más de 10 KB en una línea).
+// FAKE_SCHEDULE_BIG=1 (calendario de más de 10 KB en una línea), FAKE_SCHEDULE_HANG=1 (el calendario no
+// termina nunca; deja su pid en <cache>/schedule.pid).
+import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -83,6 +86,11 @@ async function main() {
     const cache = args.indexOf('--cache') > -1 ? args[args.indexOf('--cache') + 1] : null
     if (cache) appendFileSync(join(cache, 'calls.log'), `schedule ${season}\n`)
     console.log('ruido de arranque que no es JSON')
+    if (process.env.FAKE_SCHEDULE_HANG === '1') {
+      writeFileSync(join(cache, 'schedule.pid'), String(process.pid))
+      setInterval(() => {}, 1000)
+      return
+    }
     if (process.env.FAKE_SCHEDULE_FAIL === '1') {
       console.error('Traceback (most recent call last): ConnectionError')
       emit('error', { code: 'network', message: 'ConnectionError: sin red' })
@@ -105,6 +113,12 @@ async function main() {
     if (!args.includes('--progress')) throw new Error('falta --progress')
     emit('progress', { pct: 1, phase: 'download', step: 'start' })
     console.error('INFO Loading data for …')
+    if (session === 'sprint') {
+      const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' })
+      writeFileSync(join(dataDir, 'tree.pids'), `${process.pid} ${grandchild.pid}`)
+      setInterval(() => {}, 1000)
+      return
+    }
     if (session === 'sq') {
       writeFileSync(join(dataDir, 'hang.pid'), String(process.pid))
       setInterval(() => {}, 1000)
