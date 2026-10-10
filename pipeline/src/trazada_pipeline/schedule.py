@@ -12,12 +12,11 @@ from typing import Any
 
 import pandas as pd
 
-from trazada_pipeline.sources.fastf1_source import SESSION_TYPE_BY_NAME, event_slug
+from trazada_pipeline.sources.fastf1_source import SCHEDULE_BACKENDS, SESSION_TYPE_BY_NAME, event_slug
 
 log = logging.getLogger(__name__)
 
-#: Fuentes del calendario, por orden. Sin Ergast/Jolpica: el propio de FastF1 y, si falla, el de F1.
-SCHEDULE_BACKENDS = ("fastf1", "f1timing")
+__all__ = ["SCHEDULE_BACKENDS", "load_schedule", "schedule_events"]
 
 #: Columnas de sesión del calendario de FastF1 (Session1…Session5).
 _SESSION_SLOTS = range(1, 6)

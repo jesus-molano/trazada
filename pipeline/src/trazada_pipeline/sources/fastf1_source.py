@@ -54,6 +54,31 @@ SESSION_TYPE_BY_NAME = {
 }
 
 
+#: Fuentes del calendario, por orden. Sin Ergast/Jolpica: el propio de FastF1 y, si falla, el de F1.
+SCHEDULE_BACKENDS = ("fastf1", "f1timing")
+
+
+def official_event(season: int, event: str | int) -> Any:
+    """Evento de FastF1 sacado solo del calendario oficial (`SCHEDULE_BACKENDS`).
+
+    `fastf1.get_session` y `fastf1.get_event` sin `backend` acaban en Ergast/Jolpica si los otros fallan,
+    y de ahí saldrían el nombre, el país y la ronda de la sesión (CC BY-NC-SA).
+    """
+    import fastf1
+
+    last: Exception | None = None
+    for backend in SCHEDULE_BACKENDS:
+        try:
+            found = fastf1.get_event(season, event, backend=backend)
+        except Exception as exc:  # cada backend falla a su manera (red, formato, evento inexistente)
+            log.warning("Calendario %s con %s: %s", season, backend, exc)
+            last = exc
+            continue
+        if found is not None:
+            return found
+    raise RuntimeError(f"{season} {event!r}: no está en el calendario oficial ({last})") from last
+
+
 def event_slug(round_number: int, event_name: str, location: str) -> str:
     """Slug del evento en las rutas: la localidad (`spa-francorchamps`); en los tests, el nombre."""
     return slugify(event_name if round_number == 0 else location)
@@ -182,6 +207,22 @@ def generated_mask(df: pd.DataFrame) -> np.ndarray:
     return np.array([_is_true(v) for v in df["FastF1Generated"]], dtype=bool)
 
 
+#: Compuestos que significan «sin dato de neumático» en las vueltas de FastF1.
+_NO_TYRE_DATA = ("", "UNKNOWN", "NAN", "NONE")
+
+
+def _fresh(df: pd.DataFrame, compound: np.ndarray) -> np.ndarray:
+    """Neumático nuevo (1), usado (0) o sin dato (-1).
+
+    FastF1 guarda `FreshTyre` como booleano y, sin datos de neumático para un piloto, lo deja en False:
+    sin esta regla saldría «usado» sin saberlo. Sin compuesto conocido no hay dato de neumático.
+    """
+    if "FreshTyre" not in df:
+        return np.full(len(df), -1, dtype=np.int64)
+    fresh = df["FreshTyre"].map({True: 1, False: 0}).fillna(-1).astype(int).to_numpy()
+    return np.where(np.isin(compound, _NO_TYRE_DATA), -1, fresh).astype(np.int64)
+
+
 def _laps(laps: pd.DataFrame, race_like: bool) -> pd.DataFrame:
     df = pd.DataFrame(laps)
     generated = generated_mask(df)
@@ -193,6 +234,7 @@ def _laps(laps: pd.DataFrame, race_like: bool) -> pd.DataFrame:
     if race_like:
         # La vuelta 1 de carrera la rellena FastF1 desde Ergast/Jolpica: no se publica.
         lap_ms = np.where(lap_no == 1, -1, lap_ms)
+    compound = df["Compound"].fillna("UNKNOWN").astype(str).str.upper().to_numpy()
     out = pd.DataFrame(
         {
             "car": df["DriverNumber"].astype(str).to_numpy(),
@@ -203,9 +245,9 @@ def _laps(laps: pd.DataFrame, race_like: bool) -> pd.DataFrame:
             "s1_ms": _series_ms(df["Sector1Time"]),
             "s2_ms": _series_ms(df["Sector2Time"]),
             "s3_ms": _series_ms(df["Sector3Time"]),
-            "compound": df["Compound"].fillna("UNKNOWN").astype(str).str.upper().to_numpy(),
+            "compound": compound,
             "tyre_life": df["TyreLife"].to_numpy(dtype=np.float64),
-            "fresh": df["FreshTyre"].map({True: 1, False: 0}).fillna(-1).astype(int).to_numpy(),
+            "fresh": _fresh(df, compound),
             "stint": df["Stint"].fillna(0).astype(int).to_numpy(),
             "pit_in_ms": _series_ms(df["PitInTime"]),
             "pit_out_ms": _series_ms(df["PitOutTime"]),
@@ -322,10 +364,8 @@ def load_fastf1(
 
     from fastf1.exceptions import DataNotLoadedError
 
-    identifier = FASTF1_SESSION[session_type]
-    if session_type == "sq":
-        identifier = fastf1_identifier(fastf1.get_event(season, event), session_type)
-    session = fastf1.get_session(season, event, identifier)
+    ev_info = official_event(season, event)
+    session = ev_info.get_session(fastf1_identifier(ev_info, session_type))
     session.load(laps=True, telemetry=True, weather=False, messages=True)
 
     try:

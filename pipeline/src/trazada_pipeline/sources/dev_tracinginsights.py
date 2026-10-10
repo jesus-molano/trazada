@@ -170,6 +170,9 @@ def load_tracinginsights(
             lap_ms = _ms(lt["time"][i])
             if session_type in ("race", "sprint") and lap == 1:
                 lap_ms = -1
+            compound = str(_none(lt["compound"][i]) or "UNKNOWN").upper()
+            # Derivado de FastF1: sin compuesto, su `fresh` = False no significa «usado» (ver _fresh).
+            fresh = -1 if compound in ("", "UNKNOWN") else {True: 1, False: 0}.get(_none(lt["fresh"][i]), -1)
             car_rows.append(
                 {
                     "car": number,
@@ -180,9 +183,9 @@ def load_tracinginsights(
                     "s1_ms": _ms(lt["s1"][i]),
                     "s2_ms": _ms(lt["s2"][i]),
                     "s3_ms": _ms(lt["s3"][i]),
-                    "compound": str(_none(lt["compound"][i]) or "UNKNOWN").upper(),
+                    "compound": compound,
                     "tyre_life": _num(lt["life"][i]) if _num(lt["life"][i]) is not None else np.nan,
-                    "fresh": {True: 1, False: 0}.get(_none(lt["fresh"][i]), -1),
+                    "fresh": fresh,
                     "stint": int(_num(lt["stint"][i]) or 0),
                     "pit_in_ms": _ms(lt["pin"][i]),
                     "pit_out_ms": _ms(lt["pout"][i]),

@@ -111,6 +111,7 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
   | `centerline-not-closed` | La línea central no cierra (> 2 m). | `closureM` |
   | `length-vs-official` | Longitud a más de un 3 % de la oficial. | `lengthM`, `officialM` |
   | `position-coverage-low` | Cobertura de posición < 99 % en algún piloto. | `cars`, `minPos` |
+  | `lights-out-unknown` | Carrera o sprint sin hora de salida (ni inicio de la vuelta 1 ni de la sesión): `playback.lightsOutMs` es `null` y no se estima la vuelta 1. | — |
   | `dev-circuit` | El circuito usa fuentes de desarrollo: la sesión queda como dev. | `circuit` |
   | `dev-source`, `merged-telemetry`, `track-status-from-race-control` | Fuente de desarrollo (TracingInsights) y sus limitaciones. | — |
   | `dev-corners` | Curvas y rotación de una copia de desarrollo de MultiViewer. | — |

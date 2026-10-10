@@ -143,7 +143,8 @@
             "centerline-not-closed",
             "length-vs-official",
             "no-corners",
-            "finish-line-fallback"
+            "finish-line-fallback",
+            "lights-out-unknown"
           ],
           "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
         },

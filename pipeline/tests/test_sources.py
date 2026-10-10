@@ -206,3 +206,64 @@ def test_tracinginsights_pattern_needs_the_exact_150_s_lap() -> None:
     assert [r["lap"] for r in real_laps(timed, None)] == [1, 2]
     # Con la marca, manda la marca.
     assert [r["lap"] for r in real_laps(phantom, [False, False, True])] == [1, 2]
+
+
+def test_fresh_tyre_is_unknown_without_tyre_data() -> None:
+    """FastF1 deja FreshTyre = False sin datos de neumático: eso no es «usado»."""
+    raw = _ff1_laps([("1", k, 600.0 + 90 * k, 690.0 + 90 * k, 90.0, False) for k in range(1, 5)])
+    raw["Compound"] = ["SOFT", "", None, "MEDIUM"]
+    raw["FreshTyre"] = [False, False, False, True]
+    assert fastf1_source._laps(raw, race_like=False)["fresh"].tolist() == [0, -1, -1, 1]
+    no_column = raw.drop(columns=["FreshTyre"])
+    assert fastf1_source._laps(no_column, race_like=False)["fresh"].tolist() == [-1, -1, -1, -1]
+
+
+def test_tracinginsights_fresh_tyre_is_unknown_without_compound(tmp_path: Path) -> None:
+    from trazada_pipeline.sources.dev_tracinginsights import load_tracinginsights
+
+    laps = [{**TI_LAPS[0], "fresh": False}, {**TI_LAPS[1], "compound": "None", "fresh": False}]
+    data = load_tracinginsights(_ti_session(tmp_path, laps, with_flag=True), 2026, 3, "suzuka")
+    assert data.laps["fresh"].tolist() == [0, -1]
+
+
+class _FakeEvent(dict):
+    def __init__(self, backend: str) -> None:
+        super().__init__(Session1="Practice 1", Session5="Race", backend=backend)
+        self.asked: list[str] = []
+
+    def get_session(self, identifier: str) -> object:
+        self.asked.append(identifier)
+        raise LookupError(f"sesión {identifier} pedida al evento del calendario {self['backend']}")
+
+
+def test_official_event_never_falls_back_to_ergast(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`build` solo usa el calendario de FastF1 o el de F1, como `schedule` (nunca Ergast/Jolpica)."""
+    import fastf1
+
+    calls: list[object] = []
+
+    def get_event(season: int, event: str | int, *, backend: object = None) -> _FakeEvent:
+        calls.append(backend)
+        if backend == "fastf1":
+            raise ValueError("sin red")
+        return _FakeEvent(str(backend))
+
+    monkeypatch.setattr(fastf1, "get_event", get_event)
+    assert fastf1_source.official_event(2026, 10)["backend"] == "f1timing"
+    assert calls == ["fastf1", "f1timing"]
+
+    monkeypatch.setattr(fastf1, "get_event", lambda *_a, **_k: (_ for _ in ()).throw(OSError("x")))
+    with pytest.raises(RuntimeError, match="calendario oficial"):
+        fastf1_source.official_event(2026, 10)
+
+
+def test_load_fastf1_uses_the_official_event(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import fastf1
+
+    event = _FakeEvent("fastf1")
+    monkeypatch.setattr(fastf1_source, "official_event", lambda season, ev: event)
+    monkeypatch.setattr(fastf1, "get_session", lambda *_a, **_k: pytest.fail("get_session cae en Ergast"))
+    monkeypatch.setattr(fastf1.Cache, "enable_cache", lambda *_a, **_k: None)
+    with pytest.raises(LookupError, match="calendario fastf1"):
+        fastf1_source.load_fastf1(2026, "Belgian Grand Prix", "fp1", tmp_path)
+    assert event.asked == ["FP1"]

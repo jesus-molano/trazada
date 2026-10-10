@@ -129,6 +129,25 @@ def test_playback_window_for_race(built) -> None:
     assert end == min(data_end, chequered + 5 * 60 * 1000)
 
 
+@pytest.mark.parametrize("session_start", [-1, 0, None])
+def test_unknown_lights_out_is_not_invented(session_start: int | None) -> None:
+    """Sin inicio de la vuelta 1 ni de la sesión (-1, 0 o nada), la salida queda sin dato."""
+    data, _ = synthetic_session()
+    data.laps.loc[data.laps["lap"] == 1, "start_ms"] = -1
+    data.session_start_ms = session_start
+    start, _, lights_out = playback_window(data)
+    assert lights_out is None and start == 0
+
+
+def test_unknown_lights_out_reaches_the_manifest(tmp_path: Path) -> None:
+    data, _ = synthetic_session()
+    data.laps.loc[data.laps["lap"] == 1, "start_ms"] = -1
+    data.session_start_ms = -1
+    manifest = json.loads(build_session(data, tmp_path).manifest_path.read_text())
+    assert manifest["session"]["playback"]["lightsOutMs"] is None
+    assert "lights-out-unknown" in {n["code"] for n in manifest["quality"]["notes"]}
+
+
 def test_coverage_ratio() -> None:
     t = np.arange(0, 10_001, 250)
     assert coverage_ratio(t, [(0, 10_000)]) == 1.0

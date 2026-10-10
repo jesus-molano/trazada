@@ -37,6 +37,7 @@ export const QUALITY_NOTE_CODES = [
   'length-vs-official',
   'no-corners',
   'finish-line-fallback',
+  'lights-out-unknown',
 ] as const
 export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
 

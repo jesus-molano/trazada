@@ -56,14 +56,21 @@ def playback_window(data: SessionData) -> tuple[int, int, int | None]:
     data_end = int(max((int(df["t_ms"].max()) for df in data.pos.values() if len(df)), default=0))
     if data.is_race_like:
         lap1 = laps[(laps["lap"] == 1) & (laps["start_ms"] > 0)]["start_ms"]
-        lights_out = int(lap1.min()) if len(lap1) else (data.session_start_ms or 0)
+        lights_out: int | None
+        if len(lap1):
+            lights_out = int(lap1.min())
+        elif data.session_start_ms is not None and data.session_start_ms > 0:
+            lights_out = int(data.session_start_ms)
+        else:
+            lights_out = None  # sin inicio de la vuelta 1 ni de la sesión (-1 o 0): no se inventa la salida
         chequered = [
             int(t)
             for t, x in zip(data.race_control["t_ms"], data.race_control["text"], strict=True)
             if parse(x).kind == "chequered_flag"
         ]
         finish = chequered[-1] if chequered else (int(ends.max()) if len(ends) else data_end)
-        return max(0, lights_out - PRE_RACE_MS), min(data_end, finish + POST_RACE_MS), lights_out
+        start = max(0, lights_out - PRE_RACE_MS) if lights_out is not None else 0
+        return start, min(data_end, finish + POST_RACE_MS), lights_out
     start = data.session_start_ms if data.session_start_ms and data.session_start_ms > 0 else 0
     end = int(ends.max()) if len(ends) else data_end
     return max(0, start - PRE_SESSION_MS), min(data_end, end + PRE_SESSION_MS), None
@@ -233,6 +240,14 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         )
 
     start_ms, end_ms, lights_out = playback_window(data)
+    if data.is_race_like and lights_out is None:
+        notes.append(
+            QualityNote(
+                "lights-out-unknown",
+                "Sin hora de salida: ni la vuelta 1 ni la sesión tienen inicio en el cronometraje "
+                "(no se estima el tiempo de la vuelta 1).",
+            )
+        )
     pos = {c: _trim(df, start_ms, end_ms) for c, df in data.pos.items()}
     car = {c: _trim(df, start_ms, end_ms) for c, df in data.car.items()}
     trimmed = SessionData(**{**data.__dict__, "pos": pos, "car": car})
