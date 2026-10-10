@@ -3,8 +3,8 @@
  */
 import type { DriverInfo } from '@trazada/schema'
 import type { CircuitModel } from '../track/circuit'
-import { newSample, type PathSample } from '../track/TrackPath'
 import { type CarSample, type CarTrack, newCarSample, PATH_PIT, sampleCar } from './motion'
+import { newPlaceScratch, pitSpan, placeSample } from './place'
 
 export interface CarState {
   car: string
@@ -29,8 +29,7 @@ export class ReplayModel {
   private readonly tracks: CarTrack[]
   private readonly circuit: CircuitModel
   private readonly pitSpan: number
-  private readonly a: PathSample = newSample()
-  private readonly b: PathSample = newSample()
+  private readonly scratch = newPlaceScratch()
 
   constructor(tracks: CarTrack[], circuit: CircuitModel, drivers: DriverInfo[]) {
     this.tracks = tracks
@@ -50,22 +49,7 @@ export class ReplayModel {
       heading: 0,
     }))
     this.samples = tracks.map(() => newCarSample())
-    const pit = circuit.meta.pit
-    const L = circuit.centerline.length
-    this.pitSpan = pit ? (((pit.exitS - pit.entryS) % L) + L) % L : 0
-  }
-
-  /** Punto (canónico) de un coche con `path` y `s` dados. */
-  private place(path: number, s: number, out: PathSample): void {
-    const { centerline, pitlane, meta } = this.circuit
-    if (path === PATH_PIT && pitlane && meta.pit && this.pitSpan > 0) {
-      const L = centerline.length
-      const rel = (((s - meta.pit.entryS) % L) + L) % L
-      const f = Math.min(1, Math.max(0, rel / this.pitSpan))
-      pitlane.sample(f * pitlane.length, out)
-      return
-    }
-    centerline.sample(s, out)
+    this.pitSpan = pitSpan(circuit)
   }
 
   update(t: number): void {
@@ -79,25 +63,7 @@ export class ReplayModel {
       st.speedMps = smp.speed
       st.inPit = smp.path === PATH_PIT
       st.transition = smp.state === 'transition'
-      if (smp.state === 'visible') {
-        this.place(smp.path, smp.s, this.a)
-        st.x = this.a.x
-        st.y = this.a.y
-        st.z = this.a.z
-        st.heading = Math.atan2(this.a.ty, this.a.tx)
-      } else {
-        // Transición pista↔pit: recta entre el último punto de un camino y el primero del otro.
-        const i = smp.i
-        this.place(tr.path[i]!, tr.s[i]!, this.a)
-        this.place(tr.path[i + 1]!, tr.s[i + 1]!, this.b)
-        const f = smp.f
-        st.x = this.a.x + f * (this.b.x - this.a.x)
-        st.y = this.a.y + f * (this.b.y - this.a.y)
-        st.z = this.a.z + f * (this.b.z - this.a.z)
-        const dx = this.b.x - this.a.x
-        const dy = this.b.y - this.a.y
-        st.heading = Math.hypot(dx, dy) > 0.5 ? Math.atan2(dy, dx) : Math.atan2(this.a.ty, this.a.tx)
-      }
+      placeSample(this.circuit, tr, smp, st, this.scratch, this.pitSpan)
     }
   }
 
