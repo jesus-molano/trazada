@@ -15,10 +15,17 @@ from synthetic import synthetic_session
 from trazada_pipeline.build import build_session
 from trazada_pipeline.encode import trzb
 from trazada_pipeline.fixtures import FIXTURE_MAX_BYTES, make_e2e_fixture
-from trazada_pipeline.sources.base import STREAM_COLUMNS
+from trazada_pipeline.sources.base import RC_COLUMNS, STREAM_COLUMNS
 
 SESSION = "2026/00-synthetic/fp1"
 WINDOW = {"start_min": 4.0, "minutes": 2.0}  # la ventana empieza con la sesión en marcha
+A_MS = int(WINDOW["start_min"] * 60_000)
+#: Mensajes de antes de la ventana (t, categoría, coche, texto): una vuelta anulada y una bandera azul 3 s
+#: antes de empezar (sigue vigente 8 s, ya dentro de la ventana).
+EARLY_RC = [
+    (100_000, "Other", "2", "CAR 2 (BBB) TIME 1:31.000 DELETED - TRACK LIMITS AT TURN 4"),
+    (A_MS - 3_000, "Flag", "3", "WAVED BLUE FLAG FOR CAR 3 (CCC) TIMED AT 10:03:57"),
+]
 
 
 def _tower(laps: pd.DataFrame) -> pd.DataFrame:
@@ -41,6 +48,11 @@ def source(tmp_path_factory: pytest.TempPathFactory) -> Path:
     data, _ = synthetic_session()
     data.session_type, data.session_name, data.total_laps = "fp1", "Practice 1", None
     data.stream = _tower(data.laps)
+    early = pd.DataFrame(
+        [(t, None, cat, None, None, None, car, text, None) for t, cat, car, text in EARLY_RC],
+        columns=list(RC_COLUMNS),
+    )
+    data.race_control = pd.concat([early, data.race_control], ignore_index=True).sort_values("t_ms")
     root = tmp_path_factory.mktemp("src")
     build_session(data, root)
     return root
@@ -56,6 +68,17 @@ def _timing(root: Path) -> dict[str, dict[str, np.ndarray]]:
     manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
     ref = json.loads(manifest_path.read_text())["files"]["timing"]
     return trzb.decode(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes())).tables
+
+
+def _race_control(root: Path) -> list[dict[str, Any]]:
+    manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
+    ref = json.loads(manifest_path.read_text())["files"]["events"]
+    return json.loads(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes()))["raceControl"]
+
+
+def feed_at(race_control: list[dict[str, Any]], t: int) -> list[tuple[int, str]]:
+    """Como el feed (TzRaceControl): todos los mensajes con t ≤ reloj."""
+    return [(e["t"], e["text"]) for e in race_control if e["t"] <= t]
 
 
 def tower_at(tables: dict[str, dict[str, np.ndarray]], t: int) -> dict[int, tuple]:
@@ -88,18 +111,23 @@ def laps_at(tables: dict[str, dict[str, np.ndarray]], t: int) -> dict[int, tuple
 
 
 def test_fixture_tower_and_laps_match_the_full_session(source: Path, extract: tuple) -> None:
-    """Sin las filas de antes de la ventana, el README mostraba una clasificación que nunca existió."""
+    """Sin lo de antes de la ventana, el README mostraba una clasificación y un feed que nunca existieron."""
     out, summary = extract
     a, b = summary["window"]
+    assert a == A_MS
     full, ext = _timing(source), _timing(out)
+    full_rc, ext_rc = _race_control(source), _race_control(out)
     assert len(tower_at(full, a)) == 6  # todos los coches tienen ya fila en la torre al empezar
+    assert len(feed_at(full_rc, a)) == len(EARLY_RC)  # el feed ya tiene mensajes al empezar
     for t in (a, a + 1, (a + b) // 2, b):
         assert tower_at(ext, t) == tower_at(full, t), t
         assert laps_at(ext, t) == laps_at(full, t), t
+        assert feed_at(ext_rc, t) == feed_at(full_rc, t), t
     # Solo lo necesario: la torre, hasta el final de la ventana; las vueltas, empezadas antes de él.
     assert ext["stream"]["t"].max() <= b
     assert len(ext["stream"]["t"]) < len(full["stream"]["t"])
     assert ext["laps"]["startMs"].max() <= b
+    assert max(e["t"] for e in ext_rc) <= b < max(e["t"] for e in full_rc)
     assert summary["bytes"] <= FIXTURE_MAX_BYTES
 
 

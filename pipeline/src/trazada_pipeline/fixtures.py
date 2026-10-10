@@ -1,12 +1,15 @@
 """Fixture e2e: extracto recortado de una sesión ya generada, más variantes para probar estados del front.
 
 El extracto conserva todos los coches en una ventana de pocos minutos (la de más coches en pista) y se
-re-codifica con el mismo esquema. Para que la clasificación y los contadores de vuelta del extracto sean
-los que hubo (nunca un estado que no existió), el cronometraje lleva además, de antes de la ventana:
+re-codifica con el mismo esquema. Para que la clasificación, los contadores de vuelta y el feed de
+dirección de carrera del extracto sean los que hubo (nunca un estado que no existió), lleva además, de
+antes de la ventana:
 
 - de cada coche, la última fila de la torre anterior o igual al inicio de la ventana (con su instante
   real: el lector toma la última fila con t ≤ reloj, así que no hace falta moverla);
-- todas las vueltas empezadas antes del final de la ventana (vueltas completadas y mejor vuelta).
+- todas las vueltas empezadas antes del final de la ventana (vueltas completadas y mejor vuelta);
+- todos los mensajes de dirección de carrera anteriores al final de la ventana (el recuento del feed, las
+  banderas azules de los segundos previos y los mensajes de vuelta anulada son los de la sesión).
 
 Las variantes son estados **inventados solo para los tests** (el catálogo las marca `dev` y su manifest
 lleva la nota `e2e-variant`). Reutilizan los ficheros del extracto:
@@ -121,7 +124,8 @@ def _trim_events(events: dict[str, Any], a: int, b: int) -> dict[str, Any]:
 
     return {
         **events,
-        "raceControl": [e for e in events["raceControl"] if a <= e["t"] <= b],
+        # También los anteriores a la ventana: el feed muestra todos los mensajes con t ≤ reloj.
+        "raceControl": [e for e in events["raceControl"] if e["t"] <= b],
         "sectorFlags": [w for w in events["sectorFlags"] if overlaps(w)],
         "windows": [w for w in events["windows"] if overlaps(w)],
     }
