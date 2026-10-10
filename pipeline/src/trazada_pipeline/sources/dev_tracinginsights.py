@@ -31,6 +31,7 @@ from trazada_pipeline.sources.base import (
     RC_COLUMNS,
     CircuitInfo,
     Driver,
+    QualityNote,
     SessionData,
 )
 
@@ -310,8 +311,16 @@ def load_tracinginsights(
         dev=True,
         estimated=["positions", "telemetry", "trackStatus"],
         notes=[
-            "Datos de desarrollo (fuente secundaria TracingInsights): no publicar.",
-            "Muestras de posición y telemetría reconstruidas desde telemetría fusionada por vuelta.",
-            "Estado de pista aproximado desde race control; sin torre de tiempos.",
+            QualityNote(
+                "dev-source", "Datos de desarrollo (fuente secundaria TracingInsights): no publicar."
+            ),
+            QualityNote(
+                "merged-telemetry",
+                "Muestras de posición y telemetría reconstruidas desde telemetría fusionada por vuelta.",
+            ),
+            QualityNote(
+                "track-status-from-race-control",
+                "Estado de pista aproximado desde race control; sin torre de tiempos.",
+            ),
         ],
     )

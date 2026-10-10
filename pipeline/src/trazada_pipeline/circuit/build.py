@@ -177,8 +177,16 @@ def build_centerline(data: SessionData) -> tuple[np.ndarray, dict[str, float]]:
     return line, quality
 
 
-def finish_line_s(data: SessionData, line: np.ndarray) -> float:
-    """s de la línea de meta sobre `line` (feed, m): media circular de los inicios de vuelta."""
+#: Inicios de vuelta necesarios para situar la línea de meta; con menos se usa el inicio de la traza.
+MIN_FINISH_LAPS = 3
+
+
+def finish_line_s(data: SessionData, line: np.ndarray) -> tuple[float, int]:
+    """s de la línea de meta sobre `line` (feed, m): media circular de los inicios de vuelta.
+
+    Devuelve también cuántos inicios de vuelta la sitúan. Con menos de `MIN_FINISH_LAPS`, la meta queda
+    en el inicio de la traza de referencia (la primera muestra de su vuelta, cerca de la línea real).
+    """
     index = PolylineIndex(line, closed=True)
     laps = data.laps
     starts = laps[(laps["lap"] >= 2) & (laps["pit_out_ms"] < 0) & (laps["start_ms"] > 0)]
@@ -195,12 +203,12 @@ def finish_line_s(data: SessionData, line: np.ndarray) -> float:
         u, d = index.project(p)
         if d[0] < 15:
             us.append(u[0])
-    if len(us) < 3:
+    if len(us) < MIN_FINISH_LAPS:
         log.warning("pocas vueltas para situar la línea de meta (%d); se usa el inicio de la traza", len(us))
-        return 0.0
+        return 0.0, len(us)
     ang = np.asarray(us) / index.length * 2 * np.pi
     mean = np.arctan2(np.sin(ang).mean(), np.cos(ang).mean()) % (2 * np.pi)
-    return float(mean / (2 * np.pi) * index.length)
+    return float(mean / (2 * np.pi) * index.length), len(us)
 
 
 def build_pitlane(
@@ -246,7 +254,11 @@ def build_pitlane(
 
 def build_circuit(data: SessionData, circuit_id: str, name: str) -> Circuit:
     line_raw, quality = build_centerline(data)
-    s0 = finish_line_s(data, line_raw)
+    s0, finish_laps = finish_line_s(data, line_raw)
+    if finish_laps < MIN_FINISH_LAPS:
+        # Solo si se usa la reserva: así los circuitos normales conservan su hash. Va con el circuito
+        # porque cada sesión que lo reutilice hereda la meta aproximada (y su nota de calidad).
+        quality["finishLineLaps"] = float(finish_laps)
     idx0 = round(s0 / STEP_M) % len(line_raw)
     line_raw = np.roll(line_raw, -idx0, axis=0)
     pit_raw, entry_s, exit_s, pit_samples_len = build_pitlane(data, line_raw)

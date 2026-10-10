@@ -149,3 +149,4 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
 - **2026-10-10** — **Auditoría de honestidad de datos, parte del pipeline**:
   - **Vueltas inventadas por FastF1** (A): se descartan las marcadas `FastF1Generated` (y `ff1G` o el patrón de 150 s en la fuente dev). Hay que regenerar los datos de carrera.
   - **OVERTAKE/DRS** (I): la última bandera a cuadros cierra la ventana; los mensajes de una sola zona no la cambian (`docs/RACE_CONTROL.md`).
+  - **Avisos de calidad legibles por máquina** (K): `quality.notes` pasa a objetos `{code, text, params}` para que la UI los traduzca (v1 revisado en el sitio; las cadenas de manifests anteriores siguen siendo válidas). La meta de reserva (menos de 3 vueltas para situarla) ya no se queda en el log: se guarda en el circuito (`finishLineLaps`) y llega como `finish-line-fallback` a cada sesión que lo use.

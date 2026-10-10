@@ -15,14 +15,14 @@ import pandas as pd
 
 from trazada_pipeline import __version__, schema
 from trazada_pipeline.circuit import registry
-from trazada_pipeline.circuit.build import Circuit, build_circuit
+from trazada_pipeline.circuit.build import MIN_FINISH_LAPS, Circuit, build_circuit
 from trazada_pipeline.circuit.store import load_circuit, save_circuit
 from trazada_pipeline.encode import trzb
 from trazada_pipeline.files import write_hashed
 from trazada_pipeline.projection import PATH_NODATA, CarMotion, motion_tables, pit_windows, project_session
 from trazada_pipeline.racecontrol.parser import parse
 from trazada_pipeline.racecontrol.state import build_events
-from trazada_pipeline.sources.base import SessionData
+from trazada_pipeline.sources.base import QualityNote, SessionData
 from trazada_pipeline.timing import timing_tables
 
 log = logging.getLogger(__name__)
@@ -164,9 +164,51 @@ def _rel(from_dir: Path, target: Path) -> str:
     return os.path.relpath(target, from_dir).replace("\\", "/")
 
 
+def circuit_notes(circuit: Circuit, official_length_m: float | None) -> list[QualityNote]:
+    """Avisos de calidad del circuito canónico (van en cada sesión que lo use)."""
+    notes: list[QualityNote] = []
+    q = circuit.quality
+    if "finishLineLaps" in q:
+        laps = int(q["finishLineLaps"])
+        notes.append(
+            QualityNote(
+                "finish-line-fallback",
+                f"Línea de meta aproximada: solo {laps} vueltas servían para situarla (hacen falta "
+                f"{MIN_FINISH_LAPS}); está en la primera muestra de la vuelta de referencia.",
+                {"laps": laps},
+            )
+        )
+    if q.get("closureM", 0) > 2.0:
+        notes.append(
+            QualityNote(
+                "centerline-not-closed",
+                f"cierre de la línea central {q['closureM']:.2f} m > 2 m",
+                {"closureM": round(float(q["closureM"]), 2)},
+            )
+        )
+    if official_length_m:
+        dev = abs(circuit.length - official_length_m) / official_length_m
+        if dev > 0.03:
+            notes.append(
+                QualityNote(
+                    "length-vs-official",
+                    f"longitud {circuit.length:.0f} m vs oficial {official_length_m} m (> 3 %)",
+                    {"lengthM": round(circuit.length), "officialM": official_length_m},
+                )
+            )
+    if circuit.corners.empty:
+        notes.append(
+            QualityNote(
+                "no-corners",
+                "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)",
+            )
+        )
+    return notes
+
+
 def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool = False) -> BuildReport:
     v1 = data_root / f"v{schema.schema_major()}"
-    warnings: list[str] = list(data.notes)
+    notes: list[QualityNote] = list(data.notes)
     layout = registry.resolve(data.circuit_key, data.season, data.slug, dev=data.dev)
 
     circuit = None if rebuild_circuit else load_circuit(layout.circuit_id, v1)
@@ -181,9 +223,13 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
     if circuit.dev and not data.dev:
         # Un circuito con fuentes de desarrollo contamina la sesión: queda como dev y no se publica.
         data = replace(data, dev=True)
-        warnings.append(
-            f"El circuito {layout.circuit_id} usa fuentes de desarrollo: la sesión queda marcada como dev "
-            "(no publicable). Reconstrúyelo sin ellas con --rebuild-circuit."
+        notes.append(
+            QualityNote(
+                "dev-circuit",
+                f"El circuito {layout.circuit_id} usa fuentes de desarrollo: la sesión queda marcada como "
+                "dev (no publicable). Reconstrúyelo sin ellas con --rebuild-circuit.",
+                {"circuit": layout.circuit_id},
+            )
         )
 
     start_ms, end_ms, lights_out = playback_window(data)
@@ -211,29 +257,23 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         if len(valid_t) and len(car_t):
             with_data += 1
     status = "ok" if with_data >= 0.9 * max(1, len(data.drivers)) else "no-position"
-    if status == "ok" and any(v["pos"] < 0.99 for v in coverage.values() if v["pos"] > 0):
-        warnings.append("cobertura de posición < 99 % en algún piloto")
+    low = [v["pos"] for v in coverage.values() if 0 < v["pos"] < 0.99]
+    if status == "ok" and low:
+        notes.append(
+            QualityNote(
+                "position-coverage-low",
+                "cobertura de posición < 99 % en algún piloto",
+                {"cars": len(low), "minPos": min(low)},
+            )
+        )
 
     for c, m in motion.items():
         v = m.path != PATH_NODATA
         if np.any(np.diff(m.s_m[v]) < -1e-6):
             raise RuntimeError(f"coche {c}: s no monótona")
 
-    q = circuit.quality
-    if q.get("closureM", 0) > 2.0:
-        warnings.append(f"cierre de la línea central {q['closureM']:.2f} m > 2 m")
-    if layout.official_length_m:
-        dev = abs(circuit.length - layout.official_length_m) / layout.official_length_m
-        q = {**q, "lengthVsOfficial": round(dev, 4)}
-        if dev > 0.03:
-            warnings.append(
-                f"longitud {circuit.length:.0f} m vs oficial {layout.official_length_m} m (> 3 %)"
-            )
+    notes += circuit_notes(circuit, layout.official_length_m)
     elev_ok, elev_q = elevation_ok(circuit, data)
-    if circuit.corners.empty:
-        warnings.append(
-            "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)"
-        )
 
     corner_s = {
         int(n): float(s) for n, s in zip(circuit.corners["number"], circuit.corners["s"], strict=True)
@@ -322,7 +362,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
             "centerlineClosureM": round(float(circuit.quality.get("closureM", 0.0)), 3),
             "elevationRangeM": elev_q["elevationRangeM"],
             "estimated": estimated,
-            "notes": warnings,
+            "notes": [n.to_json() for n in notes],
         },
         "files": files,
         "attribution": [SOURCE_ATTRIBUTION[data.source], *circuit.sources[1:]],
@@ -337,7 +377,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         status=status,
         sizes={k: v["bytes"] for k, v in files.items()},
         quality={**circuit.quality, **elev_q},
-        warnings=warnings,
+        warnings=[n.text for n in notes],
     )
 
 

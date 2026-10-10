@@ -136,6 +136,7 @@ def _build(
     on_loaded: Callable[[], None] | None = None,
 ) -> BuildReport:
     from trazada_pipeline.build import build_session
+    from trazada_pipeline.sources.base import QualityNote
     from trazada_pipeline.sources.dev_tracinginsights import load_ti_corners
     from trazada_pipeline.sources.fastf1_source import load_fastf1
 
@@ -144,7 +145,10 @@ def _build(
         sd.circuit_info = load_ti_corners(dev_corners)
         sd.dev = True  # circuito "-dev" aparte: el canónico nunca recibe datos de desarrollo
         sd.notes.append(
-            "Curvas y rotación de MultiViewer leídas de una copia de TracingInsights (desarrollo)."
+            QualityNote(
+                "dev-corners",
+                "Curvas y rotación de MultiViewer leídas de una copia de TracingInsights (desarrollo).",
+            )
         )
     if on_loaded is not None:
         on_loaded()

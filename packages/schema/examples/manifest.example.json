@@ -22,7 +22,15 @@
     { "number": "1", "tla": "AAA", "first": "Ana", "last": "Ejemplo", "team": "Equipo", "color": "#336699", "finish": null }
   ],
   "channels": { "drs": "absent", "elevation": "flat" },
-  "quality": { "coverage": { "1": { "pos": 1, "car": 1 } }, "estimated": [] },
+  "quality": {
+    "coverage": { "1": { "pos": 1, "car": 1 } },
+    "estimated": [],
+    "notes": [
+      { "code": "finish-line-fallback", "text": "Línea de meta aproximada: solo 2 vueltas servían para situarla (hacen falta 3).", "params": { "laps": 2 } },
+      { "code": "no-corners", "text": "Circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)." },
+      "texto libre de un manifest anterior"
+    ]
+  },
   "files": {
     "motion": { "path": "motion.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "motion@1", "compression": "gzip" },
     "car": { "path": "car.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "car@1", "compression": "gzip" },

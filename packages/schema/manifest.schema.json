@@ -104,7 +104,11 @@
         "centerlineClosureM": { "type": "number" },
         "elevationRangeM": { "type": "number" },
         "estimated": { "type": "array", "items": { "type": "string" } },
-        "notes": { "type": "array", "items": { "type": "string" } }
+        "notes": {
+          "type": "array",
+          "description": "Avisos de calidad. El pipeline escribe objetos con un código estable; las cadenas sueltas son texto libre de manifests anteriores.",
+          "items": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/qualityNote" }] }
+        }
       }
     },
     "files": {
@@ -123,6 +127,30 @@
   },
   "$defs": {
     "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "qualityNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "text"],
+      "properties": {
+        "code": {
+          "enum": [
+            "dev-source",
+            "merged-telemetry",
+            "track-status-from-race-control",
+            "dev-corners",
+            "dev-circuit",
+            "position-coverage-low",
+            "centerline-not-closed",
+            "length-vs-official",
+            "no-corners",
+            "finish-line-fallback"
+          ],
+          "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
+        },
+        "text": { "type": "string", "description": "El mismo aviso en español, para el log y para quien lea el JSON (la UI no lo muestra)." },
+        "params": { "type": "object", "additionalProperties": { "anyOf": [{ "type": "number" }, { "type": "string" }] } }
+      }
+    },
     "file": {
       "type": "object",
       "additionalProperties": false,

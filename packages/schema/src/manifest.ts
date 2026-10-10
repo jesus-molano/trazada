@@ -22,6 +22,31 @@ export interface DriverInfo {
   finish?: { kind: 'classified' | 'retired' | 'unknown'; position?: number | null; lapsDown?: number | null } | null
 }
 
+/**
+ * Códigos de `quality.notes` (el mismo `enum` que `manifest.schema.json`, lo comprueba un test). La UI
+ * los traduce con sus `params`; el `text` de la nota es el texto en español del pipeline, para el log.
+ */
+export const QUALITY_NOTE_CODES = [
+  'dev-source',
+  'merged-telemetry',
+  'track-status-from-race-control',
+  'dev-corners',
+  'dev-circuit',
+  'position-coverage-low',
+  'centerline-not-closed',
+  'length-vs-official',
+  'no-corners',
+  'finish-line-fallback',
+] as const
+export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
+
+export interface QualityNote {
+  code: QualityNoteCode
+  /** Texto en español del pipeline (log); no es texto de interfaz. */
+  text: string
+  params?: Record<string, number | string>
+}
+
 export interface Manifest {
   schema: 'trazada.session'
   schemaVersion: string
@@ -55,7 +80,8 @@ export interface Manifest {
     centerlineClosureM?: number
     elevationRangeM?: number
     estimated: string[]
-    notes?: string[]
+    /** Avisos de calidad: objetos con código (pipeline actual) o texto libre (manifests anteriores). */
+    notes?: (string | QualityNote)[]
   }
   files: Record<'motion' | 'car' | 'timing' | 'events' | 'circuit', FileRef>
   attribution: string[]
