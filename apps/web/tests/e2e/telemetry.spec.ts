@@ -45,6 +45,25 @@ test('clic en el coche (raycast): panel de telemetría con DRS "no disponible en
   await expect(page.getByTestId('tel-drs')).toHaveCount(0)
   await expect(page.getByTestId('tel-speed')).not.toHaveText('—')
   await expect(panel.locator('canvas')).toHaveCount(2)
+  // Las gráficas tienen trazo de verdad: los últimos 20 s ocupan casi todo el ancho (no solo un lienzo vacío).
+  await expect
+    .poll(() =>
+      panel.locator('canvas').first().evaluate((c: HTMLCanvasElement) => {
+        const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
+        let minX = c.width
+        let maxX = -1
+        for (let y = 0; y < c.height; y++) {
+          for (let x = 0; x < c.width; x++) {
+            if (d[(y * c.width + x) * 4 + 3]! > 0) {
+              minX = Math.min(minX, x)
+              maxX = Math.max(maxX, x)
+            }
+          }
+        }
+        return maxX < 0 ? 0 : (maxX - minX) / c.width
+      }),
+    )
+    .toBeGreaterThan(0.6)
 })
 
 test('seguir con la cámara y volver con Esc; con el foco de un clic, el espacio reproduce', async ({ page }) => {

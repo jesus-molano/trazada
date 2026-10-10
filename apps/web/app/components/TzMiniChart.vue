@@ -19,8 +19,9 @@ let plot: uPlot | null = null
 let ro: ResizeObserver | null = null
 
 function setData(data: uPlot.AlignedData): void {
-  plot?.setData(data, false)
-  plot?.redraw(false, false)
+  // Con las escalas fijas (rangos de props), «resetScales» las deja igual; lo importante es que uPlot rehaga
+  // los trazos. Antes: setData(data, false) + redraw(false) pintaba los trazos en caché (vacíos).
+  plot?.setData(data)
 }
 
 onMounted(() => {
