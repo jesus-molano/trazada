@@ -28,6 +28,7 @@
   --tz-accent: #4cc9f0;
   --tz-accent-strong: #8ee3ff;
   --tz-accent-soft: rgb(76 201 240 / 0.16);
+  --tz-accent-soft-hover: rgb(76 201 240 / 0.28);
   --tz-focus: #8ee3ff;
 
   /* Semánticos de carrera */
@@ -43,6 +44,51 @@
   --tz-estimated: #c084fc;
   --tz-danger: #ff6b6b;
   --tz-success: #34d399;
+
+  /* Clasificación: ganar o perder puestos (siempre con flecha, cifra y texto; nunca solo el color) */
+  --tz-gain: var(--tz-success);
+  --tz-loss: var(--tz-danger);
+
+  /*
+   * Colores de cronometraje por sector, calculados por Trazada con los tiempos oficiales (no son las banderas
+   * del feed): mejor de la sesión hasta ese momento, mejor personal, el resto y «sin dato».
+   */
+  --tz-timing-best: #b36bff;
+  --tz-timing-personal: #2fbf71;
+  --tz-timing-normal: #e5c22b;
+  --tz-timing-none: #6b7381;
+  /* Vuelta rápida (resumen de la sesión) */
+  --tz-best: var(--tz-timing-best);
+
+  /* Comparación de dos pilotos (A y B): par distinguible con daltonismo y lejos de los tonos de bandera */
+  --tz-compare-a: #5c9dff;
+  --tz-compare-b: #ff9fd0;
+  /* Opacidad del coche fantasma (posición real de B desplazada en el tiempo) */
+  --tz-ghost-opacity: 0.35;
+
+  /*
+   * Mapa de calor de velocidad: rampa secuencial de luminosidad creciente (legible con cualquier tipo de
+   * daltonismo) y sin los tonos de bandera, que siempre se pintan encima. Empate de minisector (< 50 ms): gris.
+   */
+  --tz-heat-0: #4c3fae;
+  --tz-heat-1: #4a63dc;
+  --tz-heat-2: #4593ea;
+  --tz-heat-3: #77c4f3;
+  --tz-heat-4: #d6f2ff;
+  --tz-heat-tie: #7d8696;
+
+  /* Meteorología: franja de lluvia (sí/no) y curva de temperatura de pista */
+  --tz-rain: #6fa8dc;
+  --tz-weather-temp: #d9a38c;
+
+  /* Estelas por velocidad: sin rojo, amarillo ni verde de bandera; sin muestra reciente, gris */
+  --tz-trail-slow: #8b6cff;
+  --tz-trail-mid: #4aa8ff;
+  --tz-trail-fast: #d9f3ff;
+  --tz-trail-nodata: #6b7280;
+
+  /* Zonas de DRS deducidas de la telemetría (Estimado) */
+  --tz-drs: #7dd3fc;
 
   /* Escena 3D y gráficas (three.js y uPlot los leen con token() de tokens.ts) */
   --tz-scene-bg: #0a0c0f;
@@ -61,6 +107,18 @@
   --tz-car-rim: #6f7379;
   --tz-car-halo: #3f4245;
   --tz-car-helmet: #9599a0;
+  /*
+   * Ambiente de la escena: cielo según la elevación del sol en el circuito (cálculo astronómico; decorativo,
+   * no es el tiempo atmosférico), niebla solo en la pista y tono de la pista de noche (focos).
+   */
+  --tz-sky-day-zenith: #121b29;
+  --tz-sky-day-horizon: #26344a;
+  --tz-sky-dusk-zenith: #141a2a;
+  --tz-sky-dusk-horizon: #4a3326;
+  --tz-sky-night-zenith: #05070c;
+  --tz-sky-night-horizon: #101a2c;
+  --tz-fog: #121925;
+  --tz-track-night-tint: #b4c6ee;
 
   /* Compuestos de neumático */
   --tz-tyre-soft: #ff3b30;
@@ -79,6 +137,7 @@
 
   /* Espaciado (base 4 px) */
   --tz-space-0: 0;
+  --tz-space-0-5: 2px;
   --tz-space-1: 4px;
   --tz-space-2: 8px;
   --tz-space-3: 12px;
@@ -110,8 +169,35 @@
   --tz-weight-medium: 500;
   --tz-weight-semibold: 600;
   --tz-weight-bold: 700;
+  --tz-leading-none: 1;
   --tz-leading-tight: 1.2;
   --tz-leading-normal: 1.5;
+  /* Cifras destacadas (muestra cruda vigente: su valor nunca se anima) */
+  --tz-text-num-md: 18px;
+  --tz-text-num-lg: 24px;
+  --tz-text-num-xl: 36px;
+  /* Espaciado entre letras: rótulos en mayúsculas, siglas en monoespaciada y cifras grandes */
+  --tz-tracking-caps: 0.06em;
+  --tz-tracking-mono: 0.04em;
+  --tz-tracking-num: -0.02em;
+
+  /* Iconos (Lucide, trazo con el color del texto) */
+  --tz-icon-sm: 14px;
+  --tz-icon-md: 16px;
+  --tz-icon-lg: 20px;
+  --tz-icon-stroke: 2;
+
+  /* Paneles y densidad: cómodos en pantallas altas, compactos en las bajas (ver las media queries) */
+  --tz-panel-w: 300px;
+  --tz-panel-w-narrow: 256px;
+  --tz-panel-pad: var(--tz-space-4);
+  --tz-panel-gap: var(--tz-space-3);
+  --tz-row-h: 28px;
+  --tz-chart-h: 64px;
+  /* Zona táctil mínima de un control (44 px con puntero grueso) */
+  --tz-hit-min: 32px;
+  /* Tinte máximo del color de equipo en fondos y franjas (nunca como color de texto: no llega a 4,5:1) */
+  --tz-team-tint: 16%;
 
   /* Capas */
   --tz-z-canvas: 0;
@@ -128,16 +214,43 @@
   --tz-dur-base: 200ms;
   --tz-dur-slow: 360ms;
   --tz-dur-camera: 900ms;
+  /* Destello único de una fila o un mensaje que cambia */
+  --tz-dur-flash: 900ms;
   --tz-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --tz-ease-enter: cubic-bezier(0, 0, 0, 1);
   --tz-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  /* Microinteracciones: paso de una entrada escalonada, desplazamiento de entrada y escala al pulsar */
+  --tz-stagger: 24ms;
+  --tz-shift: 6px;
+  --tz-press-scale: 0.97;
 }
 
+/* Pantallas bajas (portátil de 800 px, iPad en horizontal): densidad compacta. */
+@media (max-height: 860px) {
+  :root {
+    --tz-panel-pad: var(--tz-space-3);
+    --tz-row-h: 24px;
+    --tz-text-num-xl: 30px;
+  }
+}
+
+/* Puntero grueso (táctil): zonas de 44 px. */
+@media (pointer: coarse) {
+  :root {
+    --tz-hit-min: 44px;
+  }
+}
+
+/* Movimiento reducido: sin duraciones, sin escalonado, sin desplazamiento y sin escala al pulsar (1 = neutra). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --tz-dur-fast: 0ms;
     --tz-dur-base: 0ms;
     --tz-dur-slow: 0ms;
     --tz-dur-camera: 0ms;
+    --tz-dur-flash: 0ms;
+    --tz-stagger: 0ms;
+    --tz-shift: 0px;
+    --tz-press-scale: 1;
   }
 }
