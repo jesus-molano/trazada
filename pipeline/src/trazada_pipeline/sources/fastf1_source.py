@@ -344,6 +344,37 @@ def _circuit_info(session: Any) -> CircuitInfo | None:
     return CircuitInfo(corners=corners, marshal_sectors=marshal, rotation_deg=float(info.rotation))
 
 
+def _weather(session: Any, offline: bool) -> pd.DataFrame | None:
+    """Meteorología de la sesión (D36, `weather.py`), o None si no la hay.
+
+    FastF1 no la carga (`weather=False`): su parseo pone a 0 lo que falta. Primero el stream crudo (online,
+    o offline si la caché HTTP lo guarda); offline, si no está, la caché ya parseada por FastF1 con las
+    reglas del relleno a 0. Que falte no impide generar la sesión: queda `channels.weather: absent`.
+    """
+    import fastf1.api
+
+    from trazada_pipeline import weather
+
+    try:
+        raw = fastf1.api.fetch_page(session.api_path, "weather_data")
+    except Exception as exc:  # red, API caída…
+        log.warning("Sin meteorología del live timing: %s", exc)
+        raw = None
+    if isinstance(raw, list) and raw:
+        frame = weather.parse_raw(raw)
+        if len(frame):
+            return frame
+    if not offline:
+        return None
+    try:
+        parsed = fastf1.api.weather_data(session.api_path)
+    except (Exception, SystemExit) as exc:  # sin la caché, la envoltura de FastF1 puede llamar a exit()
+        log.warning("Sin meteorología en la caché: %s", exc)
+        return None
+    frame = weather.from_fastf1_parsed(parsed) if isinstance(parsed, dict) else None
+    return frame if frame is not None and len(frame) else None
+
+
 def load_fastf1(
     season: int,
     event: str | int,
@@ -366,6 +397,7 @@ def load_fastf1(
 
     ev_info = official_event(season, event)
     session = ev_info.get_session(fastf1_identifier(ev_info, session_type))
+    # La meteorología se lee aparte y en crudo (`_weather`): el parseo de FastF1 pone a 0 lo que falta.
     session.load(laps=True, telemetry=True, weather=False, messages=True)
 
     try:
@@ -428,4 +460,5 @@ def load_fastf1(
         drs_channel=drs_present,
         source="fastf1-offline-cache" if offline else "fastf1",
         source_versions={"fastf1": fastf1.__version__, "apiCoreVersion": 15},
+        weather=_weather(session, offline),
     )

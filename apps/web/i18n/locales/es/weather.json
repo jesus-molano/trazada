@@ -1,0 +1,74 @@
+{
+  "weather": {
+    "title": "Meteorología",
+    "chip": {
+      "air": "Aire {value}",
+      "track": "Pista {value}",
+      "rain": "Lluvia",
+      "noRain": "Sin lluvia",
+      "rainNoData": "Lluvia: sin dato",
+      "wind": "Viento {value}",
+      "windNoData": "Viento: sin dato",
+      "noData": "Meteo: sin dato",
+      "name": "{reading} (meteorología: detalles)",
+      "nameNoData": "Meteo: sin dato. {reason}"
+    },
+    "unit": {
+      "celsius": "{value} °C",
+      "percent": "{value} %",
+      "hpa": "{value} hPa",
+      "ms": "{value} m/s"
+    },
+    "noData": "sin dato",
+    "reason": {
+      "outdated": "Esta sesión se generó antes de que Trazada guardara la meteorología: vuelve a descargarla para verla.",
+      "absent": "La fuente no trae meteorología para esta sesión.",
+      "stale": "Ninguna medida en los últimos {s} s (o el reloj está antes de la primera): la estación da una por minuto y aquí falta."
+    },
+    "field": {
+      "air": "Aire",
+      "track": "Pista",
+      "humidity": "Humedad",
+      "pressure": "Presión",
+      "rain": "Lluvia",
+      "wind": "Viento",
+      "direction": "Dirección del viento"
+    },
+    "rain": {
+      "yes": "Sí",
+      "no": "No"
+    },
+    "age": "Medida de hace {s} s (la estación da una por minuto).",
+    "direction": "{deg}° ({point})",
+    "compass": {
+      "label": "Brújula orientada al norte con la dirección del viento: {value}",
+      "labelNoData": "Brújula orientada al norte: dirección del viento sin dato",
+      "north": "N",
+      "outline": "El trazado, también con el norte arriba.",
+      "point": {
+        "n": "N",
+        "ne": "NE",
+        "e": "E",
+        "se": "SE",
+        "s": "S",
+        "sw": "SO",
+        "w": "O",
+        "nw": "NO"
+      }
+    },
+    "sessionRain": {
+      "none": "Ninguna medida con lluvia en la sesión.",
+      "some": "Lluvia medida en {n} tramo de la sesión (en el carril del timeline). | Lluvia medida en {n} tramos de la sesión (en el carril del timeline)."
+    },
+    "note": "Estación meteorológica del circuito (live timing). Sin interpolar: la última medida y, si tiene más de {s} s, «sin dato». La lluvia es sí o no, sin intensidad.",
+    "windNote": "La dirección es respecto al norte, como la da el feed (el punto de la brújula). El mapa 3D no está orientado al norte: por eso el viento no se dibuja sobre él.",
+    "lane": {
+      "title": "Meteorología: temperatura de pista de {min} a {max}. {rain}",
+      "titleNoTemp": "Meteorología: temperatura de pista sin dato. {rain}",
+      "rainNone": "Ninguna medida con lluvia.",
+      "rainSome": "Con lluvia en {n} tramo. | Con lluvia en {n} tramos.",
+      "step": "Pista {value}",
+      "rainSpan": "Lluvia"
+    }
+  }
+}

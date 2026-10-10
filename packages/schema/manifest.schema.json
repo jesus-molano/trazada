@@ -84,7 +84,11 @@
         "overtakeWindows": { "enum": ["raceControl", "none"] },
         "elevation": { "enum": ["real", "flat"] },
         "timingStream": { "enum": ["present", "absent"] },
-        "marshalSectors": { "enum": ["present", "absent"] }
+        "marshalSectors": { "enum": ["present", "absent"] },
+        "weather": {
+          "enum": ["present", "absent"],
+          "description": "Desde 1.1.0: meteorología en events.weather. Sin el campo, la sesión se generó antes (no se sabe si la fuente la tenía)."
+        }
       }
     },
     "quality": {

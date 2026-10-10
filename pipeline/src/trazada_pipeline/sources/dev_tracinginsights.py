@@ -312,6 +312,8 @@ def load_tracinginsights(
         source="tracinginsights-dev",
         source_versions={"tracinginsights": "dev"},
         dev=True,
+        # Sin meteorología: estos JSON no la traen (el manifest dirá `channels.weather: absent`).
+        weather=None,
         estimated=["positions", "telemetry", "trackStatus"],
         notes=[
             QualityNote(
