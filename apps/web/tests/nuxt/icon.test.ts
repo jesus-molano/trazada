@@ -93,6 +93,27 @@ describe('TzHint', () => {
     expect(free.defaultPrevented).toBe(false)
   })
 
+  it('con el foco fuera (en iPad, tocar un botón no le da el foco), Esc también la cierra antes que el Esc global', async () => {
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    const w = await mountSuspended(TzHint, { props: { label: 'Más información', text: 'Texto' }, attachTo: document.body })
+    const button = w.find('[data-testid="hint"]')
+    await button.trigger('click')
+    await nextTick()
+    outside.focus()
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    outside.dispatchEvent(esc)
+    await nextTick()
+    expect(esc.defaultPrevented).toBe(true)
+    expect(button.attributes('aria-expanded')).toBe('false')
+    // El foco no estaba en la pista: se queda donde estaba.
+    expect(document.activeElement).toBe(outside)
+    // Cerrada, ya no escucha el teclado.
+    const free = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    outside.dispatchEvent(free)
+    expect(free.defaultPrevented).toBe(false)
+  })
+
   it('un toque fuera la cierra; dentro del panel, no', async () => {
     const w = await mountSuspended(TzHint, { props: { label: 'Más información', text: 'Texto' }, attachTo: document.body })
     const button = w.find('[data-testid="hint"]')

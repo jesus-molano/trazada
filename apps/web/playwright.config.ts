@@ -15,8 +15,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
     launchOptions: {
       executablePath,
-      // WebGL por software en entornos sin GPU (CI, contenedores).
-      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+      // WebGL por software en entornos sin GPU (CI, contenedores). Sin desplazamiento suave: en headless, la
+      // animación del desplazamiento con el teclado (End en un panel enfocado) a veces no llega a avanzar y el
+      // panel se queda arriba (explanations.spec falló 5 de 12 veces así); ningún test necesita esa animación.
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-smooth-scrolling'],
     },
   },
   projects: [

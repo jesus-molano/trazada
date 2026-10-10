@@ -2,10 +2,11 @@
 /**
  * Pista «ⓘ» que se abre al pulsar (también en iPad, donde un `title` no se ve nunca). Botón de solo icono con
  * nombre (`label`, ya traducido), `aria-expanded` y `aria-controls`; el texto llega por `text` o por el slot
- * (contenido en línea: el componente vive dentro de frases y celdas). Esc la cierra y devuelve el foco al
- * botón (sin que llegue al atajo global de Esc); un toque fuera también. Con la Popover API (iPadOS/Safari
- * 17+) el panel sube a la capa superior y ningún panel con scroll lo recorta; sin ella, es un panel fijo. En
- * ambos casos se coloca al abrir, dentro de la ventana, y sigue al botón si algo se desplaza.
+ * (contenido en línea: el componente vive dentro de frases y celdas). Abierta, Esc la cierra antes que nada
+ * (sin que llegue al atajo global de Esc), también con el foco fuera de ella: en iPad, tocar un botón no le
+ * da el foco. Si el foco estaba en la pista, vuelve al botón. Un toque fuera también la cierra. Con la Popover
+ * API (iPadOS/Safari 17+) el panel sube a la capa superior y ningún panel con scroll lo recorta; sin ella, es
+ * un panel fijo. En ambos casos se coloca al abrir, dentro de la ventana, y sigue al botón si algo se desplaza.
  */
 import type { IconName } from '~/design/icons'
 
@@ -63,10 +64,12 @@ function onPointerDown(event: PointerEvent) {
 function listen(on: boolean) {
   if (on) {
     document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('keydown', onKeydown, true)
     window.addEventListener('resize', place)
     window.addEventListener('scroll', place, true)
   } else {
     document.removeEventListener('pointerdown', onPointerDown, true)
+    document.removeEventListener('keydown', onKeydown, true)
     window.removeEventListener('resize', place)
     window.removeEventListener('scroll', place, true)
   }
@@ -82,12 +85,17 @@ async function setOpen(value: boolean) {
   else pos.value = null
 }
 
+/**
+ * Esc con la pista abierta, escuchado en el documento (fase de captura): llega aunque el foco no esté en la pista.
+ * Los atajos del replay ignoran un evento ya atendido: este Esc no saca de la cámara de seguimiento.
+ */
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Escape' || !open.value) return
-  // Los atajos del replay ignoran un evento ya atendido: este Esc no saca de la cámara de seguimiento.
   event.preventDefault()
+  const el = root.value
+  const inside = !!el && (el.contains(event.target as Node | null) || el.contains(document.activeElement))
   void setOpen(false)
-  button.value?.focus()
+  if (inside) button.value?.focus()
 }
 
 onMounted(() => {
@@ -99,7 +107,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <span ref="root" class="tz-hint" @keydown="onKeydown">
+  <span ref="root" class="tz-hint">
     <button
       ref="button"
       type="button"

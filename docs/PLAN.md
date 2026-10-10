@@ -744,8 +744,8 @@ Alcance: lo que permite trabajar en paralelo en las tandas siguientes, sin nada 
 - **Nada cambia a la vista**: con los huecos vacíos, cada anfitrión se pinta como antes y sin contenedores vacíos (`tests/nuxt/slots-empty.test.ts`). Pasan todos los tests y e2e que ya existían, y la captura de referencia no cambia.
 - **0a, puntos de extensión (D29, D41)**:
   - Textos por namespace: siguen todas las claves; es y en tienen los mismos namespaces y la misma paridad; una sola raíz por namespace; una raíz repetida entre ficheros es un error (`i18n-parity`, `i18n-messages`).
-  - Huecos: cada anfitrión monta los componentes de su carpeta en orden (`order` o `renderOrder`) y con sus props (`tests/nuxt/slots.test.ts`); un fichero sin su número falla al cargar (`app/slots/collect.test.ts`).
-  - Teclas y Esc: registro con las prioridades de `ESC_PRIORITY`; registrar sin modificador una tecla que ya usa el replay es un error (`replay/keys.test.ts`).
+  - Huecos: cada anfitrión monta los componentes de su carpeta en orden (`order` o `renderOrder`) y con sus props (`tests/nuxt/slots.test.ts`; la cabecera y los superpuestos de la página y las capas dentro del grupo de la pista, en `tests/nuxt/replay-slots.test.ts`); un fichero sin su número falla al cargar (`app/slots/collect.test.ts`).
+  - Teclas y Esc: registro con las prioridades de `ESC_PRIORITY`; registrar sin modificador una tecla que ya usa el replay es un error (`replay/keys.test.ts`). `useReplayShortcuts` atiende los atajos registrados antes de cortar por Ctrl/⌘ (Ctrl+K), respeta el foco en un campo de texto y cierra con Esc por prioridades (`tests/nuxt/shortcuts.test.ts`).
   - `registerSceneStat` y `sceneStats.layers` (`replay/debug.test.ts`). El tope de draw calls de `cars.spec.ts` es 13 más lo de las capas activas, siempre < 30 (`extensions.spec.ts`).
   - `rt.ext` perezoso y memoizado, con `dispose`; `initialMs` ajustado al intervalo; con `setSceneHidden` no se piden frames a la escena, pero el reloj y los oyentes siguen (`tests/nuxt/runtime.test.ts`).
   - `stores/persisted.ts` con sus tests; `settings.ts` lo usa con el mismo formato.
@@ -760,7 +760,7 @@ Alcance: lo que permite trabajar en paralelo en las tandas siguientes, sin nada 
   - Builders `testing/laps.ts` y `testing/motion.ts` (`fakeTrzb` no cambia).
   - `@local` (`compare.local.test.ts`): s no decrece, ida y vuelta distancia↔tiempo exacta, índice de vueltas < 10 ms y barrido de minisectores de toda la sesión < 50 ms.
 - **0c, base visual (D30, D42, D44)**:
-  - `@lucide/vue` 1.48.0 exacta y anotada en `NOTICE`. `design/icons.ts` es el único que importa Lucide. `TzIcon` y `TzHint` son accesibles (`tests/nuxt/icon.test.ts`). Sin `<svg>` en línea ni glifos fuera de la lista permitida (`design/icons.test.ts`).
+  - `@lucide/vue` 1.48.0 exacta y anotada en `NOTICE`. `design/icons.ts` es el único que importa Lucide. `TzIcon` y `TzHint` son accesibles; Esc cierra la pista abierta aunque el foco esté fuera, como tras un toque en iPad (`tests/nuxt/icon.test.ts`). Sin `<svg>` en línea ni glifos fuera de la lista permitida (`design/icons.test.ts`).
   - Tokens de los ítems 1–21 (`tokens.test.ts`, que ahora escanea también los `.css` y falla con `var(--team)` en `color:`).
   - `motion.ts`: `useReducedMotion`, `listMotionAllowed` y `stagger` (`motion.test.ts`, que revisa todo el CSS).
   - `design-base.spec.ts`: densidad según el alto, zona táctil según el puntero, reduced motion, clases comunes y hover solo con `(hover: hover)`.

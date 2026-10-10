@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, markTipsSeen } from './helpers'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const OUT = resolve(here, '../../../../docs/img')
@@ -74,6 +74,7 @@ test('portada: calendario de la temporada con banderas, trazados y descargas', a
   try {
     await expect.poll(async () => (await fetch(`${base}/`).catch(() => null))?.status ?? 0, { timeout: 15_000 }).toBe(200)
     await spanish(page, base)
+    await markTipsSeen(page)
     await page.goto(`${base}/?season=2026`)
     await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
     await expect(page.getByTestId('event-melbourne')).toBeVisible({ timeout: 60_000 })

@@ -31,7 +31,10 @@ export const LAP_SC = 1 << 3
 export const LAP_VSC = 1 << 4
 /** Bandera roja en algún momento de la vuelta (TrackStatus 5). */
 export const LAP_RED = 1 << 5
-/** Vuelta 1 (en carrera y sprint, salida parada y sin tiempo oficial en el live timing). */
+/**
+ * Vuelta 1 de cada coche, en toda sesión: en carrera y sprint es la de la salida parada (sin tiempo oficial en el
+ * live timing); en libres y clasificación, la primera salida del box. Nunca es representativa.
+ */
 export const LAP_FIRST = 1 << 6
 /** Sin tiempo oficial (`lapMs` −1). */
 export const LAP_NO_TIME = 1 << 7
