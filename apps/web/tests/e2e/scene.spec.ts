@@ -201,7 +201,9 @@ test.describe('legibilidad del mapa', () => {
   test('siguiendo a un coche, la pista se ve con su anchura real (no se ensancha de cerca)', async ({ page }) => {
     await openScene(page)
     await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
-    await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+    // Un coche concreto que en ese instante rueda por la pista (NOR, el 1): quién va primero depende de la
+    // torre de tiempos del fixture, no de la escena.
+    await page.locator('[data-testid="leaderboard"] [data-car="1"]').getByRole('button').click()
     await page.getByTestId('follow-toggle').click()
     await expect.poll(async () => (await scene(page)).cameraMode, { timeout: 5000 }).toBe('follow')
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
