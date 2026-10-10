@@ -35,6 +35,15 @@ cd pipeline && uv sync
 uv run trazada --help
 uv run ruff check && uv run ruff format --check
 uv run pytest                 # excluye @local; uv run pytest -m local para tests con datos completos
+
+# Datos (salen en data/v1/, ignorado por git)
+uv run trazada probe                                      # ¿esta red puede leer el live timing? (nube: 403)
+uv run trazada build 2026 "Belgian Grand Prix" fp1        # FastF1 online (solo IP residencial)
+uv run trazada sanitize-cache <caché-ajena>/<año>/<evento>/<sesión>   # unpickler restringido → .cache/fastf1-sanitized
+uv run trazada build 2026 "Belgian Grand Prix" fp1 --offline          # desde la caché saneada
+uv run trazada dev-ti "<TI>/2026/Japanese Grand Prix/Race" --season 2026 --round 3 --slug suzuka  # SOLO dev
+uv run trazada catalog [--public]                         # --public falla si hay sesiones dev
+uv run trazada prune [--apply]                            # borra ficheros huérfanos de > 7 días
 ```
 
 ## Cómo verificar un cambio (antes de cada commit)
@@ -50,7 +59,7 @@ uv run pytest                 # excluye @local; uv run pytest -m local para test
 - **TypeScript**: strict, sin `any` implícito; el motor (`apps/web/app/engine`) no importa Vue ni three y tiene tests junto al código (`*.test.ts`).
 - **Componentes**: prefijo `Tz` (evita choques con los componentes globales que registra `@tresjs/nuxt` desde cientos: `Grid`, `Html`, `Image`…).
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
-- **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion`.
+- **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio hasta el primer deploy de datos, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).
 - **Fixtures**: solo extractos mínimos reales (≤ 1 MB en total) o sintéticos.
 - **Docs**: cuando cambie una decisión, actualizar `docs/BRIEF.md` (registro de decisiones) y `docs/PLAN.md`.

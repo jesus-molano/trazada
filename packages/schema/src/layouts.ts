@@ -8,6 +8,8 @@ import type { TrzbType } from './trzb'
 export interface ColumnSpec {
   type: TrzbType
   encoding?: 'raw' | 'delta'
+  /** Bytes agrupados por posición (mejor compresión); el lector los reordena. */
+  shuffle?: boolean
   unit?: string
   scale?: number
   offset?: number

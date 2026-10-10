@@ -2,22 +2,187 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import time
+from pathlib import Path
+
 import typer
 
 from trazada_pipeline import __version__
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Pipeline de datos de Trazada.")
 
+REPO = Path(__file__).resolve().parents[3]
+DEFAULT_DATA = REPO / "data"
+DEFAULT_CACHE = REPO / ".cache" / "fastf1"
+DEFAULT_SANITIZED = REPO / ".cache" / "fastf1-sanitized"
+PRUNE_AFTER_DAYS = 7
+
 
 @app.callback()
-def main() -> None:
+def main(verbose: bool = typer.Option(False, "--verbose", "-v", help="Log detallado.")) -> None:
     """Pipeline de datos de Trazada."""
+    logging.basicConfig(
+        level=logging.INFO if verbose else logging.WARNING, format="%(levelname)s %(message)s"
+    )
 
 
 @app.command()
 def version() -> None:
     """Muestra la versión del pipeline."""
     typer.echo(__version__)
+
+
+def _report(report: object) -> None:
+    from trazada_pipeline.build import BuildReport
+
+    assert isinstance(report, BuildReport)
+    typer.echo(f"manifest: {report.manifest_path}")
+    typer.echo(f"estado:   {report.status}")
+    total = sum(report.sizes.values())
+    sizes = ", ".join(f"{k} {v / 1024:.0f} KiB" for k, v in report.sizes.items())
+    typer.echo(f"tamaño:   {total / 1024 / 1024:.2f} MiB ({sizes})")
+    for w in report.warnings:
+        typer.echo(f"aviso:    {w}")
+
+
+@app.command()
+def build(
+    season: int = typer.Argument(..., help="Temporada, p. ej. 2026."),
+    event: str = typer.Argument(..., help="Ronda (número) o nombre del evento según FastF1."),
+    session: str = typer.Argument(..., help="fp1|fp2|fp3|sq|sprint|q|race"),
+    data: Path = typer.Option(DEFAULT_DATA, help="Raíz de salida (se escribe en <data>/v1/)."),
+    cache: Path | None = typer.Option(None, help="Caché de FastF1 (por defecto .cache/fastf1)."),
+    offline: bool = typer.Option(False, help="Solo caché (p. ej. una caché saneada con sanitize-cache)."),
+    rebuild_circuit: bool = typer.Option(False, help="Reconstruye el circuito canónico aunque exista."),
+    dev_corners: Path | None = typer.Option(
+        None, help="SOLO DESARROLLO: corners.json de TracingInsights si MultiViewer no es accesible."
+    ),
+) -> None:
+    """Descarga (o lee de caché) una sesión con FastF1 y genera sus ficheros."""
+    from trazada_pipeline.build import build_session
+    from trazada_pipeline.sources.dev_tracinginsights import load_ti_corners
+    from trazada_pipeline.sources.fastf1_source import load_fastf1
+
+    cache_dir = cache or (DEFAULT_SANITIZED if offline else DEFAULT_CACHE)
+    ev: str | int = int(event) if event.isdigit() else event
+    sd = load_fastf1(season, ev, session, cache_dir, offline=offline)
+    if sd.circuit_info is None and dev_corners is not None:
+        sd.circuit_info = load_ti_corners(dev_corners)
+        sd.notes.append(
+            "Curvas y rotación de MultiViewer leídas de una copia de TracingInsights (desarrollo)."
+        )
+    _report(build_session(sd, data, rebuild_circuit=rebuild_circuit))
+
+
+@app.command("sanitize-cache")
+def sanitize_cache(
+    src: Path = typer.Argument(
+        ..., help="Carpeta de sesión de una caché FastF1 de terceros (<año>/<evento>/<sesión>)."
+    ),
+    dst: Path = typer.Option(DEFAULT_SANITIZED, help="Raíz de la caché saneada."),
+) -> None:
+    """Re-serializa una caché FastF1 de terceros con un unpickler restringido (lista blanca)."""
+    from trazada_pipeline.sources.offline_cache import sanitize_session_cache
+
+    typer.echo(sanitize_session_cache(src, dst))
+
+
+@app.command("dev-ti")
+def dev_ti(
+    session_dir: Path = typer.Argument(
+        ..., help="Carpeta de sesión del repo TracingInsights (…/<evento>/<sesión>)."
+    ),
+    season: int = typer.Option(..., help="Temporada."),
+    round_: int = typer.Option(..., "--round", help="Ronda."),
+    slug: str = typer.Option(..., help="Slug del evento (registro dev de circuits.json)."),
+    data: Path = typer.Option(DEFAULT_DATA, help="Raíz de salida."),
+    rebuild_circuit: bool = typer.Option(False),
+) -> None:
+    """SOLO DESARROLLO: sesión desde JSON de TracingInsights (sale marcada `dev`, no publicable)."""
+    from trazada_pipeline.build import build_session
+    from trazada_pipeline.sources.dev_tracinginsights import load_tracinginsights
+
+    sd = load_tracinginsights(session_dir, season, round_, slug)
+    _report(build_session(sd, data, rebuild_circuit=rebuild_circuit))
+
+
+@app.command()
+def probe(timeout: float = typer.Option(10.0)) -> None:
+    """Comprueba si esta red puede leer el archivo de live timing de F1 (las IPs de nube reciben 403)."""
+    import urllib.error
+    import urllib.request
+
+    urls = {
+        "livetiming": "https://livetiming.formula1.com/static/2025/Index.json",
+        "openf1": "https://api.openf1.org/v1/sessions?year=2025&session_name=Race&country_name=Belgium",
+    }
+    ok = True
+    for name, url in urls.items():
+        req = urllib.request.Request(url, headers={"User-Agent": f"trazada-pipeline/{__version__}"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                code = resp.status
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+        except OSError as exc:
+            code = f"error: {exc}"
+        typer.echo(f"{name:<11} {code}")
+        ok &= code == 200
+    raise typer.Exit(0 if ok else 1)
+
+
+def _referenced(v1: Path) -> set[Path]:
+    refs: set[Path] = set()
+    for manifest in v1.glob("sessions/*/*/*/manifest.json"):
+        doc = json.loads(manifest.read_text())
+        for f in doc["files"].values():
+            refs.add((manifest.parent / f["path"]).resolve())
+    for pointer in v1.glob("circuits/*/circuit.json"):
+        refs.add((pointer.parent / json.loads(pointer.read_text())["file"]["path"]).resolve())
+    return refs
+
+
+@app.command()
+def prune(
+    data: Path = typer.Option(DEFAULT_DATA),
+    days: int = typer.Option(
+        PRUNE_AFTER_DAYS, help="Antigüedad mínima de un fichero huérfano para borrarlo."
+    ),
+    dry_run: bool = typer.Option(True, "--dry-run/--apply"),
+) -> None:
+    """Borra ficheros con hash que ningún manifest referencia y tienen más de N días."""
+    v1 = data / "v1"
+    refs = _referenced(v1)
+    limit = time.time() - days * 86400
+    for path in sorted(v1.rglob("*.gz")):
+        if path.resolve() in refs or path.stat().st_mtime > limit:
+            continue
+        typer.echo(f"{'borraría' if dry_run else 'borrado'}: {path.relative_to(data)}")
+        if not dry_run:
+            path.unlink()
+
+
+@app.command()
+def catalog(data: Path = typer.Option(DEFAULT_DATA), public: bool = typer.Option(False)) -> None:
+    """Muestra el catálogo; con --public falla si contiene sesiones de desarrollo (antes de publicar)."""
+    path = data / "v1" / "catalog.json"
+    doc = json.loads(path.read_text())
+    dev = []
+    for season in doc["seasons"]:
+        for ev in season["events"]:
+            for s in ev["sessions"]:
+                flag = " [dev]" if s.get("dev") else ""
+                typer.echo(
+                    f"{season['season']} R{ev['round']:02d} {ev['slug']:<16} {s['session']:<7} "
+                    f"{s['status']:<11} {s.get('bytes', 0) / 1024 / 1024:6.2f} MiB{flag}"
+                )
+                if s.get("dev"):
+                    dev.append(f"{season['season']}/{ev['slug']}/{s['session']}")
+    if public and dev:
+        typer.echo(f"ERROR: el catálogo contiene sesiones de desarrollo: {', '.join(dev)}", err=True)
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

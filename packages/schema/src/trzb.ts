@@ -5,6 +5,7 @@
  *
  * Las columnas `raw` se devuelven como vistas sin copia sobre el buffer (por eso la alineación a 8).
  * Las columnas `delta` o cuantizadas (`scale`/`offset`) se materializan en Float64Array (o el tipo pedido).
+ * Las columnas `shuffle` guardan los bytes agrupados por posición y se reordenan antes de decodificar.
  */
 import type { LayoutSpec } from './layouts'
 
@@ -24,6 +25,7 @@ export interface TrzbColumnHeader {
   name: string
   type: TrzbType
   encoding?: 'raw' | 'delta'
+  shuffle?: boolean
   scale?: number
   offset?: number
   unit?: string
@@ -85,6 +87,18 @@ function isLittleEndian(): boolean {
   return littleEndian
 }
 
+/** Deshace el agrupado de bytes: byte k del valor i está en `start + k·rows + i`. */
+function unshuffle(buffer: ArrayBuffer, start: number, rows: number, type: TrzbType): TypedColumn {
+  const size = BYTES[type]
+  const src = new Uint8Array(buffer, start, rows * size)
+  const dst = new Uint8Array(rows * size)
+  for (let k = 0; k < size; k++) {
+    const plane = k * rows
+    for (let i = 0; i < rows; i++) dst[i * size + k] = src[plane + i]!
+  }
+  return new CTORS[type](dst.buffer, 0, rows)
+}
+
 function decodeColumn(buffer: ArrayBuffer, base: number, rows: number, col: TrzbColumnHeader): TypedColumn {
   const Ctor = CTORS[col.type]
   if (!Ctor) throw new TrzbError(`tipo desconocido: ${col.type}`)
@@ -92,7 +106,7 @@ function decodeColumn(buffer: ArrayBuffer, base: number, rows: number, col: Trzb
   if (start % BYTES[col.type] !== 0) throw new TrzbError(`columna ${col.name} desalineada`)
   if (col.byteLength !== rows * BYTES[col.type]) throw new TrzbError(`columna ${col.name}: longitud inconsistente`)
   if (start + col.byteLength > buffer.byteLength) throw new TrzbError(`columna ${col.name} fuera del fichero`)
-  const raw = new Ctor(buffer, start, rows)
+  const raw = col.shuffle ? unshuffle(buffer, start, rows, col.type) : new Ctor(buffer, start, rows)
   const isDelta = col.encoding === 'delta'
   const hasScale = col.scale !== undefined || (col.offset !== undefined && col.offset !== 0)
   if (!isDelta && !hasScale && !col.decode) return raw
@@ -149,6 +163,7 @@ export function validateAgainstLayout(header: TrzbHeader, layout: LayoutSpec): v
       const same =
         col.type === cspec.type &&
         (col.encoding ?? 'raw') === (cspec.encoding ?? 'raw') &&
+        (col.shuffle ?? false) === (cspec.shuffle ?? false) &&
         (col.scale ?? 1) === (cspec.scale ?? 1) &&
         (col.offset ?? 0) === (cspec.offset ?? 0)
       if (!same) throw new TrzbError(`${layout.layout}.${tname}.${cname}: tipo o codificación incompatibles`)

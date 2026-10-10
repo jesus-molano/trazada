@@ -5,33 +5,101 @@
   "tables": {
     "centerline": {
       "columns": {
-        "x": { "type": "f32", "unit": "m" },
-        "y": { "type": "f32", "unit": "m" },
-        "z": { "type": "f32", "unit": "m" }
+        "x": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        },
+        "y": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        },
+        "z": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        }
       }
     },
     "pitlane": {
       "columns": {
-        "x": { "type": "f32", "unit": "m" },
-        "y": { "type": "f32", "unit": "m" },
-        "z": { "type": "f32", "unit": "m" }
+        "x": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        },
+        "y": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        },
+        "z": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "cm",
+          "scale": 0.01,
+          "decode": "f32"
+        }
       }
     },
     "corners": {
       "columns": {
-        "number": { "type": "u8" },
-        "letter": { "type": "u8", "description": "Código ASCII de la letra (0 = sin letra)" },
-        "s": { "type": "f32", "unit": "m" },
-        "x": { "type": "f32", "unit": "m" },
-        "y": { "type": "f32", "unit": "m" },
-        "angle": { "type": "f32", "unit": "deg" }
+        "number": {
+          "type": "u8"
+        },
+        "letter": {
+          "type": "u8",
+          "description": "Código ASCII de la letra (0 = sin letra)"
+        },
+        "s": {
+          "type": "f32",
+          "unit": "m"
+        },
+        "x": {
+          "type": "f32",
+          "unit": "m"
+        },
+        "y": {
+          "type": "f32",
+          "unit": "m"
+        },
+        "angle": {
+          "type": "f32",
+          "unit": "deg"
+        }
       }
     },
     "marshalSectors": {
       "columns": {
-        "number": { "type": "u8" },
-        "sStart": { "type": "f32", "unit": "m" },
-        "sEnd": { "type": "f32", "unit": "m", "description": "Puede ser menor que sStart si el sector cruza s = 0" }
+        "number": {
+          "type": "u8"
+        },
+        "sStart": {
+          "type": "f32",
+          "unit": "m"
+        },
+        "sEnd": {
+          "type": "f32",
+          "unit": "m",
+          "description": "Puede ser menor que sStart si el sector cruza s = 0"
+        }
       }
     }
   }

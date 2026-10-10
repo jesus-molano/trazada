@@ -1,9 +1,10 @@
-# Trazada: plan de la Fase 1 (propuesta para aprobación)
+# Trazada: plan de la Fase 1
 
-> Estado: **borrador para aprobación**, 2026-10-10. Aún no hay código del proyecto.
+> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0, H1 y H2 (ver "Progreso" en §8).
 > Documentos de apoyo:
 > - [`research/validacion-brief.md`](research/validacion-brief.md): cada afirmación del brief contrastada con fuentes primarias y verificación adversarial.
 > - [`research/empirico-2026.md`](research/empirico-2026.md): medidas sobre datos reales de 2026.
+> - [`research/h2-pipeline.md`](research/h2-pipeline.md): criterios de H2 medidos sobre las sesiones de referencia, peso y formato.
 >
 > Terminología: **Web Worker** es el hilo del navegador. **Worker de Cloudflare** es el servicio de hosting.
 
@@ -228,7 +229,7 @@ Etapas: `probe → fetch (FastF1, caché) → circuito canónico → proyección
 
 | Fase futura | Qué lo deja preparado en la Fase 1 |
 |---|---|
-| Heatmap histórico de incidencias | **Circuito canónico por trazado** (`circuitKey` + `layoutId` en `pipeline/circuits.yaml`, con su longitud oficial y su fuente), así que `s` es comparable entre sesiones y temporadas. Cada evento de race control guarda `turn`, `s` canónica y `marshalSector`. El parser vive en Python y puede agregar temporadas. |
+| Heatmap histórico de incidencias | **Circuito canónico por trazado** (`circuitKey` + `layoutId` en `pipeline/circuits.json`, con su longitud oficial y su fuente), así que `s` es comparable entre sesiones y temporadas. Cada evento de race control guarda `turn`, `s` canónica y `marshalSector`. El parser vive en Python y puede agregar temporadas. |
 | Coche 3D detallado (desgaste, energía y aero, todos Estimados) | `ViewRegistry` con scissor ya en marcha. Los manifests listan los canales disponibles (`channels`) y los campos estimados (`quality.estimated`). Componente `Estimado` común. La telemetría cruda (velocidad) está disponible en el motor para estimar energía. |
 | Piloto 3D con Mixamo | Un solo contexto y vistas. GLB Meshopt con carga diferida y caché compartida. Aviso legal sobre avatares reconocibles (§5). |
 | Publicación automática | El pipeline es idempotente y validado, guarda `pipeline.source` en el manifest, el archivo privado es obligatorio antes de automatizar, el deploy de datos es independiente de la app, el adaptador de fuentes está listo para OpenF1 y hay probe de 403. |
@@ -274,7 +275,7 @@ trazada/
 │   ├── trzb/*.layout.json         # columnas, tipos, escalas
 │   └── src/index.ts               # tipos TS generados + versiones
 ├── pipeline/                      # Python 3.13 + uv
-│   ├── pyproject.toml  uv.lock  circuits.yaml
+│   ├── pyproject.toml  uv.lock  circuits.json
 │   ├── src/trazada_pipeline/{cli,sources,circuit,projection,timing,racecontrol,encode,validate}/
 │   └── tests/{fixtures/, golden/}
 ├── data/                          # salida local (gitignored)
@@ -529,6 +530,14 @@ Trampas:
 
 **Orden**: H0 → H1 → H2 → H3 → H4 → H5 → H6 → H7 → H8 → H9 → H10 → H11. H10 (UX transversal) se aplica en cada hito y se cierra al final. Cada hito se verifica antes de su commit.
 
+### Progreso
+
+| Hito | Estado | Notas |
+|---|---|---|
+| H0 | ✅ | CI en verde; probe desde Actions: F1 responde 403 (R1 confirmado). |
+| H1 | ✅ | Medida de peso y formato hecha en H2 con el layout final: gzip + *byte shuffle*; zstd solo ahorra 5–11 % y Arrow pesa el doble (`research/h2-pipeline.md`). |
+| H2 | ✅ (con matices) | Criterios cumplidos, salvo la cobertura de un coche que abandona en la fuente dev (97,5 %, sin muestras tras pararse). Sesiones de referencia: Bélgica FP1 2026 (caché saneada) y Japón 2026 carrera (fuente dev, no publicable). Pendiente: verificar las longitudes oficiales y probar los sectores de comisarios con MultiViewer en el primer build desde IP residencial. |
+
 **Correspondencia con el brief**:
 - punto 1 → H3; 2 → H2; 3 → H5; 4 → H6; 5 → H4; 6 → H7; 7 → H8; 8 → H9; 10 → H11;
 - punto 9 → H2 (pytest del parser), H6 (Vitest de la interpolación) y H3/H4 (e2e).
@@ -548,7 +557,7 @@ Los criterios dependen del tipo de sesión:
 - **Carrera y sprint**: vueltas del líder y orden de llegada.
 - **Clasificación y libres**: orden de mejores vueltas.
 
-Las longitudes oficiales están en `pipeline/circuits.yaml`, con su fuente.
+Las longitudes oficiales están en `pipeline/circuits.json`, con su fuente.
 
 ### H0: Cimientos y verificación de datos crudos
 Alcance:
@@ -579,7 +588,7 @@ Alcance:
 - **Cobertura**: ≥ 99 % de pos/car por piloto en sus intervalos en pista.
 - **Carrera y sprint**: vueltas del líder = total oficial, y el orden derivado de la última vuelta = clasificación oficial. Jolpica se usa **solo como referencia local del test**: un test comprueba que ningún campo de Jolpica se serializa.
 - **Clasificación y libres**: el orden de mejores vueltas = la referencia.
-- **Geometría**: cierre de la línea < 2 m; longitud a ±3 % de `circuits.yaml`; `s` monótona; el pit lane tiene `entryS` y `exitS`, y su longitud de arco está a ±10 % de la de las muestras de pit.
+- **Geometría**: cierre de la línea < 2 m; longitud a ±3 % de `circuits.json`; `s` monótona; el pit lane tiene `entryS` y `exitS`, y su longitud de arco está a ±10 % de la de las muestras de pit.
 - **Casos sintéticos con test**: cruce de `s = 0` en el pit lane, cola en el pit lane con bandera roja, drive-through, coche que se para en pista.
 - **Parser de race control**: *golden set* de ≥ 300 mensajes etiquetados a mano (2023–2026) que incluyen BLUE, track limits, incidentes y su resolución, sanciones, SC/VSC/roja, OVERTAKE/DRS ENABLED y CHEQUERED.
   - Coincidencia exacta del 100 % en `kind`, `cars`, `turn` y `lap`.

@@ -53,16 +53,17 @@ Cabecera:
 ```json
 { "layout": "motion", "revision": 1, "schemaVersion": "1.0.0",
   "tables": [ { "name": "pos", "rows": 123,
-                "columns": [ { "name": "t", "type": "i32", "encoding": "delta", "unit": "ms",
-                               "decode": "f64", "byteOffset": 0, "byteLength": 492 } ] } ],
+                "columns": [ { "name": "t", "type": "i32", "encoding": "delta", "shuffle": true,
+                               "unit": "ms", "decode": "f64", "byteOffset": 0, "byteLength": 492 } ] } ],
   "meta": { } }
 ```
 
 - **Tipos**: `u8 i8 u16 i16 u32 i32 f32 f64`.
 - **`encoding: delta`**: se guarda `v[i] − v[i−1]`, con `v[−1] = 0`, a lo largo de toda la columna, aunque cruce coches. El lector reconstruye la serie con una suma acumulada.
-- **Cuantización**: el valor físico es `raw × scale + offset`. Por ejemplo, `s` se guarda en cm y se lee en m.
+- **`shuffle: true`**: los bytes de la columna (ya en el tipo del disco y tras el delta) se guardan agrupados por posición: primero el byte 0 de todos los valores, luego el byte 1, etc. Así, gzip comprime mucho mejor los enteros pequeños de los deltas. Medido en Bélgica FP1 2026: `t` de `car` pasa de 231 KB a 19 KB. El lector reordena los bytes antes de decodificar, así que la columna deja de ser una vista sin copia.
+- **Cuantización**: el valor físico es `raw × scale + offset`. Por ejemplo, `s` se guarda en dm y se lee en m.
 - **`decode`**: tipo de destino en memoria (`f64` para tiempos y distancias, porque Float32 perdería precisión con s > 167 km o t > 4,6 h).
-- Las columnas sin `delta` ni `scale` se exponen como **vistas sin copia** sobre el buffer.
+- Las columnas sin `delta`, `scale` ni `shuffle` se exponen como **vistas sin copia** sobre el buffer.
 - **Compresión externa**: la indica el manifest (`gzip` por defecto, determinista con `mtime = 0`; `zstd` es opcional). En el navegador se descomprime con `DecompressionStream`.
 
 ## Layouts v1
@@ -70,11 +71,11 @@ Cabecera:
 | Layout | Tabla | Columnas |
 |---|---|---|
 | `motion` | `cars` | car, start, count |
-| | `pos` | t (i32 ms, delta → f64) · path (0 pista, 1 pit, 2 sin dato) · s (i32 cm, delta → f64 m) · projErr (u8 dm) |
+| | `pos` | t (i32 ms, delta+shuffle → f64) · path (0 pista, 1 pit, 2 sin dato) · s (i32 dm, delta+shuffle → f64 m) · projErr (u8 dm) |
 | `car` | `cars` | car, start, count |
-| | `tel` | t (i32 ms, delta → f64) · speed (u16 km/h) · rpm · gear · throttle (255 = sin dato) · brake (0/1) · drs (255 = canal ausente) |
-| `circuit` | `centerline` | x, y, z (f32 m, paso fijo de 1 m; orientación del mapa oficial, centrado) |
-| | `pitlane` | x, y, z (f32 m) |
+| | `tel` | t (i32 ms, delta+shuffle → f64) · speed (i16 km/h, delta+shuffle → f32) · rpm (ídem) · gear · throttle (255 = sin dato) · brake (0/1) · drs (255 = canal ausente) |
+| `circuit` | `centerline` | x, y, z (i32 cm, delta+shuffle → f32 m; paso fijo de 1 m; orientación del mapa oficial, centrado) |
+| | `pitlane` | x, y, z (ídem) |
 | | `corners` | number, letter (ASCII), s, x, y, angle |
 | | `marshalSectors` | number, sStart, sEnd. Sector n = [s(marcador n), s(marcador n+1)), con envoltura en s = 0 |
 | `timing` | `laps` | car, lap, startMs, endMs, lapMs, s1/s2/s3Ms (−1 = sin dato), compound (enum), tyreLife, fresh, stint, pitInMs, pitOutMs, position, trackStatusMask, deleted |
@@ -99,3 +100,7 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
+
+## Estado de la versión 1
+
+La versión 1 del esquema **no se ha publicado todavía**. Hasta el primer deploy de datos (H11), los cambios en v1 se hacen en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. Desde ese deploy rige la política de versiones de arriba.

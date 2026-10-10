@@ -5,17 +5,49 @@
   "tables": {
     "cars": {
       "columns": {
-        "car": { "type": "u8", "description": "Número del coche" },
-        "start": { "type": "u32", "description": "Primera fila del coche en pos" },
-        "count": { "type": "u32", "description": "Filas del coche en pos" }
+        "car": {
+          "type": "u8",
+          "description": "Número del coche"
+        },
+        "start": {
+          "type": "u32",
+          "description": "Primera fila del coche en pos"
+        },
+        "count": {
+          "type": "u32",
+          "description": "Filas del coche en pos"
+        }
       }
     },
     "pos": {
       "columns": {
-        "t": { "type": "i32", "encoding": "delta", "unit": "ms", "decode": "f64", "description": "Tiempo de sesión" },
-        "path": { "type": "u8", "enum": "path", "description": "0 pista, 1 pit lane, 2 sin dato" },
-        "s": { "type": "i32", "encoding": "delta", "unit": "cm", "scale": 0.01, "decode": "f64", "description": "Distancia acumulada sobre la línea canónica (m tras decodificar); en pit, equivalente en pista" },
-        "projErr": { "type": "u8", "unit": "dm", "description": "Distancia de la muestra a la línea (saturada a 255)" }
+        "t": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "ms",
+          "decode": "f64",
+          "description": "Tiempo de sesión"
+        },
+        "path": {
+          "type": "u8",
+          "enum": "path",
+          "description": "0 pista, 1 pit lane, 2 sin dato"
+        },
+        "s": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "dm",
+          "scale": 0.1,
+          "decode": "f64",
+          "description": "Distancia acumulada sobre la línea canónica (m tras decodificar, resolución 1 dm); en pit, equivalente en pista"
+        },
+        "projErr": {
+          "type": "u8",
+          "unit": "dm",
+          "description": "Distancia de la muestra a la línea (saturada a 255)"
+        }
       }
     }
   }

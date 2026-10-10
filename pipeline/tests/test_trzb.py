@@ -100,3 +100,20 @@ def test_golden_files_match(name: str) -> None:
         )
     assert path.exists(), "falta el fichero dorado: UPDATE_GOLDEN=1 uv run pytest tests/test_trzb.py"
     assert gzip.decompress(path.read_bytes()) == data, "el fichero dorado no coincide con el codificador"
+
+
+@pytest.mark.parametrize("dtype", ["<i2", "<u2", "<i4", "<f4", "<f8", "u1"])
+def test_shuffle_roundtrip(dtype: str) -> None:
+    rng = np.random.default_rng(7)
+    arr = (rng.normal(size=257) * 1000).astype(dtype)
+    raw = trzb.shuffle_bytes(arr)
+    assert len(raw) == arr.nbytes
+    np.testing.assert_array_equal(trzb.unshuffle_bytes(raw, np.dtype(dtype), len(arr)), arr)
+
+
+def test_shuffle_flag_is_written_to_header() -> None:
+    data = trzb.encode("motion", golden_tables()["motion"])
+    dec = trzb.decode(data)
+    cols = {c["name"]: c for c in dec.header["tables"][1]["columns"]}
+    assert cols["t"]["shuffle"] is True and cols["s"]["shuffle"] is True
+    assert "shuffle" not in cols["path"]

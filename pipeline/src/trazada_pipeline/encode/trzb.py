@@ -4,6 +4,10 @@ Formato (little-endian):
     "TRZB" | u16 containerVersion | u16 flags | u32 headerLen | header JSON UTF-8 |
     padding a 8 | columnas, cada una alineada a 8 (byteOffset relativo al inicio de la sección de datos)
 
+Columnas con `shuffle: true`: los bytes del tipo del disco se guardan agrupados por posición (todos los
+bytes 0, luego todos los 1…). No cambia los valores; solo hace que gzip comprima mucho mejor los enteros
+pequeños de las columnas delta.
+
 El codificador valida las tablas contra el layout compartido (packages/schema/trzb/*.layout.json):
 tablas y columnas exactas, mismo nº de filas por tabla, valores representables sin pérdida en el tipo
 del disco (con la cuantización `scale`/`offset` del layout) y deltas dentro del rango del tipo.
@@ -119,9 +123,9 @@ def encode(
         header_cols: list[dict[str, Any]] = []
         for cname, cspec in cols_spec.items():
             disk = _to_disk(f"{tname}.{cname}", given[cname], cspec)
-            raw = disk.tobytes()
+            raw = shuffle_bytes(disk) if cspec.get("shuffle") else disk.tobytes()
             col: dict[str, Any] = {"name": cname, "type": cspec["type"]}
-            for key in ("encoding", "scale", "offset", "unit", "decode"):
+            for key in ("encoding", "shuffle", "scale", "offset", "unit", "decode"):
                 if key in cspec:
                     col[key] = cspec[key]
             col["byteOffset"] = cursor
@@ -146,6 +150,20 @@ def encode(
     head = preamble + header_bytes
     head += b"\0" * (_align(len(head)) - len(head))
     return head + b"".join(chunks)
+
+
+def shuffle_bytes(arr: np.ndarray) -> bytes:
+    """[a0 a1 b0 b1 …] → [a0 b0 … a1 b1 …] (byte k de todos los valores, k = 0..itemsize-1)."""
+    size = arr.dtype.itemsize
+    if size == 1:
+        return arr.tobytes()
+    return arr.view(np.uint8).reshape(-1, size).T.tobytes()
+
+
+def unshuffle_bytes(data: bytes | memoryview, dtype: np.dtype, rows: int) -> np.ndarray:
+    size = dtype.itemsize
+    planes = np.frombuffer(data, dtype=np.uint8, count=rows * size).reshape(size, rows)
+    return planes.T.copy().view(dtype).reshape(rows)
 
 
 @dataclass(frozen=True)
@@ -175,7 +193,12 @@ def decode(data: bytes) -> Decoded:
         for col in table["columns"]:
             dtype = np.dtype(DTYPES[col["type"]])
             start = base + col["byteOffset"]
-            arr = np.frombuffer(data, dtype=dtype, count=table["rows"], offset=start)
+            if col.get("shuffle"):
+                arr = unshuffle_bytes(
+                    memoryview(data)[start : start + col["byteLength"]], dtype, table["rows"]
+                )
+            else:
+                arr = np.frombuffer(data, dtype=dtype, count=table["rows"], offset=start)
             values: np.ndarray = arr.astype(np.int64) if col["type"] in INT_TYPES else arr.astype(np.float64)
             if col.get("encoding") == "delta":
                 values = np.cumsum(values)

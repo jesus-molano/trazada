@@ -9,11 +9,11 @@ import numpy as np
 
 def golden_tables() -> dict[str, dict[str, dict[str, Any]]]:
     rng = np.random.default_rng(20261010)
-    # motion: 2 coches, tiempos crecientes, s monótona en metros (con cm exactos), cruce de signo en t
+    # motion: 2 coches, tiempos crecientes, s monótona en metros (con dm exactos), cruce de signo en t
     t1 = np.array([-480, -240, 0, 240, 520, 760, 1000], dtype=np.int64)
     t2 = np.array([10, 250, 490, 735], dtype=np.int64)
-    s1 = np.array([0.0, 0.0, 1.25, 20.5, 47.0, 80.33, 120.0])
-    s2 = np.array([5000.0, 5021.12, 5042.0, 5063.99])
+    s1 = np.array([0.0, 0.0, 1.2, 20.5, 47.0, 80.3, 120.0])
+    s2 = np.array([5000.0, 5021.1, 5042.0, 5063.9])
     motion = {
         "cars": {"car": [1, 44], "start": [0, 7], "count": [7, 4]},
         "pos": {
@@ -39,8 +39,8 @@ def golden_tables() -> dict[str, dict[str, dict[str, Any]]]:
     m = 5
     circuit = {
         "centerline": {
-            "x": np.round(np.cos(np.linspace(0, 2 * np.pi, m, endpoint=False)) * 100, 3),
-            "y": np.round(np.sin(np.linspace(0, 2 * np.pi, m, endpoint=False)) * 100, 3),
+            "x": np.round(np.cos(np.linspace(0, 2 * np.pi, m, endpoint=False)) * 100, 2),
+            "y": np.round(np.sin(np.linspace(0, 2 * np.pi, m, endpoint=False)) * 100, 2),
             "z": [0.0, 0.5, 1.0, 0.5, 0.0],
         },
         "pitlane": {"x": [90.0, 95.0], "y": [-5.0, 0.0], "z": [0.0, 0.0]},

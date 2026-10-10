@@ -23,8 +23,15 @@ describe('ficheros dorados TRZB generados por el codificador Python', () => {
         const table = decoded.tables[tname]!
         for (const [cname, values] of Object.entries(cols)) {
           const got = Array.from(table.columns[cname]!)
+          const spec = LAYOUTS[name].tables[tname]!.columns[cname]!
+          // Las columnas que se leen como f32 se comparan con el valor redondeado a f32 (exacto).
+          const f32 = spec.decode === 'f32' || (spec.type === 'f32' && !spec.decode)
           expect(got.length, `${tname}.${cname}`).toBe(values.length)
-          got.forEach((v, i) => expect(v, `${tname}.${cname}[${i}]`).toBeCloseTo(values[i]!, 9))
+          got.forEach((v, i) =>
+            f32
+              ? expect(v, `${tname}.${cname}[${i}]`).toBe(Math.fround(values[i]!))
+              : expect(v, `${tname}.${cname}[${i}]`).toBeCloseTo(values[i]!, 9),
+          )
         }
       }
     })
@@ -33,7 +40,7 @@ describe('ficheros dorados TRZB generados por el codificador Python', () => {
   it('las columnas raw son vistas sin copia sobre el buffer', async () => {
     const raw = await decompress(toArrayBuffer(readFileSync(golden('car.trzb.gz'))))
     const decoded = decodeTrzb(raw, LAYOUTS.car)
-    expect(decoded.tables.tel!.columns.speed!.buffer).toBe(raw)
+    expect(decoded.tables.tel!.columns.gear!.buffer).toBe(raw)
     expect(decoded.tables.tel!.columns.t).toBeInstanceOf(Float64Array)
   })
 

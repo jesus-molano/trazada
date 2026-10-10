@@ -32,7 +32,7 @@
         "event": { "type": "string", "description": "EventName corto (nunca el nombre oficial con patrocinadores)" },
         "type": { "enum": ["fp1", "fp2", "fp3", "sq", "sprint", "q", "race"] },
         "name": { "type": "string" },
-        "circuit": { "type": "string", "pattern": "^[0-9]+-[a-z0-9]+$", "description": "{circuitKey}-{layoutId}" },
+        "circuit": { "type": "string", "pattern": "^[0-9]+-[a-z0-9-]+$", "description": "{circuitKey}-{layoutId}" },
         "t0Utc": { "type": "string", "format": "date-time" },
         "gmtOffset": { "type": "string", "pattern": "^[+-][0-9]{2}:[0-9]{2}$" },
         "playback": {
