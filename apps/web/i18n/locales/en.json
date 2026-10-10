@@ -60,7 +60,12 @@
     "noWebglHint": "Enable hardware acceleration or try another browser.",
     "contextLost": "The graphics context was lost (the GPU was reset or ran out of memory).",
     "contextLostHint": "Trying to recover it…",
-    "recover": "Restart the map"
+    "recover": "Restart the map",
+    "elevation": "Height",
+    "exaggeration": "visual exaggeration ×{k}",
+    "exaggerationHint": "Track height is multiplied so the elevation change is visible: it is not the real one.",
+    "flat": "No reliable altitude: flat track",
+    "flatHint": "This session's data has no reliable altitude."
   },
   "controls": {
     "region": "Playback controls",
@@ -89,6 +94,9 @@
       "sector_yellow": "Yellow flag",
       "sector_double_yellow": "Double yellow flag"
     }
+  },
+  "estimated": {
+    "tag": "Estimated:"
   },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."

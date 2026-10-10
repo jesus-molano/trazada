@@ -101,10 +101,22 @@ test.describe('timeline', () => {
     await openReplay(page)
     await expect(page.locator('[data-testid="scene"] canvas')).toBeVisible()
     await expect.poll(() => handle(page, (h) => h.renders)).toBeGreaterThan(0)
-    await page.waitForTimeout(300)
-    const before = await handle(page, (h) => h.renders)
-    await page.waitForTimeout(300)
-    expect(await handle(page, (h) => h.renders)).toBe(before) // en pausa no se renderiza en bucle
+    // Se espera a que la escena se asiente (subida de geometría, ajustes de tamaño)…
+    let before = -1
+    await expect
+      .poll(
+        async () => {
+          const now = await handle(page, (h) => h.renders)
+          const stable = now === before
+          before = now
+          return stable
+        },
+        { intervals: [400], timeout: 10_000 },
+      )
+      .toBe(true)
+    // …y desde ahí, en pausa, no se renderiza en bucle.
+    await page.waitForTimeout(500)
+    expect(await handle(page, (h) => h.renders)).toBe(before)
     await page.keyboard.press('ArrowRight')
     await expect.poll(() => handle(page, (h) => h.renders)).toBeGreaterThan(before)
   })

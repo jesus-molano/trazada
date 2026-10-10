@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest'
+import { buildRibbon } from './ribbon'
+import { newSample, TrackPath } from './TrackPath'
+
+/** Círculo de radio 100 m con 628 vértices (~1 m de paso) y una rampa de 10 m de altura. */
+function circle(n = 628) {
+  const x: number[] = []
+  const y: number[] = []
+  const z: number[] = []
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 2 * Math.PI
+    x.push(100 * Math.cos(a))
+    y.push(100 * Math.sin(a))
+    z.push(5 + 5 * Math.sin(a))
+  }
+  return new TrackPath(x, y, z, true)
+}
+
+describe('TrackPath', () => {
+  it('longitud, envoltura y muestreo coherente en cualquier orden', () => {
+    const p = circle()
+    expect(p.length).toBeGreaterThan(2 * Math.PI * 100 - 1)
+    expect(p.length).toBeLessThan(2 * Math.PI * 100 + 1)
+    expect(p.wrap(-1)).toBeCloseTo(p.length - 1, 9)
+    expect(p.wrap(p.length + 2)).toBeCloseTo(2, 9)
+    const out = newSample()
+    for (const s of [0, 157.08, 314.16, 10, 600, 3, p.length - 0.5, -50]) {
+      p.sample(s, out)
+      expect(Math.hypot(out.x, out.y)).toBeCloseTo(100, 0)
+      expect(Math.hypot(out.tx, out.ty)).toBeCloseTo(1, 9)
+      // tangente (de la cuerda) casi perpendicular al radio: |r·t| ≤ medio paso
+      expect(Math.abs(out.x * out.tx + out.y * out.ty)).toBeLessThan(0.6)
+    }
+    p.sample(p.length / 4, out)
+    expect(out.x).toBeCloseTo(0, 0)
+    expect(out.y).toBeCloseTo(100, 0)
+    expect(out.z).toBeCloseTo(10, 1)
+  })
+
+  it('abierta: satura en los extremos', () => {
+    const p = new TrackPath([0, 10, 20], [0, 0, 0], [0, 0, 0], false)
+    const out = newSample()
+    expect(p.sample(-5, out).x).toBe(0)
+    expect(p.sample(25, out).x).toBe(20)
+    expect(p.sample(15, out).x).toBe(15)
+  })
+})
+
+describe('cinta', () => {
+  it('cerrada: dos vértices por punto, ancho constante y sistema Y arriba', () => {
+    const p = circle(200)
+    const g = buildRibbon(p, 12)
+    expect(g.positions.length).toBe(200 * 6)
+    expect(g.indices.length).toBe(200 * 6)
+    for (let i = 0; i < 200; i++) {
+      const [lx, ly, lz, rx, ry, rz] = g.positions.subarray(i * 6, i * 6 + 6)
+      expect(Math.hypot(lx! - rx!, lz! - rz!)).toBeCloseTo(12, 3)
+      expect(ly).toBe(ry) // misma altura a ambos lados
+    }
+    expect(Math.max(...g.shade)).toBe(1)
+    expect(Math.min(...g.shade)).toBe(0)
+  })
+
+  it('plana: altura 0', () => {
+    const g = buildRibbon(circle(50), 10, true)
+    for (let i = 1; i < g.positions.length; i += 3) expect(g.positions[i]).toBe(0)
+  })
+})

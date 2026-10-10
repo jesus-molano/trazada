@@ -1,6 +1,6 @@
 # Trazada: plan de la Fase 1
 
-> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H4 (ver "Progreso" en §8).
+> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H5 (ver "Progreso" en §8).
 > Documentos de apoyo:
 > - [`research/validacion-brief.md`](research/validacion-brief.md): cada afirmación del brief contrastada con fuentes primarias y verificación adversarial.
 > - [`research/empirico-2026.md`](research/empirico-2026.md): medidas sobre datos reales de 2026.
@@ -502,6 +502,7 @@ Trampas:
 | D19 | **Node 24 + TypeScript 6.0** | Nuxt 4.6 lo exige y `vue-tsc` necesita la API JS de TS. | TS 7 (se reevalúa tras H0); Nuxt 4.5.2 con Node 22 (es el plan B). |
 | D20 | **2026 = 22 coches; N variable** | Es el dato real. | — |
 | D21 | **Circuito canónico por trazado**, compartido entre sesiones | `s` es comparable entre sesiones y temporadas, como necesita el heatmap. Hay menos ficheros. | Línea central por sesión: los orígenes y longitudes difieren entre sesiones. |
+| D22 | **Etiquetas (curvas y siglas) en DOM proyectado** en cada render, en lugar de troika-three-text | Texto nítido con las fuentes de la app (woff2, sin convertir a woff/ttf para troika), accesible, i18n directo, 0 draw calls. Coste: escribir `transform` en ~45 nodos por frame (solo capa de composición). | troika `BatchedText`: necesita fuentes woff/ttf autoalojadas y el `unicodeFontsURL`, y no aporta nada para ~45 etiquetas. |
 
 ## 7. Riesgos
 
@@ -539,6 +540,7 @@ Trampas:
 | H2 | ✅ (con matices) | Criterios cumplidos, salvo la cobertura de un coche que abandona en la fuente dev (97,5 %, sin muestras tras pararse). Sesiones de referencia: Bélgica FP1 2026 (caché saneada) y Japón 2026 carrera (fuente dev, no publicable). Pendiente: verificar las longitudes oficiales y probar los sectores de comisarios con MultiViewer en el primer build desde IP residencial. |
 | H3 | ✅ (con matices) | Selector, carga en Web Worker (descarga con progreso, sha256, gunzip, TRZB, transferencia sin copias) y todos los estados con e2e. De clic a "listo" con CPU ×4: 180–400 ms y 0 *long tasks* (fixture y sesión completa de Bélgica), medido hasta la marca `trazada:ready`. **Para H11**: el montaje de la escena justo después (evaluación de three.js e inicio del renderer) es una *long task* de 260–390 ms con CPU ×4 (~65–100 ms reales). El e2e del recorrido usa **2026 → Bélgica → Libres 1** en vez de Japón → Carrera: es la única sesión real publicable disponible aquí, y el fixture se genera sin datos de MultiViewer (pendiente de permiso, §9). D4: gzip (H2). Pendiente tuyo: tiempo hasta "listo" en el portátil de referencia (lo muestra la propia página). |
 | H4 | ✅ | `SessionClock` con tests (velocidades, pausa, seek, límites, tope de delta). Un bucle `rAF` es el dueño del tiempo: la escena va en modo on-demand con `invalidate`, el cabezal del timeline se mueve por `transform` y Pinia recibe el estado a 10 Hz. e2e de atajos (también con foco en input y slider), arrastre con ratón y táctil (CDP), marcadores frente a recuentos, `prefers-reduced-motion` y render tras un seek en pausa. En local, Japón da 53 marcas de vuelta para 53 vueltas. |
+| H5 | ✅ (con matices) | Cinta con altura real y color por cota, bordes, línea de meta, pit lane y curvas; rotación oficial; exageración ×1–×3 con etiqueta "Estimado"; sesiones `flat` planas. Medido: curvas a < 30 m del XY de MultiViewer (Spa y Suzuka, local), pit lane a ±10 % de las muestras (e2e) y puente de Suzuka con Δz −5,84 m frente a −6,10 m en crudo (local; para lograrlo, z se suaviza con σ = 1 m en vez de 3). Captura con cámara fija y DPR 1 **solo de Spa**: Suzuka no puede entrar en un fixture publicable (fuente dev). Las referencias las genera el workflow `Snapshots` en el entorno del CI. Las etiquetas son DOM proyectado (D22). |
 
 **Correspondencia con el brief**:
 - punto 1 → H3; 2 → H2; 3 → H5; 4 → H6; 5 → H4; 6 → H7; 7 → H8; 8 → H9; 10 → H11;

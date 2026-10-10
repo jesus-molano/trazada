@@ -34,6 +34,10 @@ STEP_M = 1.0
 REFERENCE_LAPS = 16
 MAX_SAMPLE_GAP_M = 60.0
 PIT_DIVERGENCE_M = 4.0
+#: Suavizado gaussiano de la línea central (en muestras de 1 m). Medido en Suzuka: con 3 m en z, el
+#: desnivel del puente baja de 6,1 a 3,8 m; con 1 m queda a 0,26 m de las muestras crudas.
+XY_SIGMA_M = 3.0
+Z_SIGMA_M = 1.0
 
 
 class CircuitBuildError(RuntimeError):
@@ -153,7 +157,9 @@ def build_centerline(data: SessionData) -> tuple[np.ndarray, dict[str, float]]:
     for k in range(3):
         fv = mean[filled, k]
         mean[:, k] = np.interp(centers, np.r_[fu - length, fu, fu + length], np.r_[fv, fv, fv])
-    smooth = smooth_closed(mean, sigma=3.0)
+    smooth = smooth_closed(mean, sigma=XY_SIGMA_M)
+    # La altura se suaviza menos: puentes y túneles (el cruce de Suzuka) cambian de cota en pocos metros.
+    smooth[:, 2] = smooth_closed(mean, sigma=Z_SIGMA_M)[:, 2]
     line = resample(smooth, STEP_M, closed=True)
     # Calidad: residuo de las muestras de referencia sobre la línea final.
     final = PolylineIndex(line, closed=True)

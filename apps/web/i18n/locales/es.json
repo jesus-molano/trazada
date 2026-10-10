@@ -60,7 +60,12 @@
     "noWebglHint": "Activa la aceleración por hardware o prueba con otro navegador.",
     "contextLost": "Se perdió el contexto gráfico (la GPU se reinició o le faltó memoria).",
     "contextLostHint": "Intentando recuperarlo…",
-    "recover": "Reiniciar el mapa"
+    "recover": "Reiniciar el mapa",
+    "elevation": "Altura",
+    "exaggeration": "exageración visual ×{k}",
+    "exaggerationHint": "La altura de la pista está multiplicada para que se aprecie el desnivel: no es la real.",
+    "flat": "Sin altitud fiable: pista plana",
+    "flatHint": "Los datos de esta sesión no traen una altitud fiable."
   },
   "controls": {
     "region": "Controles de reproducción",
@@ -89,6 +94,9 @@
       "sector_yellow": "Bandera amarilla",
       "sector_double_yellow": "Doble bandera amarilla"
     }
+  },
+  "estimated": {
+    "tag": "Estimado:"
   },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."

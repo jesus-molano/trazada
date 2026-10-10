@@ -175,3 +175,47 @@ def test_rebuild_is_deterministic(path: Path, tmp_path: Path) -> None:
     report = build_session(data, tmp_path)
     again = json.loads(report.manifest_path.read_text())["files"]
     assert {k: v["sha256"] for k, v in again.items()} == {k: v["sha256"] for k, v in m["files"].items()}
+
+
+@pytest.mark.skipif(not TI_ROOT, reason="sin datos crudos locales (TRAZADA_TI_ROOT)")
+def test_suzuka_bridge_dz_matches_raw_positions() -> None:
+    """Cruce en ocho de Suzuka: la Δz de la línea central = la de las muestras crudas ±0,5 m."""
+    from trazada_pipeline.circuit.geometry import PolylineIndex
+    from trazada_pipeline.circuit.store import load_circuit
+    from trazada_pipeline.sources.dev_tracinginsights import load_tracinginsights
+
+    circuit = load_circuit("0-suzuka-dev", V1)
+    if circuit is None:
+        pytest.skip("circuito de Suzuka no generado")
+    line = circuit.centerline
+    n = len(line)
+    # Par de puntos más cercanos en planta que están lejos a lo largo de la pista: el cruce.
+    best = (np.inf, 0, 0)
+    for i in range(0, n, 2):
+        d = np.hypot(line[:, 0] - line[i, 0], line[:, 1] - line[i, 1])
+        idx = np.abs(np.arange(n) - i)
+        d[np.minimum(idx, n - idx) < 300] = np.inf
+        j = int(np.argmin(d))
+        if d[j] < best[0]:
+            best = (float(d[j]), i, j)
+    gap, i, j = best
+    assert gap < 3.0, f"no se encontró el cruce (distancia mínima {gap:.1f} m)"
+    dz_line = float(line[i, 2] - line[j, 2])
+    assert abs(dz_line) > 2.0  # es un puente, no un cruce a nivel
+
+    data = load_tracinginsights(Path(TI_ROOT) / "2026" / "Japanese Grand Prix" / "Race", 2026, 3, "suzuka")
+    pts = np.vstack(
+        [circuit.to_canonical(df[["x", "y", "z"]].to_numpy(dtype=np.float64)) for df in data.pos.values()]
+    )
+    # Radio pequeño: con más, la pendiente de los dos tramos diluye la diferencia de cota en el cruce.
+    near = pts[np.hypot(pts[:, 0] - line[i, 0], pts[:, 1] - line[i, 1]) < 4.0]
+    # Cada muestra pertenece al tramo más cercano en 3D (la z separa el de arriba del de abajo).
+    u, _ = PolylineIndex(line, closed=True).project(near)
+    length = float(circuit.length)
+    si, sj = i * length / n, j * length / n
+    circ = lambda a, b: np.minimum(np.abs(a - b), length - np.abs(a - b))  # noqa: E731
+    upper_i = near[circ(u, si) < circ(u, sj)]
+    upper_j = near[circ(u, si) >= circ(u, sj)]
+    assert len(upper_i) > 50 and len(upper_j) > 50
+    dz_raw = float(np.median(upper_i[:, 2]) - np.median(upper_j[:, 2]))
+    assert abs(dz_line - dz_raw) <= 0.5, f"Δz línea {dz_line:.2f} m frente a crudos {dz_raw:.2f} m"

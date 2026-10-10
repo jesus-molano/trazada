@@ -29,6 +29,8 @@ pnpm typecheck                # vue-tsc / tsc
 pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
 pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
+# Capturas de referencia (@screenshot): solo se comparan en CI. Se regeneran en el entorno del CI con el
+# workflow "Snapshots" (a mano, o con un push cuyo mensaje contenga [snapshots]); luego git pull.
 
 # Pipeline
 cd pipeline && uv sync
@@ -59,6 +61,7 @@ uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos
 - **Commits**: un hito o sub-hito verificado por commit, mensaje en español con prefijo (`feat:`, `fix:`, `docs:`, `test:`, `chore:`), y referencia al hito (`H3`).
 - **TypeScript**: strict, sin `any` implícito; el motor (`apps/web/app/engine`) no importa Vue ni three y tiene tests junto al código (`*.test.ts`).
 - **Componentes**: prefijo `Tz` (evita choques con los componentes globales que registra `@tresjs/nuxt` desde cientos: `Grid`, `Html`, `Image`…).
+- **Props dentro de `TresCanvas`**: objetos y arrays siempre estables (`computed`/constantes), nunca literales en la plantilla (`:scale="[1, k, 1]"`). TresCanvas vuelve a evaluar su slot por su cuenta, y un literal nuevo invalida la escena en cada evaluación: hay renders en pausa (lo vigila un e2e).
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio hasta el primer deploy de datos, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).

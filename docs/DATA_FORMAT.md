@@ -62,6 +62,7 @@ Cabecera:
 - **`encoding: delta`**: se guarda `v[i] − v[i−1]`, con `v[−1] = 0`, a lo largo de toda la columna, aunque cruce coches. El lector reconstruye la serie con una suma acumulada.
 - **`shuffle: true`**: los bytes de la columna (ya en el tipo del disco y tras el delta) se guardan agrupados por posición: primero el byte 0 de todos los valores, luego el byte 1, etc. Así, gzip comprime mucho mejor los enteros pequeños de los deltas. Medido en Bélgica FP1 2026: `t` de `car` pasa de 231 KB a 19 KB. El lector reordena los bytes antes de decodificar, así que la columna deja de ser una vista sin copia.
 - **Cuantización**: el valor físico es `raw × scale + offset`. Por ejemplo, `s` se guarda en dm y se lee en m.
+- **`s` (distancia a lo largo de la pista)** es siempre longitud de arco **en planta (2D)** sobre la línea central canónica, en el pipeline y en el front. La altitud se interpola, pero no suma distancia.
 - **`decode`**: tipo de destino en memoria (`f64` para tiempos y distancias, porque Float32 perdería precisión con s > 167 km o t > 4,6 h).
 - Las columnas sin `delta`, `scale` ni `shuffle` se exponen como **vistas sin copia** sobre el buffer.
 - **Compresión externa**: la indica el manifest (`gzip` por defecto, determinista con `mtime = 0`; `zstd` es opcional). En el navegador se descomprime con `DecompressionStream`.

@@ -4,7 +4,16 @@
  */
 import type { ReplayRuntime } from './runtime'
 
-export const sceneStats = { renders: 0, instances: 0 }
+export const sceneStats = {
+  renders: 0,
+  instances: 0,
+  ready: false,
+  pitLaneLengthM: 0,
+  /** Longitud de arco de las muestras de pit con las que se construyó el pit lane (pipeline). */
+  pitSamplesLengthM: 0,
+  corners: 0,
+  elevationScale: 1,
+}
 
 export interface TrazadaHandle {
   readonly timeMs: number
@@ -13,6 +22,7 @@ export interface TrazadaHandle {
   readonly selectedCar: string | null
   readonly frames: number
   readonly renders: number
+  readonly scene: typeof sceneStats
   readonly startMs: number
   readonly endMs: number
   readonly markers: ReplayRuntime['markers']
@@ -45,6 +55,7 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
     get renders() {
       return sceneStats.renders
     },
+    scene: sceneStats,
     startMs: rt.clock.startMs,
     endMs: rt.clock.endMs,
     markers: rt.markers,
