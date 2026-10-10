@@ -127,8 +127,9 @@
     "blueFlag": "Bandera azul",
     "pit": "PIT",
     "noSignal": "sin señal",
-    "tyre": "{compound}, {laps} vueltas",
-    "showBlueFlags": "Mostrar banderas azules"
+    "tyre": "{compound}, {laps} vuelta | {compound}, {laps} vueltas",
+    "showBlueFlags": "Mostrar banderas azules",
+    "tyreNoLife": "{compound}, vueltas sin dato"
   },
   "compound": {
     "UNKNOWN": "Desconocido",
@@ -176,7 +177,7 @@
     "title": "Dirección de carrera",
     "toggle": "Mostrar u ocultar los mensajes de dirección de carrera",
     "empty": "Aún no hay mensajes en este punto de la sesión.",
-    "count": "{n} mensajes",
+    "count": "{n} mensaje | {n} mensajes",
     "lap": "V{lap}",
     "original": "Texto original de dirección de carrera (en inglés)",
     "kind": {

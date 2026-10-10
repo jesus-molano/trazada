@@ -38,6 +38,8 @@ Los frames se miden como el intervalo entre `requestAnimationFrame` consecutivos
 - si pasa de 33,3 ms, baja un escalón la resolución de render (DPR 2 → 1,5 → 1,25 → 1 → 0,75);
 - si en tres ventanas seguidas el p95 baja de 20 ms, sube un escalón, como mucho hasta el DPR del dispositivo;
 - entre 20 y 33 ms no cambia (histéresis);
+- comprueba cada bajada: si en la ventana siguiente el p95 no mejora al menos un 10 %, el límite no es la resolución (pantalla o navegador a 30 Hz, modo de ahorro de energía, CPU), así que deshace el paso y no vuelve a bajar mientras la carga no empeore claramente (un 25 % más). Así una pantalla a 30 Hz no deja el lienzo borroso;
+- descarta los 10 frames siguientes a cada cambio (el redimensionado del lienzo da un tirón);
 - ignora los frames de más de 1 s (pestaña en segundo plano).
 
 `?governor=off` lo desactiva.

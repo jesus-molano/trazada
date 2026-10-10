@@ -82,3 +82,45 @@ test('con prefers-reduced-motion, la vuelta a la vista general es instantánea',
   await page.keyboard.press('Escape')
   expect(await page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('overview')
 })
+
+test('seguir a un coche sin señal: la cámara espera (no salta al origen) y arranca cuando el coche aparece', async ({ page }) => {
+  await gotoApp(page, FP1)
+  await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
+  await page.getByTestId('replay-title').click()
+  // Al inicio exacto del extracto aún no hay muestras: se elige un coche oculto.
+  const car = await page.evaluate(() => window.__trazada!.cars().find((c) => !c.visible)?.car ?? null)
+  expect(car).not.toBeNull()
+  await page.locator(`[data-testid="leaderboard"] [data-car="${car}"]`).getByRole('button').click()
+  const overview = await page.evaluate(() => window.__trazada!.scene.camera)
+  await page.getByTestId('follow-toggle').click()
+  await page.waitForTimeout(1500)
+  const still = await page.evaluate(() => window.__trazada!.scene.camera)
+  expect(Math.hypot(still[0]! - overview[0]!, still[1]! - overview[1]!, still[2]! - overview[2]!)).toBeLessThan(1)
+  expect(await page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('to-follow')
+  // En cuanto el coche tiene posición, empieza el seguimiento.
+  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 60_000))
+  await expect.poll(() => page.evaluate((c) => window.__trazada!.cars().find((x) => x.car === c)!.visible, car)).toBe(true)
+  await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
+})
+
+test('volver a seguir a mitad del regreso no pierde la vista general', async ({ page }) => {
+  await open(page)
+  const overview = await page.evaluate(() => window.__trazada!.scene.camera)
+  const fromOverview = () =>
+    page.evaluate((o) => {
+      const c = window.__trazada!.scene.camera
+      return Math.hypot(c[0]! - o[0]!, c[1]! - o[1]!, c[2]! - o[2]!)
+    }, overview)
+  await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+  const toggle = page.getByTestId('follow-toggle')
+  await toggle.click()
+  await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
+  await toggle.click() // vuelta a la vista general (0,9 s)…
+  await page.waitForTimeout(250)
+  expect(await page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('to-overview')
+  await toggle.click() // …y a mitad, otra vez a seguir
+  await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
+  await toggle.click()
+  await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('overview')
+  await expect.poll(fromOverview).toBeLessThan(1)
+})

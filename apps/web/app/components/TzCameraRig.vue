@@ -31,7 +31,15 @@ const overviewTarget = new Vector3()
 const followPos = new Vector3()
 const followTarget = new Vector3()
 const tmpTarget = new Vector3()
+/** Hacia dónde mira la cámara en el último render: punto de partida de cualquier transición. */
+const lookTarget = new Vector3()
 let cameraRef: Camera | null = null
+/** Hay posición de seguimiento válida (el coche se ha visto desde el último reset). */
+let hasFix = false
+/** Seguimiento pedido, a la espera de la primera posición visible del coche para arrancar. */
+let pendingFollow = false
+/** Guardar la vista general al arrancar el seguimiento (solo si se sale de la vista general). */
+let saveOverview = false
 
 /** Los MapControls son un objeto de three que el rig gobierna (no estado de Vue). */
 function mapControls(): MapControls | null {
@@ -43,25 +51,30 @@ function setMode(m: Mode) {
   sceneStats.cameraMode = m
 }
 
-function transition(to: 'follow' | 'overview') {
+function startTween(to: 'follow' | 'overview') {
   tween?.kill()
+  tween = null
   const cam = cameraRef
   if (!cam) return
-  fromPos.copy(cam.position)
   const c = mapControls()
-  fromTarget.copy(to === 'follow' ? (c?.target ?? tmpTarget.set(0, 0, 0)) : followTarget)
   if (to === 'follow') {
-    // Se guarda la vista general para volver exactamente a ella.
-    overviewPos.copy(cam.position)
-    overviewTarget.copy(c?.target ?? tmpTarget.set(0, 0, 0))
-    follow.reset()
+    if (saveOverview) {
+      // Se guarda la vista general para volver exactamente a ella.
+      overviewPos.copy(cam.position)
+      overviewTarget.copy(c?.target ?? tmpTarget.set(0, 0, 0))
+      saveOverview = false
+    }
     if (c) c.enabled = false
   }
+  fromPos.copy(cam.position)
+  fromTarget.copy(lookTarget)
   const done = () => {
+    tween = null
     setMode(to === 'follow' ? 'follow' : 'overview')
     if (to === 'overview') {
       cam.position.copy(overviewPos)
       cam.lookAt(overviewTarget)
+      lookTarget.copy(overviewTarget)
       if (c) {
         c.target.copy(overviewTarget)
         c.enabled = true
@@ -88,12 +101,35 @@ function transition(to: 'follow' | 'overview') {
   emit('invalidate')
 }
 
+function transition(to: 'follow' | 'overview') {
+  tween?.kill()
+  tween = null
+  if (to === 'follow') {
+    // Solo desde la vista general: si se vuelve a seguir a mitad del regreso, la vista guardada sigue valiendo.
+    saveOverview = mode === 'overview'
+    follow.reset()
+    hasFix = false
+    pendingFollow = true
+    blend.k = 0
+    setMode('to-follow')
+    emit('invalidate') // el seguimiento arranca en el primer render con el coche visible
+    return
+  }
+  pendingFollow = false
+  saveOverview = false
+  startTween('overview')
+}
+
 watch(
   () => [playback.following, playback.selectedCar] as const,
   ([following], [wasFollowing]) => {
     if (following && !wasFollowing) transition('follow')
     else if (!following && wasFollowing) transition('overview')
-    else if (following) follow.reset() // otro coche: la cámara salta a él
+    else if (following) {
+      // Otro coche: la cámara salta a él en cuanto se vea (hasta entonces, se queda donde está).
+      follow.reset()
+      hasFix = false
+    }
   },
 )
 
@@ -102,23 +138,36 @@ onBeforeRender(({ camera, delta }) => {
   const cam = camera.value
   if (!cam) return
   cameraRef = cam
-  if (mode !== 'overview') {
+  if (mode === 'overview') {
+    const c = mapControls()
+    if (c) lookTarget.copy(c.target)
+  } else {
     const st = rt.model.states.find((s) => s.car === playback.selectedCar)
-    if (st?.visible) {
+    if (mode !== 'to-overview' && st?.visible) {
       follow.update({ x: st.x, y: (props.flat ? 0 : st.z) * props.yScale, z: -st.y }, st.heading, delta)
       follow.position(followPos)
       followTarget.set(follow.target.x, follow.target.y, follow.target.z)
+      hasFix = true
+    }
+    if (pendingFollow && hasFix) {
+      pendingFollow = false
+      startTween('follow')
     }
     const k = blend.k
-    if (mode === 'follow') {
-      cam.position.copy(followPos)
-      cam.lookAt(followTarget)
-    } else if (mode === 'to-follow') {
-      cam.position.lerpVectors(fromPos, followPos, k)
-      cam.lookAt(tmpTarget.lerpVectors(fromTarget, followTarget, k))
-    } else {
+    if (mode === 'to-overview') {
       cam.position.lerpVectors(fromPos, overviewPos, k)
       cam.lookAt(tmpTarget.lerpVectors(fromTarget, overviewTarget, k))
+      lookTarget.copy(tmpTarget)
+    } else if (!hasFix || pendingFollow) {
+      // Sin posición del coche (sin señal, oculto o aún no visto): la cámara se queda donde está.
+    } else if (mode === 'follow') {
+      cam.position.copy(followPos)
+      cam.lookAt(followTarget)
+      lookTarget.copy(followTarget)
+    } else {
+      cam.position.lerpVectors(fromPos, followPos, k)
+      cam.lookAt(tmpTarget.lerpVectors(fromTarget, followTarget, k))
+      lookTarget.copy(tmpTarget)
     }
   }
   sceneStats.camera = [cam.position.x, cam.position.y, cam.position.z]

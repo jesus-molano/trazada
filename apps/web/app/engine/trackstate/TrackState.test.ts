@@ -46,8 +46,29 @@ describe('TrackState (sintético)', () => {
     expect(ts.snapshot.sectors).toEqual({ 3: 'YELLOW', 9: 'RED' })
     ts.update(9999)
     expect(ts.snapshot.sectors).toEqual({ 9: 'RED' })
+    // El reloj se detiene en endMs: lo que sigue abierto al final, sigue activo en ese instante.
     ts.update(10_000)
-    expect(ts.snapshot.sectors).toEqual({})
+    expect(ts.snapshot.sectors).toEqual({ 9: 'RED' })
+  })
+
+  it('una ventana recortada justo en el final sigue activa en el último instante (y las adyacentes no se solapan)', () => {
+    const end = new TrackState(
+      events({
+        windows: [
+          { kind: 'vsc', fromMs: 1000, toMs: 2000 },
+          { kind: 'vsc-ending', fromMs: 2000, toMs: 3000 },
+          { kind: 'red', fromMs: 8000, toMs: 10_000 },
+          { kind: 'overtake', fromMs: 5000, toMs: 10_000 },
+        ],
+      }),
+      10_000,
+    )
+    end.update(2000)
+    expect(end.snapshot.neutral).toBe('vsc-ending')
+    end.update(3000)
+    expect(end.snapshot.neutral).toBe(null)
+    end.update(10_000)
+    expect(end.snapshot).toMatchObject({ neutral: 'red', overtake: true })
   })
 
   it('neutralizaciones con prioridad roja > SC > VSC > fin de VSC; amarilla, overtake y DRS aparte', () => {

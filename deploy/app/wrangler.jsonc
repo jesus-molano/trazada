@@ -5,6 +5,9 @@
   "compatibility_date": "2026-08-01",
   "assets": {
     "directory": "../../apps/web/.output/public",
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
+    // nuxt generate escribe replay/index.html. Con el modo por defecto (auto-trailing-slash), /replay?s=…
+    // respondería 307 a /replay/?s=…; así se sirve directamente con 200 (y /replay/ redirige a /replay).
+    "html_handling": "drop-trailing-slash"
   }
 }

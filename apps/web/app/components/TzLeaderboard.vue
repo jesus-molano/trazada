@@ -94,7 +94,11 @@ function select(car: string) {
           <span
             class="tz-lb__tyre"
             :class="`is-${r.compound.toLowerCase()}`"
-            :title="t('leaderboard.tyre', { compound: t(`compound.${r.compound}`), laps: r.tyreLife ?? '—' })"
+            :title="
+              r.tyreLife === null
+                ? t('leaderboard.tyreNoLife', { compound: t(`compound.${r.compound}`) })
+                : t('leaderboard.tyre', { compound: t(`compound.${r.compound}`), laps: r.tyreLife }, r.tyreLife)
+            "
           >
             <span class="tz-lb__compound">{{ COMPOUND_LETTER[r.compound] ?? '?' }}</span>
             <span class="tz-lb__life tz-tabular">{{ r.tyreLife ?? '' }}</span>

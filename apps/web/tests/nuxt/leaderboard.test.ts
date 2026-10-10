@@ -70,5 +70,16 @@ describe('TzLeaderboard', () => {
     await w.find('[data-testid="gap-interval"]').trigger('click')
     expect(gaps()[1]).toMatch(/^\+1[.,]234$/)
     expect(w.find('[data-car="44"] .tz-lb__compound').text()).toBe('M')
+    // Plural de la edad del neumático (y sin dato, sin número inventado)
+    expect(w.find('[data-car="44"] .tz-lb__tyre').attributes('title')).toMatch(/7 (vueltas|laps)$/)
+  })
+
+  it('edad del neumático en singular y sin dato', async () => {
+    usePlaybackStore().attach(
+      fakeRuntime([row('1', 'AAA', 1, { tyreLife: 1 }), row('44', 'BBB', 2, { tyreLife: null, compound: 'UNKNOWN' })]),
+    )
+    const w = await mountSuspended(TzLeaderboard)
+    expect(w.find('[data-car="1"] .tz-lb__tyre').attributes('title')).toMatch(/1 (vuelta|lap)$/)
+    expect(w.find('[data-car="44"] .tz-lb__tyre').attributes('title')).toMatch(/(sin dato|unknown)$/)
   })
 })

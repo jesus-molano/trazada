@@ -42,19 +42,22 @@ function tone(kind: string): string {
 
 <template>
   <section class="tz-rc" :class="{ 'is-open': open }" :aria-label="t('rc.title')" data-testid="race-control">
-    <button
-      type="button"
-      class="tz-rc__head"
-      :aria-expanded="open"
-      aria-controls="tz-rc-list"
-      :title="t('rc.toggle')"
-      data-testid="race-control-toggle"
-      @click="open = !open"
-    >
-      <h2 class="tz-rc__title">{{ t('rc.title') }}</h2>
-      <span class="tz-rc__count tz-tabular">{{ t('rc.count', { n: count }) }}</span>
-      <span class="tz-rc__chevron" aria-hidden="true" />
-    </button>
+    <!-- Patrón de "disclosure": el botón va dentro del encabezado (nunca un encabezado dentro de un botón). -->
+    <h2 class="tz-rc__heading">
+      <button
+        type="button"
+        class="tz-rc__head"
+        :aria-expanded="open"
+        aria-controls="tz-rc-list"
+        :title="t('rc.toggle')"
+        data-testid="race-control-toggle"
+        @click="open = !open"
+      >
+        <span class="tz-rc__title">{{ t('rc.title') }}</span>
+        <span class="tz-rc__count tz-tabular" data-testid="rc-count">{{ t('rc.count', count) }}</span>
+        <span class="tz-rc__chevron" aria-hidden="true" />
+      </button>
+    </h2>
     <!-- Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. -->
     <ol v-show="open" id="tz-rc-list" class="tz-rc__list" aria-live="off" tabindex="0" :aria-label="t('rc.title')">
       <li v-if="!visible.length" class="tz-rc__empty">{{ t('rc.empty') }}</li>
@@ -92,6 +95,12 @@ function tone(kind: string): string {
 .tz-rc.is-open {
   flex: 1 1 auto;
   min-height: 150px;
+}
+
+.tz-rc__heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .tz-rc__head {

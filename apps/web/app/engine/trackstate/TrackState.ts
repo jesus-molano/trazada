@@ -2,7 +2,9 @@
  * Estado de la pista en el instante del reloj, derivado solo de `events.json` (banderas por sector ya
  * resueltas por el pipeline y ventanas de estado). TS puro: lo usan la escena, la interfaz y los tests.
  *
- * Un intervalo está activo en t si `fromMs ≤ t < toMs` (un `toMs` nulo se cierra al final de la sesión).
+ * Un intervalo está activo en t si `fromMs ≤ t < toMs`. Uno que llega al final de la reproducción (`toMs`
+ * nulo, o recortado por el pipeline justo en el final) sigue activo también en ese último instante: el
+ * reloj se detiene en `endMs` y una sesión que acaba bajo roja o SC debe verse así hasta el final.
  */
 import type { SectorFlag, SessionEvents, WindowKind } from '@trazada/schema'
 
@@ -46,7 +48,7 @@ export class TrackState {
   private readonly windows: Interval<WindowKind>[]
 
   constructor(events: SessionEvents, endMs: number) {
-    const close = (to: number | null) => (to === null ? endMs : to)
+    const close = (to: number | null) => (to === null || to >= endMs ? Number.POSITIVE_INFINITY : to)
     this.sectorFlags = events.sectorFlags.map((f) => ({
       kind: f.flag,
       sector: f.sector,

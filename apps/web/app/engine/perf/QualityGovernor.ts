@@ -2,6 +2,11 @@
  * Degradación adaptativa: baja la resolución de render (DPR) si el p95 de los frames con reproducción
  * pasa del presupuesto, y la recupera poco a poco si sobra margen. Con histéresis (umbral de subida
  * mucho más bajo que el de bajada y varias ventanas seguidas) para no oscilar.
+ *
+ * Los frames se miden como intervalos de requestAnimationFrame: incluyen la GPU, pero también el tope
+ * de la pantalla o del navegador (30 Hz, ahorro de energía). Por eso cada bajada se comprueba: si en
+ * la ventana siguiente el p95 no mejora al menos un 10 %, el límite no es la resolución, se deshace el
+ * paso y no se vuelve a bajar mientras la carga no empeore claramente (un 25 % más).
  */
 import { FrameWindow } from './frames'
 
@@ -20,6 +25,12 @@ export interface GovernorOptions {
 
 /** Frames anómalos (pestaña en segundo plano, depurador): no cuentan. */
 const IGNORE_OVER_MS = 1000
+/** Frames que se descartan tras un cambio de DPR (el redimensionado del lienzo da un tirón). */
+const SETTLE_FRAMES = 10
+/** Una bajada "ayuda" si el p95 baja al menos un 10 %. */
+const HELPED_RATIO = 0.9
+/** Bloqueada la bajada, se vuelve a intentar si el p95 sube un 25 % sobre el que no se pudo arreglar. */
+const RETRY_RATIO = 1.25
 
 export class QualityGovernor {
   private readonly window: FrameWindow
@@ -29,6 +40,11 @@ export class QualityGovernor {
   private readonly maxIndex: number
   private index: number
   private goodWindows = 0
+  private settle = 0
+  /** p95 que motivó la última bajada, pendiente de comprobar si sirvió. */
+  private checkAgainst: number | null = null
+  /** p95 con el que bajar no sirvió: no se baja de nuevo hasta superarlo claramente. */
+  private blockedAt: number | null = null
   /** Cambios de DPR hechos (para el bench y la depuración). */
   readonly changes: { atFrame: number; dpr: number; p95: number }[] = []
   private frames = 0
@@ -52,12 +68,30 @@ export class QualityGovernor {
   frame(ms: number): number | null {
     if (!(ms > 0) || ms > IGNORE_OVER_MS) return null
     this.frames++
+    if (this.settle > 0) {
+      this.settle--
+      return null
+    }
     this.window.push(ms)
     if (!this.window.full) return null
     const p95 = this.window.percentile(95)
     this.window.clear()
-    if (p95 > this.degradeMs && this.index < DPR_STEPS.length - 1) {
+
+    // ¿Sirvió la última bajada? Si no, se deshace y se bloquea.
+    if (this.checkAgainst !== null) {
+      const before = this.checkAgainst
+      this.checkAgainst = null
+      if (p95 >= before * HELPED_RATIO) {
+        this.blockedAt = before
+        this.goodWindows = 0
+        return this.set(this.index - 1, p95)
+      }
+    }
+    if (this.blockedAt !== null && (p95 < this.recoverMs || p95 > this.blockedAt * RETRY_RATIO)) this.blockedAt = null
+
+    if (p95 > this.degradeMs && this.index < DPR_STEPS.length - 1 && this.blockedAt === null) {
       this.goodWindows = 0
+      this.checkAgainst = p95
       return this.set(this.index + 1, p95)
     }
     if (p95 < this.recoverMs && this.index > this.maxIndex) {
@@ -73,6 +107,7 @@ export class QualityGovernor {
 
   private set(index: number, p95: number): number {
     this.index = index
+    this.settle = SETTLE_FRAMES
     this.changes.push({ atFrame: this.frames, dpr: this.dpr, p95 })
     return this.dpr
   }

@@ -127,8 +127,9 @@
     "blueFlag": "Blue flag",
     "pit": "PIT",
     "noSignal": "no signal",
-    "tyre": "{compound}, {laps} laps",
-    "showBlueFlags": "Show blue flags"
+    "tyre": "{compound}, {laps} lap | {compound}, {laps} laps",
+    "showBlueFlags": "Show blue flags",
+    "tyreNoLife": "{compound}, laps unknown"
   },
   "compound": {
     "UNKNOWN": "Unknown",
@@ -176,7 +177,7 @@
     "title": "Race control",
     "toggle": "Show or hide race control messages",
     "empty": "No messages yet at this point of the session.",
-    "count": "{n} messages",
+    "count": "{n} message | {n} messages",
     "lap": "L{lap}",
     "original": "Original race control text",
     "kind": {

@@ -82,9 +82,13 @@ describe('TzRaceControl', () => {
     setTime(1000)
     await nextTick()
     expect(shown()).toEqual([1000])
+    expect(w.find('[data-testid="rc-count"]').text()).toMatch(/^1 (mensaje|message)$/)
     setTime(2500)
     await nextTick()
     expect(shown()).toEqual([2000, 1000])
+    expect(w.find('[data-testid="rc-count"]').text()).toMatch(/^2 (mensajes|messages)$/)
+    // El encabezado contiene el botón (no al revés): sigue siendo navegable como encabezado.
+    expect(w.find('h2 > button[data-testid="race-control-toggle"]').exists()).toBe(true)
     const first = w.find('[data-testid="rc-message"]')
     expect(first.find('[data-testid="rc-text"]').text()).toBe('SAFETY CAR DEPLOYED')
     expect(first.find('[data-testid="rc-text"]').attributes('lang')).toBe('en')
