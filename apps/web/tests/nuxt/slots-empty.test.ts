@@ -1,7 +1,7 @@
 /**
  * Huecos por glob (D29) vacíos: los anfitriones se pintan exactamente como antes de tener huecos, sin
  * contenedores vacíos. Los huecos se fuerzan a vacío con `vi.mock`, así que este test no cambia cuando una función
- * añade su fichero (el glob real sin ficheros se prueba en app/slots/collect.test.ts).
+ * añade su fichero (los huecos reales se cargan en tests/nuxt/slots-collect.test.ts).
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'

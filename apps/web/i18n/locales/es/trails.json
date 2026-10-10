@@ -1,0 +1,16 @@
+{
+  "trails": {
+    "label": "Estelas",
+    "modes": {
+      "off": "No",
+      "team": "Equipo",
+      "speed": "Velocidad"
+    },
+    "legendLabel": "Escala de color de las estelas por velocidad",
+    "legend": "{min}–{max} km/h",
+    "noSample": "sin dato",
+    "hintLabel": "Qué muestran las estelas",
+    "hint": "Los últimos {s} s de cada coche, sobre la línea central, como el coche: la fuente no indica en qué parte del ancho de la pista va. Donde falta la posición, la estela se corta: nunca se rellena.",
+    "hintSpeed": "Por velocidad: en cada punto, la última velocidad medida (de hace {age} s como mucho), sin interpolar. Si no hay ninguna, el punto va en gris («sin dato»)."
+  }
+}

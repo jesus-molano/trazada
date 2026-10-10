@@ -1,12 +1,17 @@
+/**
+ * Huecos por glob (D29): orden, contrato y los huecos reales. En el entorno Nuxt (no en el de unidad): cada módulo de
+ * hueco evalúa su `import.meta.glob` al importarse, y en cuanto un hueco tiene un `.vue`, importarlo necesita el
+ * plugin de Vue y los alias de Nuxt.
+ */
 import { describe, expect, it } from 'vitest'
 import type { Component } from 'vue'
-import { collectSlot, type SlotModule, slotName } from './collect'
-import { cellsFor, LAYOUT_PRESETS, LEADERBOARD_CELLS, leaderboardCells } from './leaderboard-cells'
-import { REPLAY_HEADER, REPLAY_OVERLAYS } from './replay'
-import { REPLAY_DOCK } from './replay-dock'
-import { SCENE_LAYERS } from './scene-layers'
-import { groupSceneTools, SCENE_TOOL_GROUPS, SCENE_TOOLS } from './scene-tools'
-import { TIMELINE_LANES } from './timeline-lanes'
+import { collectSlot, type SlotModule, slotName } from '~/slots/collect'
+import { cellsFor, LAYOUT_PRESETS, LEADERBOARD_CELLS, leaderboardCells } from '~/slots/leaderboard-cells'
+import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
+import { REPLAY_DOCK } from '~/slots/replay-dock'
+import { SCENE_LAYERS } from '~/slots/scene-layers'
+import { groupSceneTools, SCENE_TOOL_GROUPS, SCENE_TOOLS } from '~/slots/scene-tools'
+import { TIMELINE_LANES } from '~/slots/timeline-lanes'
 
 const comp = (name: string): Component => ({ name, render: () => null })
 const mod = (name: string, extra: Record<string, unknown>): SlotModule => ({ default: comp(name), ...extra })
