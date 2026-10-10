@@ -1,0 +1,23 @@
+{
+  "drs": {
+    "label": "Zonas de DRS",
+    "off": "No",
+    "on": "Sí",
+    "legendLabel": "Intensidad de las zonas de DRS",
+    "enabled": "DRS activado",
+    "disabled": "desactivado",
+    "noZonesSeason": "En {season} no hay datos de zonas ni de modo adelantamiento por coche",
+    "noChannel": "Sin dato: esta sesión no trae el canal de DRS de cada coche",
+    "insufficient": "Sin dato: no hay aperturas de DRS suficientes para deducir las zonas",
+    "hintLabel": "Cómo se deducen las zonas de DRS",
+    "hint": "Se deducen de dónde llevaron el DRS abierto los coches según su telemetría, en las vueltas en pista y sin neutralización: no son las líneas oficiales de detección ni de activación, que ninguna fuente da. Empiezan algo después de la línea de activación (la reacción del piloto) y acaban donde frenan.",
+    "hintCars": "Deducidas de las aperturas de {n} coche. | Deducidas de las aperturas de {n} coches.",
+    "hintDiscarded": "No cuenta {n} coche con el canal de DRS inverosímil (abierto en más de la mitad de sus muestras). | No cuentan {n} coches con el canal de DRS inverosímil (abierto en más de la mitad de sus muestras).",
+    "hintWindows": "Se ven más intensas mientras dirección de carrera tiene el DRS activado y tenues el resto del tiempo.",
+    "hintNoWindows": "Dirección de carrera no anunció el DRS en esta sesión: las zonas se ven siempre tenues.",
+    "hintZone": "Si dirección de carrera desactiva una sola zona, solo se ve en su feed: sin la geometría de las zonas no se puede saber cuál es.",
+    "hintSeason": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa y el modo adelantamiento, que dirección de carrera habilita para toda la pista. La fuente no da ni la geometría de las zonas ni un canal por coche.",
+    "hintNoChannel": "Sin el canal de DRS de cada coche no se puede saber dónde lo abrieron, y ninguna fuente da la geometría oficial de las zonas.",
+    "hintInsufficient": "Una zona necesita al menos {passes} pasadas (un coche en una vuelta) abriendo en el mismo sitio, de al menos {cars} coches. En mojado o con pocas vueltas puede no haberlas."
+  }
+}

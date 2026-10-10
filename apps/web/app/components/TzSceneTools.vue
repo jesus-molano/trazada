@@ -3,7 +3,8 @@
  * Herramientas de la escena: exageración de altura, separación visual de coches, las de cada función agrupadas en
  * «Capas» y «Cámara» (hueco `components/scene-tools/`, D29), la explicación de qué es dato y qué es modelo en lo que
  * se dibuja («Cómo se dibuja») y las etiquetas "Estimado" de lo que la escena pinta sin ser dato real (opciones del
- * usuario y campos del manifest).
+ * usuario, campos del manifest y lo que declaran las capas del hueco en `stores/sceneEstimated.ts`: sus herramientas
+ * van en menús plegados, y la etiqueta tiene que verse mientras se pinta).
  *
  * Cada grupo del hueco es un menú (un botón que despliega sus controles): así la cabecera ocupa lo mismo por muchas
  * herramientas que tenga el grupo y sigue cabiendo en una fila a 1280 px (con una cabecera partida, la escena y la
@@ -14,6 +15,7 @@ import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { SCENE_TOOLS, type SceneToolGroup } from '~/slots/scene-tools'
+import { useSceneEstimatedStore } from '~/stores/sceneEstimated'
 import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
 
 const GROUP_ICONS: Record<SceneToolGroup, IconName> = { layers: 'layers', camera: 'camera' }
@@ -21,6 +23,7 @@ const GROUP_ICONS: Record<SceneToolGroup, IconName> = { layers: 'layers', camera
 const props = defineProps<{ flat: boolean; estimated: readonly string[] }>()
 const { t } = useI18n()
 const settings = useSettingsStore()
+const sceneEstimated = useSceneEstimatedStore()
 const yScale = computed(() => (props.flat ? 1 : settings.elevationScale))
 const manifestFields = computed(() => sceneManifestFields(props.estimated))
 
@@ -107,6 +110,7 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
       <TzEstimated v-if="!flat && yScale !== 1" field="elevation" :params="{ k: yScale }" />
       <TzEstimated v-if="settings.separation" field="separation" />
       <TzEstimated v-for="f in manifestFields" :key="f" :field="f" />
+      <TzEstimated v-for="l in sceneEstimated.labels" :key="`layer-${l.field}`" :field="l.field" :params="l.params" />
     </div>
   </div>
 </template>

@@ -12,9 +12,11 @@ import TzTelemetry from '~/components/TzTelemetry.vue'
 import TzTimelinePreview from '~/components/TzTimelinePreview.vue'
 import TzTrackStatus from '~/components/TzTrackStatus.vue'
 import type { LoadedSession } from '~/data/types'
+import type { DrsZones } from '~/engine/drs/zones'
 import { ESTIMATED_FIELDS, type EstimatedField } from '~/engine/estimated'
 import { createTimelinePreview, PREVIEW_EXT } from '~/engine/timeline/preview'
 import { createReplayRuntime } from '~/replay/runtime'
+import { useDrsStore } from '~/stores/drs'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
 import { fakeTrzb, loadFixture } from '~/testing/fixture'
@@ -142,8 +144,41 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
   lapDelta: () => registeredOnly('lapDelta'),
   // Mapa de calor (ítem 2, D32): ganador de cada minisector.
   minisectors: () => registeredOnly('minisectors'),
-  // Zonas de DRS (ítem 11, D38): deducidas de la telemetría.
-  drsZones: () => registeredOnly('drsZones'),
+  // Zonas de DRS (ítem 11, D38): deducidas de la telemetría. Su herramienta va en un menú plegado, así que mientras
+  // se pintan la etiqueta sale también en la fila de etiquetas de la escena, siempre a la vista.
+  async drsZones() {
+    const s = await loadFixture()
+    const drsZones: DrsZones = {
+      status: 'deduced',
+      spans: Float64Array.from([1200, 1900]),
+      passes: Int32Array.from([40]),
+      cars: 12,
+      discardedCars: 0,
+    }
+    const rt = createReplayRuntime({ ...s, drsZones })
+    usePlaybackStore().attach(rt)
+    const drs = useDrsStore()
+    drs.setShow(true)
+    const w = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
+    const row = () => w.find(`.tz-tools__estimated [data-testid="estimated"][data-field="drsZones"]`)
+    const { t } = useNuxtApp().$i18n
+    expect(row().text()).toContain(t('estimated.fields.drsZones'))
+    expect(row().attributes('title')).toBe(t('estimated.hints.drsZones'))
+    // Y junto a su control, dentro del menú «Capas».
+    expect(w.find('[data-testid="drs-tool"] [data-testid="estimated"][data-field="drsZones"]').exists()).toBe(true)
+    drs.setShow(false)
+    await nextTick()
+    expect(row().exists()).toBe(false)
+    drs.setShow(true)
+    w.unmount()
+    usePlaybackStore().detach()
+    // Sin zonas (el fixture es de 2026), ninguna etiqueta.
+    usePlaybackStore().attach(createReplayRuntime(s))
+    const none = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
+    expect(label(none, 'drsZones').exists()).toBe(false)
+    none.unmount()
+    usePlaybackStore().detach()
+  },
 }
 
 describe('etiqueta Estimado', () => {
