@@ -7,12 +7,14 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 from synthetic import synthetic_session
 
 from trazada_pipeline import schema
 from trazada_pipeline.build import build_session, coverage_ratio, playback_window
 from trazada_pipeline.encode import trzb
+from trazada_pipeline.sources.base import CircuitInfo
 
 #: Campos que FastF1 trae de Ergast/Jolpica (CC BY-NC-SA) o fotos: nunca deben aparecer en los datos.
 FORBIDDEN_KEYS = {
@@ -133,3 +135,32 @@ def test_coverage_ratio() -> None:
     gap = t[(t < 3000) | (t > 8000)]
     assert coverage_ratio(gap, [(0, 10_000)]) == pytest.approx(1 - 5500 / 10_000)  # hueco 2750→8250
     assert coverage_ratio(np.array([]), []) == 1.0
+
+
+def test_dev_circuit_taints_the_session(tmp_path: Path) -> None:
+    """Curvas de una copia de desarrollo: el circuito y la sesión quedan como dev (nunca se publican)."""
+    data, _ = synthetic_session()
+    data.circuit_info = CircuitInfo(
+        corners=pd.DataFrame({"number": [1], "letter": [""], "x": [0.0], "y": [0.0], "angle": [0.0]}),
+        marshal_sectors=None,
+        rotation_deg=0.0,
+        source="multiviewer (vía TracingInsights, dev)",
+        dev=True,
+    )
+    data.dev = False
+    report = build_session(data, tmp_path)
+    catalog = json.loads((tmp_path / "v1" / "catalog.json").read_text())
+    entry = catalog["seasons"][0]["events"][0]["sessions"][0]
+    assert entry["dev"] is True
+    assert any("fuentes de desarrollo" in w for w in report.warnings)
+
+
+def test_old_circuit_with_dev_sources_is_detected(tmp_path: Path) -> None:
+    from trazada_pipeline.circuit.store import load_circuit
+
+    data, _ = synthetic_session()
+    build_session(data, tmp_path)
+    v1 = tmp_path / "v1"
+    circuit_id = next((v1 / "circuits").iterdir()).name
+    c = load_circuit(circuit_id, v1)
+    assert c is not None and c.dev is True  # sesión sintética: su circuito es dev

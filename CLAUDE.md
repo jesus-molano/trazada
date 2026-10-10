@@ -29,6 +29,10 @@ pnpm typecheck                # vue-tsc / tsc
 pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
 pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
+# Bench: /replay?s=<sesión>&bench=1 (benchSeconds, benchWarmup, benchRate, governor=off); docs/PERFORMANCE.md
+pnpm perf:table               # tabla de peso por sesión en docs/PERFORMANCE.md (desde data/v1)
+pnpm data:deploy --dry-run    # prepara deploy/.staging/data (solo publicable) sin subir nada
+scripts/smoke-deploy.sh <app> <datos>   # smoke post-deploy con curl
 # e2e con datos completos de data/ (solo local, p. ej. Japón 2026 dev): servidor aparte y E2E_LOCAL_URL
 #   E2E_DATA_DIR=../../data node tests/e2e/serve.mjs --port 4199 &
 #   E2E_LOCAL_URL=http://127.0.0.1:4199 pnpm e2e local-japan
@@ -66,6 +70,7 @@ uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos
 - **Componentes**: prefijo `Tz` (evita choques con los componentes globales que registra `@tresjs/nuxt` desde cientos: `Grid`, `Html`, `Image`…).
 - **Props dentro de `TresCanvas`**: objetos y arrays siempre estables (`computed`/constantes), nunca literales en la plantilla (`:scale="[1, k, 1]"`). TresCanvas vuelve a evaluar su slot por su cuenta, y un literal nuevo invalida la escena en cada evaluación: hay renders en pausa (lo vigila un e2e).
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
+- **Publicación de datos**: solo con `pnpm data:deploy`, que sube `deploy/.staging/data` (sin sesiones dev ni ficheros no referenciados). Una sesión cuyo circuito use fuentes dev queda marcada como dev. Nunca subir `data/` tal cual.
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio hasta el primer deploy de datos, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).
 - **Fixtures**: solo extractos mínimos reales (≤ 1 MB en total, sin datos de MultiViewer ni de Jolpica) o sintéticos. El fixture e2e se regenera con `trazada e2e-fixture`.

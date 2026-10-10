@@ -60,6 +60,8 @@ class CircuitInfo:
     marshal_sectors: pd.DataFrame | None  # number, x, y
     rotation_deg: float
     source: str = "multiviewer"
+    # Copia de desarrollo (TracingInsights): todo lo que se construya con ella queda como dev.
+    dev: bool = False
 
 
 @dataclass

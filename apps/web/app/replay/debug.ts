@@ -27,6 +27,13 @@ export const sceneStats = {
   trackTint: null as string | null,
   sectorOverlays: [] as number[],
   marshalSectors: 0,
+  /** Resolución de render (DPR) actual y cambios del gobernador de calidad. */
+  dpr: 1,
+  dprChanges: 0,
+  /** Draw calls y triángulos del último render; GPU según el driver (si lo expone). */
+  drawCalls: 0,
+  triangles: 0,
+  gpu: '',
 }
 
 export interface TrazadaHandle {
@@ -49,6 +56,8 @@ export interface TrazadaHandle {
   /** Coches desplazados por la separación visual (opción Estimado) en el último frame. */
   readonly separatedCars: number
   seek(ms: number): void
+  /** Resultado del bench (`?bench=1`) cuando termina. */
+  readonly bench: unknown
   /** Estado de los coches en el último frame (copia). */
   cars(): { car: string; visible: boolean; inPit: boolean; s: number; x: number; y: number }[]
 }
@@ -93,6 +102,9 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
       return rt.separatedCars
     },
     seek: (ms: number) => rt.clock.seek(ms),
+    get bench() {
+      return (window as Window & { __trazadaBench?: unknown }).__trazadaBench ?? null
+    },
     cars: () => rt.model.states.map(({ car, visible, inPit, s, x, y }) => ({ car, visible, inPit, s, x, y })),
   }
   return () => {

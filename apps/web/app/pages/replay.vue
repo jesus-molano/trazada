@@ -24,6 +24,9 @@ const title = computed(() => {
 })
 useHead({ title })
 
+/** `?bench=1`: bench de rendimiento (docs/PERFORMANCE.md). */
+const benchMode = computed(() => route.query.bench === '1')
+
 // La escena (y three.js) se monta un frame después de "listo": su coste no entra en la carga de datos.
 const sceneEnabled = ref(false)
 let removeDebug: (() => void) | null = null
@@ -102,6 +105,7 @@ onBeforeUnmount(() => {
       </aside>
     </div>
     <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
+    <TzBench v-if="benchMode && sceneEnabled" :key="`bench-${session.id}`" />
   </section>
 </template>
 

@@ -247,5 +247,18 @@
     "noGeometry": "No marshal sector geometry for this circuit: the flag cannot be placed on the map.",
     "overtake": "Overtake enabled",
     "drs": "DRS enabled"
+  },
+  "bench": {
+    "title": "Performance bench",
+    "warmup": "Warming up… {s} s",
+    "measuring": "Measuring… {s} s",
+    "p95": "p95 (ms)",
+    "p99": "p99 (ms)",
+    "over50": "Frames > 50 ms",
+    "heap": "JS heap (MB)",
+    "dpr": "DPR",
+    "frames": "Frames",
+    "copy": "Copy results (JSON)",
+    "copied": "Copied"
   }
 }

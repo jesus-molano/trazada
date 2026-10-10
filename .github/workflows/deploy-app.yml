@@ -44,3 +44,23 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config deploy/app/wrangler.jsonc
+      # Smoke post-deploy: cabeceras de los datos, deep link y que la página se pinta.
+      # Requiere las variables del repo APP_URL y DATA_BASE_URL (y datos ya desplegados con pnpm data:deploy).
+      - name: Smoke post-deploy (curl)
+        id: smoke
+        if: env.HAS_CF == 'true' && vars.APP_URL != '' && vars.DATA_BASE_URL != ''
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          DATA_URL: ${{ vars.DATA_BASE_URL }}
+        run: |
+          set -o pipefail
+          scripts/smoke-deploy.sh "$APP_URL" "$DATA_URL" | tee smoke.log
+          echo "session=$(sed -n 's/^sesión: //p' smoke.log)" >> "$GITHUB_OUTPUT"
+      - name: Smoke post-deploy (se pinta)
+        if: steps.smoke.outcome == 'success'
+        env:
+          E2E_DEPLOYED_URL: ${{ vars.APP_URL }}
+          E2E_DEPLOYED_SESSION: ${{ steps.smoke.outputs.session }}
+        run: |
+          pnpm --filter @trazada/web exec playwright install --with-deps chromium
+          pnpm --filter @trazada/web exec playwright test deployed --project desktop

@@ -247,5 +247,18 @@
     "noGeometry": "Sin geometría de sectores de comisarios para este circuito: la bandera no se puede situar en el mapa.",
     "overtake": "Overtake activado",
     "drs": "DRS activado"
+  },
+  "bench": {
+    "title": "Bench de rendimiento",
+    "warmup": "Calentando… {s} s",
+    "measuring": "Midiendo… {s} s",
+    "p95": "p95 (ms)",
+    "p99": "p99 (ms)",
+    "over50": "Frames > 50 ms",
+    "heap": "Heap JS (MB)",
+    "dpr": "DPR",
+    "frames": "Frames",
+    "copy": "Copiar resultados (JSON)",
+    "copied": "Copiado"
   }
 }

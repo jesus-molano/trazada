@@ -113,3 +113,7 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
   - **Contraste**: `--tz-text-faint` sube a #848e9b para cumplir WCAG AA.
   - **Tablet en vertical**: los paneles van en una franja inferior y el mapa se encuadra por encima.
   - **Tokens**: tokens.css es la única fuente de colores; three.js y uPlot la leen con `token()`.
+- **2026-10-10** — H11:
+  - **Datos publicables**: `pnpm data:deploy` publica solo lo publicable, preparado aparte. Una sesión que use un circuito con fuentes de desarrollo queda marcada como dev. La sesión local de Bélgica tenía curvas de TracingInsights y se habría publicado; se reconstruyó sin ellas.
+  - **Rendimiento**: degradación adaptativa del DPR (p95 > 33 ms) y paneles sin `backdrop-filter`.
+  - **Medidas**: `?bench=1` es el instrumento de las medidas de referencia, y las cifras se recogen en `docs/PERFORMANCE.md`.

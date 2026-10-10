@@ -128,7 +128,6 @@ function select(car: string) {
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
-  backdrop-filter: blur(10px);
   box-shadow: var(--tz-shadow-panel);
 }
 

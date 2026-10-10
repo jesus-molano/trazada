@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -177,6 +177,13 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         circuit = load_circuit(layout.circuit_id, v1)
         assert circuit is not None
     circuit_ref = json.loads((v1 / "circuits" / layout.circuit_id / "circuit.json").read_text())["file"]
+    if circuit.dev and not data.dev:
+        # Un circuito con fuentes de desarrollo contamina la sesión: queda como dev y no se publica.
+        data = replace(data, dev=True)
+        warnings.append(
+            f"El circuito {layout.circuit_id} usa fuentes de desarrollo: la sesión queda marcada como dev "
+            "(no publicable). Reconstrúyelo sin ellas con --rebuild-circuit."
+        )
 
     start_ms, end_ms, lights_out = playback_window(data)
     pos = {c: _trim(df, start_ms, end_ms) for c, df in data.pos.items()}

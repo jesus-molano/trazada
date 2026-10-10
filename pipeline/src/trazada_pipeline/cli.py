@@ -70,6 +70,7 @@ def build(
     sd = load_fastf1(season, ev, session, cache_dir, offline=offline)
     if sd.circuit_info is None and dev_corners is not None:
         sd.circuit_info = load_ti_corners(dev_corners)
+        sd.dev = True  # circuito "-dev" aparte: el canónico nunca recibe datos de desarrollo
         sd.notes.append(
             "Curvas y rotación de MultiViewer leídas de una copia de TracingInsights (desarrollo)."
         )

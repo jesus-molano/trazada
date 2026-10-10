@@ -4,9 +4,10 @@
  * disponibilidad de WebGL 2 y la pérdida/recuperación del contexto.
  */
 import type { TresContext } from '@tresjs/core'
-import type { PerspectiveCamera } from 'three'
+import type { PerspectiveCamera, WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { token } from '~/design/tokens'
+import { QualityGovernor } from '~/engine/perf/QualityGovernor'
 import { cornerAnchor } from '~/engine/track/circuit'
 import { frameCircuit } from '~/engine/track/framing'
 import { sceneStats } from '~/replay/debug'
@@ -42,6 +43,15 @@ const zMid = (model.zRange[0] + model.zRange[1]) / 2
 
 // Cámara de mapa: mirando al centro desde el sur, inclinada 55°, con todo el trazado en cuadro.
 const SCENE_BG = token('--tz-scene-bg')
+
+/**
+ * Resolución de render adaptativa: el gobernador baja el DPR si el p95 de los frames con reproducción
+ * pasa de 33 ms y lo recupera con margen. `?governor=off` lo desactiva (medidas con DPR nativo).
+ */
+const route = useRoute()
+const governorOn = route.query.governor !== 'off'
+const governor = new QualityGovernor(import.meta.client ? window.devicePixelRatio : 1)
+const dpr = ref(governor.dpr)
 const FOV = 35
 const TILT_DEG = 55
 const frame = (aspect: number, bottomInset: number) =>
@@ -143,11 +153,20 @@ function onReady(context: TresContext) {
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0
   sceneStats.pitSamplesLengthM = model.meta.quality?.pitSamplesLengthM ?? 0
   sceneStats.corners = cornerLabels.length
+  sceneStats.dpr = dpr.value
+  const gl = (context.renderer.instance as WebGLRenderer).getContext()
+  const info = gl.getExtension('WEBGL_debug_renderer_info')
+  sceneStats.gpu = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
   context.renderer.invalidate()
 }
 
 function onRender() {
   sceneStats.renders++
+  const info = (ctx?.renderer.instance as WebGLRenderer | undefined)?.info.render
+  if (info) {
+    sceneStats.drawCalls = info.calls
+    sceneStats.triangles = info.triangles
+  }
   const cam = camera.value
   if (cam && canvasEl) {
     labels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
@@ -179,13 +198,29 @@ watch(yScale, (k) => {
   ctx?.renderer.invalidate()
 })
 
+let offFrames: (() => void) | null = null
+let lastFrameAt = 0
+
 onMounted(() => {
+  offFrames = rt.onFrame(() => {
+    const now = performance.now()
+    if (governorOn && rt.clock.playing && lastFrameAt > 0) {
+      const next = governor.frame(now - lastFrameAt)
+      if (next !== null) {
+        dpr.value = next
+        sceneStats.dpr = next
+        sceneStats.dprChanges = governor.changes.length
+      }
+    }
+    lastFrameAt = rt.clock.playing ? now : 0
+  })
   settings.hydrate()
   sceneStats.elevationScale = yScale.value
   sceneStats.ready = false
   supported.value = hasWebGL2()
 })
 onBeforeUnmount(() => {
+  offFrames?.()
   detach()
   sceneStats.ready = false
   getRuntime()?.setInvalidate(null)
@@ -199,7 +234,7 @@ onBeforeUnmount(() => {
       :key="canvasKey"
       :clear-color="SCENE_BG"
       render-mode="on-demand"
-      :dpr="[1, 2]"
+      :dpr="dpr"
       :antialias="true"
       @ready="onReady"
       @render="onRender"

@@ -1,4 +1,4 @@
-# Se copia a data/_headers antes de desplegar (pnpm data:deploy).
+# pnpm data:deploy lo copia a deploy/.staging/data/_headers (la raíz que se publica).
 /*
   Access-Control-Allow-Origin: *
   X-Content-Type-Options: nosniff

@@ -55,6 +55,8 @@ def circuit_meta(c: Circuit) -> dict[str, Any]:
         },
         "quality": {k: round(v, 4) for k, v in c.quality.items()},
         "sources": c.sources,
+        # Solo si es dev: así los circuitos limpios conservan su hash.
+        **({"dev": True} if c.dev else {}),
     }
 
 
@@ -108,4 +110,6 @@ def load_circuit(circuit_id: str, v1_root: Path) -> Circuit | None:
         else pd.DataFrame({"number": ms["number"].astype(int), "s_start": ms["sStart"], "s_end": ms["sEnd"]}),
         quality=dict(meta.get("quality", {})),
         sources=list(meta.get("sources", [])),
+        # Circuitos anteriores al campo `dev`: se deduce de sus fuentes.
+        dev=bool(meta.get("dev")) or any(", dev)" in s for s in meta.get("sources", [])),
     )

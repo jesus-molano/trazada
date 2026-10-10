@@ -10,7 +10,8 @@
   --tz-surface-1: #11141a;
   --tz-surface-2: #171b22;
   --tz-surface-3: #1e232c;
-  --tz-overlay: rgb(10 12 15 / 0.72);
+  /* Fondo de paneles sobre la escena. Sin backdrop-filter: desenfocar un lienzo animado cuesta en cada frame. */
+  --tz-overlay: rgb(10 12 15 / 0.88);
   --tz-border: #262c36;
   --tz-border-strong: #384150;
   /* Fondo de las etiquetas sobre la escena (siglas y curvas) */

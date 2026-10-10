@@ -82,6 +82,7 @@ def load_ti_corners(path: Path) -> CircuitInfo:
         marshal_sectors=None,
         rotation_deg=float(_num(c.get("Rotation")) or 0.0),
         source="multiviewer (vía TracingInsights, dev)",
+        dev=True,
     )
 
 

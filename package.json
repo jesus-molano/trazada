@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "e2e": "pnpm --filter @trazada/web e2e",
-    "data:deploy": "node scripts/data-deploy.mjs"
+    "data:deploy": "node scripts/data-deploy.mjs",
+    "perf:table": "node scripts/perf-table.mjs"
   }
 }

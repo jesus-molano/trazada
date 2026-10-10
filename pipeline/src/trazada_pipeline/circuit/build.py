@@ -59,6 +59,8 @@ class Circuit:
     marshal_sectors: pd.DataFrame | None  # number, s_start, s_end
     quality: dict[str, float] = field(default_factory=dict)
     sources: list[str] = field(default_factory=list)
+    # Construido con alguna fuente de desarrollo: las sesiones que lo usen no se publican.
+    dev: bool = False
 
     @property
     def length(self) -> float:
@@ -271,6 +273,7 @@ def build_circuit(data: SessionData, circuit_id: str, name: str) -> Circuit:
     corners = pd.DataFrame(columns=["number", "letter", "s", "x", "y", "angle"])
     marshal = None
     sources = ["F1 live timing (posiciones)"]
+    dev = data.dev
     if data.circuit_info is not None:
         ci = data.circuit_info
         cxy = np.column_stack([ci.corners["x"], ci.corners["y"], np.zeros(len(ci.corners))]) / 10.0
@@ -305,6 +308,7 @@ def build_circuit(data: SessionData, circuit_id: str, name: str) -> Circuit:
             )
         what = "curvas, sectores, rotación" if marshal is not None else "curvas, rotación"
         sources.append(f"{ci.source} ({what})")
+        dev = dev or ci.dev
 
     quality.update(
         {
@@ -328,4 +332,5 @@ def build_circuit(data: SessionData, circuit_id: str, name: str) -> Circuit:
         marshal_sectors=marshal,
         quality=quality,
         sources=sources,
+        dev=dev,
     )

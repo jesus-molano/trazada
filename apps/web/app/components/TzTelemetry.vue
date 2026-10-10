@@ -192,7 +192,6 @@ watch(
   border-top: 3px solid var(--team);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
-  backdrop-filter: blur(10px);
   box-shadow: var(--tz-shadow-panel);
 }
 
