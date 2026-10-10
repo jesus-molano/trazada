@@ -6,11 +6,15 @@
  * Clasificación animada (ítem 8, D42): al cambiar el orden, las filas se deslizan (FLIP de <TransitionGroup>) solo
  * con reproducción a ≤ ×4 y sin salto del reloj; con reduced motion, al instante. Una fila que gana o pierde puestos
  * lleva unos segundos una flecha con la cifra y su texto (nunca solo el color) y un destello breve.
+ *
+ * Comparar dos pilotos (ítem 1, D31): con un coche seleccionado, Mayús+clic en otra fila lo elige para comparar (otra
+ * vez, lo quita). Mientras se compara, las dos filas llevan su marca «A» y «B» (letra y texto, con el color de cada uno).
  */
 import type { RankBadge } from '~/composables/useLeaderboard'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { cellsFor, LEADERBOARD_CELLS, type LayoutPreset } from '~/slots/leaderboard-cells'
+import { useCompareStore } from '~/stores/compare'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
@@ -30,6 +34,7 @@ const cellsStyle = computed(() => {
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
 const settings = useSettingsStore()
+const compare = useCompareStore()
 const { rows, animate, changes, announcement, race } = useLeaderboard()
 settings.hydrate()
 const season = useSessionStore().data?.manifest.session.season ?? 0
@@ -80,6 +85,24 @@ const liveText = computed(() => {
 function select(car: string) {
   playback.selectCar(playback.selectedCar === car ? null : car)
 }
+
+/** Clic en una fila: selecciona (o deselecciona); con Mayús y un coche ya seleccionado, lo elige para comparar. */
+function onRow(car: string, event: MouseEvent) {
+  if (event.shiftKey && compare.pick(car)) return
+  select(car)
+}
+
+/** Mayús+clic no debe seleccionar el texto de las filas. */
+function onRowDown(event: MouseEvent) {
+  if (event.shiftKey) event.preventDefault()
+}
+
+/** «A» (el seleccionado) o «B» (el comparado) mientras se compara. */
+function compareRole(car: string): 'a' | 'b' | null {
+  if (!compare.comparing) return null
+  if (car === playback.selectedCar) return 'a'
+  return car === compare.compareCar ? 'b' : null
+}
 </script>
 
 <template>
@@ -126,13 +149,20 @@ function select(car: string) {
         v-for="{ r, b } in items"
         :key="r.car"
         class="tz-lb__row"
-        :class="{ 'is-selected': playback.selectedCar === r.car, 'is-nosignal': r.noSignal }"
+        :class="{ 'is-selected': playback.selectedCar === r.car, 'is-nosignal': r.noSignal, 'is-compare': compareRole(r.car) === 'b' }"
         :data-car="r.car"
         :data-position="r.position"
         :data-position-known="r.positionKnown"
         :data-change="b ? (b.delta > 0 ? 'up' : 'down') : undefined"
+        :data-compare="compareRole(r.car) ?? undefined"
       >
-        <button type="button" class="tz-lb__btn" :aria-pressed="playback.selectedCar === r.car" @click="select(r.car)">
+        <button
+          type="button"
+          class="tz-lb__btn"
+          :aria-pressed="playback.selectedCar === r.car"
+          @mousedown="onRowDown"
+          @click="onRow(r.car, $event)"
+        >
           <span
             class="tz-lb__pos tz-tabular"
             :title="r.positionKnown ? undefined : t('leaderboard.positionUnknown')"
@@ -141,6 +171,16 @@ function select(car: string) {
           <span class="tz-lb__team" :style="{ background: r.driver?.color ?? 'var(--tz-team-unknown)' }" aria-hidden="true" />
           <span class="tz-lb__tla">{{ r.driver?.tla ?? r.car }}</span>
           <span class="tz-lb__flags">
+            <span
+              v-if="compareRole(r.car)"
+              class="tz-lb__chip tz-lb__role"
+              :class="`is-${compareRole(r.car)}`"
+              :title="compareRole(r.car) === 'a' ? t('compare.roleATitle') : t('compare.roleBTitle')"
+              data-testid="compare-role"
+            >
+              <span aria-hidden="true">{{ compareRole(r.car) === 'a' ? t('compare.roleA') : t('compare.roleB') }}</span>
+              <span class="tz-visually-hidden">{{ compareRole(r.car) === 'a' ? t('compare.roleATitle') : t('compare.roleBTitle') }}</span>
+            </span>
             <span
               v-if="b"
               class="tz-lb__change"
@@ -409,6 +449,24 @@ function select(car: string) {
 .tz-lb__chip--pit {
   border-color: var(--tz-pit);
   color: var(--tz-pit);
+}
+
+/* Comparación (ítem 1): «A» y «B» con la letra (y su texto oculto); el color de cada uno solo en el borde. */
+.tz-lb__role {
+  font-weight: var(--tz-weight-semibold);
+  color: var(--tz-text);
+}
+
+.tz-lb__role.is-a {
+  border-color: var(--tz-compare-a);
+}
+
+.tz-lb__role.is-b {
+  border-color: var(--tz-compare-b);
+}
+
+.is-compare .tz-lb__btn {
+  outline: 1px dashed var(--tz-compare-b);
 }
 
 .tz-lb__gap {
