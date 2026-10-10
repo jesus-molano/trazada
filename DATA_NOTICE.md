@@ -7,7 +7,8 @@ relacionadas; MultiViewer en el caso de los marcadores de circuito). Trazada los
 del archivo público de live timing (vía FastF1) para un visor **personal y no comercial**: los datos
 se generan y se usan en local, **no se publican** y no se ofrecen como dataset reutilizable. No incluye campos procedentes de Jolpica/Ergast (CC BY-NC-SA 4.0) ni fotos
 de pilotos. **No está permitido usarlos para entrenar o alimentar sistemas de IA.** Los extractos
-mínimos bajo `apps/web/tests/fixtures/` y `pipeline/tests/fixtures/` existen solo para tests.
+mínimos bajo `apps/web/tests/fixtures/` y `pipeline/tests/fixtures/` existen solo para tests; las
+capturas de `docs/img/` muestran ese mismo extracto (y, en la portada, el calendario de la temporada).
 Si eres titular de derechos y quieres que se retire algo, abre un issue: se retirará con prioridad.
 Excepción: las miniaturas de trazado de `apps/web/app/assets/circuit-outlines.json` no son datos de
 F1 ni de MultiViewer: proceden de bacinger/f1-circuits (MIT, © Tomislav Bacinger), se versionan con
@@ -20,7 +21,8 @@ Trazada derives it from the public live-timing archive (via FastF1) for a **pers
 non-commercial** viewer: the data is generated and used locally, **not published**, and not offered
 as a reusable dataset. It contains no Jolpica/Ergast-derived fields
 (CC BY-NC-SA 4.0) and no driver photos. **Use for training or feeding AI systems is not
-permitted.** Minimal excerpts under the test fixture folders exist for testing only. Rights
+permitted.** Minimal excerpts under the test fixture folders exist for testing only; the screenshots in
+`docs/img/` show that same excerpt (and, on the home page, the season calendar). Rights
 holders can request removal by opening an issue; it will be handled with priority.
 Exception: the circuit outline thumbnails in `apps/web/app/assets/circuit-outlines.json` are not F1
 or MultiViewer data: they come from bacinger/f1-circuits (MIT, © Tomislav Bacinger), are versioned

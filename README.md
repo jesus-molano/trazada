@@ -6,6 +6,37 @@ Replay y análisis de carreras: circuito en 3D con todos los coches en movimient
 >
 > *Trazada is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.*
 
+## Cómo se ve
+
+Es una app para usar en tu PC (no hay web pública), así que aquí van unas capturas. Muestran el extracto de prueba de Spa 2026 que viene con los tests (ver [`DATA_NOTICE.md`](DATA_NOTICE.md)).
+
+**Portada**: el calendario de cada temporada, con la bandera y el trazado de cada Gran Premio. Cada sesión ya disputada se descarga con un clic, en tu PC.
+
+![Portada con el calendario de 2026](docs/img/portada.webp)
+
+**Replay**: el circuito en 3D con todos los coches en movimiento, la clasificación en vivo (gaps, neumáticos, boxes), la dirección de carrera, las banderas por sector y el timeline con sus marcas.
+
+![Replay de Libres 1 en Spa](docs/img/replay.webp)
+
+**Siguiendo a un coche**: monoplaza 3D genérico con el color de su equipo y el compuesto en los neumáticos, cámara de seguimiento con zoom (rueda o pellizco), telemetría y gráficas de los últimos segundos.
+
+![Cámara siguiendo a un coche, con su telemetría](docs/img/coche.webp)
+
+**Tablet**: con `pnpm local --lan`, también en el iPad (paneles abajo en vertical).
+
+<img src="docs/img/tablet.webp" alt="Replay en una tablet en vertical" width="384">
+
+Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shots`.
+
+## Qué hace
+
+- Replay 3D de cualquier sesión (libres, clasificación, sprint, carrera) de 2023 en adelante, con un único reloj para todo: coches, clasificación, telemetría y mensajes. Velocidades de ×1 a ×16 y saltos a cualquier instante.
+- Clasificación en vivo con gap al líder o intervalo, compuesto y vueltas del neumático, boxes y banderas azules.
+- Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
+- Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
+- Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
+- En español e inglés, tema oscuro, escritorio y tablet.
+
 ## Estado
 
 En desarrollo (Fase 1, MVP replay). Plan, decisiones e hitos en [`docs/PLAN.md`](docs/PLAN.md). La fuente de verdad del proyecto es [`docs/BRIEF.md`](docs/BRIEF.md).

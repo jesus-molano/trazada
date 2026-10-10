@@ -37,6 +37,7 @@ pnpm perf:table               # tabla de peso por sesión en docs/PERFORMANCE.md
 # e2e con datos completos de data/ (solo local, p. ej. Japón 2026 dev): servidor aparte y E2E_LOCAL_URL
 #   E2E_DATA_DIR=../../data node tests/e2e/serve.mjs --port 4199 &
 #   E2E_LOCAL_URL=http://127.0.0.1:4199 pnpm e2e local-japan
+# Capturas del README (docs/img/*.webp): pnpm build && README_SHOTS=1 pnpm e2e readme-shots (necesita pipeline con uv sync)
 # Capturas de referencia (@screenshot): solo se comparan en CI. Se regeneran en el entorno del CI con el
 # workflow "Snapshots" (a mano, o con un push cuyo mensaje contenga [snapshots]); luego git pull.
 
