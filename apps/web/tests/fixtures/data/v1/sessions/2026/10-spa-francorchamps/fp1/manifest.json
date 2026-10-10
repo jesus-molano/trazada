@@ -215,19 +215,19 @@
   "quality": {
     "coverage": {
       "1": {
-        "pos": 0.9971,
+        "pos": 0.9967,
         "car": 1.0
       },
       "3": {
-        "pos": 0.999,
+        "pos": 0.9963,
         "car": 1.0
       },
       "5": {
-        "pos": 0.9988,
+        "pos": 0.9787,
         "car": 1.0
       },
       "6": {
-        "pos": 0.999,
+        "pos": 1.0,
         "car": 1.0
       },
       "10": {
@@ -235,35 +235,35 @@
         "car": 1.0
       },
       "11": {
-        "pos": 0.9991,
+        "pos": 1.0,
         "car": 1.0
       },
       "12": {
-        "pos": 0.9984,
+        "pos": 0.9983,
         "car": 1.0
       },
       "16": {
-        "pos": 0.9985,
+        "pos": 1.0,
         "car": 1.0
       },
       "18": {
-        "pos": 0.9988,
+        "pos": 1.0,
         "car": 1.0
       },
       "23": {
-        "pos": 0.999,
+        "pos": 1.0,
         "car": 1.0
       },
       "27": {
-        "pos": 0.9992,
+        "pos": 1.0,
         "car": 1.0
       },
       "30": {
-        "pos": 0.999,
+        "pos": 1.0,
         "car": 1.0
       },
       "31": {
-        "pos": 0.9986,
+        "pos": 1.0,
         "car": 1.0
       },
       "34": {
@@ -271,35 +271,35 @@
         "car": 1.0
       },
       "41": {
-        "pos": 0.9988,
+        "pos": 1.0,
         "car": 1.0
       },
       "43": {
-        "pos": 0.9991,
+        "pos": 1.0,
         "car": 1.0
       },
       "44": {
-        "pos": 0.9991,
+        "pos": 1.0,
         "car": 1.0
       },
       "55": {
-        "pos": 0.9993,
+        "pos": 1.0,
         "car": 1.0
       },
       "63": {
-        "pos": 0.9988,
+        "pos": 1.0,
         "car": 1.0
       },
       "77": {
-        "pos": 0.9985,
+        "pos": 1.0,
         "car": 1.0
       },
       "81": {
-        "pos": 0.9986,
+        "pos": 1.0,
         "car": 1.0
       },
       "87": {
-        "pos": 0.9984,
+        "pos": 1.0,
         "car": 1.0
       }
     },
@@ -307,15 +307,36 @@
     "elevationRangeM": 102.4,
     "estimated": [],
     "notes": [
-      "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)",
-      "Extracto recortado para tests e2e."
+      {
+        "code": "position-coverage-low",
+        "text": "cobertura de posición < 99 % en algún piloto",
+        "params": {
+          "cars": 1,
+          "minPos": 0.9787
+        }
+      },
+      {
+        "code": "position-glitches",
+        "text": "más del 1 % de las posiciones sin dato por fallos del feed (retrocesos o posición congelada con el coche en marcha) en los coches 5",
+        "params": {
+          "cars": "5"
+        }
+      },
+      {
+        "code": "no-corners",
+        "text": "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)"
+      },
+      {
+        "code": "e2e-extract",
+        "text": "Extracto recortado para tests e2e."
+      }
     ]
   },
   "files": {
     "motion": {
-      "path": "motion.ed39cd69.trzb.gz",
-      "bytes": 52820,
-      "sha256": "ed39cd69f987856aab409cf542ce146f534a17b6ab85a8ae57ca7726214686ce",
+      "path": "motion.5d3560e9.trzb.gz",
+      "bytes": 52988,
+      "sha256": "5d3560e91cd320363a6eb08a0261869d644a770128537863a7e6a9f3f6a4ee69",
       "layout": "motion@1",
       "compression": "gzip"
     },
@@ -327,23 +348,23 @@
       "compression": "gzip"
     },
     "timing": {
-      "path": "timing.0d08a9a8.trzb.gz",
-      "bytes": 2292,
-      "sha256": "0d08a9a8f329ce9d430d12c1a7c5c1493c6080b7dfcf0a2aee59ac4e1d2394d8",
+      "path": "timing.468bb677.trzb.gz",
+      "bytes": 8739,
+      "sha256": "468bb67767834a6513d4f8908fabf38e88a8befc36f17d61a7ce40ab6d68955c",
       "layout": "timing@1",
       "compression": "gzip"
     },
     "events": {
-      "path": "events.37f757a8.json.gz",
-      "bytes": 923,
-      "sha256": "37f757a86c7e5ef6610c5700c03ed88d249d93b02e7a17b8a63dbe213a2b3d6a",
+      "path": "events.a7ffc28f.json.gz",
+      "bytes": 1734,
+      "sha256": "a7ffc28fa2453b707fac8c1fad2e2e6bdf31226d348c28f60cbd9c6a9a9ef1a1",
       "layout": "events@1",
       "compression": "gzip"
     },
     "circuit": {
-      "path": "../../../../circuits/7-a/circuit.74e3b160.trzb.gz",
-      "bytes": 11640,
-      "sha256": "74e3b16086cf6587ceda171472011d6324f047487cf3091045453a6bb34b3555",
+      "path": "../../../../circuits/7-a/circuit.7c659596.trzb.gz",
+      "bytes": 11663,
+      "sha256": "7c659596e68c090959766fb38e96af869b9de2dd4a25929c2ed581a345364ef4",
       "layout": "circuit@1",
       "compression": "gzip"
     }

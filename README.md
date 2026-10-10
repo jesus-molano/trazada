@@ -8,7 +8,7 @@ Replay y análisis de carreras: circuito en 3D con todos los coches en movimient
 
 ## Cómo se ve
 
-Es una app para usar en tu PC (no hay web pública), así que aquí van unas capturas. Muestran el extracto de prueba de Spa 2026 que viene con los tests (ver [`DATA_NOTICE.md`](DATA_NOTICE.md)).
+Es una app para usar en tu PC (no hay web pública), así que aquí van unas capturas. Muestran el extracto de prueba que viene con los tests: nueve minutos reales de Libres 1 de Spa 2026, con la clasificación y los mensajes de dirección de carrera de ese momento (ver [`DATA_NOTICE.md`](DATA_NOTICE.md)). En la portada, el calendario es el real de la temporada; las sesiones de Bélgica marcadas DEV o «no disponible» son variantes de prueba de los tests.
 
 **Portada**: el calendario de cada temporada, con la bandera y el trazado de cada Gran Premio. Cada sesión ya disputada se descarga con un clic, en tu PC.
 

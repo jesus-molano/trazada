@@ -77,8 +77,10 @@ test('portada: calendario de la temporada con banderas, trazados y descargas', a
     await page.goto(`${base}/?season=2026`)
     await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
     await expect(page.getByTestId('event-melbourne')).toBeVisible({ timeout: 60_000 })
-    await page.getByTestId('event-spa-francorchamps').click()
-    await expect(page.getByTestId('session-fp1')).toBeVisible()
+    // Un Gran Premio sin descargar: sus sesiones, con «Descargar» (en el de Bélgica están las variantes de
+    // prueba de los tests, que no son sesiones reales).
+    await page.getByTestId('event-suzuka').click()
+    await expect(page.getByTestId('download-fp1')).toBeVisible()
     await shot(page, 'portada')
   } finally {
     server.kill()

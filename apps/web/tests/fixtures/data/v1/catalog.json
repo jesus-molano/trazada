@@ -17,31 +17,35 @@
               "name": "Practice 1",
               "status": "ok",
               "path": "sessions/2026/10-spa-francorchamps/fp1/manifest.json",
-              "bytes": 173769
+              "bytes": 181218
             },
             {
               "session": "fp2",
               "name": "Practice 2",
               "status": "no-position",
-              "path": "sessions/2026/10-spa-francorchamps/fp2/manifest.json"
+              "path": "sessions/2026/10-spa-francorchamps/fp2/manifest.json",
+              "dev": true
             },
             {
               "session": "fp3",
               "name": "Practice 3",
               "status": "ok",
-              "path": "sessions/2026/10-spa-francorchamps/fp3/manifest.json"
+              "path": "sessions/2026/10-spa-francorchamps/fp3/manifest.json",
+              "dev": true
             },
             {
               "session": "q",
               "name": "Qualifying",
               "status": "ok",
-              "path": "sessions/2026/10-spa-francorchamps/q/manifest.json"
+              "path": "sessions/2026/10-spa-francorchamps/q/manifest.json",
+              "dev": true
             },
             {
               "session": "race",
               "name": "Race",
               "status": "ok",
-              "path": "sessions/2026/10-spa-francorchamps/race/manifest.json"
+              "path": "sessions/2026/10-spa-francorchamps/race/manifest.json",
+              "dev": true
             }
           ]
         }
