@@ -76,6 +76,18 @@ describe('monoplaza procedural', () => {
     expect(Math.max(...s)).toBe(1)
   })
 
+  it('el color del compuesto se ve desde detrás y desde arriba (no solo en el flanco, que se ve de canto)', () => {
+    const p = car.layers.band.positions
+    let facing = 0
+    for (let i = 0; i < p.length; i += 9) {
+      const [ax, ay, az, bx, by, bz, cx, cy, cz] = p.subarray(i, i + 9)
+      const n = [(by! - ay!) * (cz! - az!) - (bz! - az!) * (cy! - ay!), (bz! - az!) * (cx! - ax!) - (bx! - ax!) * (cz! - az!), (bx! - ax!) * (cy! - ay!) - (by! - ay!) * (cx! - ax!)]
+      const l = Math.hypot(n[0]!, n[1]!, n[2]!) || 1
+      if (n[1]! / l > 0.5 || Math.abs(n[0]!) / l > 0.5) facing++ // hacia arriba o hacia delante/detrás
+    }
+    expect(facing).toBeGreaterThan(20)
+  })
+
   it('el flap trasero es una pieza aparte (para el DRS, si algún día hay dato)', () => {
     expect(car.pieces.rearFlap).toBeGreaterThan(0)
   })

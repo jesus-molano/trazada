@@ -81,6 +81,33 @@ describe('leaderboard sin torre (carrera)', () => {
     expect(lb.compoundAt('99', 95_000)).toBe('UNKNOWN')
   })
 
+  it('compuesto puesto en una parada con cambio: sin dato desde la entrada al pit hasta la salida', () => {
+    // 7: vuelta 1 en medios, entra al pit a 85 s, cruza la línea a 87 s (empieza la 2, en duros) y sale a 105 s.
+    const pit = fakeTrzb('timing', {
+      laps: {
+        car: [7, 7, 7],
+        lap: [1, 2, 3],
+        startMs: [0, 87000, 190000],
+        endMs: [87000, 190000, 280000],
+        lapMs: [-1, 103000, 90000],
+        s1Ms: [-1, -1, -1],
+        compound: [2, 3, 3],
+        tyreLife: [1, 1, 2],
+        pitInMs: [85000, -1, -1],
+        pitOutMs: [-1, 105000, -1],
+        position: [1, 1, 1],
+        deleted: [0, 0, 0],
+      },
+      stream: { t: [], car: [], position: [], gapToLeaderMs: [], intervalMs: [], lapsBehind: [] },
+    })
+    const e = new LeaderboardEngine('race', pit, ev(), [{ ...drivers[0]!, number: '7' }])
+    expect(e.compoundAt('7', 80_000)).toBe('MEDIUM')
+    expect(e.compoundAt('7', 86_000)).toBe('UNKNOWN') // en el pit, antes de la línea
+    expect(e.compoundAt('7', 95_000)).toBe('UNKNOWN') // cruzó la línea, aún parado
+    expect(e.compoundAt('7', 106_000)).toBe('HARD')
+    expect(e.compoundAt('7', 195_000)).toBe('HARD') // misma goma: sin hueco
+  })
+
   it('al final de cada vuelta, la posición = Laps.Position', () => {
     const cases: [string, number, number][] = [
       ['1', 90000, 1],

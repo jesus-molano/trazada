@@ -181,8 +181,8 @@ class Builder {
   }
 
   /**
-   * Rueda por revolución alrededor del eje Z, con la cara exterior hacia `side` (±1): neumático con la banda
-   * del compuesto en el flanco exterior y llanta hundida.
+   * Rueda por revolución alrededor del eje Z, con la cara exterior hacia `side` (±1): neumático con el color
+   * del compuesto en el hombro exterior y en un anillo del flanco, y llanta hundida.
    */
   wheel(center: V3, width: number, side: number, segs: number, piece: string): void {
     const { tyreR: R, rimR } = CAR_DIM
@@ -191,9 +191,11 @@ class Builder {
       [rimR, -h, 'tyre'],
       [R - 0.012, -h, 'tyre'],
       [R, -h + 0.03, 'tyre'],
-      [R, h - 0.03, 'tyre'],
-      [R - 0.012, h, 'tyre'],
-      [R - 0.045, h, 'band'],
+      // Color del compuesto en el borde exterior de la banda de rodadura, el hombro y el flanco: se ve desde
+      // detrás y desde arriba (las cámaras de la app) y de lado.
+      [R, h - 0.08, 'band'],
+      [R, h - 0.03, 'band'],
+      [R - 0.012, h, 'band'],
       [R - 0.07, h, 'tyre'],
       [rimR, h, 'rim'],
       [rimR - 0.02, h - 0.06, 'rim'],

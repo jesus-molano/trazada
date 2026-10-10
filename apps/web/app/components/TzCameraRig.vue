@@ -29,6 +29,13 @@ const playback = usePlaybackStore()
 const settings = useSettingsStore()
 const follow = new FollowCamera(settings.followDistance)
 const pose = { x: 0, y: 0, z: 0 }
+/**
+ * Desplazamiento lateral de la separación visual (Estimado) que sigue la cámara, suavizado: el del coche
+ * cambia a saltos (al juntarse o separarse de otro) y la vista entera saltaría de lado.
+ */
+let camOffset = 0
+let camOffsetSet = false
+const OFFSET_RATE = 8 // 1/s
 
 type Mode = 'overview' | 'to-follow' | 'follow' | 'to-overview'
 let mode: Mode = 'overview'
@@ -56,6 +63,11 @@ let hasOverview = false
 /** Los MapControls son un objeto de three que el rig gobierna (no estado de Vue). */
 function mapControls(): MapControls | null {
   return props.controls
+}
+
+function resetFollow() {
+  follow.reset()
+  camOffsetSet = false
 }
 
 function setMode(m: Mode) {
@@ -121,7 +133,7 @@ function transition(to: 'follow' | 'overview') {
   if (to === 'follow') {
     // Solo desde la vista general: si se vuelve a seguir a mitad del regreso, la vista guardada sigue valiendo.
     saveOverview = mode === 'overview'
-    follow.reset()
+    resetFollow()
     hasFix = false
     pendingFollow = true
     blend.k = 0
@@ -157,7 +169,7 @@ watch(
     else if (!following && wasFollowing) transition('overview')
     else if (following) {
       // Otro coche: la cámara salta a él en cuanto se vea (hasta entonces, se queda donde está).
-      follow.reset()
+      resetFollow()
       hasFix = false
     }
   },
@@ -178,8 +190,14 @@ onBeforeRender(({ camera, delta }) => {
     const st = rt.model.states[i]
     follow.distance = settings.followDistance
     if (mode !== 'to-overview' && st?.visible) {
-      // Misma pose que el coche dibujado (con la separación visual, si está activa).
-      carPose(st, rt.offsets[i]!, props.flat, pose)
+      // La pose del coche dibujado, con la separación visual suavizada (ver camOffset).
+      const goal = rt.offsets[i]!
+      if (!camOffsetSet) {
+        camOffset = goal
+        camOffsetSet = true
+      } else camOffset += (goal - camOffset) * (1 - Math.exp(-OFFSET_RATE * delta))
+      if (Math.abs(goal - camOffset) > 0.01) emit('invalidate') // sigue acomodándose también en pausa
+      carPose(st, camOffset, props.flat, pose)
       follow.update({ x: pose.x, y: pose.y * props.yScale, z: pose.z }, st.heading, delta)
       follow.position(followPos)
       followTarget.set(follow.target.x, follow.target.y, follow.target.z)

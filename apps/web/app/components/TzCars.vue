@@ -10,9 +10,11 @@
  * invisible para elegir coche con un clic o un toque. Las matrices se escriben en cada render desde el
  * ReplayModel, sin reactividad. Va dentro de TresCanvas, en el grupo con la escala de altura.
  *
- * Los coches se dibujan siempre por encima de la pista: antes del primero se borra la profundidad, y entre
- * ellos sí la usan (las piezas de un coche y los coches entre sí se tapan bien). Colores sin tone mapping:
- * la carrocería coincide con la franja de la sigla.
+ * Los coches se dibujan siempre por encima de la pista y de las banderas de sector: van en la pasada de
+ * transparentes (con opacidad 1), después de las capas de banderas, y antes del primero se borra la
+ * profundidad. Las cuñas no usan profundidad (a escala de mapa, sus techos casi coplanarios parpadearían
+ * entre sí); el modelo detallado sí (sus piezas y los coches cercanos se tapan bien). Colores sin tone
+ * mapping: la carrocería coincide con la franja de la sigla.
  */
 import { useLoop, useTres } from '@tresjs/core'
 import {
@@ -33,8 +35,10 @@ import { token } from '~/design/tokens'
 import { buildCar, CAR_PARTS, type CarLayerGeometry, type CarPart } from '~/engine/car/carGeometry'
 import { carSizeScale, nextDetail, screenLengthPx } from '~/engine/car/carLod'
 import { carPose } from '~/engine/replay/carPose'
+import { compoundToken } from '~/engine/timing/compound'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
+import { useSessionStore } from '~/stores/session'
 
 /** `detail`: false para dibujar siempre la cuña (`?car=wedge`, para comparar en el bench). */
 const props = defineProps<{ yScale: number; flat: boolean; detail: boolean }>()
@@ -100,19 +104,21 @@ function layerGeometry(l: CarLayerGeometry): BufferGeometry {
   return g
 }
 
-const material = (vertexColors: boolean) => new MeshBasicMaterial({ color: 0xffffff, vertexColors, toneMapped: false })
+/** Pasada de transparentes (opacidad 1): después de las capas de banderas de la pista (ver arriba). */
+const material = (vertexColors: boolean, depth: boolean) =>
+  new MeshBasicMaterial({ color: 0xffffff, vertexColors, toneMapped: false, transparent: true, depthTest: depth, depthWrite: depth })
 
 // Cuña: una instancia por coche (índice = estado), con el color del equipo.
-const wedge = new InstancedMesh(wedgeGeometry(), material(false), N)
+const wedge = new InstancedMesh(wedgeGeometry(), material(false, false), N)
 wedge.frustumCulled = false
 wedge.renderOrder = 10
-// Se dibuja antes que el resto de coches (y nunca se oculta con `visible`, o no se llamaría): borra la
-// profundidad para que los coches queden por encima de la pista y del pit lane, pero se tapen entre ellos.
+// Se dibuja antes que el modelo detallado (y nunca se oculta con `visible`, o no se llamaría): borra la
+// profundidad para que los coches queden por encima de la pista, pero se tapen entre ellos.
 wedge.onBeforeRender = (renderer) => (renderer as WebGLRenderer).clearDepth()
 
 const car = buildCar()
 const layers = (['paint', 'neutral', 'band'] as const).map((layer) => {
-  const mesh = new InstancedMesh(layerGeometry(car.layers[layer]), material(true), N)
+  const mesh = new InstancedMesh(layerGeometry(car.layers[layer]), material(true, true), N)
   mesh.frustumCulled = false
   mesh.renderOrder = 11
   mesh.count = 0
@@ -132,14 +138,14 @@ proxy.frustumCulled = false
 const teamColor = states.map((st) => new Color(st.driver?.color ?? token('--tz-team-unknown')))
 states.forEach((_, i) => wedge.setColorAt(i, teamColor[i]!))
 wedge.instanceColor!.needsUpdate = true
-const COMPOUND: Record<string, Color> = {
-  SOFT: new Color(token('--tz-tyre-soft')),
-  MEDIUM: new Color(token('--tz-tyre-medium')),
-  HARD: new Color(token('--tz-tyre-hard')),
-  INTERMEDIATE: new Color(token('--tz-tyre-inter')),
-  WET: new Color(token('--tz-tyre-wet')),
+/** Color de cada compuesto según la temporada (el de la clasificación); gris sin dato. */
+const season = useSessionStore().data?.manifest.session.season ?? 0
+const compoundColors = new Map<string, Color>()
+function compoundColor(compound: string): Color {
+  let c = compoundColors.get(compound)
+  if (!c) compoundColors.set(compound, (c = new Color(token(compoundToken(season, compound)))))
+  return c
 }
-const UNKNOWN_COMPOUND = new Color(token('--tz-tyre-unknown'))
 
 const color = new Color()
 sceneStats.instances = wedge.count
@@ -189,19 +195,21 @@ onBeforeRender(({ camera }) => {
     // La escala Y compensa la exageración de altura del grupo (el coche no se estira).
     sc.set(k, k * yInv, k)
     m.compose(p, q, sc)
-    proxy.setMatrixAt(i, m)
     if (near) {
       paint.setMatrixAt(shown, m)
       paint.setColorAt(shown, teamColor[i]!)
-      band.setColorAt(shown, COMPOUND[rt.leaderboard.compoundAt(st.car, t)] ?? UNKNOWN_COMPOUND)
+      band.setColorAt(shown, compoundColor(rt.leaderboard.compoundAt(st.car, t)))
       shown++
       wedge.setMatrixAt(i, zero)
     } else {
-      const s = playback.selectedCar === st.car ? SELECTED_SCALE : 1
-      sc.multiplyScalar(s)
-      m.compose(p, q, sc)
+      if (playback.selectedCar === st.car) {
+        sc.multiplyScalar(SELECTED_SCALE)
+        m.compose(p, q, sc)
+      }
       wedge.setMatrixAt(i, m)
     }
+    // El proxy, con el tamaño con el que se dibuja el coche (también la cuña ampliada del elegido).
+    proxy.setMatrixAt(i, m)
   }
   for (const mesh of layers) {
     mesh.count = shown

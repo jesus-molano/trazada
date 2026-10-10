@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /** Leaderboard del replay: posición, gap/intervalo, neumático y estado de cada piloto. */
 import type { LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { usePlaybackStore } from '~/stores/playback'
+import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
 
 const { t, locale } = useI18n()
@@ -9,14 +11,9 @@ const playback = usePlaybackStore()
 const settings = useSettingsStore()
 const rows = useLeaderboard()
 settings.hydrate()
-
-const COMPOUND_LETTER: Record<string, string> = {
-  SOFT: 'S',
-  MEDIUM: 'M',
-  HARD: 'H',
-  INTERMEDIATE: 'I',
-  WET: 'W',
-}
+const season = useSessionStore().data?.manifest.session.season ?? 0
+/** Color del compuesto (según la temporada) para el borde de su letra. */
+const compoundStyle = (compound: string) => ({ '--compound': `var(${compoundToken(season, compound)})` })
 
 const gapFmt = computed(() => new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
 
@@ -93,14 +90,14 @@ function select(car: string) {
           <span class="tz-lb__gap tz-tabular">{{ gapText(r) }}</span>
           <span
             class="tz-lb__tyre"
-            :class="`is-${r.compound.toLowerCase()}`"
+            :style="compoundStyle(r.compound)"
             :title="
               r.tyreLife === null
                 ? t('leaderboard.tyreNoLife', { compound: t(`compound.${r.compound}`) })
                 : t('leaderboard.tyre', { compound: t(`compound.${r.compound}`), laps: r.tyreLife }, r.tyreLife)
             "
           >
-            <span class="tz-lb__compound">{{ COMPOUND_LETTER[r.compound] ?? '?' }}</span>
+            <span class="tz-lb__compound" :class="{ 'is-long': compoundLetter(r.compound).length > 1 }">{{ compoundLetter(r.compound) }}</span>
             <span class="tz-lb__life tz-tabular">{{ r.tyreLife ?? '' }}</span>
           </span>
         </button>
@@ -271,30 +268,15 @@ function select(car: string) {
   place-items: center;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--tz-tyre-unknown);
+  border: 2px solid var(--compound, var(--tz-tyre-unknown));
   border-radius: 50%;
   font-size: 9px;
   font-weight: var(--tz-weight-bold);
 }
 
-.is-soft .tz-lb__compound {
-  border-color: var(--tz-tyre-soft);
-}
-
-.is-medium .tz-lb__compound {
-  border-color: var(--tz-tyre-medium);
-}
-
-.is-hard .tz-lb__compound {
-  border-color: var(--tz-tyre-hard);
-}
-
-.is-intermediate .tz-lb__compound {
-  border-color: var(--tz-tyre-inter);
-}
-
-.is-wet .tz-lb__compound {
-  border-color: var(--tz-tyre-wet);
+.tz-lb__compound.is-long {
+  letter-spacing: -0.06em;
+  font-size: 7px;
 }
 
 .tz-lb__life {

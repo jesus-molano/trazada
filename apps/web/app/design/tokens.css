@@ -69,6 +69,13 @@
   --tz-tyre-inter: #34c759;
   --tz-tyre-wet: #0a84ff;
   --tz-tyre-unknown: #697381;
+  /* 2018: compuestos con nombre y color propios */
+  --tz-tyre-hypersoft: #ffb1c8;
+  --tz-tyre-ultrasoft: #b24ba7;
+  --tz-tyre-supersoft: #ff3b30;
+  --tz-tyre-soft-2018: #ffd60a;
+  --tz-tyre-medium-2018: #eef0f3;
+  --tz-tyre-hard-2018: #3fb6f2;
 
   /* Espaciado (base 4 px) */
   --tz-space-0: 0;

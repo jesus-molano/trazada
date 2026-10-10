@@ -40,6 +40,8 @@ interface CarLaps {
   compound: Uint8Array
   tyreLife: Uint8Array
   deleted: Uint8Array
+  pitIn: Float64Array
+  pitOut: Float64Array
 }
 
 interface StreamRows {
@@ -99,6 +101,8 @@ export class LeaderboardEngine {
         compound: Uint8Array.from(pick(v.compound)),
         tyreLife: Uint8Array.from(pick(tyreLife)),
         deleted: Uint8Array.from(pick(v.deleted)),
+        pitIn: Float64Array.from(pick(v.pitInMs)),
+        pitOut: Float64Array.from(pick(v.pitOutMs)),
       })
     }
 
@@ -142,15 +146,25 @@ export class LeaderboardEngine {
     return out
   }
 
-  /** Compuesto con el que va un coche en t (el de su vuelta en curso); 'UNKNOWN' sin dato. */
+  /**
+   * Compuesto que lleva puesto un coche en t (para la banda del neumático en 3D). Es el de su vuelta en
+   * curso, salvo en una parada con cambio de compuesto: desde la entrada al pit hasta la salida no se sabe
+   * qué neumáticos lleva (la vuelta de salida empieza al cruzar la línea en el pit lane, antes del cambio),
+   * así que 'UNKNOWN'. Sin vueltas, 'UNKNOWN'. (La clasificación muestra el de la vuelta en curso.)
+   */
   compoundAt(car: string, t: number): string {
     const laps = this.laps.get(car)
-    let compound = 'UNKNOWN'
-    if (!laps) return compound
-    for (let k = 0; k < laps.lap.length; k++) {
-      if (laps.start[k]! >= 0 && laps.start[k]! <= t) compound = ENUMS.compound[laps.compound[k]!] ?? 'UNKNOWN'
-    }
-    return compound
+    if (!laps) return 'UNKNOWN'
+    let k = -1
+    for (let j = 0; j < laps.lap.length; j++) if (laps.start[j]! >= 0 && laps.start[j]! <= t) k = j
+    if (k < 0) return 'UNKNOWN'
+    const c = laps.compound[k]!
+    const n = laps.lap.length
+    // Vuelta de entrada: ya en el pit, antes de cruzar la línea.
+    if (k + 1 < n && laps.compound[k + 1] !== c && laps.pitIn[k]! >= 0 && t >= laps.pitIn[k]!) return 'UNKNOWN'
+    // Vuelta de salida: aún sin salir del pit.
+    if (k > 0 && laps.compound[k - 1] !== c && laps.pitOut[k]! >= 0 && t < laps.pitOut[k]!) return 'UNKNOWN'
+    return ENUMS.compound[c] ?? 'UNKNOWN'
   }
 
   compute(t: number, states: readonly CarState[]): LeaderboardRow[] {

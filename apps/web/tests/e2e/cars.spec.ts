@@ -105,10 +105,34 @@ test.describe('coche 3D (D28)', () => {
     for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -120)
     await expect.poll(distance).toBeLessThan(far * 0.5)
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.settings') ?? '{}').followDistance)).toBeLessThan(35)
+    // También con el ratón sobre la sigla del coche (que está encima del lienzo).
+    const before = await distance()
+    const label = (await page.locator(`[data-testid="car-labels"] [data-car="${car}"]`).boundingBox())!
+    await page.mouse.move(label.x + label.width / 2, label.y + label.height / 2)
+    for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 120)
+    await expect.poll(distance).toBeGreaterThan(before * 1.3)
+    for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -120)
+    await page.mouse.move(cx, cy)
     // El coche ocupa el centro de la pantalla: un clic sobre él (proxy de selección) lo deselecciona.
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
     expect(car).not.toBeNull()
     await page.mouse.click(cx, cy + 20)
     await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
+  })
+
+  test('mientras el seguimiento espera a ver el coche, la rueda es la del mapa (no cambia la distancia guardada)', async ({ page }) => {
+    await openScene(page)
+    // Al empezar la sesión no hay ningún coche en pista: el seguimiento queda a la espera.
+    await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs))
+    await expect.poll(() => page.evaluate(() => window.__trazada!.cars().filter((c) => c.visible).length)).toBe(0)
+    await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+    await page.getByTestId('follow-toggle').click()
+    await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('to-follow')
+    const box = (await page.locator('[data-testid="scene"] canvas').boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    const before = await page.evaluate(() => window.__trazada!.scene.camera)
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -120)
+    await expect.poll(() => page.evaluate(() => window.__trazada!.scene.camera)).not.toEqual(before) // zoom del mapa
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.settings') ?? '{}').followDistance)).toBeUndefined()
   })
 })

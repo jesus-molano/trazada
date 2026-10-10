@@ -18,16 +18,21 @@ const props = defineProps<{ states: CarState[]; offsets: Float32Array }>()
 const playback = usePlaybackStore()
 const root = ref<HTMLElement | null>(null)
 const v = new Vector3()
-const top = new Vector3()
+const corner = new Vector3()
 const pose = { x: 0, y: 0, z: 0 }
 
 /**
- * Separación de la sigla sobre la base del coche (px) y, como mínimo, sobre su parte más alta (m × tamaño
- * visual, y px): de cerca, el coche es más alto que esos 14 px y la sigla no debe taparlo.
+ * Separación de la sigla sobre la base del coche (px) y, como mínimo, sobre lo más alto de su caja en
+ * pantalla: de cerca (modelo detallado, o la cuña vista con el mapa muy acercado) el coche ocupa más que
+ * esos 14 px, también a lo largo si va hacia la cámara o se aleja, y la sigla no debe taparlo. Caja (m ×
+ * tamaño visual): la de la cuña, la mayor de las dos formas; ×1,35 la del coche elegido.
  */
 const LIFT_PX = 14
-const TOP_M = 1.35
 const TOP_GAP_PX = 4
+const BOX_HALF_LENGTH_M = 2.8
+const BOX_HALF_WIDTH_M = 1.0
+const BOX_HEIGHT_M = 1.0
+const SELECTED_SCALE = 1.35
 /** Holgura entre siglas y holgura extra para volver a mostrarse. */
 const GAP_PX = 2
 const REVEAL_PX = 6
@@ -61,13 +66,22 @@ function update(camera: Camera, width: number, height: number, yScale: number, f
     if (!st.visible || !nodes[i]) continue
     carPose(st, props.offsets[i]!, flat, pose)
     v.set(pose.x, pose.y * yScale, pose.z)
-    top.copy(v)
-    top.y += TOP_M * carSizeScale(camera.position.distanceTo(v))
+    // Lo más alto en pantalla de las cuatro esquinas de arriba de la caja del coche, girada con su rumbo.
+    const k = carSizeScale(camera.position.distanceTo(v)) * (st.car === playback.selectedCar ? SELECTED_SCALE : 1)
+    const fx = Math.cos(st.heading) * BOX_HALF_LENGTH_M * k
+    const fz = -Math.sin(st.heading) * BOX_HALF_LENGTH_M * k
+    const lx = Math.sin(st.heading) * BOX_HALF_WIDTH_M * k
+    const lz = Math.cos(st.heading) * BOX_HALF_WIDTH_M * k
+    let top = Infinity
+    for (const a of [1, -1])
+      for (const b of [1, -1]) {
+        corner.set(v.x + a * fx + b * lx, v.y + BOX_HEIGHT_M * k, v.z + a * fz + b * lz).project(camera)
+        if (corner.z < 1 && corner.z > -1) top = Math.min(top, ((1 - corner.y) / 2) * height)
+      }
     v.project(camera)
-    top.project(camera)
     on[i] = v.z < 1 && v.z > -1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05
     sx[i] = ((v.x + 1) / 2) * width
-    sy[i] = Math.min(((1 - v.y) / 2) * height - LIFT_PX, ((1 - top.y) / 2) * height - TOP_GAP_PX)
+    sy[i] = Math.min(((1 - v.y) / 2) * height - LIFT_PX, top - TOP_GAP_PX)
     order.push(i)
   }
   // Prioridad: el coche elegido y, después, el que va por delante (más distancia recorrida).

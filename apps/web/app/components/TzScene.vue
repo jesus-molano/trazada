@@ -305,8 +305,12 @@ function trackScreen(stepM: number): TrackScreenSample[] {
 
 /**
  * Zoom de la cámara de seguimiento: rueda o pellizco con dos dedos (con la vista general, el zoom es el de
- * los controles del mapa). La distancia se guarda en las preferencias.
+ * los controles del mapa). Solo cuando el rig ya gobierna la cámara (desactiva los controles al empezar a
+ * seguir; mientras espera a ver el coche, la rueda sigue siendo la del mapa). Escucha en la raíz de la
+ * escena: también sobre las siglas, que están encima del lienzo. La distancia se guarda en las preferencias.
  */
+const sceneEl = ref<HTMLElement | null>(null)
+const following = () => playback.following && controls?.enabled === false
 let pinch: { distance: number; span: number } | null = null
 const span = (e: TouchEvent) => Math.hypot(e.touches[0]!.clientX - e.touches[1]!.clientX, e.touches[0]!.clientY - e.touches[1]!.clientY)
 function zoomFollow(distance: number) {
@@ -314,16 +318,16 @@ function zoomFollow(distance: number) {
   ctx?.renderer.invalidate()
 }
 function onWheel(e: WheelEvent) {
-  if (!playback.following) return
+  if (!following()) return
   e.preventDefault()
   const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
   zoomFollow(settings.followDistance * Math.exp(dy * 0.0015))
 }
 function onTouchStart(e: TouchEvent) {
-  pinch = playback.following && e.touches.length === 2 ? { distance: settings.followDistance, span: span(e) } : null
+  pinch = following() && e.touches.length === 2 ? { distance: settings.followDistance, span: span(e) } : null
 }
 function onTouchMove(e: TouchEvent) {
-  if (!pinch || e.touches.length !== 2) return
+  if (!pinch || e.touches.length !== 2 || !following()) return
   e.preventDefault()
   zoomFollow((pinch.distance * pinch.span) / Math.max(1, span(e)))
 }
@@ -343,7 +347,6 @@ function detach() {
   resizeObserver = null
   canvasEl?.removeEventListener('webglcontextlost', onLost)
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
-  for (const [type, fn] of ZOOM_EVENTS) canvasEl?.removeEventListener(type, fn as EventListener)
   controls?.dispose()
   controls = null
   controlsRef.value = null
@@ -356,7 +359,6 @@ function onReady(context: TresContext) {
   canvasEl = context.renderer.instance.domElement as HTMLCanvasElement
   canvasEl.addEventListener('webglcontextlost', onLost)
   canvasEl.addEventListener('webglcontextrestored', onRestored)
-  for (const [type, fn] of ZOOM_EVENTS) canvasEl.addEventListener(type, fn as EventListener, { passive: false })
   // Modo on-demand: el runtime pide un frame en cada tick con reproducción y tras cada seek.
   getRuntime()?.setInvalidate(() => context.renderer.invalidate())
   const cam = camera.value
@@ -446,12 +448,14 @@ onMounted(() => {
     lastFrameAt = rt.clock.playing ? now : 0
   })
   settings.hydrate()
+  for (const [type, fn] of ZOOM_EVENTS) sceneEl.value?.addEventListener(type, fn as EventListener, { passive: false })
   sceneStats.elevationScale = yScale.value
   sceneStats.ready = false
   supported.value = hasWebGL2()
 })
 onBeforeUnmount(() => {
   offFrames?.()
+  for (const [type, fn] of ZOOM_EVENTS) sceneEl.value?.removeEventListener(type, fn as EventListener)
   sceneProbe.trackScreen = null
   detach()
   sceneStats.ready = false
@@ -460,7 +464,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="tz-scene" data-testid="scene" :data-webgl="supported === null ? 'pending' : supported ? 'yes' : 'no'">
+  <div ref="sceneEl" class="tz-scene" data-testid="scene" :data-webgl="supported === null ? 'pending' : supported ? 'yes' : 'no'">
     <TresCanvas
       v-if="supported"
       :key="canvasKey"
