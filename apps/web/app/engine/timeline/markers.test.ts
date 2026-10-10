@@ -69,6 +69,7 @@ describe('marcadores del timeline', () => {
       { kind: 'red', fromMs: 30, toMs: 300_000 },
     ])
     expect(m.flags.map((f) => f.kind)).toEqual(['red_flag', 'chequered_flag', 'sector_yellow'])
+    expect(m.assists).toEqual([{ kind: 'overtake', fromMs: 0, toMs: 5 }])
   })
 
   it('en el fixture real, los recuentos coinciden con timing y events', async () => {

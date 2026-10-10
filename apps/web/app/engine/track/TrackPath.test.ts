@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRibbon } from './ribbon'
+import { buildRibbon, rangeIndices } from './ribbon'
 import { newSample, TrackPath } from './TrackPath'
 
 /** Círculo de radio 100 m con 628 vértices (~1 m de paso) y una rampa de 10 m de altura. */
@@ -64,5 +64,22 @@ describe('cinta', () => {
   it('plana: altura 0', () => {
     const g = buildRibbon(circle(50), 10, true)
     for (let i = 1; i < g.positions.length; i += 3) expect(g.positions[i]).toBe(0)
+  })
+
+  it('tramo [sStart, sEnd): solo los cuadriláteros de dentro, con envoltura en s = 0', () => {
+    const p = circle()
+    const L = p.length
+    const quadsIn = (a: number, b: number) => rangeIndices(p, a, b).length / 6
+    const step = L / p.count
+    expect(quadsIn(100, 200)).toBeCloseTo(100 / step, -0.5)
+    // Envoltura: [L − 50, 50) son ~100 m alrededor de la meta
+    const wrap = rangeIndices(p, L - 50, 50)
+    expect(wrap.length / 6).toBeCloseTo(100 / step, -0.5)
+    expect(wrap).toContain(0) // el primer vértice (s = 0) está dentro
+    // Una partición del circuito en sectores cubre cada cuadrilátero exactamente una vez
+    const cuts = [0, 120, 300, 333.3, 500, L]
+    let total = 0
+    for (let i = 0; i < cuts.length - 1; i++) total += quadsIn(cuts[i]!, cuts[i + 1]!)
+    expect(total).toBe(p.count)
   })
 })

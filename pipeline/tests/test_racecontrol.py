@@ -95,7 +95,26 @@ def test_windows_from_track_status_and_overtake_toggles() -> None:
     kinds = [(w["kind"], w["fromMs"], w["toMs"]) for w in ev["windows"]]
     assert ("sc", 1000, 3000) in kinds
     assert ("red", 4000, 9000) in kinds
-    assert ("overtake", 500, 5000) in kinds and ("overtake", 6000, 9000) in kinds
+    # El SC de 1000 cierra la ventana; el DISABLED de 5000 ya no cambia nada; el ENABLED de 6000 la reabre.
+    assert [k for k in kinds if k[0] == "overtake"] == [("overtake", 500, 1000), ("overtake", 6000, 9000)]
+
+
+def test_neutralization_closes_overtake_until_explicit_enable() -> None:
+    # Japón 2026: OVERTAKE ENABLED, safety car (sin DISABLED), TRACK CLEAR, OVERTAKE ENABLED.
+    rc = _rc(
+        [
+            (100, "Other", None, None, None, "OVERTAKE ENABLED"),
+            (2000, "SafetyCar", None, None, None, "SAFETY CAR DEPLOYED"),
+            (3000, "Other", None, None, None, "TRACK CLEAR"),
+            (3500, "Other", None, None, None, "OVERTAKE ENABLED"),
+            (5000, "Other", None, None, None, "DRS ENABLED"),
+        ]
+    )
+    ts = pd.DataFrame({"t_ms": [0, 2000, 3000, 6000, 7000], "code": [1, 4, 1, 6, 1]})
+    ev = build_events(rc, ts, 9000)
+    got = [(w["kind"], w["fromMs"], w["toMs"]) for w in ev["windows"] if w["kind"] in ("overtake", "drs")]
+    # Sin un ENABLED tras el VSC de 6000, las dos ventanas quedan cerradas hasta el final.
+    assert got == [("overtake", 100, 2000), ("overtake", 3500, 6000), ("drs", 5000, 6000)]
 
 
 def test_turn_maps_to_canonical_s() -> None:

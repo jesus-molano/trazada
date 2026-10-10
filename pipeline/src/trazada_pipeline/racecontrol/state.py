@@ -92,20 +92,43 @@ def status_windows(track_status: pd.DataFrame, end_ms: int | None) -> list[dict[
     return out
 
 
+NEUTRALIZATIONS = ("sc", "vsc", "red")
+
+
 def toggle_windows(
-    events: list[dict[str, Any]], on: str, off: str, kind: str, end_ms: int | None
+    events: list[dict[str, Any]],
+    on: str,
+    off: str,
+    kind: str,
+    end_ms: int | None,
+    neutralizations: list[dict[str, Any]] | None = None,
 ) -> list[dict]:
-    """Ventanas globales activadas/desactivadas por mensajes (sin zona)."""
-    out = []
-    start: int | None = None
-    for ev in sorted(events, key=lambda e: e["t"]):
+    """Ventanas globales activadas/desactivadas por mensajes (sin zona).
+
+    Una neutralización (SC, VSC o roja) también cierra la ventana: el reglamento lo desactiva y race
+    control no siempre lo anuncia (Japón 2026: OVERTAKE ENABLED, safety car, OVERTAKE ENABLED). Solo
+    se reabre con un mensaje explícito de activación.
+    """
+    stream: list[tuple[int, int, str]] = []  # (t, orden, acción): a igual t, cerrar antes que abrir
+    for ev in events:
         p = ev["parsed"]
         if p.get("detail"):  # DRS por zona: no cambia el estado global
             continue
-        if p["kind"] == on and start is None:
-            start = ev["t"]
-        elif p["kind"] == off and start is not None:
-            out.append({"kind": kind, "fromMs": start, "toMs": ev["t"]})
+        if p["kind"] == on:
+            stream.append((ev["t"], 1, "on"))
+        elif p["kind"] == off:
+            stream.append((ev["t"], 0, "off"))
+    for w in neutralizations or []:
+        if w["kind"] in NEUTRALIZATIONS:
+            stream.append((w["fromMs"], 0, "off"))
+    out = []
+    start: int | None = None
+    for t, _, action in sorted(stream):
+        if action == "on" and start is None:
+            start = t
+        elif action == "off" and start is not None:
+            if t > start:
+                out.append({"kind": kind, "fromMs": start, "toMs": t})
             start = None
     if start is not None:
         out.append({"kind": kind, "fromMs": start, "toMs": end_ms})
@@ -133,8 +156,9 @@ def build_events(
 ) -> dict[str, Any]:
     events = race_control_events(rc, corner_s)
     windows = status_windows(track_status, end_ms)
-    windows += toggle_windows(events, "drs_enabled", "drs_disabled", "drs", end_ms)
-    windows += toggle_windows(events, "overtake_enabled", "overtake_disabled", "overtake", end_ms)
+    neutral = list(windows)
+    windows += toggle_windows(events, "drs_enabled", "drs_disabled", "drs", end_ms, neutral)
+    windows += toggle_windows(events, "overtake_enabled", "overtake_disabled", "overtake", end_ms, neutral)
     windows = clip_intervals(windows, end_ms)
     windows.sort(key=lambda w: (w["fromMs"], w["kind"]))
     return {

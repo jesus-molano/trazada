@@ -73,6 +73,15 @@ Las horas que aparecen en el texto (`14:15:19`, `(15:29:34)`, `TIMED AT 15:29:34
 - `detail` no repite lo que ya va en otros campos: se quitan `AT TURN n …` y un `LAP n` final (la vuelta va en `lap`), y las etiquetas de sesión como `(SQ1)`. Se conserva el lugar cuando no hay campo para él (`TRACK LIMITS AT PIT ENTRY`).
 - Los incidentes sin la palabra `INCIDENT` (`LAP 1 TURN 1 NOTED`, `RESTART PROCEDURE UNDER INVESTIGATION`) son `incident`, con su estado como `outcome`.
 
+## Estado derivado (`events.json`)
+
+- **Banderas por sector** (`sectorFlags`): una bandera dura desde su mensaje hasta el `CLEAR` de su sector, o hasta un `TRACK CLEAR`, una luz verde, una roja o la bandera a cuadros. Si cambia (amarilla → doble), se abre un intervalo nuevo.
+- **Neutralizaciones** (`windows` de tipo `sc`, `vsc`, `vsc-ending`, `red` y `yellow`): salen del estado de pista oficial (TrackStatus), no del texto.
+- **OVERTAKE (2026) y DRS (2023–25)**: una ventana se abre con `…_enabled` y se cierra con `…_disabled`. Una neutralización (SC, VSC o roja) también la cierra, y solo un nuevo `…_enabled` la vuelve a abrir. El reglamento los desactiva durante la neutralización, pero dirección de carrera no siempre lo anuncia. En Japón 2026 hay `OVERTAKE ENABLED`, después el safety car sin ningún `DISABLED`, y otra vez `OVERTAKE ENABLED`. Sin esta regla, la ventana cruzaría el safety car entero.
+- Todos los intervalos se recortan al final de la reproducción.
+
+En el front, un intervalo está activo en t si `fromMs ≤ t < toMs` (`TrackState`). La escena tiñe la pista con la neutralización vigente (roja > SC > VSC > fin de VSC) y colorea los sectores de comisarios con bandera cuando el circuito tiene su geometría (MultiViewer). Si no la tiene, la bandera se muestra solo como texto, con su explicación.
+
 ## Golden set
 
 `pipeline/tests/fixtures/rc_golden.jsonl`: 438 mensajes reales de 2023–2026 (muestra estratificada de un corpus de 23 654 mensajes, 9 635 textos únicos), etiquetados de forma independiente por dos anotadores con esta especificación y comparados con el parser:

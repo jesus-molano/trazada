@@ -21,11 +21,20 @@ export interface CircuitMeta {
   sources: string[]
 }
 
+/** Sector de comisarios n = [sStart, sEnd) sobre la línea central, con envoltura en s = 0. */
+export interface MarshalSector {
+  number: number
+  sStart: number
+  sEnd: number
+}
+
 export interface CircuitModel {
   meta: CircuitMeta
   centerline: TrackPath
   pitlane: TrackPath | null
   corners: CornerMarker[]
+  /** Vacío si la fuente no da sectores de comisarios (sin MultiViewer). */
+  marshalSectors: MarshalSector[]
   /** Semiextensión XY (m). */
   extent: number
   /** Radio del círculo que contiene el trazado en planta, centrado en el origen (m). */
@@ -49,6 +58,15 @@ export function circuitModel(dec: DecodedTrzb): CircuitModel {
       y: c('corners', 'y')[i]!,
     })
   }
+  const sectorRows = dec.tables.marshalSectors?.rows ?? 0
+  const marshalSectors: MarshalSector[] = []
+  for (let i = 0; i < sectorRows; i++) {
+    marshalSectors.push({
+      number: c('marshalSectors', 'number')[i]!,
+      sStart: c('marshalSectors', 'sStart')[i]!,
+      sEnd: c('marshalSectors', 'sEnd')[i]!,
+    })
+  }
   let extent = 0
   let radius = 0
   let zMin = Infinity
@@ -61,7 +79,16 @@ export function circuitModel(dec: DecodedTrzb): CircuitModel {
     zMin = Math.min(zMin, p.z)
     zMax = Math.max(zMax, p.z)
   }
-  return { meta: dec.header.meta as unknown as CircuitMeta, centerline, pitlane, corners, extent, radius, zRange: [zMin, zMax] }
+  return {
+    meta: dec.header.meta as unknown as CircuitMeta,
+    centerline,
+    pitlane,
+    corners,
+    marshalSectors,
+    extent,
+    radius,
+    zRange: [zMin, zMax],
+  }
 }
 
 /** Punto de anclaje de la etiqueta de una curva: la línea central en su s. */

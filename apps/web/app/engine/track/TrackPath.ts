@@ -91,6 +91,11 @@ export class TrackPath {
     return out
   }
 
+  /** Longitud de arco (en planta) en el vértice i. */
+  vertexS(i: number): number {
+    return this.cum[i]!
+  }
+
   /** Vértice i (sin interpolar). */
   vertex(i: number, out: { x: number; y: number; z: number }): void {
     out.x = this.xs[i]!

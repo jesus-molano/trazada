@@ -1,7 +1,8 @@
 /**
- * Asa de inspección para e2e y depuración (`window.__trazada`). Solo lectura: no expone datos que no
- * estén ya en la página.
+ * Asa de inspección para e2e y depuración (`window.__trazada`). No expone datos que no estén ya en la
+ * página. Lo único que cambia es `seek`, lo mismo que hace el timeline pero con precisión de ms.
  */
+import type { TrackStateSnapshot } from '~/engine/trackstate/TrackState'
 import type { ReplayRuntime } from './runtime'
 
 /** Duración (ms) de las últimas actualizaciones del leaderboard. */
@@ -22,6 +23,10 @@ export const sceneStats = {
   /** Modo de cámara y posición (three) tras el último render. */
   cameraMode: 'overview' as 'overview' | 'to-follow' | 'follow' | 'to-overview',
   camera: [0, 0, 0] as [number, number, number],
+  /** Lo que la escena pinta del estado de pista en el último render: tinte y sectores con bandera. */
+  trackTint: null as string | null,
+  sectorOverlays: [] as number[],
+  marshalSectors: 0,
 }
 
 export interface TrazadaHandle {
@@ -37,6 +42,11 @@ export interface TrazadaHandle {
   readonly endMs: number
   readonly markers: ReplayRuntime['markers']
   readonly drivers: ReplayRuntime['drivers']
+  /** Estado de pista en el último frame. */
+  readonly trackState: TrackStateSnapshot
+  /** Instantes (ms) de los mensajes de race control, en orden. */
+  readonly raceControlTimes: number[]
+  seek(ms: number): void
   /** Estado de los coches en el último frame (copia). */
   cars(): { car: string; visible: boolean; inPit: boolean; s: number; x: number; y: number }[]
 }
@@ -73,6 +83,11 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
     endMs: rt.clock.endMs,
     markers: rt.markers,
     drivers: rt.drivers,
+    get trackState() {
+      return rt.trackState.snapshot
+    },
+    raceControlTimes: rt.raceControl.map((e) => e.t),
+    seek: (ms: number) => rt.clock.seek(ms),
     cars: () => rt.model.states.map(({ car, visible, inPit, s, x, y }) => ({ car, visible, inPit, s, x, y })),
   }
   return () => {

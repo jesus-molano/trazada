@@ -86,7 +86,9 @@
       "sc": "Coche de seguridad",
       "vsc": "Coche de seguridad virtual",
       "vsc-ending": "Fin del coche de seguridad virtual",
-      "red": "Bandera roja"
+      "red": "Bandera roja",
+      "overtake": "Overtake activado",
+      "drs": "DRS activado"
     },
     "flag": {
       "red_flag": "Bandera roja",
@@ -148,5 +150,81 @@
   },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."
+  },
+  "rc": {
+    "title": "Dirección de carrera",
+    "toggle": "Mostrar u ocultar los mensajes de dirección de carrera",
+    "empty": "Aún no hay mensajes en este punto de la sesión.",
+    "count": "{n} mensajes",
+    "lap": "V{lap}",
+    "original": "Texto original de dirección de carrera (en inglés)",
+    "kind": {
+      "black_and_orange_flag": "Bandera negra y naranja",
+      "black_and_white_flag": "Bandera blanca y negra",
+      "black_flag": "Bandera negra",
+      "blue_flag": "Bandera azul",
+      "car_stopped": "Coche detenido",
+      "chequered_flag": "Bandera a cuadros",
+      "drs_disabled": "DRS desactivado",
+      "drs_enabled": "DRS activado",
+      "first_car_flag": "Primero en ver la bandera",
+      "green_light": "Luz verde",
+      "incident": "Incidente",
+      "info": "Información",
+      "lap_deleted": "Vuelta anulada",
+      "lap_reinstated": "Vuelta restituida",
+      "lapped_cars_overtake": "Doblados pueden adelantar",
+      "marshals_on_track": "Comisarios en pista",
+      "medical_car": "Coche médico",
+      "missed_apex": "Chicane recortada",
+      "off_track": "Fuera de pista",
+      "other": "Otro",
+      "overtake_disabled": "Overtake desactivado",
+      "overtake_enabled": "Overtake activado",
+      "penalty": "Sanción",
+      "penalty_served": "Sanción cumplida",
+      "pit_entry_closed": "Entrada de boxes cerrada",
+      "pit_entry_open": "Entrada de boxes abierta",
+      "pit_exit_closed": "Salida de boxes cerrada",
+      "pit_exit_open": "Salida de boxes abierta",
+      "pit_lane_clear": "Pit lane despejado",
+      "recovery_vehicle": "Vehículo de rescate",
+      "red_flag": "Bandera roja",
+      "sc_deployed": "Coche de seguridad",
+      "sc_ending": "Fin del coche de seguridad",
+      "sc_in_this_lap": "SC entra en esta vuelta",
+      "sc_procedure": "Procedimiento de SC",
+      "sector_clear": "Sector despejado",
+      "sector_double_yellow": "Doble amarilla",
+      "sector_yellow": "Amarilla",
+      "session_schedule": "Horario",
+      "slippery_surface": "Pista deslizante",
+      "spun": "Trompo",
+      "start_procedure": "Procedimiento de salida",
+      "straight_mode": "Modo recta",
+      "track_clear": "Pista despejada",
+      "track_limits": "Límites de pista",
+      "vsc_deployed": "Coche de seguridad virtual",
+      "vsc_ending": "Fin del VSC",
+      "yellow_pit_lane": "Amarilla en boxes"
+    }
+  },
+  "trackStatus": {
+    "label": "Estado de la pista",
+    "neutral": {
+      "red": "Bandera roja",
+      "sc": "Coche de seguridad",
+      "vsc": "Coche de seguridad virtual",
+      "vsc-ending": "Fin del VSC"
+    },
+    "sector": {
+      "yellow": "Amarilla · sector {n}",
+      "doubleYellow": "Doble amarilla · sector {n}",
+      "red": "Roja · sector {n}"
+    },
+    "yellow": "Amarilla en pista",
+    "noGeometry": "Sin geometría de sectores de comisarios para este circuito: la bandera no se puede situar en el mapa.",
+    "overtake": "Overtake activado",
+    "drs": "DRS activado"
   }
 }

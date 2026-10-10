@@ -29,6 +29,9 @@ pnpm typecheck                # vue-tsc / tsc
 pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
 pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
+# e2e con datos completos de data/ (solo local, p. ej. Japón 2026 dev): servidor aparte y E2E_LOCAL_URL
+#   E2E_DATA_DIR=../../data node tests/e2e/serve.mjs --port 4199 &
+#   E2E_LOCAL_URL=http://127.0.0.1:4199 pnpm e2e local-japan
 # Capturas de referencia (@screenshot): solo se comparan en CI. Se regeneran en el entorno del CI con el
 # workflow "Snapshots" (a mano, o con un push cuyo mensaje contenga [snapshots]); luego git pull.
 

@@ -193,6 +193,7 @@ onBeforeUnmount(() => {
       <TzCameraRig :controls="controlsRef" :y-scale="yScale" :flat="flat" @invalidate="ctx?.renderer.invalidate()" />
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
+        <TzTrackFlags :model="model" :flat="flat" />
         <TzCars :y-scale="yScale" :flat="flat" />
       </TresGroup>
     </TresCanvas>

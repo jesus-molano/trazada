@@ -85,6 +85,7 @@ onBeforeUnmount(() => {
         <span class="tz-replay__dot" aria-hidden="true" />{{ t('replay.ready') }}
         <span class="tz-replay__detail tz-tabular">{{ readyDetail }}</span>
       </p>
+      <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
     </header>
 
     <div v-if="session.status === 'loading' || session.status === 'error'" class="tz-replay__center">
@@ -92,7 +93,10 @@ onBeforeUnmount(() => {
     </div>
 
     <TzLeaderboard v-if="playback.attached" :key="`lb-${session.id}`" />
-    <TzTelemetry v-if="playback.attached && playback.selectedCar" :key="`tel-${session.id}`" />
+    <aside v-if="playback.attached" class="tz-replay__side">
+      <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" />
+      <TzRaceControl :key="`rc-${session.id}`" />
+    </aside>
     <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
   </section>
 </template>
@@ -163,6 +167,24 @@ onBeforeUnmount(() => {
   .tz-replay__detail {
     display: none;
   }
+}
+
+/* Columna derecha: telemetría (si hay coche seleccionado) y, debajo, dirección de carrera. */
+.tz-replay__side {
+  position: absolute;
+  top: 116px;
+  right: var(--tz-space-6);
+  bottom: 190px;
+  z-index: var(--tz-z-panels);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tz-space-3);
+  width: 290px;
+  pointer-events: none;
+}
+
+.tz-replay__side > * {
+  pointer-events: auto;
 }
 
 .tz-replay__center {

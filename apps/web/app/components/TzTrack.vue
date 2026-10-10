@@ -5,11 +5,10 @@
  */
 import { BufferAttribute, BufferGeometry, Color } from 'three'
 import type { CircuitModel } from '~/engine/track/circuit'
-import { buildRibbon, toThree } from '~/engine/track/ribbon'
+import { buildRibbon, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
 
 const props = defineProps<{ model: CircuitModel; flat: boolean }>()
 
-const TRACK_WIDTH_M = 14
 const PIT_WIDTH_M = 9
 const LOW = new Color('#1c222b')
 const HIGH = new Color('#3d495c')

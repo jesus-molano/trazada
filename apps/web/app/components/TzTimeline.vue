@@ -27,7 +27,9 @@ const pct = (ms: number) => `${(((ms - clock.startMs) / clock.duration) * 100).t
 const inRange = (ms: number) => ms >= clock.startMs && ms <= clock.endMs
 
 const laps = rt.markers.laps.filter((l) => inRange(l.t))
-const windows = rt.markers.windows.filter((w) => w.toMs >= clock.startMs && w.fromMs <= clock.endMs)
+const overlaps = (w: { fromMs: number; toMs: number }) => w.toMs >= clock.startMs && w.fromMs <= clock.endMs
+const windows = rt.markers.windows.filter(overlaps)
+const assists = rt.markers.assists.filter(overlaps)
 const flags = rt.markers.flags.filter((f) => inRange(f.t))
 const pits = rt.markers.pits.filter((p) => inRange(p.inMs))
 const selectedPits = computed(() => pits.filter((p) => p.car === playback.selectedCar))
@@ -137,6 +139,18 @@ onBeforeUnmount(() => off?.())
           data-marker="window"
         />
       </div>
+      <div v-if="assists.length" class="tz-timeline__assists">
+        <div
+          v-for="(w, i) in assists"
+          :key="`a${i}`"
+          class="tz-timeline__assist"
+          :class="`is-${w.kind}`"
+          :style="windowStyle(w)"
+          :title="t(`timeline.window.${w.kind}`)"
+          data-marker="assist"
+          :data-kind="w.kind"
+        />
+      </div>
       <div class="tz-timeline__ticks" aria-hidden="true">
         <span
           v-for="l in laps"
@@ -231,6 +245,25 @@ onBeforeUnmount(() => off?.())
 
 .tz-timeline__window.is-red {
   background: var(--tz-flag-red);
+}
+
+/* Carril fino bajo el riel: ventanas de OVERTAKE (2026) o DRS (2023–25) activadas por race control. */
+.tz-timeline__assists {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 15px;
+  height: 2px;
+  pointer-events: none;
+}
+
+.tz-timeline__assist {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 1px;
+  background: var(--tz-flag-green);
+  opacity: 0.8;
 }
 
 .tz-timeline__ticks {

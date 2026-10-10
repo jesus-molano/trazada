@@ -15,4 +15,13 @@ describe.skipIf(!hasJapan)('marcadores con la carrera de Japón (local)', () => 
     expect(m.laps[0]!.t).toBe(s.manifest.session.playback.lightsOutMs)
     for (let i = 1; i < m.laps.length; i++) expect(m.laps[i]!.t).toBeGreaterThan(m.laps[i - 1]!.t)
   })
+
+  it('OVERTAKE: dos ventanas, cortadas por el safety car', async () => {
+    const s = await loadLocal(JAPAN)
+    const m = buildTimelineMarkers('race', s.timing, s.events, s.manifest.session.playback.endMs)
+    const sc = m.windows.find((w) => w.kind === 'sc')!
+    expect(m.assists.map((w) => w.kind)).toEqual(['overtake', 'overtake'])
+    expect(m.assists[0]!.toMs).toBe(sc.fromMs)
+    expect(m.assists[1]!.fromMs).toBeGreaterThan(sc.toMs)
+  })
 })

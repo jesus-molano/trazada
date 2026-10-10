@@ -177,11 +177,9 @@ watch(
 
 <style scoped>
 .tz-tel {
-  position: absolute;
-  top: 116px;
-  right: var(--tz-space-6);
-  z-index: var(--tz-z-panels);
-  width: 280px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--tz-space-3);
   border: 1px solid var(--tz-border);
   border-top: 3px solid var(--team);

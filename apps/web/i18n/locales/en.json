@@ -86,7 +86,9 @@
       "sc": "Safety car",
       "vsc": "Virtual safety car",
       "vsc-ending": "Virtual safety car ending",
-      "red": "Red flag"
+      "red": "Red flag",
+      "overtake": "Overtake enabled",
+      "drs": "DRS enabled"
     },
     "flag": {
       "red_flag": "Red flag",
@@ -148,5 +150,81 @@
   },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
+  },
+  "rc": {
+    "title": "Race control",
+    "toggle": "Show or hide race control messages",
+    "empty": "No messages yet at this point of the session.",
+    "count": "{n} messages",
+    "lap": "L{lap}",
+    "original": "Original race control text",
+    "kind": {
+      "black_and_orange_flag": "Black and orange flag",
+      "black_and_white_flag": "Black and white flag",
+      "black_flag": "Black flag",
+      "blue_flag": "Blue flag",
+      "car_stopped": "Car stopped",
+      "chequered_flag": "Chequered flag",
+      "drs_disabled": "DRS disabled",
+      "drs_enabled": "DRS enabled",
+      "first_car_flag": "First car to take the flag",
+      "green_light": "Green light",
+      "incident": "Incident",
+      "info": "Information",
+      "lap_deleted": "Lap deleted",
+      "lap_reinstated": "Lap reinstated",
+      "lapped_cars_overtake": "Lapped cars may overtake",
+      "marshals_on_track": "Marshals on track",
+      "medical_car": "Medical car",
+      "missed_apex": "Missed chicane",
+      "off_track": "Off track",
+      "other": "Other",
+      "overtake_disabled": "Overtake disabled",
+      "overtake_enabled": "Overtake enabled",
+      "penalty": "Penalty",
+      "penalty_served": "Penalty served",
+      "pit_entry_closed": "Pit entry closed",
+      "pit_entry_open": "Pit entry open",
+      "pit_exit_closed": "Pit exit closed",
+      "pit_exit_open": "Pit exit open",
+      "pit_lane_clear": "Pit lane clear",
+      "recovery_vehicle": "Recovery vehicle",
+      "red_flag": "Red flag",
+      "sc_deployed": "Safety car",
+      "sc_ending": "Safety car ending",
+      "sc_in_this_lap": "SC in this lap",
+      "sc_procedure": "SC procedure",
+      "sector_clear": "Sector clear",
+      "sector_double_yellow": "Double yellow",
+      "sector_yellow": "Yellow",
+      "session_schedule": "Schedule",
+      "slippery_surface": "Slippery surface",
+      "spun": "Spin",
+      "start_procedure": "Start procedure",
+      "straight_mode": "Straight mode",
+      "track_clear": "Track clear",
+      "track_limits": "Track limits",
+      "vsc_deployed": "Virtual safety car",
+      "vsc_ending": "VSC ending",
+      "yellow_pit_lane": "Yellow in pit lane"
+    }
+  },
+  "trackStatus": {
+    "label": "Track status",
+    "neutral": {
+      "red": "Red flag",
+      "sc": "Safety car",
+      "vsc": "Virtual safety car",
+      "vsc-ending": "VSC ending"
+    },
+    "sector": {
+      "yellow": "Yellow · sector {n}",
+      "doubleYellow": "Double yellow · sector {n}",
+      "red": "Red · sector {n}"
+    },
+    "yellow": "Yellow on track",
+    "noGeometry": "No marshal sector geometry for this circuit: the flag cannot be placed on the map.",
+    "overtake": "Overtake enabled",
+    "drs": "DRS enabled"
   }
 }

@@ -3,6 +3,9 @@ import type { DecodedTrzb, SessionEvents, SessionType, WindowKind } from '@traza
 import { lapsView } from '../data/columns'
 
 export const WINDOW_KINDS: readonly WindowKind[] = ['sc', 'vsc', 'vsc-ending', 'red']
+/** Ventanas de ayuda al adelantamiento: OVERTAKE (2026) y DRS (2023–25), en su propio carril. */
+export const ASSIST_KINDS = ['overtake', 'drs'] as const
+export type AssistKind = (typeof ASSIST_KINDS)[number]
 export const FLAG_KINDS = ['red_flag', 'chequered_flag', 'sector_yellow', 'sector_double_yellow'] as const
 export type FlagKind = (typeof FLAG_KINDS)[number]
 
@@ -10,6 +13,7 @@ export interface TimelineMarkers {
   /** Inicio de cada vuelta del líder (carrera y sprint): el primer coche que la empieza. */
   laps: { lap: number; t: number }[]
   windows: { kind: WindowKind; fromMs: number; toMs: number }[]
+  assists: { kind: AssistKind; fromMs: number; toMs: number }[]
   flags: { kind: FlagKind; t: number; sector: number | null }[]
   /** Paradas en boxes por coche (entrada y salida del pit lane). */
   pits: { car: string; inMs: number; outMs: number | null }[]
@@ -57,6 +61,9 @@ export function buildTimelineMarkers(
     windows: events.windows
       .filter((w) => WINDOW_KINDS.includes(w.kind))
       .map((w) => ({ kind: w.kind, fromMs: w.fromMs, toMs: w.toMs ?? endMs })),
+    assists: events.windows
+      .filter((w) => (ASSIST_KINDS as readonly string[]).includes(w.kind))
+      .map((w) => ({ kind: w.kind as AssistKind, fromMs: w.fromMs, toMs: w.toMs ?? endMs })),
     flags: events.raceControl
       .filter((e) => (FLAG_KINDS as readonly string[]).includes(e.parsed.kind))
       .map((e) => ({ kind: e.parsed.kind as FlagKind, t: e.t, sector: e.sector })),

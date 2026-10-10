@@ -3,13 +3,14 @@
  * suscriben a `onFrame` y escriben en el DOM o en la escena directamente; Pinia solo recibe el
  * estado grueso (~10 Hz) a través de `onCoarse`.
  */
-import type { DriverInfo } from '@trazada/schema'
+import type { DriverInfo, RaceControlEvent } from '@trazada/schema'
 import type { LoadedSession } from '~/data/types'
 import { type ClockEvent, type Rate, SessionClock } from '~/engine/clock/SessionClock'
 import { LeaderboardEngine } from '~/engine/leaderboard/leaderboard'
 import { carTracks } from '~/engine/replay/motion'
 import { ReplayModel } from '~/engine/replay/ReplayModel'
 import { buildTimelineMarkers, type TimelineMarkers } from '~/engine/timeline/markers'
+import { TrackState } from '~/engine/trackstate/TrackState'
 import { type CircuitModel, circuitModel } from '~/engine/track/circuit'
 
 export const COARSE_INTERVAL_MS = 100
@@ -31,6 +32,10 @@ export interface ReplayRuntime {
   /** Estado de todos los coches en el instante del reloj (se actualiza antes de los oyentes de frame). */
   readonly model: ReplayModel
   readonly leaderboard: LeaderboardEngine
+  /** Banderas por sector y neutralizaciones en el instante del reloj (antes de los oyentes de frame). */
+  readonly trackState: TrackState
+  /** Mensajes de race control ordenados por t (el texto original, sin tocar). */
+  readonly raceControl: readonly RaceControlEvent[]
   /** Se llama en cada frame con reproducción, y una vez tras cada seek/cambio en pausa. */
   onFrame(cb: (timeMs: number) => void): () => void
   onCoarse(cb: (state: CoarseState) => void): () => void
@@ -51,6 +56,8 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
   const circuit = circuitModel(session.circuit)
   const model = new ReplayModel(carTracks(session.motion, session.tangents), circuit, session.manifest.drivers)
   const leaderboard = new LeaderboardEngine(type, session.timing, session.events, session.manifest.drivers)
+  const trackState = new TrackState(session.events, playback.endMs)
+  const raceControl = [...session.events.raceControl].sort((a, b) => a.t - b.t)
 
   const frameListeners = new Set<(t: number) => void>()
   const coarseListeners = new Set<(s: CoarseState) => void>()
@@ -84,6 +91,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
       frames++
       const t = clock.timeMs
       model.update(t)
+      trackState.update(t)
       for (const l of frameListeners) l(t)
       invalidate?.()
       if (clock.playing && now - lastCoarse >= COARSE_INTERVAL_MS) {
@@ -103,6 +111,8 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     circuit,
     model,
     leaderboard,
+    trackState,
+    raceControl,
     onFrame(cb) {
       frameListeners.add(cb)
       dirty = true

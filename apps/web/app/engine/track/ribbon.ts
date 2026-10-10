@@ -4,6 +4,9 @@
  */
 import type { TrackPath } from './TrackPath'
 
+/** Anchura de la cinta de la pista (m), común a la pista y a sus capas de banderas. */
+export const TRACK_WIDTH_M = 14
+
 export interface RibbonGeometry {
   positions: Float32Array
   /** Sombreado por altura (0 = punto más bajo, 1 = más alto), para el color por vértice. */
@@ -67,4 +70,27 @@ export function buildRibbon(path: TrackPath, width: number, flat = false): Ribbo
     indices.set([l0, r0, l1, r0, r1, l1], i * 6)
   }
   return { positions, shade, indices, left, right }
+}
+
+/**
+ * Índices de los cuadriláteros de la cinta de una línea cerrada cuyo punto medio cae en [sStart, sEnd)
+ * (con envoltura en s = 0 si sStart > sEnd). Comparten las posiciones de `buildRibbon` sobre la misma línea.
+ */
+export function rangeIndices(path: TrackPath, sStart: number, sEnd: number): Uint32Array {
+  const n = path.count
+  const quads = path.closed ? n : n - 1
+  const a = path.wrap(sStart)
+  const b = path.wrap(sEnd)
+  const out: number[] = []
+  for (let i = 0; i < quads; i++) {
+    const s0 = path.vertexS(i)
+    const s1 = i + 1 < n ? path.vertexS(i + 1) : path.length
+    const mid = (s0 + s1) / 2
+    const inside = a <= b ? mid >= a && mid < b : mid >= a || mid < b
+    if (!inside) continue
+    const j = (i + 1) % n
+    const [l0, r0, l1, r1] = [i * 2, i * 2 + 1, j * 2, j * 2 + 1]
+    out.push(l0, r0, l1, r0, r1, l1)
+  }
+  return Uint32Array.from(out)
 }
