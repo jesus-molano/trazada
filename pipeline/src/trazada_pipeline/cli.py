@@ -301,5 +301,22 @@ def catalog(data: Path = typer.Option(DEFAULT_DATA), public: bool = typer.Option
         raise typer.Exit(1)
 
 
+@app.command()
+def outlines(
+    src: Path = typer.Argument(..., help="Checkout de github.com/bacinger/f1-circuits (MIT)."),
+    out: Path = typer.Option(
+        REPO / "apps" / "web" / "app" / "assets" / "circuit-outlines.json", help="JSON de salida (front)."
+    ),
+    commit: str | None = typer.Option(None, help="Commit del checkout (por defecto, git rev-parse HEAD)."),
+) -> None:
+    """Genera las miniaturas de trazado del selector (D27) desde el GeoJSON de bacinger/f1-circuits."""
+    from trazada_pipeline.outlines import write_outlines
+
+    doc = write_outlines(src, out, commit)
+    size = out.stat().st_size
+    commit_id = doc["source"]["commit"]
+    typer.echo(f"{len(doc['outlines'])} trazados → {out} ({size / 1024:.1f} KiB), commit {commit_id}")
+
+
 if __name__ == "__main__":
     app()

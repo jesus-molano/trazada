@@ -12,6 +12,8 @@ import {
 } from '~/manager/model'
 import { useCatalogStore } from '~/stores/catalog'
 import { useManagerStore } from '~/stores/manager'
+import { countryLabel } from '~/venues/countries'
+import { outlineFor } from '~/venues/outlines'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -67,6 +69,13 @@ function selectEvent(e: BrowseEvent) {
 function viewOf(e: BrowseEvent, s: BrowseSession) {
   const job = manager.jobsByKey.get(jobKey({ season: season.value, round: e.round, session: s.session })) ?? null
   return sessionView(s, job, now.value, manager.available)
+}
+
+/** País (en el idioma de la interfaz) y fecha del primer día; sin país (sesiones dev), solo la fecha. */
+function eventMeta(e: BrowseEvent): string {
+  return [e.country ? countryLabel(e.country, locale.value) : '', e.dateStart ? formatDate(e.dateStart, locale.value) : '']
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** Sesiones ya descargadas (también las que no se pueden reproducir por falta de posiciones). */
@@ -226,26 +235,27 @@ const queueText = computed(() => {
                 :data-testid="`event-${e.slug}`"
                 @click="selectEvent(e)"
               >
-                <span class="tz-event__top">
-                  <span class="tz-event__round tz-tabular">{{ t('selector.round', { round: e.round }) }}</span>
-                  <span
-                    v-if="manager.available && e.scheduled"
-                    class="tz-event__built tz-tabular"
-                    :class="{ 'is-complete': builtCount(e) === e.sessions.length }"
-                    :title="t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })"
-                    :data-testid="`built-${e.slug}`"
-                  >
-                    <span aria-hidden="true">{{
-                      t('manager.built', { built: builtCount(e), total: e.sessions.length })
-                    }}</span>
-                    <span class="tz-visually-hidden">{{
-                      t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })
-                    }}</span>
+                <TzTrackOutline :d="outlineFor(season, e.round, e.slug)" />
+                <span class="tz-event__body">
+                  <span class="tz-event__top">
+                    <span class="tz-event__round tz-tabular">{{ t('selector.round', { round: e.round }) }}</span>
+                    <span
+                      v-if="manager.available && e.scheduled"
+                      class="tz-event__built tz-tabular"
+                      :class="{ 'is-complete': builtCount(e) === e.sessions.length }"
+                      :title="t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })"
+                      :data-testid="`built-${e.slug}`"
+                    >
+                      <span aria-hidden="true">{{
+                        t('manager.built', { built: builtCount(e), total: e.sessions.length })
+                      }}</span>
+                      <span class="tz-visually-hidden">{{
+                        t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })
+                      }}</span>
+                    </span>
                   </span>
-                </span>
-                <span class="tz-event__name">{{ e.event }}</span>
-                <span class="tz-event__meta">
-                  {{ e.country }}<template v-if="e.dateStart"> · {{ formatDate(e.dateStart, locale) }}</template>
+                  <span class="tz-event__name"><TzFlag :country="e.country" />{{ e.event }}</span>
+                  <span class="tz-event__meta">{{ eventMeta(e) }}</span>
                 </span>
               </button>
             </li>
@@ -363,7 +373,9 @@ const queueText = computed(() => {
 
 .tz-event {
   display: grid;
-  gap: var(--tz-space-1);
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tz-space-3);
   width: 100%;
   padding: var(--tz-space-3) var(--tz-space-4);
   border: 1px solid var(--tz-border);
@@ -384,8 +396,22 @@ const queueText = computed(() => {
   color: var(--tz-text-faint);
 }
 
+.tz-event__body {
+  display: grid;
+  gap: var(--tz-space-1);
+  min-width: 0;
+}
+
 .tz-event__name {
+  display: flex;
+  align-items: center;
+  gap: var(--tz-space-2);
   font-weight: var(--tz-weight-semibold);
+}
+
+.tz-event.is-active .tz-outline,
+.tz-event:hover .tz-outline {
+  color: var(--tz-accent);
 }
 
 .tz-event__meta {

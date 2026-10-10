@@ -57,6 +57,7 @@ uv run trazada dev-ti "<TI>/2026/Japanese Grand Prix/Race" --season 2026 --round
 uv run trazada catalog [--public]                         # --public falla si hay sesiones dev
 uv run trazada prune [--apply]                            # borra ficheros huérfanos de > 7 días
 uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos de MultiViewer>  # fixture e2e
+uv run trazada outlines <checkout de github.com/bacinger/f1-circuits>   # trazados del selector (D27), se versionan
 ```
 
 ## Cómo verificar un cambio (antes de cada commit)
@@ -73,6 +74,7 @@ uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos
 - **Componentes**: prefijo `Tz` (evita choques con los componentes globales que registra `@tresjs/nuxt` desde cientos: `Grid`, `Html`, `Image`…).
 - **Props dentro de `TresCanvas`**: objetos y arrays siempre estables (`computed`/constantes), nunca literales en la plantilla (`:scale="[1, k, 1]"`). TresCanvas vuelve a evaluar su slot por su cuenta, y un literal nuevo invalida la escena en cada evaluación: hay renders en pausa (lo vigila un e2e).
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
+- **Banderas y trazados (D27)**: banderas de `country-flag-icons` (importaciones con nombre, como `data:` en un `<img>`) y trazados en `app/assets/circuit-outlines.json` (generado, no se edita a mano). País → ISO en `app/venues/countries.ts`; evento → trazado en `app/venues/outlines.ts` (alias y excepciones en `pipeline/.../outlines.py`). Sin dato, sin bandera y hueco neutro: nunca uno inventado.
 - **Gestor de datos (D26)**: la API de `scripts/local-server.mjs` ejecuta el pipeline, así que solo atiende a loopback, con Host del propio servidor, mismo origen y cabecera `X-Trazada`; nada de CORS. Todo parámetro se valida (temporada, ronda, tipo de sesión) y el pipeline se lanza sin shell. Cualquier cambio ahí lleva sus tests en `tests/unit/local-server.test.ts`.
 - **Sin despliegue (D25)**: no hay Cloudflare ni ningún otro hosting; los datos se quedan en `data/` del PC. Una sesión cuyo circuito use fuentes dev sigue marcándose como dev.
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio mientras no haya datos de usuarios que conservar, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.

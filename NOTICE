@@ -9,6 +9,11 @@ software and data sources with their own terms:
 - Inter (Rasmus Andersson) and JetBrains Mono (JetBrains) — SIL Open Font License 1.1,
   self-hosted via the @fontsource packages. License texts ship with the font packages.
 - three.js, TresJS, Vue, Nuxt, Pinia, vue-i18n, uPlot, troika-three-text — MIT.
+- country-flag-icons (@catamphetamine) — MIT. Flag SVGs bundled into the app from the npm package;
+  the license text ships with the package.
+- bacinger/f1-circuits (Tomislav Bacinger) — MIT, Copyright (c) 2019-2025 Tomislav Bacinger. The circuit
+  outlines in apps/web/app/assets/circuit-outlines.json are simplified from its GeoJSON (commit pinned in
+  the file); full license text in apps/web/app/assets/circuit-outlines.LICENSE.txt.
 - FastF1 (pipeline) — MIT. Used to read the public F1 live-timing archive.
 - MultiViewer — circuit markers (corners, marshal sectors, map rotation) obtained via FastF1.
   No public licence is published; used with attribution, pending explicit permission.

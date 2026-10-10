@@ -21,7 +21,8 @@
     "unavailable": "No disponible",
     "unavailableHint": "Sin datos de posición: no se puede reproducir.",
     "dev": "DEV",
-    "devHint": "Datos de desarrollo: no se publican."
+    "devHint": "Datos de desarrollo: no se publican.",
+    "noOutline": "Sin trazado"
   },
   "manager": {
     "download": "Descargar",

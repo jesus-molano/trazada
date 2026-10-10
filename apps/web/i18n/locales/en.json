@@ -21,7 +21,8 @@
     "unavailable": "Unavailable",
     "unavailableHint": "No position data: it cannot be replayed.",
     "dev": "DEV",
-    "devHint": "Development data: never published."
+    "devHint": "Development data: never published.",
+    "noOutline": "No outline"
   },
   "manager": {
     "download": "Download",
