@@ -14,6 +14,7 @@ import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
+import { testLapTable, withExt } from '~/testing/runtime'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -162,10 +163,10 @@ describe('textos que no afirman de más', () => {
       positionKnown: true,
       blueFlag: true,
     }
-    usePlaybackStore().attach({
+    usePlaybackStore().attach(withExt({
       clock: { timeMs: 0, rate: 1, playing: false },
       model: { states: [] },
-      leaderboard: { compute: () => [row] },
+      leaderboard: { compute: () => [row], lapTable: testLapTable() },
       drivers: [driver],
       onFrame: () => () => {},
       onCoarse: (cb: (s: { timeMs: number; playing: boolean; rate: 1 }) => void) => {
@@ -174,7 +175,7 @@ describe('textos que no afirman de más', () => {
       },
       requestFrame: () => {},
       dispose: () => {},
-    } as unknown as ReplayRuntime)
+    }) as unknown as ReplayRuntime)
     useSettingsStore().setShowBlueFlags(true)
     const w = await mountSuspended(TzLeaderboard)
     const flag = w.find('[data-testid="blue-flag"]')

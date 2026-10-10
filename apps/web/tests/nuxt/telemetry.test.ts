@@ -12,6 +12,7 @@ import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
 import { usePlaybackStore } from '~/stores/playback'
 import { fakeTrzb } from '~/testing/fixture'
+import { testLapTable, withExt } from '~/testing/runtime'
 
 /** Gráfica falsa: registra lo que recibe (cuántos puntos tiene ahora cada una). */
 const charts: { label: string; series: { label: string; stepped?: boolean }[]; points: number; clears: number }[] = []
@@ -174,17 +175,18 @@ describe('TzLapInfo: última vuelta anulada', () => {
     }
     let timeMs = 200_000
     let push: ((s: { timeMs: number; playing: boolean; rate: 1 }) => void) | null = null
-    usePlaybackStore().attach({
+    usePlaybackStore().attach(withExt({
       session: {
         manifest: { session: { type: 'fp1', playback: { startMs: 0, endMs: 300_000 } } },
         timing,
         events: { raceControl: [message] },
       },
+      leaderboard: { lapTable: testLapTable('fp1', timing, [message as never]) },
       drivers: [],
       clock: { timeMs },
       onCoarse: (cb: typeof push) => ((push = cb), cb!({ timeMs, playing: false, rate: 1 }), () => {}),
       dispose: () => {},
-    } as never)
+    }) as never)
     const w = await mountSuspended(TzLapInfo, { props: { car: '1' } })
     expect(w.find('[data-testid="lap-last"]').text()).toMatch(/^1:30[.,]000$/)
     expect(w.find('[data-testid="lap-last-deleted"]').exists()).toBe(false)

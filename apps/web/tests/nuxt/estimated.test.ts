@@ -16,6 +16,7 @@ import { createReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
 import { fakeTrzb, loadFixture } from '~/testing/fixture'
+import { testLapTable, withExt } from '~/testing/runtime'
 
 /** Runtime real sobre el fixture, con `quality.estimated` sustituido. */
 async function fixtureRuntime(estimated: string[]) {
@@ -42,17 +43,18 @@ function raceRuntime(timeMs: number) {
       deleted: [0, 0],
     },
   })
-  usePlaybackStore().attach({
+  usePlaybackStore().attach(withExt({
     session: {
       manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 300_000, lightsOutMs: 1000 } } },
       timing,
       events: { raceControl: [] },
     },
+    leaderboard: { lapTable: testLapTable('race', timing) },
     drivers: [],
     clock: { timeMs },
     onCoarse: (cb: (s: { timeMs: number; playing: boolean; rate: 1 }) => void) => (cb({ timeMs, playing: false, rate: 1 }), () => {}),
     dispose: () => {},
-  } as never)
+  }) as never)
 }
 
 const label = (w: VueWrapper, field: EstimatedField) => w.find(`[data-testid="estimated"][data-field="${field}"]`)
