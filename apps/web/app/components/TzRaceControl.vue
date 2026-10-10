@@ -55,7 +55,8 @@ function tone(kind: string): string {
       <span class="tz-rc__count tz-tabular">{{ t('rc.count', { n: count }) }}</span>
       <span class="tz-rc__chevron" aria-hidden="true" />
     </button>
-    <ol v-show="open" id="tz-rc-list" class="tz-rc__list" aria-live="off">
+    <!-- Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. -->
+    <ol v-show="open" id="tz-rc-list" class="tz-rc__list" aria-live="off" tabindex="0" :aria-label="t('rc.title')">
       <li v-if="!visible.length" class="tz-rc__empty">{{ t('rc.empty') }}</li>
       <li
         v-for="(e, i) in visible"

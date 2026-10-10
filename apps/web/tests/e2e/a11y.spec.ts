@@ -26,10 +26,15 @@ test('replay listo, con telemetría, dirección de carrera y etiquetas Estimado'
   await page.addInitScript(() => localStorage.clear())
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
-  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
+  // Al final de la sesión: el feed de dirección de carrera está lleno (región con scroll).
+  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.endMs - 1000))
   await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
   await page.getByTestId('elevation-2').click()
   await expect(page.getByTestId('telemetry')).toBeVisible()
+  expect(await serious(page)).toEqual([])
+  // Y en tablet vertical (paneles en la franja inferior).
+  await page.setViewportSize({ width: 768, height: 1024 })
+  await page.waitForTimeout(300)
   expect(await serious(page)).toEqual([])
 })
 
