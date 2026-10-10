@@ -9,12 +9,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from synthetic import synthetic_session
+from synthetic import L, synthetic_session
 
 from trazada_pipeline import schema
-from trazada_pipeline.build import build_session, coverage_ratio, playback_window
+from trazada_pipeline.build import BuildReport, build_session, coverage_ratio, playback_window
 from trazada_pipeline.encode import trzb
-from trazada_pipeline.sources.base import CircuitInfo
+from trazada_pipeline.sources.base import CircuitInfo, SessionData
 
 #: Campos que FastF1 trae de Ergast/Jolpica (CC BY-NC-SA) o fotos: nunca deben aparecer en los datos.
 FORBIDDEN_KEYS = {
@@ -220,3 +220,184 @@ def test_finish_line_fallback_is_recorded(tmp_path: Path, monkeypatch: pytest.Mo
         fallback = [n for n in notes if n["code"] == "finish-line-fallback"]
         assert len(fallback) == 1 and fallback[0]["params"] == {"laps": laps}
         assert fallback[0]["text"] in r.warnings
+
+
+# --- Reutilizar el circuito solo si la sesión encaja (auditoría G) ---
+
+
+def _stretched(data: SessionData, factor: float = 1.1) -> SessionData:
+    """Otro trazado: las rectas un 10 % más largas (y las curvas, elipses)."""
+    for pos in data.pos.values():
+        pos["x"] = np.rint(pos["x"] * factor).astype(np.int64)
+    return data
+
+
+def _manifest(report: BuildReport) -> dict:
+    return json.loads(report.manifest_path.read_text())
+
+
+def _circuit_dirs(root: Path) -> list[str]:
+    return sorted(p.name for p in (root / "v1" / "circuits").iterdir())
+
+
+def test_same_layout_reuses_the_stored_circuit(tmp_path: Path) -> None:
+    build_session(synthetic_session()[0], tmp_path)
+    pointer = tmp_path / "v1" / "circuits" / "0-synthetic-dev" / "circuit.json"
+    before = pointer.read_text()
+    report = build_session(synthetic_session(seed=7)[0], tmp_path)  # otra sesión, mismo trazado
+    m = _manifest(report)
+    assert m["session"]["circuit"] == "0-synthetic-dev"
+    assert _circuit_dirs(tmp_path) == ["0-synthetic-dev"]
+    assert pointer.read_text() == before
+    assert report.quality["fitDevM"] < 1.0
+    assert not any("encaja" in n["text"] for n in m["quality"]["notes"])
+
+
+def test_changed_layout_builds_a_new_variant(tmp_path: Path) -> None:
+    from trazada_pipeline.circuit.store import load_circuit
+
+    build_session(synthetic_session()[0], tmp_path)
+    report = build_session(_stretched(synthetic_session(seed=7)[0]), tmp_path)
+    m = _manifest(report)
+    assert m["session"]["circuit"] == "0-synthetic-dev-v2"
+    assert any(
+        n["code"] == "circuit-layout-changed" and "0-synthetic-dev-v2" in n["text"]
+        for n in m["quality"]["notes"]
+    )
+    folder = report.manifest_path.parent
+    circuit = trzb.decode(gzip.decompress((folder / m["files"]["circuit"]["path"]).read_bytes()))
+    assert circuit.meta["circuitId"] == "0-synthetic-dev-v2"
+    assert circuit.meta["lengthM"] > 1.05 * L  # la geometría es la del trazado nuevo
+    original = load_circuit("0-synthetic-dev", tmp_path / "v1")
+    assert original is not None and abs(original.length - L) / L < 0.005  # el guardado no se toca
+
+    # Otra sesión con el trazado nuevo reutiliza la variante (no crea una tercera).
+    again = _manifest(build_session(_stretched(synthetic_session(seed=8)[0]), tmp_path))
+    assert again["session"]["circuit"] == "0-synthetic-dev-v2"
+    assert _circuit_dirs(tmp_path) == ["0-synthetic-dev", "0-synthetic-dev-v2"]
+    assert any(
+        n["code"] == "circuit-variant-used" and n["params"]["circuit"] == "0-synthetic-dev-v2"
+        for n in again["quality"]["notes"]
+    )
+
+
+def test_unverifiable_fit_reuses_with_a_note(tmp_path: Path) -> None:
+    build_session(synthetic_session()[0], tmp_path)
+    data = synthetic_session(seed=7)[0]
+    data.laps["lap_ms"] = -1  # sin vueltas con tiempo: no hay vueltas limpias con las que comprobarlo
+    m = _manifest(build_session(data, tmp_path))
+    assert m["session"]["circuit"] == "0-synthetic-dev"
+    assert any(n["code"] == "circuit-fit-unchecked" for n in m["quality"]["notes"])
+
+
+def test_outdated_geometry_is_rebuilt_in_place(tmp_path: Path) -> None:
+    """Un circuito de una versión anterior (Spa: pit lane con el desvío) se reconstruye si la sesión
+    encaja en él."""
+    from dataclasses import replace
+
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(synthetic_session()[0], tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None
+    save_circuit(replace(old, geometry_version=1), v1)
+    m = _manifest(build_session(synthetic_session(seed=7)[0], tmp_path))
+    assert m["session"]["circuit"] == "0-synthetic-dev"
+    assert any(
+        n["code"] == "circuit-rebuilt" and n["params"]["reason"] == "outdated" for n in m["quality"]["notes"]
+    )
+    rebuilt = load_circuit("0-synthetic-dev", v1)
+    assert rebuilt is not None and rebuilt.geometry_version > 1
+
+
+def _with_corners(data: SessionData) -> SessionData:
+    data.circuit_info = CircuitInfo(
+        corners=pd.DataFrame({"number": [1], "letter": [""], "x": [0.0], "y": [-1000.0], "angle": [0.0]}),
+        marshal_sectors=None,
+        rotation_deg=0.0,
+    )
+    return data
+
+
+def test_circuit_without_corners_gets_them_when_a_session_brings_them(tmp_path: Path) -> None:
+    """Auditoría G: Spa (7-a) se construyó sin MultiViewer y se habría quedado sin curvas para siempre."""
+    from trazada_pipeline.circuit.store import load_circuit
+
+    build_session(synthetic_session()[0], tmp_path)
+    m = _manifest(build_session(_with_corners(synthetic_session(seed=7)[0]), tmp_path))
+    assert any(
+        n["code"] == "circuit-rebuilt" and n["params"]["reason"] == "gains-corners"
+        for n in m["quality"]["notes"]
+    )
+    c = load_circuit("0-synthetic-dev", tmp_path / "v1")
+    assert c is not None and len(c.corners) == 1
+
+
+def test_outdated_circuit_is_not_rebuilt_if_it_would_lose_its_corners(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(_with_corners(synthetic_session()[0]), tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None and len(old.corners) == 1
+    save_circuit(replace(old, geometry_version=1), v1)
+    m = _manifest(build_session(synthetic_session(seed=7)[0], tmp_path))  # sin MultiViewer
+    assert any(n["code"] == "circuit-outdated-kept" for n in m["quality"]["notes"])
+    kept = load_circuit("0-synthetic-dev", v1)
+    assert kept is not None and len(kept.corners) == 1 and kept.geometry_version == 1
+
+
+def test_outdated_circuit_is_not_rebuilt_from_a_session_without_pit_stops(tmp_path: Path) -> None:
+    """Una sprint sin paradas encaja en el circuito, pero sin paradas no hay pit lane: reconstruirlo con ella
+    dejaría el circuito canónico sin pit lane para todas las sesiones siguientes."""
+    from dataclasses import replace
+
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(synthetic_session()[0], tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None and old.pitlane is not None
+    save_circuit(replace(old, geometry_version=1), v1)
+    sprint = synthetic_session(seed=7)[0]
+    sprint.laps[["pit_in_ms", "pit_out_ms"]] = -1
+    m = _manifest(build_session(sprint, tmp_path))
+    assert any(
+        n["code"] == "circuit-outdated-kept" and "perdería el pit lane" in n["text"]
+        for n in m["quality"]["notes"]
+    )
+    kept = load_circuit("0-synthetic-dev", v1)
+    assert kept is not None and kept.pitlane is not None and kept.geometry_version == 1
+
+
+def test_outdated_circuit_is_kept_if_the_session_cannot_rebuild_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Antes se reutilizaba: un circuito que esta sesión no sabe construir no tumba el build."""
+    from dataclasses import replace
+
+    import trazada_pipeline.build as build_mod
+    from trazada_pipeline.circuit.build import CircuitBuildError
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(synthetic_session()[0], tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None
+    save_circuit(replace(old, geometry_version=1), v1)
+
+    def fail(*_args: object) -> None:
+        raise CircuitBuildError("hueco de 75 m sin muestras en la línea central")
+
+    monkeypatch.setattr(build_mod, "build_circuit", fail)
+    report = build_session(synthetic_session(seed=7)[0], tmp_path)
+    assert report.status == "ok"
+    assert any(
+        n["code"] == "circuit-outdated-kept" and n["params"]["reason"] == "build-failed"
+        for n in _manifest(report)["quality"]["notes"]
+    )
+    kept = load_circuit("0-synthetic-dev", v1)
+    assert kept is not None and kept.geometry_version == 1

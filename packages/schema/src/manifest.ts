@@ -40,6 +40,12 @@ export const QUALITY_NOTE_CODES = [
   'lights-out-unknown',
   'e2e-extract',
   'e2e-variant',
+  'circuit-fit-unchecked',
+  'circuit-variant-used',
+  'circuit-layout-changed',
+  'circuit-rebuilt',
+  'circuit-outdated-kept',
+  'position-glitches',
 ] as const
 export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
 

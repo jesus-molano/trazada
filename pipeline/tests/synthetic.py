@@ -32,6 +32,7 @@ PIT_EXIT_AFTER = 200.0  # m después de la meta
 TRACK_SPEED = 50.0
 PIT_SPEED = 22.0
 START_MS = 60_000
+END_MS = START_MS + 1_100_000
 
 
 def _track_polyline() -> np.ndarray:
@@ -154,6 +155,14 @@ class CarSim:
                 s.append(p if g.mode == "track" else g.base + p / PIT_LEN * PIT_SPAN)
         return np.array(t), np.array(s)
 
+    def moving(self, times: np.ndarray) -> np.ndarray:
+        """¿Se mueve el coche en cada instante? (parado en el box, en la cola o tras abandonar: no)."""
+        out = np.zeros(len(times), dtype=bool)
+        for g in self.segs:
+            if g.p1 != g.p0:
+                out |= (times >= g.t0) & (times <= g.t1)
+        return out
+
     def truth(self, times: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """(xyz en m, s acumulada equivalente, modo 0 pista / 1 pit) en cada instante."""
         xyz = np.zeros((len(times), 3))
@@ -242,34 +251,49 @@ def scenario_cars(end_ms: float) -> list[CarSim]:
     return cars
 
 
+def sample_car(
+    c: CarSim, rng: np.random.Generator, end_ms: float, noise_m: float = 0.3
+) -> tuple[pd.DataFrame, pd.DataFrame, list[dict]]:
+    """Posiciones (dm, como el feed), telemetría y vueltas de un coche simulado."""
+    t = _sample_times(rng, c.segs[0].t0, min(c.t, end_ms))
+    xyz, _, _ = c.truth(t.astype(np.float64))
+    xyz += rng.normal(0, noise_m, xyz.shape) * np.array([1, 1, 0.3])
+    dm = np.rint(xyz * 10).astype(np.int64)
+    pos = pd.DataFrame({"t_ms": t, "x": dm[:, 0], "y": dm[:, 1], "z": dm[:, 2]})[list(POS_COLUMNS)]
+    tc = _sample_times(rng, c.segs[0].t0, min(c.t, end_ms), 270.0)
+    _, _, mode = c.truth(tc.astype(np.float64))
+    speed = np.where(c.moving(tc.astype(np.float64)), np.where(mode == 1, PIT_SPEED, TRACK_SPEED), 0.0) * 3.6
+    car = pd.DataFrame(
+        {
+            "t_ms": tc,
+            "speed": np.rint(speed).astype(np.int64),
+            "rpm": np.full(len(tc), 10500),
+            "gear": np.full(len(tc), 7),
+            "throttle": np.full(len(tc), 100),
+            "brake": np.zeros(len(tc), np.int64),
+            "drs": np.full(len(tc), -1),
+        }
+    )[list(CAR_COLUMNS)]
+    return pos, car, _laps(c, end_ms)
+
+
+def add_car(data: SessionData, c: CarSim, seed: int = 7) -> None:
+    """Añade un coche simulado a una sesión: posiciones, telemetría, vueltas y piloto."""
+    pos, car, rows = sample_car(c, np.random.default_rng(seed), END_MS)
+    data.pos[c.number] = pos
+    data.car[c.number] = car
+    data.laps = pd.concat([data.laps, pd.DataFrame(rows, columns=list(LAP_COLUMNS))], ignore_index=True)
+    data.drivers.append(Driver(c.number, "TST", "Test", f"Driver {c.number}", "Team", "#3366FF"))
+
+
 def synthetic_session(seed: int = 2026, noise_m: float = 0.3) -> tuple[SessionData, dict[str, CarSim]]:
     rng = np.random.default_rng(seed)
-    end_ms = START_MS + 1_100_000
+    end_ms = END_MS
     cars = scenario_cars(end_ms)
     pos, car_data, laps = {}, {}, []
     for c in cars:
-        t = _sample_times(rng, c.segs[0].t0, min(c.t, end_ms))
-        xyz, _, _ = c.truth(t.astype(np.float64))
-        xyz += rng.normal(0, noise_m, xyz.shape) * np.array([1, 1, 0.3])
-        dm = np.rint(xyz * 10).astype(np.int64)
-        pos[c.number] = pd.DataFrame({"t_ms": t, "x": dm[:, 0], "y": dm[:, 1], "z": dm[:, 2]})[
-            list(POS_COLUMNS)
-        ]
-        tc = _sample_times(rng, c.segs[0].t0, min(c.t, end_ms), 270.0)
-        _, _, mode = c.truth(tc.astype(np.float64))
-        speed = np.where(mode == 1, PIT_SPEED, TRACK_SPEED) * 3.6
-        car_data[c.number] = pd.DataFrame(
-            {
-                "t_ms": tc,
-                "speed": np.rint(speed).astype(np.int64),
-                "rpm": np.full(len(tc), 10500),
-                "gear": np.full(len(tc), 7),
-                "throttle": np.full(len(tc), 100),
-                "brake": np.zeros(len(tc), np.int64),
-                "drs": np.full(len(tc), -1),
-            }
-        )[list(CAR_COLUMNS)]
-        laps += _laps(c, end_ms)
+        pos[c.number], car_data[c.number], rows = sample_car(c, rng, end_ms, noise_m)
+        laps += rows
     laps_df = pd.DataFrame(laps, columns=list(LAP_COLUMNS))
     finish = max(float(r["end_ms"]) for r in laps)
     red = next(c for c in cars if c.number == "4").pit_in[0]

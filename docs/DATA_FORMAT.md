@@ -89,6 +89,12 @@ Cabecera:
 - 255 en `u8` para "sin dato";
 - 0 en `position` cuando no aplica.
 
+**Circuito y movimiento**:
+- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m y las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h). Su `s` vale 0 y no se usa.
+- `circuit.pitlane.z` es la altura de la pista más cercana, no la del feed (que da la misma a todo el pit lane).
+- El `meta` del circuito lleva `geometryVersion`, la versión de su construcción. Un circuito sin el campo es de la versión 1.
+- Un trazado puede tener variantes `{circuitKey}-{layoutId}-v2`, `-v3`…: se crean cuando una sesión no encaja en el circuito guardado (D21).
+
 ## Eventos (JSON, `events.schema.json`)
 
 - `raceControl[]`: todos los mensajes, con `t` en tiempo de sesión (ms) y el **texto original sin modificar**. `parsed` añade `kind`, `cars`, `turn`, `lap`, `outcome`, `s` y `marshalSector`.
@@ -117,6 +123,12 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
   | `dev-corners` | Curvas y rotación de una copia de desarrollo de MultiViewer. | — |
   | `e2e-extract` | Extracto recortado del fixture e2e (`trazada e2e-fixture`). | — |
   | `e2e-variant` | Variante del fixture e2e inventada para probar un estado (no disponible, versión, fichero corrupto): no es una sesión real. | — |
+  | `circuit-fit-unchecked` | No se pudo comprobar que la sesión encaja en el circuito guardado (pocas vueltas limpias): se reutiliza sin comprobar. | `circuit`, `laps` |
+  | `circuit-variant-used` | La sesión no encaja en el circuito base del trazado y se usa una variante suya ya guardada. | `circuit`, `base` |
+  | `circuit-layout-changed` | La sesión no encaja en ningún circuito guardado del trazado: se construye una variante nueva (¿cambió el trazado?). | `circuit`, `base` |
+  | `circuit-rebuilt` | El circuito se reconstruyó en su sitio con esta sesión (`reason`: `outdated`, versión anterior de la geometría; `gains-corners`, no tenía curvas). | `circuit`, `reason` |
+  | `circuit-outdated-kept` | El circuito está anticuado pero se reutiliza tal cual (`reason`: `no-corners`, `build-failed`, `would-lose`). | `circuit`, `reason` |
+  | `position-glitches` | Más del 1 % de las posiciones de algún coche son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha). | `cars` |
 
   Un lector debe tolerar códigos que no conoce (un aviso genérico, nunca el `text` en español). En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
 

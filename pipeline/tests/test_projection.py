@@ -7,7 +7,16 @@ import pytest
 from synthetic import PIT_ENTRY_S, PIT_EXIT_S, PIT_LEN, L, synthetic_session
 
 from trazada_pipeline.circuit.build import build_circuit
-from trazada_pipeline.projection import PATH_NODATA, PATH_PIT, PATH_TRACK, pava, pit_windows, project_session
+from trazada_pipeline.projection import (
+    PATH_NODATA,
+    PATH_PIT,
+    PATH_TRACK,
+    fake_stops,
+    monotone_fit,
+    pava,
+    pit_windows,
+    project_session,
+)
 
 
 @pytest.fixture(scope="module")
@@ -47,6 +56,31 @@ def test_pava_is_monotone_and_keeps_sorted_input() -> None:
     assert out.sum() == pytest.approx(y.sum())  # la media de cada bloque conserva la suma
     sorted_y = np.sort(y)
     np.testing.assert_array_equal(pava(sorted_y), sorted_y)
+
+
+def test_monotone_fit_drops_the_glitch_not_its_neighbours() -> None:
+    y = np.r_[np.arange(0.0, 50.0, 5.0), 160.0, np.arange(55.0, 100.0, 5.0)]  # una muestra 110 m adelante
+    fit, keep = monotone_fit(y, 5.0)
+    assert np.flatnonzero(~keep).tolist() == [10]
+    np.testing.assert_allclose(fit[keep], y[keep])
+    assert np.isnan(fit[10])
+    # Ruido pequeño: se ajusta (PAVA) sin descartar nada.
+    noisy = np.array([0.0, 1.0, 0.8, 2.0, 3.0])
+    fit, keep = monotone_fit(noisy, 5.0)
+    assert keep.all() and np.all(np.diff(fit) >= 0)
+
+
+def test_fake_stops_need_speed_and_time() -> None:
+    t = np.arange(0, 4000, 250)
+    s = np.r_[np.arange(0.0, 20.0, 5.0), np.full(len(t) - 4, 20.0)]  # se para tras 1 s
+    valid = np.ones(len(t), dtype=bool)
+    fake = fake_stops(t, s, valid, np.full(len(t), 150.0))
+    assert not fake[:5].any() and fake[5:].all()  # la primera muestra parada (s = 20) se conserva
+    assert not fake_stops(t, s, valid, np.zeros(len(t))).any()  # parado de verdad: telemetría a 0
+    short = t < 1000
+    assert not fake_stops(
+        t[short], np.full(short.sum(), 3.0), valid[short], np.full(short.sum(), 150.0)
+    ).any()
 
 
 def test_pit_windows_pairs_in_and_out() -> None:

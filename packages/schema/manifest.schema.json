@@ -146,7 +146,13 @@
             "finish-line-fallback",
             "lights-out-unknown",
             "e2e-extract",
-            "e2e-variant"
+            "e2e-variant",
+            "circuit-fit-unchecked",
+            "circuit-variant-used",
+            "circuit-layout-changed",
+            "circuit-rebuilt",
+            "circuit-outdated-kept",
+            "position-glitches"
           ],
           "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
         },

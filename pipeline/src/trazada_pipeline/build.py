@@ -15,8 +15,15 @@ import pandas as pd
 
 from trazada_pipeline import __version__, schema
 from trazada_pipeline.circuit import registry
-from trazada_pipeline.circuit.build import MIN_FINISH_LAPS, Circuit, build_circuit
-from trazada_pipeline.circuit.store import load_circuit, save_circuit
+from trazada_pipeline.circuit.build import (
+    GEOMETRY_VERSION,
+    MIN_FINISH_LAPS,
+    Circuit,
+    CircuitBuildError,
+    build_circuit,
+)
+from trazada_pipeline.circuit.fit import circuit_fit
+from trazada_pipeline.circuit.store import circuit_variants, load_circuit, next_variant_id, save_circuit
 from trazada_pipeline.encode import trzb
 from trazada_pipeline.files import write_hashed
 from trazada_pipeline.projection import PATH_NODATA, CarMotion, motion_tables, pit_windows, project_session
@@ -213,19 +220,137 @@ def circuit_notes(circuit: Circuit, official_length_m: float | None) -> list[Qua
     return notes
 
 
+def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1: Path) -> list[QualityNote]:
+    """Reconstruye en su sitio un circuito en el que la sesión encaja si está anticuado: de una versión
+    anterior de la construcción (p. ej. con el desvío al garaje en el pit lane) o sin curvas ni rotación
+    oficial que esta sesión sí trae. Nunca si con ello perdería las curvas y la rotación, el pit lane o los
+    sectores de comisarios que ya tiene (una sprint sin paradas no trae pit lane), ni si esta sesión no
+    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa."""
+    outdated = stored.geometry_version < GEOMETRY_VERSION
+    gains_info = stored.corners.empty and data.circuit_info is not None
+    if not (outdated or gains_info):
+        return []
+    if not stored.corners.empty and data.circuit_info is None:
+        return [
+            QualityNote(
+                "circuit-outdated-kept",
+                f"El circuito {cid} es de una versión anterior de la geometría, pero esta sesión no trae "
+                "curvas ni rotación oficial: se reutiliza tal cual. Reconstrúyelo con --rebuild-circuit "
+                "cuando estén.",
+                {"circuit": cid, "reason": "no-corners"},
+            )
+        ]
+    try:
+        fresh = build_circuit(data, cid, name)
+    except CircuitBuildError as exc:
+        return [
+            QualityNote(
+                "circuit-outdated-kept",
+                f"El circuito {cid} no se pudo reconstruir con esta sesión ({exc}): se reutiliza tal cual.",
+                {"circuit": cid, "reason": "build-failed"},
+            )
+        ]
+    lost = []
+    if stored.pitlane is not None and fresh.pitlane is None:
+        lost.append("el pit lane")
+    if stored.marshal_sectors is not None and fresh.marshal_sectors is None:
+        lost.append("los sectores de comisarios")
+    if lost:
+        return [
+            QualityNote(
+                "circuit-outdated-kept",
+                f"El circuito {cid} no se reconstruye con esta sesión porque perdería {' y '.join(lost)}: se "
+                "reutiliza tal cual. Reconstrúyelo con --rebuild-circuit desde una sesión que los tenga.",
+                {"circuit": cid, "reason": "would-lose"},
+            )
+        ]
+    save_circuit(fresh, v1)
+    if outdated:
+        return [
+            QualityNote(
+                "circuit-rebuilt",
+                f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye.",
+                {"circuit": cid, "reason": "outdated"},
+            )
+        ]
+    return [
+        QualityNote(
+            "circuit-rebuilt",
+            f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión.",
+            {"circuit": cid, "reason": "gains-corners"},
+        )
+    ]
+
+
+def session_circuit(
+    data: SessionData, layout: registry.Layout, v1: Path, *, rebuild: bool = False
+) -> tuple[str, list[QualityNote], dict[str, float]]:
+    """Id del circuito de la sesión (ya guardado en `v1`), avisos y calidad del encaje.
+
+    Se reutiliza el circuito guardado del trazado, o una variante suya, solo si las vueltas limpias de la
+    sesión encajan en él (`circuit_fit`). Si no encaja ninguno, se construye una variante nueva
+    (`{id}-v2`…) y se avisa: el trazado cambió (o el sistema de coordenadas del feed) y `circuits.json`
+    no lo sabe. Así nunca se dibuja una sesión sobre la línea de otro trazado.
+    """
+    base = layout.circuit_id
+    notes: list[QualityNote] = []
+    circuit_id = base
+    if not rebuild:
+        misfit: tuple[str, str] | None = None
+        for cid in [base, *circuit_variants(base, v1)]:
+            stored = load_circuit(cid, v1)
+            if stored is None:
+                continue
+            fit = circuit_fit(data, stored)
+            if fit.ok:
+                if not fit.checked:
+                    notes.append(
+                        QualityNote(
+                            "circuit-fit-unchecked",
+                            f"No se pudo comprobar que la sesión encaja en el circuito {cid} (solo "
+                            f"{fit.laps} vueltas limpias): se reutiliza sin comprobar.",
+                            {"circuit": cid, "laps": fit.laps},
+                        )
+                    )
+                elif cid != base:
+                    notes.append(
+                        QualityNote(
+                            "circuit-variant-used",
+                            f"La sesión no encaja en el circuito {base}: se usa su variante {cid}.",
+                            {"circuit": cid, "base": base},
+                        )
+                    )
+                if fit.checked:
+                    notes += _refresh_circuit(data, stored, cid, layout.name, v1)
+                return cid, notes, fit.quality()
+            misfit = misfit or (cid, fit.describe())
+        if misfit is not None:
+            circuit_id = next_variant_id(base, v1)
+            notes.append(
+                QualityNote(
+                    "circuit-layout-changed",
+                    f"El trazado de la sesión no encaja en el circuito guardado {misfit[0]} ({misfit[1]}): "
+                    f"se construye la variante {circuit_id}. ¿Cambió el trazado? Revisa circuits.json.",
+                    {"circuit": circuit_id, "base": misfit[0]},
+                )
+            )
+            log.warning(notes[-1].text)
+    save_circuit(build_circuit(data, circuit_id, layout.name), v1)
+    return circuit_id, notes, {}
+
+
 def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool = False) -> BuildReport:
     v1 = data_root / f"v{schema.schema_major()}"
     notes: list[QualityNote] = list(data.notes)
     layout = registry.resolve(data.circuit_key, data.season, data.slug, dev=data.dev)
 
-    circuit = None if rebuild_circuit else load_circuit(layout.circuit_id, v1)
-    if circuit is None:
-        save_circuit(build_circuit(data, layout.circuit_id, layout.name), v1)
-        # Se proyecta siempre sobre la geometría tal y como queda guardada (cuantizada): así el
-        # resultado es idéntico tanto si el circuito se acaba de construir como si ya existía.
-        circuit = load_circuit(layout.circuit_id, v1)
-        assert circuit is not None
-    pointer = v1 / "circuits" / layout.circuit_id / "circuit.json"
+    circuit_id, fit_notes, fit_quality = session_circuit(data, layout, v1, rebuild=rebuild_circuit)
+    notes += fit_notes
+    # Se proyecta siempre sobre la geometría tal y como queda guardada (cuantizada): así el resultado es
+    # idéntico tanto si el circuito se acaba de construir como si ya existía.
+    circuit = load_circuit(circuit_id, v1)
+    assert circuit is not None
+    pointer = v1 / "circuits" / circuit_id / "circuit.json"
     circuit_ref = json.loads(pointer.read_text(encoding="utf-8"))["file"]
     if circuit.dev and not data.dev:
         # Un circuito con fuentes de desarrollo contamina la sesión: queda como dev y no se publica.
@@ -233,9 +358,9 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         notes.append(
             QualityNote(
                 "dev-circuit",
-                f"El circuito {layout.circuit_id} usa fuentes de desarrollo: la sesión queda marcada como "
+                f"El circuito {circuit_id} usa fuentes de desarrollo: la sesión queda marcada como "
                 "dev (no publicable). Reconstrúyelo sin ellas con --rebuild-circuit.",
-                {"circuit": layout.circuit_id},
+                {"circuit": circuit_id},
             )
         )
 
@@ -286,6 +411,18 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         v = m.path != PATH_NODATA
         if np.any(np.diff(m.s_m[v]) < -1e-6):
             raise RuntimeError(f"coche {c}: s no monótona")
+    glitchy = sorted(
+        (c for c, m in motion.items() if len(m.t_ms) and m.rejected > 0.01 * len(m.t_ms)), key=int
+    )
+    if glitchy:
+        notes.append(
+            QualityNote(
+                "position-glitches",
+                "más del 1 % de las posiciones sin dato por fallos del feed (retrocesos o posición congelada "
+                f"con el coche en marcha) en los coches {', '.join(glitchy)}",
+                {"cars": ", ".join(glitchy)},
+            )
+        )
 
     notes += circuit_notes(circuit, layout.official_length_m)
     elev_ok, elev_q = elevation_ok(circuit, data)
@@ -324,7 +461,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         ),
     }
     circuit_file = dict(circuit_ref)
-    circuit_file["path"] = _rel(folder, v1 / "circuits" / layout.circuit_id / circuit_ref["path"])
+    circuit_file["path"] = _rel(folder, v1 / "circuits" / circuit_id / circuit_ref["path"])
     files["circuit"] = circuit_file
 
     estimated = sorted(set(data.estimated))
@@ -345,7 +482,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
             "event": data.event,
             "type": data.session_type,
             "name": data.session_name,
-            "circuit": layout.circuit_id,
+            "circuit": circuit_id,
             "t0Utc": data.t0_utc.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "gmtOffset": data.gmt_offset,
             "playback": {"startMs": int(start_ms), "endMs": int(end_ms), "lightsOutMs": lights_out},
@@ -391,7 +528,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         manifest_path=manifest_path,
         status=status,
         sizes={k: v["bytes"] for k, v in files.items()},
-        quality={**circuit.quality, **elev_q},
+        quality={**circuit.quality, **elev_q, **fit_quality},
         warnings=[n.text for n in notes],
     )
 

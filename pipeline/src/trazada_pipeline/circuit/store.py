@@ -55,6 +55,7 @@ def circuit_meta(c: Circuit) -> dict[str, Any]:
         },
         "quality": {k: round(v, 4) for k, v in c.quality.items()},
         "sources": c.sources,
+        "geometryVersion": c.geometry_version,
         # Solo si es dev: así los circuitos limpios conservan su hash.
         **({"dev": True} if c.dev else {}),
     }
@@ -69,6 +70,22 @@ def save_circuit(c: Circuit, v1_root: Path) -> dict[str, Any]:
         json.dumps({"file": ref, "meta": circuit_meta(c)}, indent=2) + "\n", encoding="utf-8"
     )
     return ref
+
+
+def circuit_variants(base_id: str, v1_root: Path) -> list[str]:
+    """Variantes guardadas de un trazado (`{id}-v2`, `{id}-v3`…), en orden: se crean cuando una sesión no
+    encaja en el circuito guardado (el trazado cambió y `circuits.json` no lo sabe)."""
+    found = []
+    for pointer in (v1_root / "circuits").glob(f"{base_id}-v*/circuit.json"):
+        suffix = pointer.parent.name[len(base_id) + 2 :]
+        if suffix.isdigit():
+            found.append((int(suffix), pointer.parent.name))
+    return [name for _, name in sorted(found)]
+
+
+def next_variant_id(base_id: str, v1_root: Path) -> str:
+    taken = [int(name.rsplit("-v", 1)[1]) for name in circuit_variants(base_id, v1_root)]
+    return f"{base_id}-v{max(taken, default=1) + 1}"
 
 
 def load_circuit(circuit_id: str, v1_root: Path) -> Circuit | None:
@@ -114,4 +131,6 @@ def load_circuit(circuit_id: str, v1_root: Path) -> Circuit | None:
         sources=list(meta.get("sources", [])),
         # Circuitos anteriores al campo `dev`: se deduce de sus fuentes.
         dev=bool(meta.get("dev")) or any(", dev)" in s for s in meta.get("sources", [])),
+        # Circuitos anteriores al campo: primera versión de la construcción.
+        geometry_version=int(meta.get("geometryVersion", 1)),
     )
