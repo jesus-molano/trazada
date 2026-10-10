@@ -57,6 +57,11 @@ describe('loadSession', () => {
     const buffers = transferablesOf(s)
     expect(new Set(buffers).size).toBe(buffers.length)
     expect(buffers).toContain(s.motion.tables.pos!.columns.t!.buffer)
+    // Zonas de DRS (D38): calculadas en el Web Worker y transferidas sin copia; el fixture es de 2026, sin zonas.
+    expect(s.drsZones.status).toBe('season')
+    expect(buffers).toContain(s.drsZones.spans.buffer)
+    expect(buffers).toContain(s.drsZones.passes.buffer)
+    expect(s.timings.drsZonesMs).toBeGreaterThanOrEqual(0)
   })
 
   it('clasifica los errores', async () => {

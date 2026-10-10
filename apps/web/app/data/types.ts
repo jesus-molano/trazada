@@ -1,4 +1,5 @@
 import type { DecodedTrzb, Manifest, SessionEvents } from '@trazada/schema'
+import type { DrsZones } from '../engine/drs/zones'
 
 export type LoadErrorCode =
   | 'not-found' // la sesión no existe (404 del manifest o identificador inválido)
@@ -18,6 +19,8 @@ export interface LoadTimings {
   decompressMs: number
   decodeMs: number
   tangentsMs: number
+  /** Zonas de DRS deducidas de la telemetría (D38). */
+  drsZonesMs: number
   totalMs: number
   bytes: number
 }
@@ -33,6 +36,11 @@ export interface LoadedSession {
   events: SessionEvents
   /** Tangentes ds/dt (m/ms) de la Hermite, alineadas con las filas de motion.pos (Web Worker). */
   tangents: Float64Array
+  /**
+   * Zonas de DRS deducidas de la telemetría (D38, «Estimado»), calculadas en el Web Worker. Sin zonas (2026, sin
+   * canal o sin aperturas suficientes), `status` dice por qué y `spans` va vacío.
+   */
+  drsZones: DrsZones
   timings: LoadTimings
 }
 

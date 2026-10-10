@@ -14,6 +14,7 @@ import {
   ManifestError,
   type SessionEvents,
 } from '@trazada/schema'
+import { sessionDrsZones } from '../engine/drs/zones'
 import { computeTangents } from '../engine/replay/motion'
 import { LoadError, type LoadedSession, type LoadStage, type LoadTimings } from './types'
 
@@ -180,6 +181,10 @@ export async function loadSession(
   const tangents = computeTangents(decoded.motion, decoded.car, 'speed')
   const t6 = now()
 
+  // 7. Zonas de DRS deducidas de la telemetría (D38): solo 2018–2025; si no, solo el motivo.
+  const drsZones = sessionDrsZones(m, { ...decoded, events }, tangents)
+  const t7 = now()
+
   const timings: LoadTimings = {
     manifestMs: t1 - t0,
     downloadMs: t2 - t1,
@@ -187,15 +192,20 @@ export async function loadSession(
     decompressMs: t4 - t3,
     decodeMs: t5 - t4,
     tangentsMs: t6 - t5,
-    totalMs: t6 - t0,
+    drsZonesMs: t7 - t6,
+    totalMs: t7 - t0,
     bytes: total,
   }
-  return { id, manifest: m, ...decoded, events, tangents, timings }
+  return { id, manifest: m, ...decoded, events, tangents, drsZones, timings }
 }
 
 /** Buffers únicos de todos los typed arrays de la sesión, para transferirlos sin copia. */
 export function transferablesOf(session: LoadedSession): ArrayBuffer[] {
-  const out = new Set<ArrayBuffer>([session.tangents.buffer as ArrayBuffer])
+  const out = new Set<ArrayBuffer>([
+    session.tangents.buffer as ArrayBuffer,
+    session.drsZones.spans.buffer as ArrayBuffer,
+    session.drsZones.passes.buffer as ArrayBuffer,
+  ])
   for (const dec of [session.motion, session.car, session.timing, session.circuit]) {
     for (const table of Object.values(dec.tables)) {
       for (const col of Object.values(table.columns)) out.add(col.buffer as ArrayBuffer)
