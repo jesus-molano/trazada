@@ -13,6 +13,19 @@ async function openReplay(page: Page) {
   await page.locator('body').click({ position: { x: 5, y: 300 } }) // foco fuera de controles
 }
 
+/** Orden visible del leaderboard, una vez que no cambia entre dos lecturas separadas por 400 ms. */
+async function stableOrder(page: Page): Promise<string[]> {
+  const rows = page.locator('[data-testid="leaderboard"] [data-car]')
+  const read = () => rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-car')!))
+  let prev = await read()
+  for (;;) {
+    await page.waitForTimeout(400)
+    const next = await read()
+    if (next.length > 1 && next.join() === prev.join()) return next
+    prev = next
+  }
+}
+
 test.describe('atajos de teclado', () => {
   test('espacio, 1–5, ←/→ con y sin Shift, ↑/↓', async ({ page }) => {
     await openReplay(page)
@@ -38,13 +51,14 @@ test.describe('atajos de teclado', () => {
     await page.keyboard.press('Shift+ArrowLeft')
     expect(await handle(page, (h) => h.timeMs)).toBe(t0)
 
-    const drivers = await handle(page, (h) => h.drivers.map((d) => d.number))
+    // ↑/↓ siguen el orden del leaderboard, que se publica cada 150 ms: se espera a que se asiente tras los seeks.
+    const order = await stableOrder(page)
     await page.keyboard.press('ArrowDown')
-    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[0])
+    expect(await handle(page, (h) => h.selectedCar)).toBe(order[0])
     await page.keyboard.press('ArrowDown')
-    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[1])
+    expect(await handle(page, (h) => h.selectedCar)).toBe(order[1])
     await page.keyboard.press('ArrowUp')
-    expect(await handle(page, (h) => h.selectedCar)).toBe(drivers[0])
+    expect(await handle(page, (h) => h.selectedCar)).toBe(order[0])
   })
 
   test('no se disparan con el foco en un input o en el slider', async ({ page }) => {
