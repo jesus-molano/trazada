@@ -30,8 +30,11 @@ a {
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
+/* Los estados de hover solo con un puntero que puede «flotar»: en táctil se quedarían pegados tras tocar. */
+@media (hover: hover) {
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 button {
@@ -75,13 +78,250 @@ button {
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-.tz-button:hover {
-  background: rgb(76 201 240 / 0.28);
-  text-decoration: none;
+@media (hover: hover) {
+  .tz-button:hover {
+    background: var(--tz-accent-soft-hover);
+    text-decoration: none;
+  }
 }
 
 .tz-button--quiet {
   border-color: var(--tz-border-strong);
   background: transparent;
   color: var(--tz-text);
+}
+
+/*
+ * Base visual común (D44). Las piezas nuevas usan estas clases y los tokens de densidad; los componentes que
+ * ya existen se migran en su propia tanda, así que nada de esto cambia todavía cómo se ve la app.
+ */
+
+/* Panel: superficie, borde, radio y aire. Los controles nativos de dentro (casillas, radios) usan el acento. */
+.tz-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tz-panel-gap);
+  min-width: 0;
+  padding: var(--tz-panel-pad);
+  border: 1px solid var(--tz-border);
+  border-radius: var(--tz-radius-lg);
+  background: var(--tz-overlay);
+  box-shadow: var(--tz-shadow-panel);
+  accent-color: var(--tz-accent);
+}
+
+.tz-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tz-space-2);
+  min-width: 0;
+  padding-bottom: var(--tz-space-2);
+  border-bottom: 1px solid var(--tz-border);
+}
+
+/* Título de panel: una sola línea con elipsis (no se parte en dos en tablet). */
+.tz-panel-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-semibold);
+  line-height: var(--tz-leading-tight);
+  letter-spacing: var(--tz-tracking-caps);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tz-text-muted);
+}
+
+/* Cifra destacada: muestra cruda vigente (H8). Su valor nunca se anima. */
+.tz-num {
+  font-family: var(--tz-font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--tz-weight-semibold);
+  line-height: var(--tz-leading-none);
+  letter-spacing: var(--tz-tracking-num);
+}
+
+.tz-num--md {
+  font-size: var(--tz-text-num-md);
+}
+
+.tz-num--lg {
+  font-size: var(--tz-text-num-lg);
+}
+
+.tz-num--xl {
+  font-size: var(--tz-text-num-xl);
+}
+
+/* Chip de estado: el texto va siempre; el color solo lo acompaña. */
+.tz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  padding: var(--tz-space-0-5) var(--tz-space-2);
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-pill);
+  background: var(--tz-surface-2);
+  color: var(--tz-text);
+  font-size: var(--tz-text-xs);
+  font-weight: var(--tz-weight-medium);
+  line-height: var(--tz-leading-tight);
+  white-space: nowrap;
+}
+
+/* Control segmentado: botones con aria-pressed (o aria-checked) dentro de un grupo con nombre. */
+.tz-segmented {
+  display: inline-flex;
+  gap: var(--tz-space-0-5);
+  padding: var(--tz-space-0-5);
+  border: 1px solid var(--tz-border);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-1);
+}
+
+.tz-segmented > button {
+  position: relative;
+  min-width: 0;
+  padding: var(--tz-space-0-5) var(--tz-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-sm);
+  background: transparent;
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-xs);
+  font-weight: var(--tz-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* Zona táctil: crece en vertical hasta --tz-hit-min sin mover el layout (en horizontal no pisa al vecino). */
+.tz-segmented > button::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+.tz-segmented > button[aria-pressed='true'],
+.tz-segmented > button[aria-checked='true'] {
+  border-color: var(--tz-accent);
+  background: var(--tz-accent-soft);
+  color: var(--tz-accent-strong);
+}
+
+.tz-segmented > button:active {
+  transform: scale(var(--tz-press-scale));
+}
+
+/* Icono (TzIcon): tamaño y trazo por tokens; el color es el del texto (currentColor). */
+.tz-icon {
+  flex: none;
+  width: var(--tz-icon-md);
+  height: var(--tz-icon-md);
+  stroke-width: var(--tz-icon-stroke);
+  vertical-align: middle;
+}
+
+.tz-icon--sm {
+  width: var(--tz-icon-sm);
+  height: var(--tz-icon-sm);
+}
+
+.tz-icon--lg {
+  width: var(--tz-icon-lg);
+  height: var(--tz-icon-lg);
+}
+
+/* Botón de solo icono (con aria-label): 32 px visibles y, con puntero grueso, zona táctil de --tz-hit-min. */
+.tz-iconbtn {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--tz-space-8);
+  height: var(--tz-space-8);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-iconbtn::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2));
+}
+
+.tz-iconbtn[aria-expanded='true'],
+.tz-iconbtn[aria-pressed='true'] {
+  border-color: var(--tz-accent);
+  background: var(--tz-accent-soft);
+  color: var(--tz-accent-strong);
+}
+
+.tz-iconbtn:active {
+  transform: scale(var(--tz-press-scale));
+}
+
+.tz-iconbtn:disabled {
+  color: var(--tz-text-faint);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .tz-segmented > button:hover:not([aria-pressed='true'], [aria-checked='true']) {
+    background: var(--tz-surface-3);
+    color: var(--tz-text);
+  }
+
+  .tz-iconbtn:hover:not(:disabled, [aria-expanded='true'], [aria-pressed='true']) {
+    border-color: var(--tz-border-strong);
+    background: var(--tz-surface-3);
+    color: var(--tz-text);
+  }
+}
+
+/*
+ * Animaciones comunes: solo opacidad y transform (y el fondo de un destello), nada infinito, y duraciones y
+ * curvas siempre de los tokens (valen 0 con prefers-reduced-motion). Nunca se animan valores de datos (D42).
+ */
+
+/* Entrada: fundido con un desplazamiento corto (--tz-shift; 0 con movimiento reducido). */
+@keyframes tz-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--tz-shift));
+  }
+}
+
+/* Destello único: del acento suave al fondo propio del elemento. */
+@keyframes tz-flash {
+  from {
+    background-color: var(--tz-accent-soft);
+  }
+}
+
+/* Pulso de un anillo (en un pseudo-elemento): como mucho 2 iteraciones, nunca infinito. */
+@keyframes tz-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
 }
