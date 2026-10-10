@@ -88,6 +88,8 @@ onBeforeUnmount(() => {
         <span class="tz-replay__dot" aria-hidden="true" />{{ t('replay.ready') }}
         <span class="tz-replay__detail tz-tabular">{{ readyDetail }}</span>
       </p>
+      <!-- Avisos de calidad del pipeline (quality.notes del manifest), si los hay. -->
+      <TzSessionNotes v-if="session.status === 'ready'" :key="`notes-${session.id}`" :notes="session.manifest?.quality.notes" />
       <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
       <!-- La escena teletransporta aquí sus herramientas (altura, separación y etiquetas "Estimado"). -->
       <div id="tz-scene-tools" class="tz-replay__tools" />
@@ -132,6 +134,11 @@ onBeforeUnmount(() => {
 
 .tz-replay__bar > * {
   pointer-events: auto;
+}
+
+/* Con un panel desplegado (avisos, «Cómo se dibuja»), la cabecera pasa por encima de los paneles laterales. */
+.tz-replay__bar:has([aria-expanded='true']) {
+  z-index: var(--tz-z-header);
 }
 
 .tz-replay__title {

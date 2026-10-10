@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Leaderboard del replay: posición, gap/intervalo, neumático y estado de cada piloto. */
-import type { LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
@@ -85,10 +85,10 @@ function select(car: string) {
             <span
               v-if="r.blueFlag && settings.showBlueFlags"
               class="tz-lb__blue"
-              :title="t('leaderboard.blueFlag')"
+              :title="t('leaderboard.blueFlag', { s: BLUE_FLAG_MS / 1000 })"
               data-testid="blue-flag"
             >
-              <span class="tz-visually-hidden">{{ t('leaderboard.blueFlag') }}</span>
+              <span class="tz-visually-hidden">{{ t('leaderboard.blueFlag', { s: BLUE_FLAG_MS / 1000 }) }}</span>
             </span>
             <span v-if="r.inPit" class="tz-lb__chip tz-lb__chip--pit">{{ t('leaderboard.pit') }}</span>
             <span v-else-if="r.noSignal" class="tz-lb__chip" data-testid="no-signal">{{ t('leaderboard.noSignal') }}</span>

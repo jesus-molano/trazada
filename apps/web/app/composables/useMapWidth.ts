@@ -3,11 +3,12 @@ import { BufferAttribute, type BufferGeometry, type Material, Vector2 } from 'th
 
 /**
  * Anchura «de mapa» de una cinta (pista, pit lane, capas de banderas, bordes, línea de meta), calculada en
- * el shader para cada vértice: la anchura real de cerca y, donde a esa distancia se vería más fina, la que
+ * el shader para cada vértice: la anchura en metros de cerca (genérica, 14 m para la pista: la fuente no da
+ * la de cada circuito) y, donde a esa distancia se vería más fina, la que
  * ocupa `minPx` píxeles en pantalla. Así llega al mínimo también la parte lejana del circuito (y la que se
  * ve en escorzo), sin engordar la de cerca ni reescribir la malla. Es solo visual: no mueve nada.
  *
- * La geometría lleva `position` con la anchura real y, por vértice, `mapCenter` (su punto del eje) y
+ * La geometría lleva `position` con la anchura en metros y, por vértice, `mapCenter` (su punto del eje) y
  * `mapNormal` (unitaria, hacia fuera); la línea de meta, además, `mapAlong` (cuánto crece a lo largo).
  */
 const HEADER = /* glsl */ `

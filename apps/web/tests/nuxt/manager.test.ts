@@ -99,8 +99,26 @@ describe('TzSessionRow (gestor de datos local)', () => {
     })
     const row = w.find('[data-testid="session-race"]')
     expect(row.attributes('aria-disabled')).toBe('true')
-    expect(row.text()).toMatch(/(Disponible desde|Available from)/)
+    // La hora sale de duraciones supuestas: el texto la da como aproximada y lo explica (también al lector).
+    const note = w.find('[data-testid="available-from"]')
+    expect(note.text()).toMatch(/(Descargable hacia el|Downloadable around)/)
+    expect(row.text()).not.toMatch(/(Disponible desde|Available from)/)
+    expect(note.attributes('title')).toMatch(/(Hora aproximada|Approximate time).*30 min/)
+    expect(row.find('.tz-visually-hidden').text()).toBe(note.attributes('title'))
     expect(w.find('button').exists()).toBe(false)
+  })
+
+  it('futura sin hora en el calendario: «Aún no disponible», sin fecha inventada', async () => {
+    const w = await mountSuspended(TzSessionRow, { props: { type: 'race', view: { kind: 'future', at: null } } })
+    expect(w.find('[data-testid="session-race"]').text()).toMatch(/(Aún no disponible|Not available yet)/)
+    expect(w.find('[data-testid="available-from"]').exists()).toBe(false)
+  })
+
+  it('en curso: el porcentaje se da como aproximado', async () => {
+    const w = await mountSuspended(TzSessionRow, {
+      props: { type: 'fp1', view: { kind: 'running', job: job({ state: 'running', pct: 40.4, phase: 'download' }) } },
+    })
+    expect(w.text()).toMatch(/≈40\s?%/)
   })
 })
 

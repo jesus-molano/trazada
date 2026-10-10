@@ -61,7 +61,7 @@ describe('cinta', () => {
     expect(Math.min(...g.shade)).toBe(0)
   })
 
-  it('anchura de mapa: cada vértice es su punto del eje más la semianchura real por su normal hacia fuera', () => {
+  it('anchura de mapa: cada vértice es su punto del eje más la semianchura en metros por su normal hacia fuera', () => {
     const g = buildRibbon(circle(80), 14)
     for (let v = 0; v < g.positions.length / 3; v++) {
       const [px, py, pz] = g.positions.subarray(v * 3, v * 3 + 3)

@@ -198,7 +198,7 @@ test.describe('legibilidad del mapa', () => {
     expect(purple).toBe(0)
   })
 
-  test('siguiendo a un coche, la pista se ve con su anchura real (no se ensancha de cerca)', async ({ page }) => {
+  test('siguiendo a un coche, la pista se ve con su anchura en metros, la genérica de 14 m (no se ensancha de cerca)', async ({ page }) => {
     await openScene(page)
     await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
     // Un coche concreto que en ese instante rueda por la pista (NOR, el 1): quién va primero depende de la

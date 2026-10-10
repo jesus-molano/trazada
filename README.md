@@ -37,6 +37,27 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
 - En español e inglés, tema oscuro, escritorio y tablet.
 
+## Qué es dato y qué es modelo
+
+El replay mezcla datos de la fuente con un modelo para dibujarlos. En la app lo explica el botón «Cómo se dibuja», junto a las herramientas del mapa; los avisos que deja el pipeline al procesar una sesión salen en la cabecera del replay.
+
+**Dato de la fuente**
+
+- La posición de cada coche (x, y y altura), unas 4 veces por segundo.
+- Tiempos de vuelta, neumáticos, telemetría y mensajes de dirección de carrera, del cronometraje.
+
+En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruido: la app lo marca como «Estimado», también en «Cómo se dibuja».
+
+**Modelo (solo para dibujar)**
+
+- Entre una posición y la siguiente, el movimiento se interpola. Si pasan más de 2 s sin posición, el coche no se dibuja en ese hueco.
+- La fuente no indica en qué parte del ancho de la pista va cada coche. Por eso se dibuja sobre la línea central, según la distancia recorrida y con el morro en la dirección de la pista. Si la fuente lo sitúa a menos de 30 m de la línea central (por ejemplo, en la grava), se dibuja sobre la pista; más lejos, el coche se oculta.
+- En boxes (entre la entrada y la salida que da el cronometraje, y cerca de ellas cuando la posición está más cerca del pit lane que de la pista), el coche se dibuja sobre la línea del pit lane; en el garaje, se oculta.
+- Un coche nunca se dibuja marcha atrás: si la fuente lo sitúa retrocediendo (ruido o un trompo), la distancia recorrida se ajusta para que no disminuya. Si ese ajuste tuviera que moverlo más de 5 m, o la telemetría dice que iba en marcha mientras la posición seguía congelada, ese tramo queda sin dato y el coche no se dibuja.
+- La pista tiene una anchura genérica de 14 m, no la de cada circuito. De lejos, la pista y los coches tienen un tamaño mínimo en pantalla.
+- El coche 3D es genérico: lleva el color del equipo y, en los neumáticos, el del compuesto que da el cronometraje (gris si no hay dato).
+- Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
+
 ## Estado
 
 En desarrollo (Fase 1, MVP replay). Plan, decisiones e hitos en [`docs/PLAN.md`](docs/PLAN.md). La fuente de verdad del proyecto es [`docs/BRIEF.md`](docs/BRIEF.md).

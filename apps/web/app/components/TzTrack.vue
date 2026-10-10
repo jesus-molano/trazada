@@ -77,7 +77,7 @@ function finishLine(): BufferGeometry {
 }
 const finish = finishLine()
 
-// Anchura de mapa (en el shader): la real de cerca y un mínimo en pantalla al alejarse (si no, a escala de
+// Anchura de mapa (en el shader): la genérica de 14 m de cerca y un mínimo en pantalla al alejarse (si no, a escala de
 // circuito, un hilo). Pista, bordes y meta comparten parámetros: se ensanchan juntos.
 const mapWidth = useMapWidth()
 const TRACK_HALF = TRACK_WIDTH_M / 2

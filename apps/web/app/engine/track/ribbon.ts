@@ -4,7 +4,10 @@
  */
 import type { TrackPath } from './TrackPath'
 
-/** Anchura de la cinta de la pista (m), común a la pista y a sus capas de banderas. */
+/**
+ * Anchura de la cinta de la pista (m), común a la pista y a sus capas de banderas. Es genérica: la fuente no da
+ * la anchura de cada circuito, así que todos se dibujan con la misma.
+ */
 export const TRACK_WIDTH_M = 14
 
 export interface RibbonGeometry {
