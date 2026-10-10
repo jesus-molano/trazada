@@ -14,18 +14,15 @@
  *   mensajes de bandera a cuadros (fin de tanda) y luz verde (inicio de la siguiente). Sin esos mensajes, toda
  *   la sesión cuenta como una tanda.
  * - Neumático: compuesto y edad de la vuelta en curso (tabla de vueltas).
+ *
+ * Las vueltas de cada coche (pasos por meta reales, anulaciones y tandas) salen del índice compartido
+ * `buildLapTable` (`engine/analysis/lapTable.ts`).
  */
-import {
-  ENUMS,
-  type DecodedTrzb,
-  type DriverInfo,
-  type RaceControlEvent,
-  type SessionEvents,
-  type SessionType,
-} from '@trazada/schema'
-import { lapsView } from '../data/columns'
+import { ENUMS, type DecodedTrzb, type DriverInfo, type SessionEvents, type SessionType } from '@trazada/schema'
+import { buildLapTable, type CarLaps, type LapTable, segmentAt } from '../analysis/lapTable'
 import type { CarState } from '../replay/ReplayModel'
-import { deletionTimes } from '../timing/deletions'
+
+export { qualifyingSegments } from '../analysis/lapTable'
 
 /** Una bandera azul se muestra este tiempo después del mensaje (los mensajes son instantáneos). */
 export const BLUE_FLAG_MS = 8000
@@ -52,21 +49,6 @@ export interface LeaderboardRow {
   blueFlag: boolean
 }
 
-interface CarLaps {
-  lap: Int32Array
-  start: Float64Array
-  end: Float64Array
-  lapMs: Float64Array
-  compound: Uint8Array
-  tyreLife: Uint8Array
-  /** Desde cuándo está anulada cada vuelta (Infinity: no se anuló). */
-  deletedFrom: Float64Array
-  /** Tanda de clasificación de cada vuelta (0…; −1: entre tandas). Fuera de clasificación, 0. */
-  segment: Int8Array
-  pitIn: Float64Array
-  pitOut: Float64Array
-}
-
 interface StreamRows {
   t: Float64Array
   position: Uint8Array
@@ -87,33 +69,14 @@ function lastAtOrBefore(t: Float64Array, x: number): number {
   return lo
 }
 
-/**
- * Tandas de una clasificación (Q1/Q2/Q3, SQ1/SQ2/SQ3): la k-ésima va desde su inicio (`starts[k]`) hasta su
- * bandera a cuadros (`ends[k]`). Una tanda acaba con la bandera a cuadros y la siguiente empieza con la primera
- * luz verde posterior (una luz verde tras una bandera roja, sin bandera a cuadros, sigue en la misma tanda).
- */
-export function qualifyingSegments(raceControl: readonly RaceControlEvent[]): { starts: number[]; ends: number[] } {
-  const starts = [-Infinity]
-  const ends: number[] = []
-  const marks = raceControl
-    .filter((e) => e.parsed.kind === 'chequered_flag' || e.parsed.kind === 'green_light')
-    .sort((a, b) => a.t - b.t)
-  for (const e of marks) {
-    const open = ends.length < starts.length
-    if (e.parsed.kind === 'chequered_flag' && open) ends.push(e.t)
-    else if (e.parsed.kind === 'green_light' && !open) starts.push(e.t)
-  }
-  if (ends.length < starts.length) ends.push(Infinity)
-  return { starts, ends }
-}
-
 export class LeaderboardEngine {
   readonly race: boolean
-  private readonly laps = new Map<string, CarLaps>()
+  /** Índice de vueltas de la sesión (compartido con otros análisis por vuelta). */
+  readonly lapTable: LapTable
+  private readonly laps: ReadonlyMap<string, CarLaps>
   private readonly stream = new Map<string, StreamRows>()
   private readonly hasStream: boolean
   private readonly blue: { t: number; cars: string[] }[]
-  private readonly segmentStarts: number[]
 
   constructor(
     type: SessionType,
@@ -121,48 +84,10 @@ export class LeaderboardEngine {
     events: SessionEvents,
     private readonly drivers: DriverInfo[],
   ) {
-    this.race = type === 'race' || type === 'sprint'
-    const v = lapsView(timing)
-    const rows = new Map<string, number[]>()
-    for (let i = 0; i < v.rows; i++) {
-      const car = String(v.car[i])
-      ;(rows.get(car) ?? rows.set(car, []).get(car)!).push(i)
-    }
-    const tyreLife = timing.tables.laps!.columns.tyreLife!
-    // Una "vuelta" mucho más corta que lo normal no es un paso por meta (p. ej. el registro residual de un
-    // coche retirado): no cuenta como vuelta completada.
-    const durations = Array.from({ length: v.rows }, (_, i) => v.lapMs[i]!).filter((ms) => ms > 0).sort((a, b) => a - b)
-    const minLapMs = durations.length ? 0.5 * durations[durations.length >> 1]! : 0
-    const realEnd = (i: number) => (v.endMs[i]! > 0 && v.endMs[i]! - v.startMs[i]! >= minLapMs ? v.endMs[i]! : -1)
-    const deletedFrom = deletionTimes(v, events.raceControl)
-    const quali = type === 'q' || type === 'sq'
-    const seg = quali ? qualifyingSegments(events.raceControl) : { starts: [-Infinity], ends: [Infinity] }
-    this.segmentStarts = seg.starts
-    // Tanda de una vuelta: la de su inicio (una vuelta lanzada antes de la bandera a cuadros cuenta en esa tanda).
-    const segmentOf = (i: number) => {
-      const end = v.endMs[i]!
-      const ms = v.lapMs[i]!
-      const start = v.startMs[i]! >= 0 ? v.startMs[i]! : end > 0 && ms > 0 ? end - ms : -1
-      if (start < 0) return quali ? -1 : 0
-      for (let k = 0; k < seg.starts.length; k++) if (start >= seg.starts[k]! && start < seg.ends[k]!) return k
-      return -1
-    }
-    for (const [car, idx] of rows) {
-      idx.sort((a, b) => v.lap[a]! - v.lap[b]!)
-      const pick = (col: ArrayLike<number>) => idx.map((i) => col[i]!)
-      this.laps.set(car, {
-        lap: Int32Array.from(pick(v.lap)),
-        start: Float64Array.from(pick(v.startMs)),
-        end: Float64Array.from(idx, realEnd),
-        lapMs: Float64Array.from(pick(v.lapMs)),
-        compound: Uint8Array.from(pick(v.compound)),
-        tyreLife: Uint8Array.from(pick(tyreLife)),
-        deletedFrom: Float64Array.from(idx, (i) => deletedFrom[i]!),
-        segment: Int8Array.from(idx, segmentOf),
-        pitIn: Float64Array.from(pick(v.pitInMs)),
-        pitOut: Float64Array.from(pick(v.pitOutMs)),
-      })
-    }
+    // Vueltas por coche: pasos por meta reales, anulaciones desde su mensaje y tandas de clasificación.
+    this.lapTable = buildLapTable(type, timing, events.raceControl)
+    this.race = this.lapTable.race
+    this.laps = this.lapTable.cars
 
     const st = timing.tables.stream
     if (st && st.rows > 0) {
@@ -214,22 +139,20 @@ export class LeaderboardEngine {
     const laps = this.laps.get(car)
     if (!laps) return 'UNKNOWN'
     let k = -1
-    for (let j = 0; j < laps.lap.length; j++) if (laps.start[j]! >= 0 && laps.start[j]! <= t) k = j
+    for (let j = 0; j < laps.lap.length; j++) if (laps.startMs[j]! >= 0 && laps.startMs[j]! <= t) k = j
     if (k < 0) return 'UNKNOWN'
     const c = laps.compound[k]!
     const n = laps.lap.length
     // Vuelta de entrada: ya en el pit, antes de cruzar la línea.
-    if (k + 1 < n && laps.compound[k + 1] !== c && laps.pitIn[k]! >= 0 && t >= laps.pitIn[k]!) return 'UNKNOWN'
+    if (k + 1 < n && laps.compound[k + 1] !== c && laps.pitInMs[k]! >= 0 && t >= laps.pitInMs[k]!) return 'UNKNOWN'
     // Vuelta de salida: aún sin salir del pit.
-    if (k > 0 && laps.compound[k - 1] !== c && laps.pitOut[k]! >= 0 && t < laps.pitOut[k]!) return 'UNKNOWN'
+    if (k > 0 && laps.compound[k - 1] !== c && laps.pitOutMs[k]! >= 0 && t < laps.pitOutMs[k]!) return 'UNKNOWN'
     return ENUMS.compound[c] ?? 'UNKNOWN'
   }
 
   /** Tanda de clasificación en curso en t (0 fuera de clasificación). */
   segmentAt(t: number): number {
-    let k = 0
-    while (k + 1 < this.segmentStarts.length && this.segmentStarts[k + 1]! <= t) k++
-    return k
+    return segmentAt(this.lapTable.segments, t)
   }
 
   compute(t: number, states: readonly CarState[]): LeaderboardRow[] {
@@ -251,7 +174,7 @@ export class LeaderboardEngine {
       if (laps) {
         // Vueltas completadas en t y vuelta en curso
         for (let k = 0; k < laps.lap.length; k++) {
-          const end = laps.end[k]!
+          const end = laps.crossMs[k]!
           if (end > 0 && end <= t) {
             done = laps.lap[k]!
             cross = end
@@ -264,7 +187,7 @@ export class LeaderboardEngine {
               } else if (s === seg && ms < segBest) segBest = ms
             }
           }
-          if (laps.start[k]! >= 0 && laps.start[k]! <= t) {
+          if (laps.startMs[k]! >= 0 && laps.startMs[k]! <= t) {
             lap = laps.lap[k]!
             compound = ENUMS.compound[laps.compound[k]!] ?? 'UNKNOWN'
             const life = laps.tyreLife[k]!
@@ -356,14 +279,14 @@ export class LeaderboardEngine {
   private doneAt(car: string, x: number): number {
     const laps = this.laps.get(car)
     let done = 0
-    if (laps) for (let k = 0; k < laps.lap.length; k++) if (laps.end[k]! > 0 && laps.end[k]! <= x) done = laps.lap[k]!
+    if (laps) for (let k = 0; k < laps.lap.length; k++) if (laps.crossMs[k]! > 0 && laps.crossMs[k]! <= x) done = laps.lap[k]!
     return done
   }
 
   private crossingOf(car: string, lap: number): number | null {
     const laps = this.laps.get(car)
     if (!laps) return null
-    for (let k = 0; k < laps.lap.length; k++) if (laps.lap[k] === lap && laps.end[k]! > 0) return laps.end[k]!
+    for (let k = 0; k < laps.lap.length; k++) if (laps.lap[k] === lap && laps.crossMs[k]! > 0) return laps.crossMs[k]!
     return null
   }
 
