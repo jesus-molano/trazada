@@ -30,6 +30,8 @@ pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
 pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
 pnpm local [--lan] [--build]  # uso personal (D23): app + data/ en http://127.0.0.1:3000 (--lan: red de casa)
+#   con el gestor de datos (D26): calendario y «Descargar» por sesión → API /api (solo loopback) → uv run trazada build … --progress
+#   servidor: scripts/local-server.mjs (también lo usan los e2e, sin gestor); e2e del gestor con un pipeline falso (tests/fixtures/fake-pipeline.mjs)
 # Bench: /replay?s=<sesión>&bench=1 (benchSeconds, benchWarmup, benchRate, governor=off); docs/PERFORMANCE.md
 pnpm perf:table               # tabla de peso por sesión en docs/PERFORMANCE.md (desde data/v1)
 # e2e con datos completos de data/ (solo local, p. ej. Japón 2026 dev): servidor aparte y E2E_LOCAL_URL
@@ -47,6 +49,8 @@ uv run pytest                 # excluye @local; uv run pytest -m local para test
 # Datos (salen en data/v1/, ignorado por git)
 uv run trazada probe                                      # ¿esta red puede leer el live timing? (nube: 403)
 uv run trazada build 2026 "Belgian Grand Prix" fp1        # FastF1 online (solo IP residencial)
+uv run trazada schedule 2026                              # calendario (una línea JSON) para el gestor de datos
+uv run trazada build 2026 10 fp1 --progress               # líneas ::progress/::result/::error (las lee el gestor)
 uv run trazada sanitize-cache <caché-ajena>/<año>/<evento>/<sesión>   # unpickler restringido → .cache/fastf1-sanitized
 uv run trazada build 2026 "Belgian Grand Prix" fp1 --offline          # desde la caché saneada
 uv run trazada dev-ti "<TI>/2026/Japanese Grand Prix/Race" --season 2026 --round 3 --slug suzuka  # SOLO dev
@@ -69,6 +73,7 @@ uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos
 - **Componentes**: prefijo `Tz` (evita choques con los componentes globales que registra `@tresjs/nuxt` desde cientos: `Grid`, `Html`, `Image`…).
 - **Props dentro de `TresCanvas`**: objetos y arrays siempre estables (`computed`/constantes), nunca literales en la plantilla (`:scale="[1, k, 1]"`). TresCanvas vuelve a evaluar su slot por su cuenta, y un literal nuevo invalida la escena en cada evaluación: hay renders en pausa (lo vigila un e2e).
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
+- **Gestor de datos (D26)**: la API de `scripts/local-server.mjs` ejecuta el pipeline, así que solo atiende a loopback, con Host del propio servidor, mismo origen y cabecera `X-Trazada`; nada de CORS. Todo parámetro se valida (temporada, ronda, tipo de sesión) y el pipeline se lanza sin shell. Cualquier cambio ahí lleva sus tests en `tests/unit/local-server.test.ts`.
 - **Sin despliegue (D25)**: no hay Cloudflare ni ningún otro hosting; los datos se quedan en `data/` del PC. Una sesión cuyo circuito use fuentes dev sigue marcándose como dev.
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio mientras no haya datos de usuarios que conservar, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).

@@ -23,17 +23,22 @@ export const useCatalogStore = defineStore('catalog', () => {
     return catalog.value?.seasons.find((s) => s.season === season)?.events ?? []
   }
 
+  async function fetchCatalog(): Promise<Catalog> {
+    const res = await fetch(useDataUrl()('catalog.json'), { cache: 'no-store' })
+    // Sin catálogo todavía (instalación nueva, nada descargado): catálogo vacío, no un error.
+    if (res.status === 404) return { schema: 'trazada.catalog', schemaVersion: '', generatedAt: '', seasons: [] }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const value: unknown = await res.json()
+    if (!isCatalog(value)) throw new Error('catálogo inválido')
+    return value
+  }
+
   async function load(force = false): Promise<void> {
     if (status.value === 'loading' || (status.value === 'ready' && !force)) return
     status.value = 'loading'
     error.value = null
     try {
-      const url = useDataUrl()('catalog.json')
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const value: unknown = await res.json()
-      if (!isCatalog(value)) throw new Error('catálogo inválido')
-      catalog.value = markRaw(value)
+      catalog.value = markRaw(await fetchCatalog())
       status.value = 'ready'
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err)
@@ -41,5 +46,15 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
-  return { status, error, catalog, seasons, eventsOf, load }
+  /** Relee el catálogo sin pasar por "cargando" (tras una descarga del gestor local); si falla, se queda el actual. */
+  async function refresh(): Promise<void> {
+    if (status.value !== 'ready') return load(true)
+    try {
+      catalog.value = markRaw(await fetchCatalog())
+    } catch {
+      // el siguiente refresco lo reintenta
+    }
+  }
+
+  return { status, error, catalog, seasons, eventsOf, load, refresh }
 })

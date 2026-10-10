@@ -23,3 +23,14 @@ export function formatDate(iso: string, locale: string): string {
 export function formatSeconds(ms: number, locale: string): string {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(ms / 1000)
 }
+
+/** Día, mes y hora (en la zona del navegador salvo que se indique otra). */
+export function formatDateTime(ms: number, locale: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  }).format(ms)
+}

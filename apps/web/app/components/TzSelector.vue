@@ -1,16 +1,37 @@
 <script setup lang="ts">
-import type { CatalogEvent, CatalogSession } from '@trazada/schema'
-import { sessionIdFromManifestPath } from '~/data/session-id'
+import type { SessionType } from '@trazada/schema'
+import {
+  type BrowseEvent,
+  type BrowseSession,
+  downloadable,
+  eventKey,
+  jobKey,
+  mergeEvents,
+  queueSummary,
+  sessionView,
+} from '~/manager/model'
 import { useCatalogStore } from '~/stores/catalog'
+import { useManagerStore } from '~/stores/manager'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const catalog = useCatalogStore()
+const manager = useManagerStore()
 
-onMounted(() => catalog.load())
-
-const eventKey = (e: CatalogEvent) => `${String(e.round).padStart(2, '0')}-${e.slug}`
+/** Reloj de pared para saber qué sesiones ya se pueden descargar (cada 30 s basta). */
+const now = ref(Date.now())
+let clock: ReturnType<typeof setInterval> | null = null
+let unsubscribe: (() => void) | null = null
+onMounted(() => {
+  void catalog.load()
+  unsubscribe = manager.subscribe()
+  clock = setInterval(() => (now.value = Date.now()), 30_000)
+})
+onBeforeUnmount(() => {
+  unsubscribe?.()
+  if (clock) clearInterval(clock)
+})
 
 const season = computed<number>(() => {
   const q = Number(route.query.season)
@@ -18,23 +39,67 @@ const season = computed<number>(() => {
   // Por defecto, la temporada más reciente con datos.
   return catalog.seasons.find((s) => catalog.eventsOf(s).length > 0) ?? catalog.seasons[0]!
 })
-const events = computed(() => catalog.eventsOf(season.value))
-const selectedEvent = computed<CatalogEvent | null>(() => {
+
+// Con el gestor local, el calendario de la temporada elegida (para ofrecer lo que falta por descargar).
+watch(
+  [season, () => manager.available],
+  ([s, available]) => {
+    if (available) void manager.loadSchedule(s)
+  },
+  { immediate: true },
+)
+const scheduleState = computed(() => (manager.available ? (manager.schedules[season.value] ?? null) : null))
+const events = computed(() =>
+  mergeEvents(catalog.eventsOf(season.value), scheduleState.value?.schedule?.events ?? null),
+)
+const selectedEvent = computed<BrowseEvent | null>(() => {
   const q = typeof route.query.event === 'string' ? route.query.event : null
-  return events.value.find((e) => eventKey(e) === q) ?? null
+  return events.value.find((e) => e.key === q) ?? null
 })
 
 function selectSeason(s: number) {
   void router.replace({ query: { season: String(s) } })
 }
-function selectEvent(e: CatalogEvent) {
+function selectEvent(e: BrowseEvent) {
   void router.replace({ query: { season: String(season.value), event: eventKey(e) } })
 }
 
-function sessionLink(s: CatalogSession): string | null {
-  const id = sessionIdFromManifestPath(s.path)
-  return id && s.status !== 'no-position' ? `/replay?s=${id}` : null
+function viewOf(e: BrowseEvent, s: BrowseSession) {
+  const job = manager.jobsByKey.get(jobKey({ season: season.value, round: e.round, session: s.session })) ?? null
+  return sessionView(s, job, now.value, manager.available)
 }
+
+function builtCount(e: BrowseEvent): number {
+  return e.sessions.filter((s) => viewOf(e, s).kind === 'link').length
+}
+
+const eventMissing = computed(() =>
+  selectedEvent.value && manager.available
+    ? downloadable(season.value, selectedEvent.value, manager.jobsByKey, now.value)
+    : [],
+)
+const seasonRacesMissing = computed(() =>
+  manager.available
+    ? events.value.flatMap((e) => downloadable(season.value, e, manager.jobsByKey, now.value, 'race'))
+    : [],
+)
+
+function download(e: BrowseEvent, session: SessionType) {
+  void manager.enqueue([{ season: season.value, round: e.round, session }])
+}
+
+const queue = computed(() => queueSummary(manager.jobs))
+const queueText = computed(() => {
+  const running = queue.value.running
+  if (!running) return t('manager.queueWaiting', queue.value.queued)
+  const text = t('manager.queueRunning', {
+    season: running.season,
+    round: running.round,
+    session: t(`session.${running.session}`),
+    pct: Math.round(running.pct),
+  })
+  return queue.value.queued ? `${text} · ${t('manager.queueMore', queue.value.queued)}` : text
+})
 </script>
 
 <template>
@@ -70,24 +135,81 @@ function sessionLink(s: CatalogSession): string | null {
         </ul>
       </nav>
 
-      <p v-if="events.length === 0" class="tz-selector__state" data-testid="season-empty">
+      <div v-if="manager.available" class="tz-manager" data-testid="manager">
+        <div v-if="queue.active > 0" class="tz-manager__queue" data-testid="download-queue">
+          <span class="tz-manager__text">{{ queueText }}</span>
+          <button
+            type="button"
+            class="tz-button tz-button--quiet tz-manager__action"
+            data-testid="cancel-all"
+            @click="manager.cancelAll()"
+          >
+            {{ t('manager.cancelAll') }}
+          </button>
+        </div>
+        <p v-if="manager.actionError" class="tz-manager__alert" role="alert" data-testid="manager-error">
+          {{ t('manager.actionError') }}
+        </p>
+        <p
+          v-if="scheduleState?.status === 'loading'"
+          class="tz-muted"
+          aria-live="polite"
+          data-testid="schedule-loading"
+        >
+          {{ t('manager.scheduleLoading', { season }) }}
+        </p>
+        <div v-else-if="scheduleState?.status === 'error'" class="tz-manager__alert" role="alert" data-testid="schedule-error">
+          <span>{{ t('manager.scheduleError', { season }) }} {{ t(`manager.error.${scheduleState.error ?? 'failed'}`) }}</span>
+          <button type="button" class="tz-button tz-manager__action" @click="manager.loadSchedule(season, true)">
+            {{ t('selector.retry') }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="events.length === 0 && scheduleState?.status !== 'loading'" class="tz-selector__state" data-testid="season-empty">
         {{ t('selector.emptySeason', { season }) }}
       </p>
 
-      <div v-else class="tz-browse">
+      <div v-else-if="events.length > 0" class="tz-browse">
         <section class="tz-events" :aria-label="t('selector.events', { season })">
-          <h2 class="tz-heading">{{ t('selector.events', { season }) }}</h2>
+          <div class="tz-heading-row">
+            <h2 class="tz-heading">{{ t('selector.events', { season }) }}</h2>
+            <button
+              v-if="seasonRacesMissing.length > 0"
+              type="button"
+              class="tz-button tz-button--quiet tz-manager__action"
+              :title="t('manager.downloadHint')"
+              data-testid="download-season-races"
+              @click="manager.enqueue(seasonRacesMissing)"
+            >
+              {{ t('manager.downloadSeasonRaces', seasonRacesMissing.length) }}
+            </button>
+          </div>
           <ul role="list" class="tz-event-list">
-            <li v-for="e in events" :key="eventKey(e)">
+            <li v-for="e in events" :key="e.key">
               <button
                 type="button"
                 class="tz-event"
-                :class="{ 'is-active': selectedEvent && eventKey(selectedEvent) === eventKey(e) }"
-                :aria-pressed="!!selectedEvent && eventKey(selectedEvent) === eventKey(e)"
+                :class="{ 'is-active': selectedEvent?.key === e.key }"
+                :aria-pressed="selectedEvent?.key === e.key"
                 :data-testid="`event-${e.slug}`"
                 @click="selectEvent(e)"
               >
-                <span class="tz-event__round tz-tabular">{{ t('selector.round', { round: e.round }) }}</span>
+                <span class="tz-event__top">
+                  <span class="tz-event__round tz-tabular">{{ t('selector.round', { round: e.round }) }}</span>
+                  <span
+                    v-if="manager.available && e.scheduled"
+                    class="tz-event__built tz-tabular"
+                    :class="{ 'is-complete': builtCount(e) === e.sessions.length }"
+                    :title="t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })"
+                    :data-testid="`built-${e.slug}`"
+                  >
+                    {{ t('manager.built', { built: builtCount(e), total: e.sessions.length }) }}
+                    <span class="tz-visually-hidden">{{
+                      t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })
+                    }}</span>
+                  </span>
+                </span>
                 <span class="tz-event__name">{{ e.event }}</span>
                 <span class="tz-event__meta">
                   {{ e.country }}<template v-if="e.dateStart"> · {{ formatDate(e.dateStart, locale) }}</template>
@@ -97,34 +219,31 @@ function sessionLink(s: CatalogSession): string | null {
           </ul>
         </section>
 
-        <section class="tz-sessions" :aria-label="t('selector.sessions')" aria-live="polite">
-          <h2 class="tz-heading">{{ selectedEvent ? selectedEvent.event : t('selector.sessions') }}</h2>
+        <section class="tz-sessions" :aria-label="t('selector.sessions')">
+          <div class="tz-heading-row">
+            <h2 class="tz-heading" aria-live="polite">
+              {{ selectedEvent ? selectedEvent.event : t('selector.sessions') }}
+            </h2>
+            <button
+              v-if="eventMissing.length > 1"
+              type="button"
+              class="tz-button tz-button--quiet tz-manager__action"
+              :title="t('manager.downloadHint')"
+              data-testid="download-event"
+              @click="manager.enqueue(eventMissing)"
+            >
+              {{ t('manager.downloadEvent', eventMissing.length) }}
+            </button>
+          </div>
           <p v-if="!selectedEvent" class="tz-muted">{{ t('selector.pickEvent') }}</p>
           <ul v-else role="list" class="tz-session-list">
             <li v-for="s in selectedEvent.sessions" :key="s.session">
-              <NuxtLink
-                v-if="sessionLink(s)"
-                :to="sessionLink(s)!"
-                class="tz-session"
-                :data-testid="`session-${s.session}`"
-              >
-                <span class="tz-session__name">{{ t(`session.${s.session}`) }}</span>
-                <span v-if="s.dev" class="tz-badge tz-badge--dev" :title="t('selector.devHint')">{{
-                  t('selector.dev')
-                }}</span>
-                <span v-if="s.bytes" class="tz-session__size tz-tabular">{{ formatBytes(s.bytes, locale) }}</span>
-              </NuxtLink>
-              <div
-                v-else
-                class="tz-session is-disabled"
-                aria-disabled="true"
-                :title="t('selector.unavailableHint')"
-                :data-testid="`session-${s.session}`"
-              >
-                <span class="tz-session__name">{{ t(`session.${s.session}`) }}</span>
-                <span class="tz-badge">{{ t('selector.unavailable') }}</span>
-                <span class="tz-visually-hidden">{{ t('selector.unavailableHint') }}</span>
-              </div>
+              <TzSessionRow
+                :type="s.session"
+                :view="viewOf(selectedEvent, s)"
+                @download="download(selectedEvent, s.session)"
+                @cancel="(id) => manager.cancel(id)"
+              />
             </li>
           </ul>
         </section>
@@ -246,54 +365,71 @@ function sessionLink(s: CatalogSession): string | null {
   gap: var(--tz-space-2);
 }
 
-.tz-session {
-  display: flex;
-  align-items: center;
-  gap: var(--tz-space-3);
-  padding: var(--tz-space-3) var(--tz-space-4);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-md);
-  background: var(--tz-surface-1);
-  color: var(--tz-text);
-}
-
-a.tz-session:hover {
-  border-color: var(--tz-accent);
-  text-decoration: none;
-}
-
-.tz-session.is-disabled {
-  color: var(--tz-text-faint);
-  cursor: not-allowed;
-}
-
-.tz-session__name {
-  flex: 1;
-  font-weight: var(--tz-weight-medium);
-}
-
-.tz-session__size {
-  font-size: var(--tz-text-sm);
-  color: var(--tz-text-muted);
-}
-
-.tz-badge {
-  padding: 2px var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  font-size: var(--tz-text-2xs);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.tz-badge--dev {
-  border-color: var(--tz-estimated);
-  color: var(--tz-estimated);
-}
-
 .tz-muted {
   margin: 0;
   color: var(--tz-text-muted);
+}
+
+.tz-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tz-space-2) var(--tz-space-4);
+  margin-bottom: var(--tz-space-3);
+}
+
+.tz-heading-row .tz-heading {
+  margin: 0;
+}
+
+.tz-event__top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--tz-space-2);
+}
+
+.tz-event__built {
+  font-size: var(--tz-text-xs);
+  color: var(--tz-text-faint);
+}
+
+.tz-event__built.is-complete {
+  color: var(--tz-success);
+}
+
+.tz-manager {
+  display: grid;
+  gap: var(--tz-space-3);
+}
+
+.tz-manager:empty {
+  display: none;
+}
+
+.tz-manager__queue,
+.tz-manager__alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-2) var(--tz-space-4);
+  margin: 0;
+  padding: var(--tz-space-3) var(--tz-space-4);
+  border: 1px solid var(--tz-accent);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-1);
+}
+
+.tz-manager__alert {
+  border-color: var(--tz-danger);
+}
+
+.tz-manager__text {
+  flex: 1;
+}
+
+.tz-manager__action {
+  padding: var(--tz-space-1) var(--tz-space-3);
+  font-size: var(--tz-text-sm);
 }
 </style>

@@ -44,11 +44,14 @@ uv run ruff check && uv run pytest
 Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). Es un proyecto **personal**: los datos se generan en tu PC con el pipeline (IP residencial) y **no se publican**. Para usar la app con ellos:
 
 ```bash
+cd pipeline && uv sync && cd ..   # una vez: entorno del pipeline
 pnpm local          # http://127.0.0.1:3000 con los datos de data/
 pnpm local --lan    # también en tu red de casa (p. ej. el iPad)
 ```
 
-Todo se usa en local: no hay despliegue (decisión D25 en `docs/PLAN.md`).
+En la portada verás el calendario de cada temporada. Cada sesión ya disputada tiene un botón **Descargar**: ejecuta el pipeline en tu PC (FastF1, con tu conexión de casa), muestra el progreso y, al terminar, la sesión se puede abrir. También puedes descargar de una vez lo que falta de un Gran Premio o todas las carreras que faltan de la temporada. Las descargas solo se pueden lanzar desde el propio PC, no desde otros dispositivos de la red. La caché de FastF1 (`.cache/`) ocupa bastante más que los datos generados; se puede borrar sin perder nada.
+
+Todo se usa en local: no hay despliegue (decisiones D25 y D26 en `docs/PLAN.md`).
 
 ## Rendimiento
 

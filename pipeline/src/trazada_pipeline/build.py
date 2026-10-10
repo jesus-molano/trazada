@@ -374,7 +374,9 @@ def update_catalog(v1: Path, data: SessionData, manifest_path: Path, status: str
         }
         season["events"].append(event)
     if data.date_start:
-        event["dateStart"] = data.date_start.isoformat()
+        # El primer día con datos: no cambia según la sesión que se genere después.
+        day = data.date_start.isoformat()
+        event["dateStart"] = min(day, event.get("dateStart") or day)
     entry = {
         "session": data.session_type,
         "name": data.session_name,
@@ -393,4 +395,7 @@ def update_catalog(v1: Path, data: SessionData, manifest_path: Path, status: str
     catalog["schemaVersion"] = schema.schema_version()
     catalog["generatedAt"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     schema.validate("catalog", catalog)
-    path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Escritura atómica: el gestor local lo relee mientras se generan otras sesiones.
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)

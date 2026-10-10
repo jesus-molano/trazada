@@ -53,6 +53,11 @@ SESSION_TYPE_BY_NAME = {
 }
 
 
+def event_slug(round_number: int, event_name: str, location: str) -> str:
+    """Slug del evento en las rutas: la localidad (`spa-francorchamps`); en los tests, el nombre."""
+    return slugify(event_name if round_number == 0 else location)
+
+
 class EmptySessionError(RuntimeError):
     """FastF1 devolvió una sesión sin datos (p. ej. por un 403 de F1 a una IP de nube)."""
 
@@ -310,7 +315,7 @@ def load_fastf1(
         round=int(ev["RoundNumber"]),
         event=str(ev["EventName"]),
         country=str(ev["Country"]),
-        slug=slugify(str(ev["EventName"] if int(ev["RoundNumber"]) == 0 else ev["Location"])),
+        slug=event_slug(int(ev["RoundNumber"]), str(ev["EventName"]), str(ev["Location"])),
         session_type=session_type,
         session_name=str(session.name),
         date_start=session_date.date() if session_date is not None else None,

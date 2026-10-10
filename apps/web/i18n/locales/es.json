@@ -23,6 +23,47 @@
     "dev": "DEV",
     "devHint": "Datos de desarrollo: no se publican."
   },
+  "manager": {
+    "download": "Descargar",
+    "downloadSession": "Descargar {session}",
+    "downloadHint": "Descarga la sesión con FastF1 y la procesa en este PC (pipeline local).",
+    "downloadEvent": "Descargar {n} sesión | Descargar las {n} sesiones que faltan",
+    "downloadSeasonRaces": "Descargar {n} carrera | Descargar las {n} carreras que faltan",
+    "queued": "En cola",
+    "phase": {
+      "start": "Preparando…",
+      "download": "Descargando…",
+      "process": "Procesando…"
+    },
+    "progress": "{pct} %",
+    "progressLabel": "Progreso de {session}",
+    "cancel": "Cancelar",
+    "cancelSession": "Cancelar la descarga de {session}",
+    "cancelAll": "Cancelar todo",
+    "retry": "Reintentar",
+    "retrySession": "Reintentar la descarga de {session}",
+    "failedBadge": "Error",
+    "details": "Detalles",
+    "availableFrom": "Disponible desde el {date}",
+    "notYet": "Aún no disponible",
+    "built": "{built}/{total}",
+    "builtLabel": "{built} de {total} sesiones descargadas",
+    "queueRunning": "Descargando {season} R{round} · {session} ({pct} %)",
+    "queueWaiting": "{n} descarga en cola | {n} descargas en cola",
+    "queueMore": "{n} más en cola | {n} más en cola",
+    "actionError": "No se pudo contactar con el servidor local (¿sigue abierto «pnpm local»?).",
+    "scheduleLoading": "Cargando el calendario de {season}…",
+    "scheduleError": "No se pudo cargar el calendario de {season}.",
+    "error": {
+      "empty": "F1 no ha devuelto datos de esta sesión. Si acaba de terminar, prueba más tarde.",
+      "network": "Sin conexión con el servidor de datos.",
+      "ratelimit": "Demasiadas peticiones: espera un rato y reintenta.",
+      "failed": "Falló la descarga o el procesado.",
+      "timeout": "Tardó demasiado y se canceló.",
+      "pipeline": "No se pudo ejecutar el pipeline: instala uv y ejecuta «uv sync» en pipeline/.",
+      "cancelled": "Cancelada."
+    }
+  },
   "session": {
     "fp1": "Libres 1",
     "fp2": "Libres 2",

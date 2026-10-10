@@ -5,11 +5,16 @@ from __future__ import annotations
 import json
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
 from trazada_pipeline import __version__
+
+if TYPE_CHECKING:
+    from trazada_pipeline.build import BuildReport
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Pipeline de datos de Trazada.")
 
@@ -18,6 +23,8 @@ DEFAULT_DATA = REPO / "data"
 DEFAULT_CACHE = REPO / ".cache" / "fastf1"
 DEFAULT_SANITIZED = REPO / ".cache" / "fastf1-sanitized"
 PRUNE_AFTER_DAYS = 7
+#: Tipos de sesión de Trazada (los mismos que `FASTF1_SESSION` y `SESSION_ORDER`; lo comprueba un test).
+SESSION_TYPES = ("fp1", "fp2", "fp3", "sq", "sprint", "q", "race")
 
 
 @app.callback()
@@ -59,22 +66,108 @@ def build(
     dev_corners: Path | None = typer.Option(
         None, help="SOLO DESARROLLO: corners.json de TracingInsights si MultiViewer no es accesible."
     ),
+    progress: bool = typer.Option(
+        False, help="Progreso en líneas `::` para el gestor de datos local (pnpm local)."
+    ),
 ) -> None:
     """Descarga (o lee de caché) una sesión con FastF1 y genera sus ficheros."""
+    if session not in SESSION_TYPES:
+        typer.echo(f"ERROR: sesión desconocida {session!r} (usa {'|'.join(SESSION_TYPES)})", err=True)
+        raise typer.Exit(2)
+    ev: str | int = int(event) if event.isdigit() else event
+    cache_dir = cache or (DEFAULT_SANITIZED if offline else DEFAULT_CACHE)
+    if not progress:
+        _report(_build(season, ev, session, data, cache_dir, offline, rebuild_circuit, dev_corners))
+        return
+
+    import traceback
+
+    from trazada_pipeline.progress import Progress, attach_fastf1, detach_fastf1, emit, error_code
+
+    prog = Progress()
+    handler = attach_fastf1(prog)
+    try:
+        prog.step(1, "download", "start")
+        report = _build(
+            season,
+            ev,
+            session,
+            data,
+            cache_dir,
+            offline,
+            rebuild_circuit,
+            dev_corners,
+            on_loaded=lambda: prog.step(88, "process", "process"),
+        )
+    except Exception as exc:
+        traceback.print_exc()
+        emit("error", {"code": error_code(exc), "message": f"{type(exc).__name__}: {exc}"})
+        raise typer.Exit(1) from None
+    finally:
+        detach_fastf1(handler)
+    sessions_dir = data / f"v{_schema_major()}" / "sessions"
+    emit(
+        "result",
+        {
+            "session": report.manifest_path.parent.relative_to(sessions_dir).as_posix(),
+            "status": report.status,
+            "bytes": sum(report.sizes.values()),
+            "warnings": report.warnings,
+        },
+    )
+
+
+def _schema_major() -> int:
+    from trazada_pipeline import schema
+
+    return schema.schema_major()
+
+
+def _build(
+    season: int,
+    event: str | int,
+    session: str,
+    data: Path,
+    cache_dir: Path,
+    offline: bool,
+    rebuild_circuit: bool,
+    dev_corners: Path | None,
+    on_loaded: Callable[[], None] | None = None,
+) -> BuildReport:
     from trazada_pipeline.build import build_session
     from trazada_pipeline.sources.dev_tracinginsights import load_ti_corners
     from trazada_pipeline.sources.fastf1_source import load_fastf1
 
-    cache_dir = cache or (DEFAULT_SANITIZED if offline else DEFAULT_CACHE)
-    ev: str | int = int(event) if event.isdigit() else event
-    sd = load_fastf1(season, ev, session, cache_dir, offline=offline)
+    sd = load_fastf1(season, event, session, cache_dir, offline=offline)
     if sd.circuit_info is None and dev_corners is not None:
         sd.circuit_info = load_ti_corners(dev_corners)
         sd.dev = True  # circuito "-dev" aparte: el canónico nunca recibe datos de desarrollo
         sd.notes.append(
             "Curvas y rotación de MultiViewer leídas de una copia de TracingInsights (desarrollo)."
         )
-    _report(build_session(sd, data, rebuild_circuit=rebuild_circuit))
+    if on_loaded is not None:
+        on_loaded()
+    return build_session(sd, data, rebuild_circuit=rebuild_circuit)
+
+
+@app.command()
+def schedule(
+    season: int = typer.Argument(..., help="Temporada, p. ej. 2026."),
+    cache: Path | None = typer.Option(None, help="Caché de FastF1 (por defecto .cache/fastf1)."),
+) -> None:
+    """Calendario de la temporada en una línea JSON: Grandes Premios y sesiones con su hora de inicio UTC."""
+    import traceback
+
+    from trazada_pipeline.progress import emit, error_code
+    from trazada_pipeline.schedule import load_schedule
+
+    try:
+        events = load_schedule(season, cache or DEFAULT_CACHE)
+    except Exception as exc:
+        traceback.print_exc()
+        emit("error", {"code": error_code(exc), "message": f"{type(exc).__name__}: {exc}"})
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps({"season": season, "events": events}, ensure_ascii=False))
 
 
 @app.command("sanitize-cache")

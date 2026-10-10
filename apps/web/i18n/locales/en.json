@@ -23,6 +23,47 @@
     "dev": "DEV",
     "devHint": "Development data: never published."
   },
+  "manager": {
+    "download": "Download",
+    "downloadSession": "Download {session}",
+    "downloadHint": "Downloads the session with FastF1 and processes it on this PC (local pipeline).",
+    "downloadEvent": "Download {n} session | Download the {n} missing sessions",
+    "downloadSeasonRaces": "Download {n} race | Download the {n} missing races",
+    "queued": "Queued",
+    "phase": {
+      "start": "Preparing…",
+      "download": "Downloading…",
+      "process": "Processing…"
+    },
+    "progress": "{pct}%",
+    "progressLabel": "{session} progress",
+    "cancel": "Cancel",
+    "cancelSession": "Cancel the {session} download",
+    "cancelAll": "Cancel all",
+    "retry": "Retry",
+    "retrySession": "Retry the {session} download",
+    "failedBadge": "Error",
+    "details": "Details",
+    "availableFrom": "Available from {date}",
+    "notYet": "Not available yet",
+    "built": "{built}/{total}",
+    "builtLabel": "{built} of {total} sessions downloaded",
+    "queueRunning": "Downloading {season} R{round} · {session} ({pct}%)",
+    "queueWaiting": "{n} download queued | {n} downloads queued",
+    "queueMore": "{n} more queued | {n} more queued",
+    "actionError": "Could not reach the local server (is “pnpm local” still running?).",
+    "scheduleLoading": "Loading the {season} calendar…",
+    "scheduleError": "Could not load the {season} calendar.",
+    "error": {
+      "empty": "F1 returned no data for this session. If it just finished, try again later.",
+      "network": "No connection to the data server.",
+      "ratelimit": "Too many requests: wait a while and retry.",
+      "failed": "The download or processing failed.",
+      "timeout": "It took too long and was cancelled.",
+      "pipeline": "Could not run the pipeline: install uv and run “uv sync” in pipeline/.",
+      "cancelled": "Cancelled."
+    }
+  },
   "session": {
     "fp1": "Practice 1",
     "fp2": "Practice 2",
