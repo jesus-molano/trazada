@@ -42,11 +42,22 @@ function fakeRuntime(opts: { markers?: TimelineMarkers; trackState?: TrackState 
   const frames = new Set<(t: number) => void>()
   const clock = { timeMs: 0, rate: 1, playing: false, startMs: 0, endMs: 10_000, duration: 10_000 }
   const trackState = opts.trackState ?? new TrackState({ schema: 'trazada.events', schemaVersion: '1.0.0', raceControl: [], sectorFlags: [], windows: [] }, 10_000)
+  /** `rt.ext` como el real (D29): los carriles del timeline (meteorología…) preparan ahí lo suyo. */
+  const exts = new Map<string, unknown>()
   const rt = {
     clock,
     session: {
-      manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 10_000, lightsOutMs: 0 } }, quality: { estimated: [] } },
+      manifest: {
+        session: { type: 'race', playback: { startMs: 0, endMs: 10_000, lightsOutMs: 0 } },
+        quality: { estimated: [] },
+        channels: { drs: 'absent', elevation: 'flat' },
+      },
       timing: { tables: {} },
+      events: { schema: 'trazada.events', schemaVersion: '1.0.0', raceControl: [], sectorFlags: [], windows: [] },
+    },
+    ext: (key: string, factory: (r: ReplayRuntime) => unknown) => {
+      if (!exts.has(key)) exts.set(key, factory(rt))
+      return exts.get(key)
     },
     markers: opts.markers ?? markers(),
     drivers: [],
