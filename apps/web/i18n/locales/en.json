@@ -171,7 +171,8 @@
     "noSignal": "no signal",
     "tyre": "{compound}, {laps} lap | {compound}, {laps} laps",
     "showBlueFlags": "Show blue flags",
-    "tyreNoLife": "{compound}, laps unknown"
+    "tyreNoLife": "{compound}, laps unknown",
+    "positionUnknown": "Position unknown: no line crossing or valid lap yet, or the timing tower does not list the car"
   },
   "compound": {
     "UNKNOWN": "Unknown",
@@ -198,11 +199,14 @@
     "rpm": "RPM",
     "throttle": "Throttle",
     "brake": "Brake",
+    "brakeOnOff": "Brake (on/off)",
+    "brakeHint": "Whether the brake is pressed: the data has no pressure.",
     "drsLabel": "DRS",
     "drs": {
       "open": "Open",
       "available": "Available",
-      "closed": "Closed"
+      "closed": "Closed",
+      "unknown": "No data"
     },
     "drsUnavailable": "Not available in {season}",
     "drsUnavailableHint": "There is no DRS from 2026: active aerodynamics (straight mode) and overtake mode replace it, enabled track-wide by race control.",
@@ -212,7 +216,9 @@
     "lap": "Lap",
     "lastLap": "Last lap",
     "estimateLap1": "Estimate",
-    "estimateLap1Hint": "Estimate the lap 1 time (not given by live timing)."
+    "estimateLap1Hint": "Estimate the lap 1 time (not given by live timing).",
+    "lapDeleted": "Deleted",
+    "lapDeletedHint": "Race control deleted this lap time."
   },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."

@@ -42,7 +42,11 @@ function raceRuntime(timeMs: number) {
     },
   })
   usePlaybackStore().attach({
-    session: { manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 300_000, lightsOutMs: 1000 } } }, timing },
+    session: {
+      manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 300_000, lightsOutMs: 1000 } } },
+      timing,
+      events: { raceControl: [] },
+    },
     drivers: [],
     clock: { timeMs },
     onCoarse: (cb: (s: { timeMs: number; playing: boolean; rate: 1 }) => void) => (cb({ timeMs, playing: false, rate: 1 }), () => {}),

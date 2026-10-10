@@ -8,7 +8,8 @@ import 'uplot/dist/uPlot.min.css'
 
 const props = defineProps<{
   label: string
-  series: { label: string; color: string; scale?: string }[]
+  /** `stepped`: canal de encendido/apagado, dibujado en escalones (sin rampas entre muestras). */
+  series: { label: string; color: string; scale?: string; stepped?: boolean }[]
   /** Rango fijo de cada escala (p. ej. velocidad 0–360). */
   ranges: Record<string, [number, number]>
   windowS: number
@@ -22,6 +23,11 @@ function setData(data: uPlot.AlignedData): void {
   // Con las escalas fijas (rangos de props), «resetScales» las deja igual; lo importante es que uPlot rehaga
   // los trazos. Antes: setData(data, false) + redraw(false) pintaba los trazos en caché (vacíos).
   plot?.setData(data)
+}
+
+/** Deja la gráfica vacía (sin dato: nada de trazos de otro coche u otro instante). */
+function clear(): void {
+  plot?.setData([new Float64Array(0), ...props.series.map(() => new Float64Array(0))])
 }
 
 onMounted(() => {
@@ -48,6 +54,7 @@ onMounted(() => {
           width: 1.5,
           scale: s.scale ?? 'y',
           points: { show: false },
+          ...(s.stepped && uPlot.paths.stepped ? { paths: uPlot.paths.stepped({ align: 1 }) } : {}),
         })),
       ],
     },
@@ -64,7 +71,7 @@ onBeforeUnmount(() => {
   plot = null
 })
 
-defineExpose({ setData })
+defineExpose({ setData, clear })
 </script>
 
 <template>

@@ -9,7 +9,7 @@ import { findInterval } from '../replay/motion'
 /** Antigüedad máxima de la muestra vigente: más allá, "sin dato". */
 export const MAX_SAMPLE_AGE_MS = 2000
 
-export type DrsState = 'open' | 'available' | 'closed'
+export type DrsState = 'open' | 'available' | 'closed' | 'unknown'
 
 export interface TelemetrySample {
   t: number
@@ -18,17 +18,23 @@ export interface TelemetrySample {
   gear: number
   /** % (0–100) o null si el feed no da dato (código 255; el 104 del feed ya llega como 255). */
   throttle: number | null
+  /** Pisa o no el freno: el canal es de encendido/apagado, no da la presión. */
   brake: boolean
   /** Código crudo del canal DRS (null si el canal no existe: 2026). */
   drsRaw: number | null
 }
 
-/** Códigos del canal DRS de F1 (FastF1): 8 = disponible (dentro de la zona), 10/12/14 = abierto. */
+/**
+ * Códigos documentados del canal DRS (FastF1): 0/1 = cerrado, 8 = disponible (dentro de la zona), 10/12/14 =
+ * abierto. Cualquier otro código (2, 3, 9…) no tiene significado conocido: 'unknown' (sin dato), nunca «cerrado».
+ * null si el canal no existe (2026).
+ */
 export function drsState(raw: number | null): DrsState | null {
   if (raw === null) return null
-  if (raw >= 10) return 'open'
+  if (raw === 10 || raw === 12 || raw === 14) return 'open'
   if (raw === 8) return 'available'
-  return 'closed'
+  if (raw === 0 || raw === 1) return 'closed'
+  return 'unknown'
 }
 
 export interface CarSeries {

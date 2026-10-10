@@ -49,4 +49,8 @@ describe('telemetría: la muestra cruda vigente', () => {
     expect(drsState(null)).toBeNull()
     expect([0, 1, 8, 10, 12, 14].map(drsState)).toEqual(['closed', 'closed', 'available', 'open', 'open', 'open'])
   })
+
+  it('un código de DRS sin significado conocido es «sin dato», nunca «cerrado» ni «abierto»', () => {
+    expect([2, 3, 9, 11, 13, 15, 254].map(drsState)).toEqual(Array(7).fill('unknown'))
+  })
 })
