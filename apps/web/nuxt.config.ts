@@ -9,6 +9,9 @@ export default defineNuxtConfig({
 
   modules: ['@nuxt/eslint', '@pinia/nuxt', '@nuxtjs/i18n', '@tresjs/nuxt'],
 
+  // Componentes por nombre de fichero (prefijo Tz), sin prefijo de carpeta.
+  components: [{ path: '~/components', pathPrefix: false }],
+
   css: [
     '@fontsource-variable/inter/index.css',
     '@fontsource-variable/jetbrains-mono/index.css',

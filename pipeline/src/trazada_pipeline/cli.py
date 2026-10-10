@@ -108,6 +108,20 @@ def dev_ti(
     _report(build_session(sd, data, rebuild_circuit=rebuild_circuit))
 
 
+@app.command("e2e-fixture")
+def e2e_fixture(
+    session: str = typer.Argument(..., help="Sesión ya generada, p. ej. 2026/10-spa-francorchamps/fp1."),
+    data: Path = typer.Option(DEFAULT_DATA, help="Raíz de datos de origen."),
+    out: Path = typer.Option(REPO / "apps" / "web" / "tests" / "fixtures" / "data", help="Raíz del fixture."),
+    minutes: float = typer.Option(9.0, help="Duración del extracto."),
+) -> None:
+    """Genera el fixture e2e (extracto recortado + variantes de estado). Solo de fuentes publicables."""
+    from trazada_pipeline.fixtures import make_e2e_fixture
+
+    summary = make_e2e_fixture(data, session, out, minutes)
+    typer.echo(json.dumps(summary))
+
+
 @app.command()
 def probe(timeout: float = typer.Option(10.0)) -> None:
     """Comprueba si esta red puede leer el archivo de live timing de F1 (las IPs de nube reciben 403)."""

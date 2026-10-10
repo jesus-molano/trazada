@@ -8,8 +8,59 @@
     "title": "Revive cada carrera",
     "lead": "Elige temporada, Gran Premio y sesión para ver el replay en 3D con telemetría, timeline y dirección de carrera."
   },
+  "selector": {
+    "seasons": "Temporadas",
+    "events": "Grandes Premios de {season}",
+    "sessions": "Sesiones",
+    "round": "R{round}",
+    "loading": "Cargando el catálogo…",
+    "error": "No se pudo cargar el catálogo de sesiones.",
+    "retry": "Reintentar",
+    "emptySeason": "Todavía no hay sesiones de la temporada {season}.",
+    "pickEvent": "Elige un Gran Premio para ver sus sesiones.",
+    "unavailable": "No disponible",
+    "unavailableHint": "Sin datos de posición: no se puede reproducir.",
+    "dev": "DEV",
+    "devHint": "Datos de desarrollo: no se publican."
+  },
+  "session": {
+    "fp1": "Libres 1",
+    "fp2": "Libres 2",
+    "fp3": "Libres 3",
+    "sq": "Clasificación sprint",
+    "sprint": "Sprint",
+    "q": "Clasificación",
+    "race": "Carrera"
+  },
   "replay": {
-    "title": "Replay"
+    "title": "Replay",
+    "back": "Volver al selector",
+    "stage": {
+      "manifest": "Buscando la sesión…",
+      "download": "Descargando datos…",
+      "decode": "Preparando la sesión…"
+    },
+    "progressLabel": "Progreso de carga",
+    "ready": "Listo",
+    "readyDetail": "{size} en {seconds} s",
+    "retry": "Reintentar",
+    "error": {
+      "not-found": "Esta sesión no existe o ya no está disponible.",
+      "network": "No se pudieron descargar los datos. Comprueba la conexión y vuelve a intentarlo.",
+      "unsupported-version": "Estos datos necesitan una versión más reciente de Trazada. Recarga la página para actualizarla.",
+      "invalid-manifest": "La descripción de la sesión no es válida.",
+      "no-position": "Esta sesión no tiene datos de posición, así que no se puede reproducir.",
+      "corrupt": "Los datos descargados están dañados (error de integridad).",
+      "decode": "No se pudieron decodificar los datos de la sesión."
+    },
+    "reload": "Recargar"
+  },
+  "scene": {
+    "noWebgl": "Tu navegador o tu equipo no permiten WebGL 2: el mapa 3D no está disponible.",
+    "noWebglHint": "Activa la aceleración por hardware o prueba con otro navegador.",
+    "contextLost": "Se perdió el contexto gráfico (la GPU se reinició o le faltó memoria).",
+    "contextLostHint": "Intentando recuperarlo…",
+    "recover": "Reiniciar el mapa"
   },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."

@@ -7,24 +7,28 @@ useHead({ title: () => t('home.title') })
   <section class="tz-home">
     <h1>{{ t('home.title') }}</h1>
     <p class="tz-lead">{{ t('home.lead') }}</p>
+    <TzSelector />
   </section>
 </template>
 
 <style scoped>
 .tz-home {
+  display: grid;
+  gap: var(--tz-space-6);
   padding: var(--tz-space-10) var(--tz-space-6);
-  max-width: 960px;
+  max-width: 1200px;
 }
 
 h1 {
-  margin: 0 0 var(--tz-space-3);
+  margin: 0;
   font-size: var(--tz-text-3xl);
   line-height: var(--tz-leading-tight);
   letter-spacing: -0.01em;
 }
 
 .tz-lead {
-  margin: 0;
+  margin: calc(-1 * var(--tz-space-3)) 0 0;
+  max-width: 70ch;
   color: var(--tz-text-muted);
   font-size: var(--tz-text-lg);
 }

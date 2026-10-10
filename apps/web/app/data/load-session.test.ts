@@ -1,0 +1,106 @@
+import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { SCHEMA_VERSION } from '@trazada/schema'
+import { describe, expect, it } from 'vitest'
+import { type LoadOptions, loadSession, transferablesOf } from './load-session'
+import { LoadError } from './types'
+
+const ROOT = fileURLToPath(new URL('../../tests/fixtures/data/', import.meta.url))
+const BASE = 'http://datos.test/data/'
+const EVENT = 'v1/sessions/2026/10-spa-francorchamps'
+
+/** fetch que sirve el fixture e2e desde disco (con 404 y fallos inyectables). */
+function fixtureFetch(opts: { fail?: RegExp; chunk?: number } = {}): typeof fetch {
+  return (async (input: string | URL | Request) => {
+    const url = new URL(String(input))
+    if (opts.fail?.test(url.pathname)) throw new TypeError('network down')
+    const rel = url.pathname.replace(/^\/data\//, '')
+    try {
+      const bytes = await readFile(ROOT + rel)
+      const chunk = opts.chunk ?? bytes.byteLength
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let i = 0; i < bytes.byteLength; i += chunk) controller.enqueue(new Uint8Array(bytes.subarray(i, i + chunk)))
+          controller.close()
+        },
+      })
+      return new Response(stream, { status: 200 })
+    } catch {
+      return new Response('not found', { status: 404 })
+    }
+  }) as typeof fetch
+}
+
+const load = (session: string, fetchImpl = fixtureFetch(), onProgress?: LoadOptions['onProgress']) =>
+  loadSession(`${BASE}${EVENT}/${session}/manifest.json`, `2026/10-spa-francorchamps/${session}`, SCHEMA_VERSION, {
+    fetch: fetchImpl,
+    onProgress,
+  })
+
+async function code(p: Promise<unknown>): Promise<string> {
+  try {
+    await p
+    return 'ok'
+  } catch (err) {
+    expect(err).toBeInstanceOf(LoadError)
+    return (err as LoadError).code
+  }
+}
+
+describe('loadSession', () => {
+  it('carga la sesión del fixture con progreso monótono hasta el total', async () => {
+    const progress: [string, number, number][] = []
+    const s = await load('fp1', fixtureFetch({ chunk: 8192 }), (stage, loaded, total) => progress.push([stage, loaded, total]))
+    expect(s.manifest.session.type).toBe('fp1')
+    expect(s.motion.header.layout).toBe('motion')
+    expect(s.circuit.header.layout).toBe('circuit')
+    expect(s.motion.tables.cars!.rows).toBe(s.manifest.drivers.length)
+    expect(s.events.schema).toBe('trazada.events')
+    const downloads = progress.filter(([stage]) => stage === 'download')
+    expect(downloads.length).toBeGreaterThan(5)
+    for (let i = 1; i < downloads.length; i++) expect(downloads[i]![1]).toBeGreaterThanOrEqual(downloads[i - 1]![1])
+    expect(downloads.at(-1)![1]).toBe(downloads.at(-1)![2])
+    expect(s.timings.bytes).toBe(downloads.at(-1)![2])
+    // s monótona por coche (ya decodificada a metros)
+    const { cars, pos } = s.motion.tables
+    for (let c = 0; c < cars!.rows; c++) {
+      const start = cars!.columns.start![c]!
+      const count = cars!.columns.count![c]!
+      let prev = -Infinity
+      for (let i = start; i < start + count; i++) {
+        if (pos!.columns.path![i] === 2) continue
+        expect(pos!.columns.s![i]!).toBeGreaterThanOrEqual(prev)
+        prev = pos!.columns.s![i]!
+      }
+    }
+  })
+
+  it('los buffers transferibles son únicos y cubren todas las columnas', async () => {
+    const s = await load('fp1')
+    const buffers = transferablesOf(s)
+    expect(new Set(buffers).size).toBe(buffers.length)
+    expect(buffers).toContain(s.motion.tables.pos!.columns.t!.buffer)
+  })
+
+  it('clasifica los errores', async () => {
+    expect(await code(load('race'))).toBe('not-found')
+    expect(await code(load('fp2'))).toBe('no-position')
+    expect(await code(load('fp3'))).toBe('unsupported-version')
+    expect(await code(load('q'))).toBe('corrupt')
+    expect(await code(load('fp1', fixtureFetch({ fail: /motion\./ })))).toBe('network')
+    expect(await code(load('fp1', fixtureFetch({ fail: /manifest\.json$/ })))).toBe('network')
+  })
+
+  it('rechaza ficheros fuera del origen de datos', async () => {
+    const evil = (async (input: string | URL | Request) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('manifest.json')) {
+        const m = JSON.parse(await readFile(`${ROOT}${EVENT}/fp1/manifest.json`, 'utf8'))
+        m.files.motion.path = 'https://evil.test/x.gz'
+        return new Response(JSON.stringify(m))
+      }
+      return fixtureFetch()(input)
+    }) as typeof fetch
+    expect(await code(load('fp1', evil))).toBe('invalid-manifest')
+  })
+})

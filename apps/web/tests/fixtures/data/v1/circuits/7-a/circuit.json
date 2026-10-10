@@ -1,0 +1,9 @@
+{
+  "file": {
+    "path": "circuit.529e5653.trzb.gz",
+    "bytes": 10363,
+    "sha256": "529e5653a33f1e7544f89d3a523ec3d36fb315444aad9b1a4e7bd3e64581b0bc",
+    "layout": "circuit@1",
+    "compression": "gzip"
+  }
+}

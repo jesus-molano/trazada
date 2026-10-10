@@ -28,7 +28,7 @@ pnpm lint                     # ESLint (+ i18n no-raw-text)
 pnpm typecheck                # vue-tsc / tsc
 pnpm test                     # Vitest (apps/web: unit + nuxt; packages/schema)
 pnpm build                    # nuxt generate
-pnpm e2e                      # Playwright (requiere pnpm build antes)
+pnpm e2e                      # Playwright (requiere pnpm build antes); el proyecto 'perf' corre solo, al final
 
 # Pipeline
 cd pipeline && uv sync
@@ -44,6 +44,7 @@ uv run trazada build 2026 "Belgian Grand Prix" fp1 --offline          # desde la
 uv run trazada dev-ti "<TI>/2026/Japanese Grand Prix/Race" --season 2026 --round 3 --slug suzuka  # SOLO dev
 uv run trazada catalog [--public]                         # --public falla si hay sesiones dev
 uv run trazada prune [--apply]                            # borra ficheros huérfanos de > 7 días
+uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos de MultiViewer>  # fixture e2e
 ```
 
 ## Cómo verificar un cambio (antes de cada commit)
@@ -61,5 +62,5 @@ uv run trazada prune [--apply]                            # borra ficheros huér
 - **TresJS v5**: usar su API real (verificada en el código fuente): `useLoop().onBeforeRender/render`, `useTres()`, `renderMode`, `useLoader` con `extensions`. No usar `useGLTF` de cientos (Draco desde CDN); GLB con Meshopt y `GLTFLoader` de three con decoder autoalojado. Ninguna petición a orígenes externos (lo comprueba un e2e).
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio hasta el primer deploy de datos, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).
-- **Fixtures**: solo extractos mínimos reales (≤ 1 MB en total) o sintéticos.
+- **Fixtures**: solo extractos mínimos reales (≤ 1 MB en total, sin datos de MultiViewer ni de Jolpica) o sintéticos. El fixture e2e se regenera con `trazada e2e-fixture`.
 - **Docs**: cuando cambie una decisión, actualizar `docs/BRIEF.md` (registro de decisiones) y `docs/PLAN.md`.

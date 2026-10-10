@@ -8,10 +8,61 @@
     "title": "Relive every race",
     "lead": "Pick a season, Grand Prix and session to watch the 3D replay with telemetry, timeline and race control."
   },
+  "selector": {
+    "seasons": "Seasons",
+    "events": "{season} Grands Prix",
+    "sessions": "Sessions",
+    "round": "R{round}",
+    "loading": "Loading the catalogue…",
+    "error": "The session catalogue could not be loaded.",
+    "retry": "Retry",
+    "emptySeason": "There are no {season} sessions yet.",
+    "pickEvent": "Pick a Grand Prix to see its sessions.",
+    "unavailable": "Unavailable",
+    "unavailableHint": "No position data: it cannot be replayed.",
+    "dev": "DEV",
+    "devHint": "Development data: never published."
+  },
+  "session": {
+    "fp1": "Practice 1",
+    "fp2": "Practice 2",
+    "fp3": "Practice 3",
+    "sq": "Sprint Qualifying",
+    "sprint": "Sprint",
+    "q": "Qualifying",
+    "race": "Race"
+  },
   "replay": {
-    "title": "Replay"
+    "title": "Replay",
+    "back": "Back to the selector",
+    "stage": {
+      "manifest": "Looking up the session…",
+      "download": "Downloading data…",
+      "decode": "Preparing the session…"
+    },
+    "progressLabel": "Loading progress",
+    "ready": "Ready",
+    "readyDetail": "{size} in {seconds} s",
+    "retry": "Retry",
+    "error": {
+      "not-found": "This session does not exist or is no longer available.",
+      "network": "The data could not be downloaded. Check your connection and try again.",
+      "unsupported-version": "This data needs a newer version of Trazada. Reload the page to update it.",
+      "invalid-manifest": "The session description is not valid.",
+      "no-position": "This session has no position data, so it cannot be replayed.",
+      "corrupt": "The downloaded data is damaged (integrity check failed).",
+      "decode": "The session data could not be decoded."
+    },
+    "reload": "Reload"
+  },
+  "scene": {
+    "noWebgl": "Your browser or device does not support WebGL 2: the 3D map is unavailable.",
+    "noWebglHint": "Enable hardware acceleration or try another browser.",
+    "contextLost": "The graphics context was lost (the GPU was reset or ran out of memory).",
+    "contextLostHint": "Trying to recover it…",
+    "recover": "Restart the map"
   },
   "legal": {
-    "disclaimer": "Trazada is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
+    "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
   }
 }

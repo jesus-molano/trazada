@@ -15,7 +15,11 @@ export default withNuxt(
       // Ningún texto visible fuera de i18n.
       '@intlify/vue-i18n/no-raw-text': ['error', { ignorePattern: '^[-#:()&.,/·×+%\\d\\s]+$' }],
       '@intlify/vue-i18n/no-missing-keys': 'error',
-      '@intlify/vue-i18n/no-unused-keys': ['warn', { extensions: ['.ts', '.vue'] }],
+      // Claves que se usan con nombre dinámico (t(`session.${type}`), etc.).
+      '@intlify/vue-i18n/no-unused-keys': [
+        'warn',
+        { extensions: ['.ts', '.vue'], ignores: ['/^session\\./', '/^replay\\.stage\\./', '/^replay\\.error\\./'] },
+      ],
       '@intlify/vue-i18n/no-v-html': 'error',
     },
   },

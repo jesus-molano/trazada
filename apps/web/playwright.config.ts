@@ -20,7 +20,18 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'desktop',
+      testIgnore: /perf\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // Las medidas de rendimiento corren solas, después del resto: sin CPU compartida con otros tests.
+    {
+      name: 'perf',
+      testMatch: /perf\.spec\.ts/,
+      dependencies: ['desktop'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
   ],
   webServer: {
     // Sirve el estático generado y, bajo /data, los datos de fixture (mismo origen).
