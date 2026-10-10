@@ -55,9 +55,10 @@ export interface ChartSpec {
   formatX: (v: number) => string
   formatY: (v: number) => string
   /**
-   * Siglas en columna, a la derecha (ejes por vuelta: las series avanzan juntas). Las que acaban antes (un doblado va
-   * una o más vueltas por detrás) llevan un punto en su final y una guía punteada hasta su sigla: ninguna queda a
-   * media gráfica. Sin columna (eje por hora), cada sigla va junto a su final.
+   * Siglas en el margen derecho, fuera del área de datos (ejes por vuelta: las series avanzan juntas), cada una a la
+   * altura del último dato de su serie; si hay que separarla de otras, un trazo corto en el margen la une con esa
+   * altura. Nada se dibuja en el área de datos que pueda leerse como dato. Sin margen (eje por hora), cada sigla va
+   * junto a su final.
    */
   labelColumn?: boolean
 }
@@ -106,19 +107,20 @@ export function nearestIndex(x: readonly number[], v: number): number {
 }
 
 /**
- * Posiciones de rótulos sin pisarse: cada y se mueve lo mínimo para quedar a `gap` de sus vecinos, dentro de
- * [lo, hi] mientras quepan. Devuelve las posiciones en el orden de entrada.
+ * Posiciones de rótulos sin pisarse: cada y se mueve lo mínimo para quedar a `gap` de sus vecinos, siempre dentro de
+ * [lo, hi] (si no caben a `gap`, se juntan lo justo para caber). Devuelve las posiciones en el orden de entrada.
  */
 export function spreadLabels(ys: readonly number[], gap: number, lo: number, hi: number): number[] {
   const order = ys.map((y, i) => [y, i] as const).sort((a, b) => a[0] - b[0])
+  const step = order.length > 1 ? Math.min(gap, (hi - lo) / (order.length - 1)) : gap
   const pos = order.map(([y]) => Math.min(Math.max(y, lo), hi))
-  for (let i = 1; i < pos.length; i++) pos[i] = Math.max(pos[i]!, pos[i - 1]! + gap)
+  for (let i = 1; i < pos.length; i++) pos[i] = Math.max(pos[i]!, pos[i - 1]! + step)
   if (pos.length && pos[pos.length - 1]! > hi) {
     pos[pos.length - 1] = hi
-    for (let i = pos.length - 2; i >= 0; i--) pos[i] = Math.min(pos[i]!, pos[i + 1]! - gap)
+    for (let i = pos.length - 2; i >= 0; i--) pos[i] = Math.min(pos[i]!, pos[i + 1]! - step)
   }
   const out = new Array<number>(ys.length)
-  order.forEach(([, i], k) => (out[i] = pos[k]!))
+  order.forEach(([, i], k) => (out[i] = Math.min(Math.max(pos[k]!, lo), hi)))
   return out
 }
 
@@ -136,7 +138,7 @@ export function seriesEnd(spec: ChartSpec, group: string): SeriesEnd | null {
   return value === null || value === undefined ? null : { index, value }
 }
 
-/** Dónde va la sigla de un final: en la columna de la derecha, junto al final, o ninguna (solo la marca de fin). */
+/** Dónde va la sigla de un final: en el margen derecho, junto al final, o ninguna (solo la marca de fin). */
 export type LabelPlace = 'column' | 'inline' | 'none'
 
 export interface EndPoint extends SeriesEnd {
@@ -146,8 +148,8 @@ export interface EndPoint extends SeriesEnd {
 
 /**
  * Final de cada serie visible, y dónde va su sigla: una serie que acaba antes (`ChartGroup.stopped`) solo lleva la
- * marca de fin, salvo destacada (entonces, junto a su final: con el resto atenuado no hay confusión, y una guía hasta
- * la columna cruzaría media gráfica); las demás, en la columna (`ChartSpec.labelColumn`) o junto a su final.
+ * marca de fin, salvo destacada (entonces, junto a su final: con el resto atenuado no hay confusión); las demás, en el
+ * margen (`ChartSpec.labelColumn`) o junto a su final.
  */
 export function endPoints(spec: ChartSpec): EndPoint[] {
   const out: EndPoint[] = []
@@ -161,44 +163,56 @@ export function endPoints(spec: ChartSpec): EndPoint[] {
   return out
 }
 
+/** Siglas que van al margen derecho (para dar a la gráfica el alto en el que caben). */
+export function columnLabelCount(spec: ChartSpec): number {
+  return endPoints(spec).filter((e) => e.place === 'column').length
+}
+
 export interface LabelSpot {
-  /** Final de la serie (px). */
+  /** Donde empieza el rótulo (px): el borde del margen o el final de la serie. */
   x: number
+  /** Altura del último dato de la serie (px). */
   y: number
+  /** Ancho del rótulo (px), para saber qué rótulos junto a su final se pisarían. */
+  w: number
   place: 'column' | 'inline'
 }
 
 export interface PlacedLabel {
-  /** Donde empieza el rótulo (px): la columna o el propio final. */
   x: number
   /** Altura del rótulo, separada de las demás. */
   y: number
-  /** Acaba antes de la columna: punto en su final y guía punteada hasta el rótulo. */
-  leader: boolean
+  /** Separado de la altura de su dato (más de `moved` px): en el margen, un trazo lo une con ella. */
+  moved: boolean
 }
 
 /**
- * Posición de cada sigla (en píxeles, en el orden de entrada): las de la columna, todas en la x del final más a la
- * derecha (con guía las que acaban antes); las demás, junto a su final. Cada grupo se separa en vertical sin pisarse
- * (`spreadLabels`), dentro de [lo, hi].
+ * Posición de cada sigla (en píxeles, en el orden de entrada), siempre dentro de [lo, hi]. Las del margen forman una
+ * columna y se separan en vertical sin pisarse (`spreadLabels`). Las que van junto a su final solo se separan de las
+ * que se pisarían con ellas (las que se solapan en horizontal): las demás se quedan a la altura de su dato.
  */
-export function placeLabels(spots: readonly LabelSpot[], gap: number, lo: number, hi: number): PlacedLabel[] {
+export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number; moved: number }): PlacedLabel[] {
   const out = new Array<PlacedLabel>(spots.length)
-  let colX = -Infinity
-  for (const s of spots) if (s.place === 'column' && s.x > colX) colX = s.x
-  for (const place of ['column', 'inline'] as const) {
-    const idx = spots.flatMap((s, i) => (s.place === place ? [i] : []))
+  const clusters: number[][] = [spots.flatMap((s, i) => (s.place === 'column' ? [i] : []))]
+  // Junto a su final: grupos de rótulos que se solapan en horizontal (ordenados por x).
+  const inline = spots.flatMap((s, i) => (s.place === 'inline' ? [i] : [])).sort((a, b) => spots[a]!.x - spots[b]!.x)
+  let right = -Infinity
+  for (const i of inline) {
+    const s = spots[i]!
+    if (s.x >= right) clusters.push([])
+    clusters[clusters.length - 1]!.push(i)
+    right = Math.max(right, s.x + s.w)
+  }
+  for (const idx of clusters) {
     const ys = spreadLabels(
       idx.map((i) => spots[i]!.y),
-      gap,
-      lo,
-      hi,
+      o.gap,
+      o.lo,
+      o.hi,
     )
     idx.forEach((i, k) => {
       const s = spots[i]!
-      // Medio píxel de margen: dos finales en la misma vuelta no llevan guía por redondeos.
-      const leader = place === 'column' && s.x < colX - 0.5
-      out[i] = { x: place === 'column' ? colX : s.x, y: ys[k]!, leader }
+      out[i] = { x: s.x, y: ys[k]!, moved: Math.abs(ys[k]! - s.y) > o.moved }
     })
   }
   return out

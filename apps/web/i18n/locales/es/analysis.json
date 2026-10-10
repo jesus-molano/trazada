@@ -18,6 +18,7 @@
     "noLaps": "Sin dato: esta sesión no trae vueltas cronometradas.",
     "nothingYet": "Todavía no hay datos hasta este instante. Avanza el reproductor o desactiva «Sin spoilers».",
     "identify": "Cada serie lleva la sigla de su piloto; la del segundo piloto de cada equipo es discontinua.",
+    "identifyLap": "Cada serie lleva la sigla de su piloto en el margen derecho, a la altura de su último dato (un trazo corto la une con esa altura si hay que separarla de otras); la del segundo piloto de cada equipo es discontinua. Una serie que acaba en una raya es la de un coche que dejó de pasar por meta (el primero ha dado tres vueltas desde su último paso): la leyenda dice hasta qué vuelta llega.",
     "raceTrace": {
       "chart": "Race trace: diferencia con el primero en cada paso por meta, vuelta a vuelta",
       "axis": "Diferencia con el primero en la línea (s), por vuelta",

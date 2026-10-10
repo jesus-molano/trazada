@@ -88,21 +88,35 @@ describe('gráficas de análisis', () => {
     expect(ends([group('a', { visible: false }), group('b', { stopped: true, emphasis: true })], true)).toEqual([['b', 1, 2, 'inline']])
   })
 
-  it('siglas en columna: todas en la x del final más a la derecha, con guía las que acaban antes; sin pisarse', () => {
+  it('siglas: las del margen, en columna sin pisarse; las de junto a su final, solo separadas de las que se pisarían', () => {
     const placed = placeLabels(
       [
-        { x: 500, y: 100, place: 'column' },
-        { x: 420, y: 104, place: 'column' }, // doblado: acaba antes
-        { x: 499.8, y: 300, place: 'column' }, // misma vuelta (redondeo): sin guía
-        { x: 200, y: 102, place: 'inline' }, // destacado que acaba antes: junto a su final
+        { x: 500, y: 100, w: 30, place: 'column' },
+        { x: 500, y: 104, w: 30, place: 'column' },
+        { x: 500, y: 300, w: 30, place: 'column' },
+        { x: 200, y: 102, w: 30, place: 'inline' },
+        { x: 220, y: 104, w: 30, place: 'inline' }, // se solapa con la anterior: se separan
+        { x: 300, y: 103, w: 30, place: 'inline' }, // lejos en horizontal: se queda a su altura
       ],
-      11,
-      0,
-      400,
+      { gap: 11, lo: 0, hi: 400, moved: 1.5 },
     )
-    expect(placed.map((p) => p.x)).toEqual([500, 500, 500, 200])
-    expect(placed.map((p) => p.leader)).toEqual([false, true, false, false])
-    // Las de la columna se separan entre sí (11 px); la de junto a su final, aparte (no la empujan).
-    expect(placed.map((p) => p.y)).toEqual([100, 111, 300, 102])
+    expect(placed.map((p) => p.x)).toEqual([500, 500, 500, 200, 220, 300])
+    expect(placed.map((p) => p.y)).toEqual([100, 111, 300, 102, 113, 103])
+    expect(placed.map((p) => p.moved)).toEqual([false, true, false, false, true, false])
+  })
+
+  it('rótulos siempre dentro de [lo, hi]: si no caben a la separación pedida, se juntan lo justo', () => {
+    const ys = Array.from({ length: 20 }, (_, i) => 50 + i)
+    const out = spreadLabels(ys, 11, 10, 120)
+    for (const y of out) {
+      expect(y).toBeGreaterThanOrEqual(10)
+      expect(y).toBeLessThanOrEqual(120)
+    }
+    // En orden y repartidos por todo el hueco.
+    expect(out[0]).toBeCloseTo(10)
+    expect(out[19]).toBeCloseTo(120)
+    for (let i = 1; i < 20; i++) expect(out[i]! - out[i - 1]!).toBeCloseTo(110 / 19)
+    // Un único rótulo fuera del hueco, al borde.
+    expect(spreadLabels([-30], 11, 0, 100)).toEqual([0])
   })
 })

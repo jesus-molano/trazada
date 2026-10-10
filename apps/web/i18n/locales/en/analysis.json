@@ -18,6 +18,7 @@
     "noLaps": "No data: this session has no timed laps.",
     "nothingYet": "No data up to this moment yet. Move the player forward or turn off «No spoilers».",
     "identify": "Each series carries its driver's code; the second driver of each team is dashed.",
+    "identifyLap": "Each series carries its driver's code in the right margin, level with its last value (a short line joins it to that height when it has to be moved apart from others); the second driver of each team is dashed. A series ending in a bar belongs to a car that stopped crossing the line (the leader has done three laps since its last crossing): the legend says up to which lap it goes.",
     "raceTrace": {
       "chart": "Race trace: gap to the leader at each line crossing, lap by lap",
       "axis": "Gap to the leader at the line (s), per lap",

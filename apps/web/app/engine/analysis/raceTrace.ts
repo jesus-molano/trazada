@@ -92,10 +92,13 @@ export function stoppedCars(table: LapTable, cutoffMs = Infinity): Map<string, n
   const leader = new Map<number, number>()
   const last = new Map<string, { ms: number; lap: number }>()
   for (const c of table.cars.values()) {
+    const seen = new Set<number>()
     for (let k = 0; k < c.lap.length; k++) {
       const lap = c.lap[k]!
       const x = crossing(c.crossMs, k, cutoffMs)
-      if (lap < 1 || Number.isNaN(x)) continue
+      // Con dos filas con el mismo número de vuelta, cuenta la primera (como `raceTrace` y `lapIndex`).
+      if (lap < 1 || Number.isNaN(x) || seen.has(lap)) continue
+      seen.add(lap)
       const best = leader.get(lap)
       if (best === undefined || x < best) leader.set(lap, x)
       const prev = last.get(c.car)

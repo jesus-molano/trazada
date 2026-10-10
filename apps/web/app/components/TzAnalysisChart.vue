@@ -2,8 +2,9 @@
 /**
  * Gráfica de la hoja de análisis (ítem 3, D33) con uPlot (Canvas 2D, MIT; ya es dependencia). Colores de los tokens
  * (ejes, rejilla, texto) y de los equipos (manifest). Cada piloto se identifica por su sigla: la leyenda (botones
- * para mostrar u ocultar su serie) y un rótulo al final de su serie; nunca solo por el color. El segundo piloto de
- * cada equipo, en discontinuo; con un coche destacado, el resto se atenúa.
+ * para mostrar u ocultar su serie) y la sigla de su serie, en el margen derecho o junto a su final
+ * (`analysis/endLabels.ts`); nunca solo por el color. El segundo piloto de cada equipo, en discontinuo; con un coche
+ * destacado, el resto se atenúa.
  *
  * La descripción llega entera en `spec` (sin reactividad profunda: los arrays no se recorren con Vue) y la gráfica se
  * rehace cuando cambia (las pestañas solo la cambian al cruzar un instante que cambia los datos o al tocar la
@@ -14,7 +15,8 @@
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { type ChartSpec, DIM_ALPHA, endPoints, type LabelSpot, nearestIndex, placeLabels, seriesEnd } from '~/analysis/chart'
+import { type ChartSpec, columnLabelCount, DIM_ALPHA, nearestIndex, seriesEnd } from '~/analysis/chart'
+import { COLUMN_PADDING, columnPlotHeight, drawEndLabels, INLINE_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
 import { token } from '~/design/tokens'
 
 const props = defineProps<{
@@ -58,8 +60,6 @@ function canDraw(): boolean {
 }
 
 const DASH = [6, 4]
-/** Opacidad de la guía de una sigla en columna (respecto a la de su serie). */
-const LEADER_ALPHA = 0.55
 
 /** Aspas para las vueltas anuladas (puntos a medida de uPlot). */
 const crossPoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) => {
@@ -118,72 +118,20 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
   ]
 }
 
-/**
- * Siglas de las series visibles, sin pisarse, con una marca del color de su equipo (`placeLabels`). Por vuelta, en una
- * columna a la derecha: la serie que acaba antes (un doblado) lleva un punto en su final y una guía punteada hasta su
- * sigla, así que ninguna queda suelta a media gráfica. Una serie que acaba mucho antes (el coche dejó de pasar por meta)
- * lleva solo una marca de fin; la leyenda dice hasta qué vuelta llega (y con el coche destacado, lleva sigla junto a su
- * final).
- */
-function drawEndLabels(u: uPlot, spec: ChartSpec) {
+function drawLabels(u: uPlot, spec: ChartSpec) {
   const r = uPlot.pxRatio
-  const dimmed = spec.groups.some((g) => g.visible && g.emphasis)
-  const labels: { label: string; color: string; alpha: number; spot: LabelSpot }[] = []
-  const ends: { color: string; alpha: number; x: number; y: number }[] = []
-  for (const e of endPoints(spec)) {
-    const x = u.valToPos(spec.x[e.index]!, 'x', true)
-    const y = u.valToPos(e.value, 'y', true)
-    // Fuera del área visible (rango fijo del eje y): sin rótulo; la leyenda lo nombra.
-    if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue
-    const mark = { color: e.group.color, alpha: dimmed && !e.group.emphasis ? DIM_ALPHA : 1, x, y }
-    if (e.group.stopped) ends.push(mark)
-    if (e.place !== 'none') labels.push({ ...mark, label: e.group.label, spot: { x, y, place: e.place } })
-  }
-  if (!labels.length && !ends.length) return
-  const ctx = u.ctx
-  ctx.save()
-  // Marca de fin: un trazo corto perpendicular a la línea, con el color del equipo.
-  for (const e of ends) {
-    ctx.globalAlpha = e.alpha
-    ctx.fillStyle = e.color
-    ctx.fillRect(e.x - r, e.y - 5 * r, 2 * r, 10 * r)
-  }
-  const placed = placeLabels(
-    labels.map((l) => l.spot),
-    11 * r,
-    u.bbox.top + 5 * r,
-    u.bbox.top + u.bbox.height - 5 * r,
+  drawEndLabels(
+    u.ctx,
+    { r, bbox: u.bbox, xPos: (v) => u.valToPos(v, 'x', true), yPos: (v) => u.valToPos(v, 'y', true) },
+    spec,
+    { font: `${10 * r}px ${token('--tz-font-sans')}`, text: token('--tz-text'), connector: token('--tz-text-faint') },
   )
-  ctx.font = `${10 * r}px ${token('--tz-font-sans')}`
-  ctx.textBaseline = 'middle'
-  const text = token('--tz-text')
-  labels.forEach((l, k) => {
-    const p = placed[k]!
-    const lx = p.x + 6 * r
-    ctx.globalAlpha = l.alpha
-    ctx.fillStyle = l.color
-    ctx.strokeStyle = l.color
-    if (p.leader) {
-      // Punto en el final y guía punteada (fina, a media opacidad: no es dato) hasta el rótulo.
-      ctx.beginPath()
-      ctx.arc(l.spot.x, l.spot.y, 2.5 * r, 0, 2 * Math.PI)
-      ctx.fill()
-      ctx.globalAlpha = l.alpha * LEADER_ALPHA
-      ctx.lineWidth = r
-      ctx.setLineDash([2 * r, 3 * r])
-      ctx.beginPath()
-      ctx.moveTo(l.spot.x + 4 * r, l.spot.y)
-      ctx.lineTo(lx - r, p.y)
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.globalAlpha = l.alpha
-    }
-    ctx.fillRect(lx, p.y - r, 5 * r, 2 * r)
-    ctx.fillStyle = text
-    ctx.fillText(l.label, lx + 7 * r, p.y)
-  })
-  ctx.restore()
 }
+
+/** Con las siglas en el margen, el alto en el que caben todas sin pisarse (si es más que el mínimo de la hoja de estilos). */
+const plotStyle = computed(() =>
+  props.spec.labelColumn ? { '--achart-labels': `${columnPlotHeight(columnLabelCount(props.spec))}px` } : undefined,
+)
 
 function placeCursor() {
   const el = cursorEl
@@ -234,8 +182,8 @@ function build() {
     {
       width: Math.max(1, el.clientWidth),
       height: Math.max(1, el.clientHeight),
-      // Hueco a la derecha para los rótulos del final de las series.
-      padding: [8, 44, 0, 0],
+      // Hueco a la derecha para las siglas (en el margen o junto al final de las series).
+      padding: [PLOT_PAD_TOP, spec.labelColumn ? COLUMN_PADDING : INLINE_PADDING, 0, 0],
       legend: { show: false },
       cursor: { x: true, y: false, points: { show: false }, drag: { x: false, y: false, setScale: false }, focus: { prox: -1 } },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },
@@ -244,12 +192,12 @@ function build() {
         y: { dir: spec.yDir, ...(spec.yRange ? { range: spec.yRange } : {}) },
       },
       axes: [
-        { ...axis('x', spec.formatX), space: 56, ...(spec.xIncrs ? { incrs: [...spec.xIncrs] } : {}) },
+        { ...axis('x', spec.formatX), size: X_AXIS_SIZE, space: 56, ...(spec.xIncrs ? { incrs: [...spec.xIncrs] } : {}) },
         { ...axis('y', spec.formatY), size: 64 },
       ],
       series: seriesOptions(spec),
       hooks: {
-        draw: [(u) => drawEndLabels(u, spec), () => placeCursor()],
+        draw: [(u) => drawLabels(u, spec), () => placeCursor()],
       },
     },
     [spec.x as number[], ...spec.series.map((s) => s.values as (number | null)[])],
@@ -291,7 +239,7 @@ onBeforeUnmount(() => {
 
 <template>
   <figure class="tz-achart" :data-testid="testid ?? 'analysis-chart'" :data-points="spec.x.length">
-    <div ref="host" class="tz-achart__plot" role="img" :aria-label="label" />
+    <div ref="host" class="tz-achart__plot" :style="plotStyle" role="img" :aria-label="label" />
     <figcaption class="tz-achart__legend" role="group" :aria-label="legendLabel">
       <button
         v-for="g in spec.groups"
@@ -321,11 +269,11 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* La gráfica ocupa el alto que quede (al menos 200 px); uPlot va encima, fuera del flujo, y se ajusta al medirla. */
+/* La gráfica ocupa el alto que quede (al menos 200 px, o el alto en el que caben las siglas del margen); uPlot va encima, fuera del flujo, y se ajusta al medirla. */
 .tz-achart__plot {
   position: relative;
   flex: 1 1 0;
-  min-height: 200px;
+  min-height: max(200px, var(--achart-labels, 0px));
   overflow: hidden;
 }
 

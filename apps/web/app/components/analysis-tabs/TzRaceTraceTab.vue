@@ -113,7 +113,7 @@ export const raceOnly = true
         @toggle="toggle"
       />
       <p class="tz-atab__note">{{ t('analysis.raceTrace.basis') }}</p>
-      <p class="tz-atab__note">{{ t('analysis.identify') }}</p>
+      <p class="tz-atab__note">{{ t('analysis.identifyLap') }}</p>
     </template>
   </div>
 </template>

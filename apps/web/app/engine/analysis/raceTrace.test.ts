@@ -103,7 +103,8 @@ describe('race trace', () => {
 describe('coches que dejan de pasar por meta', () => {
   /**
    * 1 completa seis vueltas (pasos a los 100, 190, 280, 370, 460 y 550 s); 16 deja de cruzar tras la 2 (193 s); 63 va
-   * doblado (cruza a los 105, 200, 295, 390 y 485 s); 77 se para en boxes tres minutos en su vuelta 3 y sigue.
+   * más lento y acaba una vuelta por detrás (cruza a los 105, 200, 295, 390 y 485 s); 77 se para en boxes tres minutos
+   * en su vuelta 3 y sigue.
    */
   const timing = timingBuilder()
     .run(1, 0, [100_000, 90_000, 90_000, 90_000, 90_000, 90_000], { lap1NoTime: true })
@@ -118,7 +119,7 @@ describe('coches que dejan de pasar por meta', () => {
     expect([...stoppedCars(table)]).toEqual([['16', 2]])
   })
 
-  it('un doblado sigue cruzando la línea cada vuelta: nunca cuenta', () => {
+  it('uno que va por detrás sigue cruzando la línea cada vuelta: nunca cuenta', () => {
     for (const cutoff of [200_000, 300_000, 400_000, 470_000, 549_000, Infinity]) expect(stoppedCars(table, cutoff).has('63'), String(cutoff)).toBe(false)
   })
 
@@ -129,6 +130,21 @@ describe('coches que dejan de pasar por meta', () => {
     // 77 cruza la 2 a los 194 s y la 3 a los 464 s: entre medias, el primero completa tres vueltas.
     expect(stoppedCars(table, 463_000).get('77')).toBe(2)
     expect(stoppedCars(table, 464_000).has('77')).toBe(false)
+  })
+
+  it('un doblado de verdad (tres vueltas abajo al final) sigue cruzando: nunca cuenta, en ningún instante', () => {
+    // 1: doce vueltas de 90 s. 2: vueltas de 120 s; el primero lo dobla cada tres vueltas y acaba tres por delante.
+    const lapped = buildLapTable(
+      'race',
+      timingBuilder()
+        .run(1, 0, Array.from({ length: 12 }, (_, i) => (i ? 90_000 : 100_000)), { lap1NoTime: true })
+        .run(2, 0, Array.from({ length: 9 }, (_, i) => (i ? 120_000 : 101_000)), { lap1NoTime: true })
+        .build(),
+      [],
+    )
+    expect(raceTrace(lapped).series.find((s) => s.car === '2')!.lastLap).toBe(9)
+    for (let t = 0; t <= 1_200_000; t += 5_000) expect(stoppedCars(lapped, t).has('2'), String(t)).toBe(false)
+    expect(stoppedCars(lapped).size).toBe(0)
   })
 })
 

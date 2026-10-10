@@ -51,3 +51,62 @@ test('race trace hasta el reloj, con la línea de la vuelta en curso; sin «Sin 
   expect(await page.getByTestId('stint-row').count()).toBeGreaterThanOrEqual(20)
   await expect(page.getByTestId('stint-bar').first()).toBeVisible()
 })
+
+/** Siglas (tres letras) que se dibujan en cada lienzo, desde su último borrado (uPlot borra antes de cada redibujado). */
+async function recordLabels(page: Page) {
+  await page.addInitScript(() => {
+    type Drawn = { text: string; x: number; y: number; align: string; width: number }
+    const byCanvas = new Map<HTMLCanvasElement, Drawn[]>()
+    ;(window as unknown as { __labels: () => Drawn[][] }).__labels = () => [...byCanvas.values()]
+    const proto = CanvasRenderingContext2D.prototype
+    const clear = proto.clearRect
+    proto.clearRect = function (...args) {
+      byCanvas.set(this.canvas, [])
+      return clear.apply(this, args)
+    }
+    const fill = proto.fillText
+    proto.fillText = function (text, x, y, maxWidth) {
+      if (/^[A-Z]{3}$/.test(String(text))) {
+        const list = byCanvas.get(this.canvas) ?? []
+        list.push({ text: String(text), x, y, align: this.textAlign, width: this.measureText(String(text)).width })
+        byCanvas.set(this.canvas, list)
+      }
+      return fill.call(this, text, x, y, maxWidth)
+    }
+  })
+}
+
+test('siglas del race trace: todas en el margen derecho, dentro del lienzo y sin pisarse; los detenidos, «hasta Vn»', async ({ page }) => {
+  await recordLabels(page)
+  await open(page)
+  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.endMs))
+  await page.getByTestId('analysis-button').click()
+  const chart = page.getByTestId('race-trace-chart')
+  await expect(chart.locator('canvas')).toHaveCount(1)
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  // STR (18) deja de pasar por meta en la vuelta 30 y BEA (87) en la 20: raya y «hasta Vn», sin sigla.
+  await expect(chart.locator('[data-car="18"] [data-testid="analysis-legend-until"]')).toHaveText(/hasta V30|to L30/)
+  await expect(chart.locator('[data-car="87"] [data-testid="analysis-legend-until"]')).toHaveText(/hasta V20|to L20/)
+  const legend = await chart.getByTestId('analysis-legend-item').count()
+  const geo = await chart.evaluate((el) => {
+    const canvas = el.querySelector('canvas')!
+    const over = el.querySelector<HTMLElement>('.u-over')!
+    const dpr = canvas.width / canvas.getBoundingClientRect().width
+    return { w: canvas.width, h: canvas.height, right: (over.offsetLeft + over.offsetWidth) * dpr, dpr }
+  })
+  const lists = await page.evaluate(() => (window as unknown as { __labels: () => { text: string; x: number; y: number; align: string; width: number }[][] }).__labels())
+  const labels = lists.find((l) => l.length > 0)!
+  expect(labels.map((l) => l.text)).toContain('ALB')
+  expect(labels.map((l) => l.text)).not.toContain('STR')
+  expect(labels.map((l) => l.text)).not.toContain('BEA')
+  expect(labels).toHaveLength(legend - 2)
+  for (const l of labels) {
+    expect(l.align, l.text).toBe('left')
+    expect(l.x, l.text).toBeGreaterThanOrEqual(geo.right)
+    expect(l.x + l.width, l.text).toBeLessThanOrEqual(geo.w)
+    expect(l.y, l.text).toBeGreaterThan(0)
+    expect(l.y, l.text).toBeLessThan(geo.h)
+  }
+  const ys = labels.map((l) => l.y).sort((a, b) => a - b)
+  for (let i = 1; i < ys.length; i++) expect(ys[i]! - ys[i - 1]!).toBeGreaterThanOrEqual(10 * geo.dpr)
+})
