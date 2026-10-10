@@ -1,4 +1,5 @@
-// Servidor estático mínimo para e2e: .output/public en / y los datos de fixture en /data.
+// Servidor estático mínimo: .output/public en / y los datos en /data (por defecto, los del fixture e2e).
+// Lo usan los e2e y `pnpm local` (uso personal: la app con los datos de data/ en tu PC).
 // Si la raíz de datos trae un _headers (como deploy/.staging/data), se aplica a /data igual que en
 // Cloudflare: así el smoke post-deploy (scripts/smoke-deploy.sh) se puede probar en local.
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
@@ -11,6 +12,8 @@ const appDir = resolve(here, '../../.output/public')
 const dataDir = resolve(process.env.E2E_DATA_DIR ?? resolve(here, '../fixtures/data'))
 const portArg = process.argv.indexOf('--port')
 const port = portArg > -1 ? Number(process.argv[portArg + 1]) : 4173
+const hostArg = process.argv.indexOf('--host')
+const host = hostArg > -1 ? process.argv[hostArg + 1] : '127.0.0.1'
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -72,6 +75,6 @@ createServer((req, res) => {
   if (root === dataDir) for (const [re, h] of dataHeaders) if (re.test(path)) Object.assign(headers, h)
   res.writeHead(200, headers)
   createReadStream(file).pipe(res)
-}).listen(port, '127.0.0.1', () => {
-  console.log(`e2e server on http://127.0.0.1:${port} (app: ${appDir}, data: ${dataDir})`)
+}).listen(port, host, () => {
+  console.log(`servidor en http://${host}:${port} (app: ${appDir}, datos: ${dataDir})`)
 })

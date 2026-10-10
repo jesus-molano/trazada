@@ -14,6 +14,7 @@
     "test": "pnpm -r --if-present test",
     "e2e": "pnpm --filter @trazada/web e2e",
     "data:deploy": "node scripts/data-deploy.mjs",
-    "perf:table": "node scripts/perf-table.mjs"
+    "perf:table": "node scripts/perf-table.mjs",
+    "local": "node scripts/local.mjs"
   }
 }

@@ -1,0 +1,3 @@
+# Proyecto personal: no indexar (docs/BRIEF.md, D23).
+User-agent: *
+Disallow: /

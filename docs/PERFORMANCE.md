@@ -14,7 +14,7 @@ Con `?bench=1`, 22 coches y el panel de telemetría abierto:
 
 ## Cómo medir
 
-1. Despliegue o build local (`pnpm build`) y datos con al menos una carrera completa.
+1. `pnpm local` (o `pnpm local --lan` para medir desde otro equipo de casa) con al menos una carrera completa en `data/`.
 2. Chrome o Edge actualizados, pestaña en primer plano, sin otras pestañas pesadas, enchufado a la corriente en el portátil.
 3. Abrir `/replay?s=<temporada>/<ronda>-<slug>/race&bench=1`. El bench hace lo siguiente:
    - salta a 1 min después de la salida; en libres y clasificación, al momento con más coches en pista;

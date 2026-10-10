@@ -42,7 +42,14 @@ uv run ruff check && uv run pytest
 
 ## Datos
 
-Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). El pipeline se ejecuta en local (IP residencial) y publica los ficheros en un Worker de Cloudflare separado con `pnpm data:deploy`. Ese comando sube solo las sesiones publicables, nunca las de desarrollo; con `--dry-run` muestra la lista sin subir nada.
+Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). Es un proyecto **personal**: los datos se generan en tu PC con el pipeline (IP residencial) y **no se publican**. Para usar la app con ellos:
+
+```bash
+pnpm local          # http://127.0.0.1:3000 con los datos de data/
+pnpm local --lan    # también en tu red de casa (p. ej. el iPad)
+```
+
+El despliegue en Cloudflare (`deploy/`, `pnpm data:deploy`) queda preparado pero en pausa (decisión D23 en `docs/PLAN.md`).
 
 ## Rendimiento
 

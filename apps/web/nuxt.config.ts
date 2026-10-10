@@ -26,6 +26,8 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'color-scheme', content: 'dark' },
         { name: 'description', content: 'Replay y análisis de carreras. Proyecto no oficial.' },
+        // Proyecto personal: nunca indexable, aunque algún día se despliegue (docs/BRIEF.md, D23).
+        { name: 'robots', content: 'noindex, nofollow' },
       ],
     },
   },

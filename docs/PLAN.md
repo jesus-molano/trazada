@@ -1,6 +1,6 @@
 # Trazada: plan de la Fase 1
 
-> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H10; H11 preparado y pendiente de lo tuyo (ver "Progreso" en §8 y §9.7).
+> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H10; H11 preparado y pendiente de lo tuyo (ver "Progreso" en §8 y §9.7). Uso personal y privado: D23.
 > Documentos de apoyo:
 > - [`research/validacion-brief.md`](research/validacion-brief.md): cada afirmación del brief contrastada con fuentes primarias y verificación adversarial.
 > - [`research/empirico-2026.md`](research/empirico-2026.md): medidas sobre datos reales de 2026.
@@ -502,6 +502,7 @@ Trampas:
 | D19 | **Node 24 + TypeScript 6.0** | Nuxt 4.6 lo exige y `vue-tsc` necesita la API JS de TS. | TS 7 (se reevalúa tras H0); Nuxt 4.5.2 con Node 22 (es el plan B). |
 | D20 | **2026 = 22 coches; N variable** | Es el dato real. | — |
 | D21 | **Circuito canónico por trazado**, compartido entre sesiones | `s` es comparable entre sesiones y temporadas, como necesita el heatmap. Hay menos ficheros. | Línea central por sesión: los orígenes y longitudes difieren entre sesiones. |
+| D23 | **Uso personal y privado** (2026-10-10): no se publica ningún dato; la app se usa en local (`pnpm local`, con `--lan` para la red de casa) | Lo pidió el usuario: proyecto totalmente personal y «lo que sea legal». Usar los datos para uno mismo es legal; publicarlos sería redistribuirlos sin licencia (F1 y MultiViewer). | Despliegue público en Cloudflare (D1/D2), que queda en pausa; si algún día se despliega, solo con control de acceso. |
 | D22 | **Etiquetas (curvas y siglas) en DOM proyectado** en cada render, en lugar de troika-three-text | Texto nítido con las fuentes de la app (woff2, sin convertir a woff/ttf para troika), accesible, i18n directo, 0 draw calls. Coste: escribir `transform` en ~45 nodos por frame (solo capa de composición). | troika `BatchedText`: necesita fuentes woff/ttf autoalojadas y el `unicodeFontsURL`, y no aporta nada para ~45 etiquetas. |
 
 ## 7. Riesgos
@@ -546,7 +547,7 @@ Trampas:
 | H8 | ✅ (con matices) | Selección con clic o toque en el coche (raycast sobre el InstancedMesh, cuya esfera envolvente se recalcula en cada frame porque la cacheada venía de coches ocultos), en su sigla o en el leaderboard. El panel muestra la muestra cruda vigente: la última con t ≤ reloj y menos de 2 s de antigüedad, sin interpolar (Vitest frente a las columnas). DRS: 8 = disponible, ≥ 10 = abierto; en 2026 no hay canal, así que aparece "No disponible en 2026" con su explicación. Mini gráficas uPlot con una ventana de 20 s. Cámara de seguimiento: muelle de yaw críticamente amortiguado con aceleración y velocidad acotadas y pitch constante (24°). **Umbral calibrado**: \|d²yaw/dt²\| ≤ 6 rad/s² y d²pitch/dt² = 0, con 60 s guionizados de un coche real del fixture: a ×1 el máximo es 1,24 rad/s², a ×16 se queda en el tope (6). `Esc` vuelve a la vista general con GSAP, al instante con reduced motion (e2e de las dos cosas). El espacio reproduce y pausa aunque el foco esté en un botón pulsado con el ratón; si se llegó al botón con el teclado, el espacio lo activa. **Pendiente tuyo**: p95 < 16,7 ms con el panel abierto en la máquina de referencia. |
 | H9 | ✅ (con matices) | **Feed** de dirección de carrera: texto original tal cual (marcado `lang="en"`) con el tipo traducido. Tras 20 seeks (17 con semilla fija y 3 justo en el borde de un mensaje), los visibles son exactamente los de t ≤ reloj (e2e). `TrackState` (TS puro) da las banderas por sector, la neutralización vigente (roja > SC > VSC > fin de VSC), la amarilla de TrackStatus y las ventanas de OVERTAKE/DRS. Se expone en `window.__trazada.trackState`; el asa ahora tiene `seek(ms)`, con precisión de ms. Escena: el SC, el VSC y la roja tiñen la cinta, y los sectores con bandera se colorean cuando hay geometría de MultiViewer. Sin ella (todos los datos de aquí), la bandera aparece como texto con su explicación. Hay chips de estado de pista siempre con texto (nunca solo color) y un carril de OVERTAKE/DRS bajo el timeline. Pipeline: una neutralización cierra la ventana de OVERTAKE/DRS hasta un nuevo ENABLED (Japón: había un ENABLED, el SC y otro ENABLED). Tests: motor (sintético, fixture y Japón local), componentes en Nuxt y e2e en el fixture (doble amarilla del sector 7 a +1 s y su CLEAR a +1 s). **e2e en Japón 2026 solo en local** (`local-japan.spec.ts`, fuente dev no publicable): sector 21 a +1 s y su CLEAR a +1 s; SC a +100 ms en `trackState` y en el tinte de la escena; dos ventanas de OVERTAKE. **Pendiente**: comprobar sobre el mapa las capas por sector con un circuito que tenga sectores de comisarios (MultiViewer, §9). |
 | H10 | ✅ (con matices) | **Tokens**: `tokens.css` es la única fuente. three.js, uPlot y GSAP leen los valores con `token()`, que usa la propia hoja si no hay documento. Un test falla si aparece un color literal o un `--tz-*` fuera de la hoja. **i18n**: `no-raw-text` y `no-missing-keys` limpios, test de paridad es/en (claves y parámetros) y números, porcentajes y tiempos de vuelta con `Intl` (formatos cacheados por idioma). El reloj m:ss no depende del idioma. **Estimado**: registro único (`engine/estimated.ts`) con los campos del manifest (`positions`, `telemetry`, `trackStatus`; el pipeline los declara en las fuentes dev, y un campo desconocido se muestra con su nombre) y las opciones del usuario. Las opciones son la exageración de altura, la separación visual de coches solapados (apagada por defecto; solo visual, a lo ancho de la pista) y la estimación de la vuelta 1 en carrera (paso por meta − salida). Un test de componentes tiene un caso por campo y falla si falta alguno. Hay e2e de cada caso, en es y en; la vuelta 1 y la separación real en la salida se prueban en el e2e local de Japón. **Accesibilidad**: axe-core sin infracciones serias ni críticas en portada, replay (con telemetría y etiquetas) y error, en es y en. Para lograrlo, `--tz-text-faint` pasa a #848e9b (≥ 4,75:1 en todas las superficies). **Disclaimer** en el footer de todas las páginas y en el README (e2e). **Layout**: cabecera, escenario y dock en columna; las herramientas de la escena van a la cabecera. Paneles más estrechos hasta 1100 px. En tablet vertical, los paneles bajan a una franja inferior y el mapa se encuadra por encima. Sin scroll horizontal a 1440×900, 1280×800 y en iPad (táctil) a 1024×768 y 768×1024; en tablet, tocar un coche lo selecciona y arrastrar el timeline mueve el reloj (e2e). Arreglo: el CSS minificado escribe `900ms` como `.9s` y la duración de la cámara se leía como 0. **Pendiente**: revisión en un iPad real. |
-| H11 | 🟡 Preparado; faltan medidas, datos y cuentas tuyas (§9.7) | **Bench** `?bench=1` con 22 coches y la telemetría abierta. Calienta y mide: p50, p95, p99, frames > 50 ms, heap, DPR, draw calls, GPU y *long tasks*, y copia el JSON. En libres empieza en el momento con más coches en pista. **Degradación adaptativa** (`QualityGovernor`): el DPR baja por escalones si el p95 pasa de 33 ms y sube con histéresis; `?governor=off` la desactiva. Se quitó el `backdrop-filter` de los paneles: desenfocaba un lienzo animado en cada frame (−25 % de frame en SwiftShader). **Heap**: 42 MB con la carrera completa de Japón (≤ 300 MB). `docs/PERFORMANCE.md` tiene el método, los resultados (el contenedor está marcado como no representativo) y la tabla de peso por sesión generada desde los manifests (`pnpm perf:table`). **Despliegue**: `pnpm data:deploy` prepara en `deploy/.staging/data` solo lo publicable (catálogo sin dev, manifests y exactamente sus ficheros, ≤ 25 MiB por fichero) y rechaza cualquier sesión con fuentes dev aunque no esté marcada; `--dry-run` solo prepara. En el pipeline, un circuito construido con fuentes dev (p. ej. `--dev-corners`) marca como dev las sesiones que lo usan: se encontró y corrigió la sesión local de Bélgica, que se habría publicado con curvas de TracingInsights. **Smoke post-deploy**: `scripts/smoke-deploy.sh` (curl: JSON, `immutable`, CORS y deep link 200) y `deployed.spec.ts` (la página se pinta). Están en el workflow de deploy si existen las variables `APP_URL` y `DATA_BASE_URL`, y se probaron en local con el servidor e2e, que ahora aplica `_headers`. **Pendiente tuyo**: medidas en la RTX 3070 Ti y en el portátil, datos reales 2023–2026, secretos y variables de Cloudflare y el primer despliegue. |
+| H11 | 🟡 Preparado; faltan tus medidas y tus datos (§9.7). Con D23 no hay despliegue público: `pnpm local` | **Bench** `?bench=1` con 22 coches y la telemetría abierta. Calienta y mide: p50, p95, p99, frames > 50 ms, heap, DPR, draw calls, GPU y *long tasks*, y copia el JSON. En libres empieza en el momento con más coches en pista. **Degradación adaptativa** (`QualityGovernor`): el DPR baja por escalones si el p95 pasa de 33 ms y sube con histéresis; `?governor=off` la desactiva. Se quitó el `backdrop-filter` de los paneles: desenfocaba un lienzo animado en cada frame (−25 % de frame en SwiftShader). **Heap**: 42 MB con la carrera completa de Japón (≤ 300 MB). `docs/PERFORMANCE.md` tiene el método, los resultados (el contenedor está marcado como no representativo) y la tabla de peso por sesión generada desde los manifests (`pnpm perf:table`). **Despliegue**: `pnpm data:deploy` prepara en `deploy/.staging/data` solo lo publicable (catálogo sin dev, manifests y exactamente sus ficheros, ≤ 25 MiB por fichero) y rechaza cualquier sesión con fuentes dev aunque no esté marcada; `--dry-run` solo prepara. En el pipeline, un circuito construido con fuentes dev (p. ej. `--dev-corners`) marca como dev las sesiones que lo usan: se encontró y corrigió la sesión local de Bélgica, que se habría publicado con curvas de TracingInsights. **Smoke post-deploy**: `scripts/smoke-deploy.sh` (curl: JSON, `immutable`, CORS y deep link 200) y `deployed.spec.ts` (la página se pinta). Están en el workflow de deploy si existen las variables `APP_URL` y `DATA_BASE_URL`, y se probaron en local con el servidor e2e, que ahora aplica `_headers`. **Uso personal (D23)**: `pnpm local` sirve la app con los datos de `data/`, y con `--lan` en la red de casa; `noindex` y `robots.txt` por si algún día se despliega. **Pendiente tuyo**: medidas en la RTX 3070 Ti y en el portátil, y datos reales 2023–2026 en tu PC. |
 
 **Correspondencia con el brief**:
 - punto 1 → H3; 2 → H2; 3 → H5; 4 → H6; 5 → H4; 6 → H7; 7 → H8; 8 → H9; 10 → H11;
@@ -705,8 +706,8 @@ Alcance:
   - **en el portátil de referencia** (lo eliges tú; GPU integrada): p95 ≤ 33 ms tras la degradación;
   - heap JS ≤ 300 MB con una carrera cargada.
 - `docs/PERFORMANCE.md` recoge esas cifras y el peso por sesión, con una tabla generada desde los manifests.
-- **Datos publicados**: al menos **una carrera por temporada de 2023 a 2026**. El backfill completo queda fuera de la Fase 1. El selector muestra todas las temporadas, con estado vacío donde aún no hay datos.
-- **Despliegue**: CI despliega el Worker de la app y `pnpm data:deploy` el de datos.
+- **Datos publicados**: al menos **una carrera por temporada de 2023 a 2026**. *(D23: «publicados» pasa a ser «en tu `data/` local».)* El backfill completo queda fuera de la Fase 1. El selector muestra todas las temporadas, con estado vacío donde aún no hay datos.
+- **Despliegue**: CI despliega el Worker de la app y `pnpm data:deploy` el de datos. *(D23: en pausa. Se sustituye por `pnpm local`; el despliegue queda preparado por si algún día se hace privado.)*
 - Un smoke post-deploy con curl comprueba `Content-Type`, `immutable` y `Access-Control-Allow-Origin` en los datos, y que un deep link `/replay?s=…` devuelve 200 y se pinta.
 - Coste: 0 €.
 
@@ -745,14 +746,15 @@ Mientras tanto, desarrollo con la **caché real de Bélgica FP1 2026**, que ya t
 
 ### 9.3 Cuentas y secretos (gratis; los creas tú)
 
-- **Cloudflare**: `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` (plantilla "Edit Cloudflare Workers") como secretos del repo, para la app. En tu PC, `wrangler login`, para los datos.
+- **Cloudflare**: *ya no hace falta (D23)*. Solo si algún día se despliega, y de forma privada: `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` como secretos del repo, y `wrangler login` en tu PC.
 - **Hugging Face**: un dataset privado y un `HF_TOKEN` en tu PC.
 
-### 9.4 Postura legal
+### 9.4 Postura legal — **respondida (D23)**
 
-- ¿Aceptas publicar bundles por sesión como assets, sin licencia abierta y retirables? ¿O prefieres empezar con unas pocas sesiones de demo?
-- ¿Escribimos a MultiViewer para pedir permiso? ¿Apruebas el plan B si dicen que no?
-- ¿Quieres leer tú las *Guidelines* y las *Legal Notices* de formula1.com, o escribir a brandprotection@f1.com?
+Respuesta: «haz lo que sea legal; es un proyecto totalmente personal». Por tanto:
+- **No se publican datos**: la app se usa en local (`pnpm local`).
+- **MultiViewer**: no hace falta pedir permiso, porque no se redistribuye nada. Sus datos se usan solo como entrada del pipeline en tu PC, así que el plan B no hace falta.
+- **Normas de F1**: no aplica la consulta, porque no hay publicación. Se mantienen el disclaimer y la ausencia de logos, fotos y marcas.
 
 ### 9.5 Referencias de rendimiento
 
@@ -760,20 +762,19 @@ Tu resolución de trabajo, y qué portátil o GPU integrada usamos como referenc
 
 ### 9.7 Para cerrar H11 (en tu lado)
 
-1. **Datos reales** (en tu PC, con IP residencial: F1 devuelve 403 a las IPs de nube). Una carrera por temporada:
+Con D23 (uso personal) ya no hacen falta cuentas ni despliegue. Queda esto:
+
+1. **Datos reales en tu PC** (con tu conexión de casa, porque F1 devuelve 403 a las IPs de nube). Una carrera por temporada:
    - `cd pipeline && uv sync`
    - `uv run trazada build 2023 <ronda> race`, y lo mismo para 2024, 2025 y 2026.
-   - `uv run trazada catalog --public` falla si se ha colado algo dev.
-2. **Cloudflare**:
-   - En el repo: secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`, y variables `APP_URL` (URL de la app) y `DATA_BASE_URL` (URL de los datos).
-   - En tu PC: `wrangler login`, `pnpm data:deploy --dry-run` (revisa la lista) y `pnpm data:deploy`.
-   - La app se despliega desde Actions (push a `main` o *Run workflow* en "Deploy app"), con el smoke post-deploy incluido.
+2. **Usarla**:
+   - `pnpm install` y luego `pnpm local`, y abrir http://127.0.0.1:3000.
+   - Para el iPad, `pnpm local --lan` y abrir la dirección que muestra.
 3. **Medidas** (`docs/PERFORMANCE.md`, "Cómo medir"):
    - RTX 3070 Ti a 1440p: `…&bench=1&governor=off`.
    - Portátil de referencia: `…&bench=1`.
    - Pégame el JSON de "Copiar resultados" y actualizo la tabla.
-4. **iPad real**: abrir un replay, tocar un coche y arrastrar el timeline (en e2e ya pasa con el perfil táctil).
-5. **MultiViewer** (§9.4): con permiso, las curvas y los sectores de comisarios oficiales; sin ellos, las banderas por sector se muestran solo como texto.
+4. **iPad real**: tocar un coche y arrastrar el timeline (en e2e ya pasa con el perfil táctil).
 
 ### 9.6 GSAP
 
