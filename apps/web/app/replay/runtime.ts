@@ -9,6 +9,7 @@ import { type ClockEvent, type Rate, SessionClock } from '~/engine/clock/Session
 import { LeaderboardEngine } from '~/engine/leaderboard/leaderboard'
 import { carTracks } from '~/engine/replay/motion'
 import { ReplayModel } from '~/engine/replay/ReplayModel'
+import { lateralOffsets } from '~/engine/replay/separation'
 import { buildTimelineMarkers, type TimelineMarkers } from '~/engine/timeline/markers'
 import { TrackState } from '~/engine/trackstate/TrackState'
 import { type CircuitModel, circuitModel } from '~/engine/track/circuit'
@@ -36,6 +37,12 @@ export interface ReplayRuntime {
   readonly trackState: TrackState
   /** Mensajes de race control ordenados por t (el texto original, sin tocar). */
   readonly raceControl: readonly RaceControlEvent[]
+  /** Separación lateral solo visual (m, + izquierda) por coche, en el orden de `model.states`. */
+  readonly offsets: Float32Array
+  /** Activa la separación visual (opción del usuario, marcada como Estimado). */
+  setSeparation(on: boolean): void
+  /** Coches desplazados en el último frame. */
+  readonly separatedCars: number
   /** Se llama en cada frame con reproducción, y una vez tras cada seek/cambio en pausa. */
   onFrame(cb: (timeMs: number) => void): () => void
   onCoarse(cb: (state: CoarseState) => void): () => void
@@ -58,6 +65,9 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
   const leaderboard = new LeaderboardEngine(type, session.timing, session.events, session.manifest.drivers)
   const trackState = new TrackState(session.events, playback.endMs)
   const raceControl = [...session.events.raceControl].sort((a, b) => a.t - b.t)
+  const offsets = new Float32Array(model.states.length)
+  let separation = false
+  let separatedCars = 0
 
   const frameListeners = new Set<(t: number) => void>()
   const coarseListeners = new Set<(s: CoarseState) => void>()
@@ -92,6 +102,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
       const t = clock.timeMs
       model.update(t)
       trackState.update(t)
+      if (separation) separatedCars = lateralOffsets(model.states, circuit.centerline.length, offsets)
       for (const l of frameListeners) l(t)
       invalidate?.()
       if (clock.playing && now - lastCoarse >= COARSE_INTERVAL_MS) {
@@ -113,6 +124,18 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     leaderboard,
     trackState,
     raceControl,
+    offsets,
+    setSeparation(on) {
+      separation = on
+      if (!on) {
+        offsets.fill(0)
+        separatedCars = 0
+      }
+      dirty = true
+    },
+    get separatedCars() {
+      return separatedCars
+    },
     onFrame(cb) {
       frameListeners.add(cb)
       dirty = true

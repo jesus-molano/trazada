@@ -62,6 +62,8 @@ def test_manifest_and_catalog(built) -> None:
     assert manifest["session"]["totalLaps"] == 8
     assert manifest["channels"]["drs"] == "absent"
     assert manifest["channels"]["elevation"] == "real"
+    assert manifest["quality"]["estimated"] == []  # la fuente no declara nada derivado
+
     for f in manifest["files"].values():
         path = report.manifest_path.parent / f["path"]
         assert path.exists()
@@ -71,6 +73,14 @@ def test_manifest_and_catalog(built) -> None:
     entry = catalog["seasons"][0]["events"][0]["sessions"][0]
     assert entry["dev"] is True and entry["session"] == "race"
     assert (root / "v1" / entry["path"]).resolve() == report.manifest_path.resolve()
+
+
+def test_estimated_fields_come_from_the_source(tmp_path: Path) -> None:
+    data, _ = synthetic_session()
+    data.estimated = ["trackStatus", "positions", "trackStatus"]
+    report = build_session(data, tmp_path)
+    manifest = json.loads(report.manifest_path.read_text())
+    assert manifest["quality"]["estimated"] == ["positions", "trackStatus"]
 
 
 def test_files_decode_and_motion_is_monotone(built) -> None:

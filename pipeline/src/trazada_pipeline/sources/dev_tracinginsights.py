@@ -263,6 +263,7 @@ def load_tracinginsights(
         source="tracinginsights-dev",
         source_versions={"tracinginsights": "dev"},
         dev=True,
+        estimated=["positions", "telemetry", "trackStatus"],
         notes=[
             "Datos de desarrollo (fuente secundaria TracingInsights): no publicar.",
             "Muestras de posición y telemetría reconstruidas desde telemetría fusionada por vuelta.",

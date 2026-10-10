@@ -11,10 +11,9 @@ const { t } = useI18n()
 
 <style scoped>
 .tz-dock {
-  position: absolute;
-  left: var(--tz-space-6);
-  right: var(--tz-space-6);
-  bottom: var(--tz-space-6);
+  position: relative;
+  flex: none;
+  margin: 0 var(--tz-space-6) var(--tz-space-6);
   z-index: var(--tz-z-panels);
   padding: var(--tz-space-3) var(--tz-space-4) var(--tz-space-2);
   border: 1px solid var(--tz-border);

@@ -18,13 +18,15 @@ const COMPOUND_LETTER: Record<string, string> = {
   WET: 'W',
 }
 
+const gapFmt = computed(() => new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
+
 function gapText(r: LeaderboardRow): string {
   if (r.position === 1) return r.gapMs === null && r.bestLapMs === null ? '' : t('leaderboard.leader')
   if (r.lapsBehind > 0 && settings.gapMode === 'leader') return t('leaderboard.lapsBehind', { n: r.lapsBehind })
   const ms = settings.gapMode === 'leader' ? r.gapMs : r.intervalMs
   if (ms === null) return '—'
   const s = ms / 1000
-  const fmt = new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+  const fmt = gapFmt.value
   if (s >= 60) {
     const m = Math.floor(s / 60)
     return `+${m}:${fmt.format(s - m * 60).padStart(6, '0')}`
@@ -74,7 +76,7 @@ function select(car: string) {
       >
         <button type="button" class="tz-lb__btn" :aria-pressed="playback.selectedCar === r.car" @click="select(r.car)">
           <span class="tz-lb__pos tz-tabular">{{ r.position }}</span>
-          <span class="tz-lb__team" :style="{ background: r.driver?.color ?? '#9BA4B0' }" aria-hidden="true" />
+          <span class="tz-lb__team" :style="{ background: r.driver?.color ?? 'var(--tz-team-unknown)' }" aria-hidden="true" />
           <span class="tz-lb__tla">{{ r.driver?.tla ?? r.car }}</span>
           <span class="tz-lb__flags">
             <span
@@ -116,13 +118,12 @@ function select(car: string) {
 <style scoped>
 .tz-lb {
   position: absolute;
-  top: 64px;
-  left: var(--tz-space-6);
-  z-index: var(--tz-z-panels);
+  top: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   width: 290px;
-  max-height: calc(100% - 64px - 190px);
+  max-height: 100%;
   padding: var(--tz-space-2);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-lg);
@@ -297,6 +298,23 @@ function select(car: string) {
   min-width: 14px;
   font-size: var(--tz-text-2xs);
   color: var(--tz-text-muted);
+}
+
+@media (width <= 1100px) {
+  .tz-lb {
+    width: 250px;
+  }
+
+  .tz-lb__btn {
+    grid-template-columns: 20px 4px 34px 1fr 64px 34px;
+    gap: 6px;
+  }
+}
+
+@media (width <= 900px) and (orientation: portrait) {
+  .tz-lb {
+    width: auto;
+  }
 }
 
 .tz-lb__opt {

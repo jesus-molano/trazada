@@ -264,7 +264,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
     circuit_file["path"] = _rel(folder, v1 / "circuits" / layout.circuit_id / circuit_ref["path"])
     files["circuit"] = circuit_file
 
-    estimated: list[str] = []
+    estimated = sorted(set(data.estimated))
     manifest = {
         "schema": "trazada.session",
         "schemaVersion": schema.schema_version(),

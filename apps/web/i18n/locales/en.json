@@ -62,10 +62,10 @@
     "contextLostHint": "Trying to recover it…",
     "recover": "Restart the map",
     "elevation": "Height",
-    "exaggeration": "visual exaggeration ×{k}",
-    "exaggerationHint": "Track height is multiplied so the elevation change is visible: it is not the real one.",
     "flat": "No reliable altitude: flat track",
-    "flatHint": "This session's data has no reliable altitude."
+    "flatHint": "This session's data has no reliable altitude.",
+    "separation": "Spread cars",
+    "separationHint": "Spreads cars running together across the track (visual only)."
   },
   "controls": {
     "region": "Playback controls",
@@ -98,7 +98,24 @@
     }
   },
   "estimated": {
-    "tag": "Estimated:"
+    "tag": "Estimated:",
+    "hintUnknown": "This value does not come from the source as is: it has been derived.",
+    "fields": {
+      "elevation": "visual exaggeration ×{k}",
+      "separation": "visual separation",
+      "lap1": "lap 1 time",
+      "positions": "reconstructed positions",
+      "telemetry": "reconstructed telemetry",
+      "trackStatus": "inferred track status"
+    },
+    "hints": {
+      "elevation": "Track height is multiplied so the elevation change is visible: it is not the real one.",
+      "separation": "Cars running together are spread across the track so you can tell them apart. There is no lateral data: their real position is the centre line.",
+      "lap1": "Live timing does not give the lap 1 time in a race. It is computed as the line crossing minus the start time, so it includes the run from the grid.",
+      "positions": "The source has no sampled positions for this session: they have been reconstructed from other data.",
+      "telemetry": "Telemetry for this session has been reconstructed from other data, it does not come from the source as is.",
+      "trackStatus": "No official track status: flags and neutralisations are inferred from race control messages."
+    }
   },
   "leaderboard": {
     "title": "Standings",
@@ -146,7 +163,11 @@
     "drsUnavailable": "Not available in {season}",
     "drsUnavailableHint": "There is no DRS from 2026: active aerodynamics (straight mode) and overtake mode replace it, enabled track-wide by race control.",
     "chartSpeed": "Speed over the last 20 s",
-    "chartPedals": "Pedals over the last 20 s"
+    "chartPedals": "Pedals over the last 20 s",
+    "lap": "Lap",
+    "lastLap": "Last lap",
+    "estimateLap1": "Estimate",
+    "estimateLap1Hint": "Estimate the lap 1 time (not given by live timing)."
   },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."

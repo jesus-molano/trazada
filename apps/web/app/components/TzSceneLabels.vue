@@ -64,7 +64,7 @@ defineExpose({ update })
 .tz-labels--corner .tz-label {
   padding: 1px 5px;
   border-radius: var(--tz-radius-sm);
-  background: rgb(17 20 26 / 0.7);
+  background: var(--tz-label-bg-soft);
   color: var(--tz-text-muted);
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-2xs);

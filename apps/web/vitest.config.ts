@@ -8,6 +8,8 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
+          // tokens.css se importa en crudo (?raw) desde design/tokens.ts: no se puede vaciar.
+          css: { include: [/tokens\.css/] },
           include: ['app/**/*.test.ts', 'tests/unit/**/*.test.ts'],
         },
       },
@@ -15,6 +17,7 @@ export default defineConfig({
         test: {
           name: 'nuxt',
           environment: 'nuxt',
+          css: { include: [/tokens\.css/] },
           include: ['tests/nuxt/**/*.test.ts'],
         },
       }),

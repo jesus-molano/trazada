@@ -69,4 +69,7 @@ uv run trazada e2e-fixture 2026/10-spa-francorchamps/fp1 --data <raíz sin datos
 - **Datos**: rutas `${dataBaseUrl}/v1/...`; ficheros con hash e inmutables; layouts en `packages/schema/trzb/*.layout.json` compartidos por Python y TS; cambiar un layout exige subir `schemaVersion` (excepción: v1 se revisa en el sitio hasta el primer deploy de datos, ver `docs/DATA_FORMAT.md`). Las sesiones `dev` (TracingInsights, sintéticas) nunca se publican.
 - **Python**: ruff (lint + format), tipado con anotaciones, `src/` layout, tests en `pipeline/tests` (marca `local` para los que necesitan datos completos).
 - **Fixtures**: solo extractos mínimos reales (≤ 1 MB en total, sin datos de MultiViewer ni de Jolpica) o sintéticos. El fixture e2e se regenera con `trazada e2e-fixture`.
+- **Colores y movimiento**: solo en `design/tokens.css`. En TS (three.js, uPlot, GSAP) se leen con `token()` de `design/tokens.ts` o con `design/motion.ts`. Ningún literal de color en componentes (lo vigila un test).
+- **Estimado**: todo campo estimado está en `engine/estimated.ts` y se pinta con `<TzEstimated field="…">`. Un campo nuevo necesita su caso en `tests/nuxt/estimated.test.ts` (si no, el test falla) y su texto en `estimated.fields/hints`.
+- **e2e**: para dar el foco a la página, clic en el título (`replay-title`), nunca en el lienzo (selecciona coches). Tras un seek, esperar dos `requestAnimationFrame` antes de leer posiciones de pantalla.
 - **Docs**: cuando cambie una decisión, actualizar `docs/BRIEF.md` (registro de decisiones) y `docs/PLAN.md`.

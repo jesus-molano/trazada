@@ -100,6 +100,7 @@ Cabecera:
 Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/schema/examples/`.
 
 - Una sesión `no-position` aparece en el catálogo como no disponible.
+- `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
 
 ## Estado de la versión 1

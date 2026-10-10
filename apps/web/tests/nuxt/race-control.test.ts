@@ -44,7 +44,10 @@ function fakeRuntime(opts: { markers?: TimelineMarkers; trackState?: TrackState 
   const trackState = opts.trackState ?? new TrackState({ schema: 'trazada.events', schemaVersion: '1.0.0', raceControl: [], sectorFlags: [], windows: [] }, 10_000)
   const rt = {
     clock,
-    session: { manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 10_000, lightsOutMs: 0 } } }, timing: { tables: {} } },
+    session: {
+      manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 10_000, lightsOutMs: 0 } }, quality: { estimated: [] } },
+      timing: { tables: {} },
+    },
     markers: opts.markers ?? markers(),
     drivers: [],
     model: { states: [] },

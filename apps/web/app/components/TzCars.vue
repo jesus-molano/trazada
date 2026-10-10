@@ -5,6 +5,7 @@
  */
 import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, Color, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from 'three'
+import { token } from '~/design/tokens'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -13,6 +14,7 @@ const props = defineProps<{ yScale: number; flat: boolean }>()
 const rt = getRuntime()!
 const playback = usePlaybackStore()
 const states = rt.model.states
+const offsets = rt.offsets
 
 /** Cuña de 5,6 × 2 × 1 m apuntando a +x (sistema de three: Y arriba). */
 function carGeometry(): BufferGeometry {
@@ -43,7 +45,7 @@ const mesh = new InstancedMesh(geometry, material, states.length)
 mesh.frustumCulled = false
 mesh.renderOrder = 10
 const color = new Color()
-states.forEach((st, i) => mesh.setColorAt(i, color.set(st.driver?.color ?? '#9BA4B0')))
+states.forEach((st, i) => mesh.setColorAt(i, color.set(st.driver?.color ?? token('--tz-team-unknown'))))
 mesh.instanceColor!.needsUpdate = true
 sceneStats.instances = mesh.count
 sceneStats.instanceColors = states.map((_, i) => {
@@ -73,7 +75,9 @@ onBeforeRender(({ camera }) => {
       m.makeScale(0, 0, 0)
     } else {
       const selected = playback.selectedCar === st.car ? 1.35 : 1
-      p.set(st.x, (props.flat ? 0 : st.z) + 0.6 * yInv, -st.y)
+      // Separación visual opcional (Estimado): a lo largo de la normal izquierda del rumbo.
+      const o = offsets[i]!
+      p.set(st.x - Math.sin(st.heading) * o, (props.flat ? 0 : st.z) + 0.6 * yInv, -(st.y + Math.cos(st.heading) * o))
       q.setFromAxisAngle(up, st.heading)
       const k = cam ? Math.max(1, cam.position.distanceTo(target.set(p.x, p.y * props.yScale, p.z)) / MIN_SIZE_DISTANCE) : 1
       sc.set(k * selected, k * selected * yInv, k * selected)

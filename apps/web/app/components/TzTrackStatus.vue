@@ -10,6 +10,8 @@ const { t } = useI18n()
 const rt = getRuntime()!
 const state = shallowRef<TrackStateSnapshot>(rt.trackState.snapshot)
 const placeable = rt.circuit.marshalSectors.length > 0
+/** Sin estado de pista oficial (se deduce de race control): se marca como Estimado. */
+const inferred = rt.session.manifest.quality.estimated.includes('trackStatus')
 
 const sectors = computed(() =>
   Object.entries(state.value.sectors)
@@ -33,6 +35,7 @@ onBeforeUnmount(() => off?.())
 
 <template>
   <div class="tz-ts" role="status" :aria-label="t('trackStatus.label')" data-testid="track-status">
+    <TzEstimated v-if="inferred" field="trackStatus" />
     <span
       v-if="state.neutral"
       class="tz-ts__chip tz-ts__chip--strong"

@@ -12,5 +12,7 @@ describe('formato de tiempo', () => {
     expect(formatLapTime(91_234)).toBe('1:31.234')
     expect(formatLapTime(59_001)).toBe('59.001')
     expect(formatLapTime(-1)).toBe('—')
+    expect(formatLapTime(91_234, 'es')).toBe('1:31,234')
+    expect(formatLapTime(61_005, 'es')).toBe('1:01,005')
   })
 })

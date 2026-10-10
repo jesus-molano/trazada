@@ -11,6 +11,10 @@ interface Persisted {
   elevationScale: ElevationScale
   showBlueFlags: boolean
   gapMode: GapMode
+  /** Separación lateral solo visual de coches solapados (Estimado). Apagada por defecto. */
+  separation: boolean
+  /** Estimar el tiempo de la vuelta 1 en carrera (Estimado). Apagado por defecto. */
+  estimateLap1: boolean
 }
 
 function read(): Partial<Persisted> {
@@ -26,6 +30,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const elevationScale = ref<ElevationScale>(1)
   const showBlueFlags = ref(true)
   const gapMode = ref<GapMode>('leader')
+  const separation = ref(false)
+  const estimateLap1 = ref(false)
   let hydrated = false
 
   function hydrate(): void {
@@ -35,6 +41,8 @@ export const useSettingsStore = defineStore('settings', () => {
     if (saved.elevationScale && ELEVATION_SCALES.includes(saved.elevationScale)) elevationScale.value = saved.elevationScale
     if (typeof saved.showBlueFlags === 'boolean') showBlueFlags.value = saved.showBlueFlags
     if (saved.gapMode === 'leader' || saved.gapMode === 'interval') gapMode.value = saved.gapMode
+    if (typeof saved.separation === 'boolean') separation.value = saved.separation
+    if (typeof saved.estimateLap1 === 'boolean') estimateLap1.value = saved.estimateLap1
   }
 
   function persist(patch: Partial<Persisted>): void {
@@ -60,13 +68,27 @@ export const useSettingsStore = defineStore('settings', () => {
     persist({ gapMode: mode })
   }
 
+  function setSeparation(value: boolean): void {
+    separation.value = value
+    persist({ separation: value })
+  }
+
+  function setEstimateLap1(value: boolean): void {
+    estimateLap1.value = value
+    persist({ estimateLap1: value })
+  }
+
   return {
     elevationScale,
     showBlueFlags,
     gapMode,
+    separation,
+    estimateLap1,
     hydrate,
     setElevationScale,
     setShowBlueFlags,
     setGapMode,
+    setSeparation,
+    setEstimateLap1,
   }
 })

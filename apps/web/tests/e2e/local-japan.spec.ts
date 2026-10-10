@@ -56,3 +56,30 @@ test('timeline: ventanas de OVERTAKE (dos, cortadas por el safety car)', async (
   await open(page)
   await expect(page.locator('[data-marker="assist"][data-kind="overtake"]')).toHaveCount(2)
 })
+
+test('vuelta 1: sin tiempo oficial; con "Estimar", tiempo marcado como Estimado', async ({ page }) => {
+  await page.addInitScript(() => localStorage.clear())
+  await open(page)
+  // 20 s después de que el líder empiece la vuelta 2: los primeros ya han cerrado la vuelta 1.
+  const t = await handle(page, (h) => h.markers.laps.find((l) => l.lap === 2)!.t + 20_000)
+  await page.evaluate((x) => window.__trazada!.seek(x), t)
+  await page.waitForTimeout(400) // el leaderboard publica su orden cada 150 ms
+  await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+  await expect(page.getByTestId('lap-last')).toHaveText('—')
+  await expect(page.locator('[data-field="lap1"]')).toHaveCount(0)
+  await page.getByTestId('toggle-lap1').click()
+  await expect(page.getByTestId('lap-last')).toHaveText(/^\d:\d\d[.,]\d{3}$/)
+  await expect(page.locator('[data-testid="estimated"][data-field="lap1"]')).toBeVisible()
+})
+
+test('separación visual en la salida: los coches juntos se abren y se marca como Estimado', async ({ page }) => {
+  await page.addInitScript(() => localStorage.clear())
+  await open(page)
+  const t = await handle(page, (h) => h.markers.laps[0]!.t + 3000)
+  await page.evaluate((x) => window.__trazada!.seek(x), t)
+  await page.getByTestId('toggle-separation').click()
+  await expect.poll(() => handle(page, (h) => h.separatedCars)).toBeGreaterThan(1)
+  await expect(page.locator('[data-testid="estimated"][data-field="separation"]')).toBeVisible()
+  // Japón (fuente dev) declara posiciones, telemetría y estado de pista como estimados.
+  for (const f of ['positions', 'trackStatus']) await expect(page.locator(`[data-field="${f}"]`)).toBeVisible()
+})

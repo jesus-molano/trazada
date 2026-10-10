@@ -4,14 +4,18 @@
  * La exageración de altura se aplica con la escala Y del grupo padre.
  */
 import { BufferAttribute, BufferGeometry, Color } from 'three'
+import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { buildRibbon, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
 
 const props = defineProps<{ model: CircuitModel; flat: boolean }>()
 
 const PIT_WIDTH_M = 9
-const LOW = new Color('#1c222b')
-const HIGH = new Color('#3d495c')
+const LOW = new Color(token('--tz-track-low'))
+const HIGH = new Color(token('--tz-track-high'))
+const EDGE = token('--tz-track-edge')
+const FINISH = token('--tz-track-finish')
+const PIT = token('--tz-pit')
 
 function ribbonGeometry(width: number, path = props.model.centerline) {
   const r = buildRibbon(path, width, props.flat)
@@ -70,18 +74,18 @@ defineExpose({ trackWidth: TRACK_WIDTH_M })
       <TresMeshBasicMaterial vertex-colors :side="2" :polygon-offset="true" :polygon-offset-factor="1" :polygon-offset-units="1" />
     </TresMesh>
     <TresLineLoop v-for="(edge, i) in track.edges" :key="`e${i}`" :geometry="edge" :render-order="2">
-      <TresLineBasicMaterial color="#6b778a" />
+      <TresLineBasicMaterial :color="EDGE" />
     </TresLineLoop>
     <TresMesh :geometry="finish" :render-order="3">
-      <TresMeshBasicMaterial color="#e8ebf0" :side="2" :polygon-offset="true" :polygon-offset-factor="-2" :polygon-offset-units="-2" />
+      <TresMeshBasicMaterial :color="FINISH" :side="2" :polygon-offset="true" :polygon-offset-factor="-2" :polygon-offset-units="-2" />
     </TresMesh>
     <template v-if="pit">
       <!-- El pit lane se dibuja primero y sin profundidad: donde se solapa con la pista, manda la pista. -->
       <TresMesh :geometry="pit.ribbon" :render-order="0">
-        <TresMeshBasicMaterial color="#a78bfa" :transparent="true" :opacity="0.35" :side="2" :depth-test="false" :depth-write="false" />
+        <TresMeshBasicMaterial :color="PIT" :transparent="true" :opacity="0.35" :side="2" :depth-test="false" :depth-write="false" />
       </TresMesh>
       <TresLine v-for="(edge, i) in pit.edges" :key="`p${i}`" :geometry="edge">
-        <TresLineBasicMaterial color="#a78bfa" :transparent="true" :opacity="0.6" />
+        <TresLineBasicMaterial :color="PIT" :transparent="true" :opacity="0.6" />
       </TresLine>
     </template>
   </TresGroup>

@@ -6,7 +6,7 @@ const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 async function open(page: Page) {
   await gotoApp(page, FP1)
   await expect(page.getByTestId('leaderboard')).toBeVisible({ timeout: 15_000 })
-  await page.locator('body').click({ position: { x: 700, y: 400 } })
+  await page.getByTestId('replay-title').click()
 }
 
 test('una fila por piloto con posiciones 1…N; clic selecciona; ↑/↓ siguen el orden', async ({ page }) => {
@@ -22,7 +22,7 @@ test('una fila por piloto con posiciones 1…N; clic selecciona; ↑/↓ siguen 
   await third.getByRole('button').click()
   await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
 
-  await page.locator('body').click({ position: { x: 700, y: 400 } })
+  await page.getByTestId('replay-title').click()
   await page.keyboard.press('ArrowDown')
   const fourth = await rows.nth(3).getAttribute('data-car')
   await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(fourth)

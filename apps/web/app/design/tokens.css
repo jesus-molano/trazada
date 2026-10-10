@@ -13,11 +13,14 @@
   --tz-overlay: rgb(10 12 15 / 0.72);
   --tz-border: #262c36;
   --tz-border-strong: #384150;
+  /* Fondo de las etiquetas sobre la escena (siglas y curvas) */
+  --tz-label-bg: rgb(17 20 26 / 0.82);
+  --tz-label-bg-soft: rgb(17 20 26 / 0.7);
 
   /* Texto */
   --tz-text: #e8ebf0;
   --tz-text-muted: #9ba4b0;
-  --tz-text-faint: #697381;
+  --tz-text-faint: #848e9b; /* ≥ 4,5:1 sobre todas las superficies (WCAG AA) */
   --tz-text-inverse: #0a0c0f;
 
   /* Acento de marca (neutro, sin asociación con marcas de terceros) */
@@ -39,6 +42,17 @@
   --tz-estimated: #c084fc;
   --tz-danger: #ff6b6b;
   --tz-success: #34d399;
+
+  /* Escena 3D y gráficas (three.js y uPlot los leen con token() de tokens.ts) */
+  --tz-scene-bg: #0a0c0f;
+  --tz-track-low: #1c222b;
+  --tz-track-high: #3d495c;
+  --tz-track-edge: #6b778a;
+  --tz-track-finish: #e8ebf0;
+  --tz-team-unknown: #9ba4b0;
+  --tz-chart-speed: #4cc9f0;
+  --tz-chart-throttle: #34d399;
+  --tz-chart-brake: #ff6b6b;
 
   /* Compuestos de neumático */
   --tz-tyre-soft: #ff3b30;

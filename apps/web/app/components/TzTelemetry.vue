@@ -4,6 +4,7 @@
  * existe y mini gráficas de los últimos 20 s. Los valores se escriben por frame en el DOM.
  */
 import type uPlot from 'uplot'
+import { token } from '~/design/tokens'
 import { drsState, Telemetry, type TelemetrySample } from '~/engine/telemetry/telemetry'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -16,6 +17,8 @@ const rt = getRuntime()!
 const telemetry = new Telemetry(rt.session.car)
 const drsChannel = rt.session.manifest.channels.drs === 'present'
 const season = rt.session.manifest.session.season
+/** La fuente no trae telemetría tal cual: el panel lo dice (Estimado). */
+const telemetryEstimated = rt.session.manifest.quality.estimated.includes('telemetry')
 
 const driver = computed(() => rt.drivers.find((d) => d.number === playback.selectedCar) ?? null)
 const speedEl = ref<HTMLElement | null>(null)
@@ -29,8 +32,10 @@ const speedChart = ref<{ setData: (d: uPlot.AlignedData) => void } | null>(null)
 const pedalChart = ref<{ setData: (d: uPlot.AlignedData) => void } | null>(null)
 const hasSample = ref(true)
 
-const num = (v: number, digits = 0) =>
-  new Intl.NumberFormat(locale.value, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(v)
+// Formatos de Intl creados una vez por idioma (no en cada frame).
+const intFmt = computed(() => new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }))
+const pctFmt = computed(() => new Intl.NumberFormat(locale.value, { style: 'percent', maximumFractionDigits: 0 }))
+const num = (v: number) => intFmt.value.format(v)
 
 const sample: TelemetrySample = { t: 0, speedKmh: 0, rpm: 0, gear: 0, throttle: null, brake: false, drsRaw: null }
 let lastChart = -Infinity
@@ -44,7 +49,7 @@ function paint(timeMs: number) {
   if (speedEl.value) speedEl.value.textContent = num(s.speedKmh)
   if (gearEl.value) gearEl.value.textContent = s.gear === 0 ? 'N' : String(s.gear)
   if (rpmEl.value) rpmEl.value.textContent = num(s.rpm)
-  if (throttleEl.value) throttleEl.value.textContent = s.throttle === null ? '—' : `${s.throttle} %`
+  if (throttleEl.value) throttleEl.value.textContent = s.throttle === null ? '—' : pctFmt.value.format(s.throttle / 100)
   if (throttleBar.value) throttleBar.value.style.transform = `scaleX(${(s.throttle ?? 0) / 100})`
   if (brakeEl.value) brakeEl.value.dataset.on = String(s.brake)
   if (drsEl.value && drsChannel) {
@@ -119,6 +124,8 @@ watch(
       </button>
     </header>
 
+    <p v-if="telemetryEstimated" class="tz-tel__estimated"><TzEstimated field="telemetry" /></p>
+    <TzLapInfo :car="driver.number" />
     <p v-if="!hasSample" class="tz-tel__nodata" data-testid="telemetry-nodata">{{ t('telemetry.noData') }}</p>
 
     <dl class="tz-tel__grid" :class="{ 'is-stale': !hasSample }">
@@ -158,7 +165,7 @@ watch(
     <TzMiniChart
       ref="speedChart"
       :label="t('telemetry.chartSpeed')"
-      :series="[{ label: t('telemetry.speed'), color: '#4cc9f0', scale: 'speed' }]"
+      :series="[{ label: t('telemetry.speed'), color: token('--tz-chart-speed'), scale: 'speed' }]"
       :ranges="{ speed: [0, 360] }"
       :window-s="CHART_WINDOW_S"
     />
@@ -166,8 +173,8 @@ watch(
       ref="pedalChart"
       :label="t('telemetry.chartPedals')"
       :series="[
-        { label: t('telemetry.throttle'), color: '#34d399', scale: 'pct' },
-        { label: t('telemetry.brake'), color: '#ff6b6b', scale: 'pct' },
+        { label: t('telemetry.throttle'), color: token('--tz-chart-throttle'), scale: 'pct' },
+        { label: t('telemetry.brake'), color: token('--tz-chart-brake'), scale: 'pct' },
       ]"
       :ranges="{ pct: [0, 105] }"
       :window-s="CHART_WINDOW_S"
@@ -187,6 +194,10 @@ watch(
   background: var(--tz-overlay);
   backdrop-filter: blur(10px);
   box-shadow: var(--tz-shadow-panel);
+}
+
+.tz-tel__estimated {
+  margin: 0 0 var(--tz-space-2);
 }
 
 .tz-tel__head {

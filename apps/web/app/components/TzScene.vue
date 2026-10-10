@@ -6,12 +6,13 @@
 import type { TresContext } from '@tresjs/core'
 import type { PerspectiveCamera } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
+import { token } from '~/design/tokens'
 import { cornerAnchor } from '~/engine/track/circuit'
 import { frameCircuit } from '~/engine/track/framing'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
-import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
+import { useSettingsStore } from '~/stores/settings'
 import type { SceneLabel } from './TzSceneLabels.vue'
 
 const { t } = useI18n()
@@ -40,6 +41,7 @@ const groupScale = computed<[number, number, number]>(() => [1, yScale.value, 1]
 const zMid = (model.zRange[0] + model.zRange[1]) / 2
 
 // Cámara de mapa: mirando al centro desde el sur, inclinada 55°, con todo el trazado en cuadro.
+const SCENE_BG = token('--tz-scene-bg')
 const FOV = 35
 const TILT_DEG = 55
 const frame = (aspect: number, bottomInset: number) =>
@@ -49,13 +51,21 @@ const distance = initial.distance
 const cameraPosition = initial.position
 const camera = shallowRef<PerspectiveCamera | null>(null)
 
-/** Fracción inferior del lienzo que tapan los controles del replay. */
+/**
+ * Fracción inferior del lienzo que tapan los controles y, en tablet vertical, los paneles (la página
+ * lo indica con `--replay-panels-bottom: 1`; en escritorio van a los lados y no cuentan).
+ */
 function bottomInset(canvas: HTMLCanvasElement): number {
-  const dock = document.querySelector('[data-testid="replay-dock"]')
-  if (!dock) return 0
   const c = canvas.getBoundingClientRect()
-  const d = dock.getBoundingClientRect()
-  return Math.min(0.45, Math.max(0, (c.bottom - d.top) / c.height))
+  const stage = document.querySelector<HTMLElement>('.tz-replay__stage')
+  const panelsBottom = !!stage && getComputedStyle(stage).getPropertyValue('--replay-panels-bottom').trim() === '1'
+  const selector = panelsBottom ? '[data-testid="replay-dock"], .tz-replay__stage > *' : '[data-testid="replay-dock"]'
+  let top = c.bottom
+  for (const el of document.querySelectorAll(selector)) {
+    const r = el.getBoundingClientRect()
+    if (r.height > 0) top = Math.min(top, r.top)
+  }
+  return Math.min(0.6, Math.max(0, (c.bottom - top) / c.height))
 }
 
 const TRACK_HALF_WIDTH = 7
@@ -158,6 +168,12 @@ function remount() {
   canvasKey.value++
 }
 
+watch(
+  () => settings.separation,
+  (on) => getRuntime()?.setSeparation(on),
+  { immediate: true },
+)
+
 watch(yScale, (k) => {
   sceneStats.elevationScale = k
   ctx?.renderer.invalidate()
@@ -181,7 +197,7 @@ onBeforeUnmount(() => {
     <TresCanvas
       v-if="supported"
       :key="canvasKey"
-      clear-color="#0a0c0f"
+      :clear-color="SCENE_BG"
       render-mode="on-demand"
       :dpr="[1, 2]"
       :antialias="true"
@@ -199,29 +215,11 @@ onBeforeUnmount(() => {
     </TresCanvas>
 
     <TzSceneLabels v-if="supported" ref="labels" :labels="cornerLabels" kind="corner" />
-    <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" />
+    <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" :offsets="rt.offsets" />
 
-    <div v-if="supported" class="tz-scene__tools" data-testid="scene-tools">
-      <div class="tz-scene__elev" role="group" :aria-label="t('scene.elevation')">
-        <span class="tz-scene__elev-label">{{ t('scene.elevation') }}</span>
-        <button
-          v-for="k in ELEVATION_SCALES"
-          :key="k"
-          type="button"
-          class="tz-scene__elev-btn tz-tabular"
-          :aria-pressed="yScale === k"
-          :disabled="flat"
-          :data-testid="`elevation-${k}`"
-          @click="settings.setElevationScale(k)"
-        >
-          ×{{ k }}
-        </button>
-      </div>
-      <TzEstimated v-if="!flat && yScale !== 1" :hint="t('scene.exaggerationHint')">
-        {{ t('scene.exaggeration', { k: yScale }) }}
-      </TzEstimated>
-      <span v-if="flat" class="tz-scene__flat" :title="t('scene.flatHint')">{{ t('scene.flat') }}</span>
-    </div>
+    <Teleport defer to="#tz-scene-tools">
+      <TzSceneTools v-if="supported" :flat="flat" :estimated="data.manifest.quality.estimated" />
+    </Teleport>
 
     <div v-if="supported === false" class="tz-scene__notice" role="alert" data-testid="webgl-unsupported">
       <p class="tz-scene__title">{{ t('scene.noWebgl') }}</p>
@@ -243,59 +241,6 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   z-index: var(--tz-z-canvas);
-}
-
-.tz-scene__tools {
-  position: absolute;
-  top: 72px;
-  right: var(--tz-space-6);
-  display: flex;
-  align-items: center;
-  gap: var(--tz-space-2);
-}
-
-.tz-scene__elev {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--tz-space-1);
-  padding: 2px;
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-md);
-  background: var(--tz-overlay);
-}
-
-.tz-scene__elev-label {
-  padding: 0 var(--tz-space-2);
-  font-size: var(--tz-text-xs);
-  color: var(--tz-text-muted);
-}
-
-.tz-scene__elev-btn {
-  min-width: 30px;
-  height: 26px;
-  border: 1px solid transparent;
-  border-radius: var(--tz-radius-sm);
-  background: transparent;
-  font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
-  cursor: pointer;
-  transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
-}
-
-.tz-scene__elev-btn[aria-pressed='true'] {
-  border-color: var(--tz-accent);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
-}
-
-.tz-scene__elev-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.tz-scene__flat {
-  font-size: var(--tz-text-xs);
-  color: var(--tz-text-muted);
 }
 
 /* Arriba, bajo la cabecera del replay: el dock de controles ocupa la parte inferior. */

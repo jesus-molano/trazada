@@ -91,6 +91,9 @@ class SessionData:
     source_versions: dict[str, str | int] = field(default_factory=dict)
     dev: bool = False
     notes: list[str] = field(default_factory=list)
+    # Datos que la fuente no da y se derivan (el front los pinta con la etiqueta "Estimado"):
+    # `positions`, `telemetry`, `trackStatus`.
+    estimated: list[str] = field(default_factory=list)
 
     @property
     def is_race_like(self) -> bool:

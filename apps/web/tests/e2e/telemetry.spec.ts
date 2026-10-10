@@ -7,10 +7,12 @@ async function open(page: Page) {
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
   // Al inicio exacto del extracto aún no hay muestras: se avanza un minuto.
-  await page.locator('body').click({ position: { x: 700, y: 300 } })
+  await page.getByTestId('replay-title').click() // foco en la página sin tocar el lienzo (un clic ahí selecciona)
   await page.keyboard.press('Shift+ArrowRight')
   await page.keyboard.press('Shift+ArrowRight')
   await expect.poll(() => page.evaluate(() => window.__trazada!.cars().filter((c) => c.visible).length)).toBeGreaterThan(5)
+  // El modelo se actualiza en el bucle del reloj y la escena (y las siglas) en el render siguiente.
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
 }
 
 /** Centro en pantalla de un coche aislado (ninguna otra sigla a menos de 40 px), justo debajo de su sigla. */
@@ -56,13 +58,17 @@ test('seguir con la cámara y volver con Esc; con el foco de un clic, el espacio
 
   await page.getByTestId('follow-toggle').click()
   await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
-  const near = await page.evaluate(() => window.__trazada!.scene.camera)
-  expect(Math.hypot(near[0]! - overview[0]!, near[1]! - overview[1]!, near[2]! - overview[2]!)).toBeGreaterThan(500)
+  // La cámara se lee del último render: se espera al siguiente tras el cambio de modo.
+  const fromOverview = () =>
+    page.evaluate((o) => {
+      const c = window.__trazada!.scene.camera
+      return Math.hypot(c[0]! - o[0]!, c[1]! - o[1]!, c[2]! - o[2]!)
+    }, overview)
+  await expect.poll(fromOverview).toBeGreaterThan(500)
 
   await page.keyboard.press('Escape')
   await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('overview')
-  const back = await page.evaluate(() => window.__trazada!.scene.camera)
-  expect(Math.hypot(back[0]! - overview[0]!, back[1]! - overview[1]!, back[2]! - overview[2]!)).toBeLessThan(1)
+  await expect.poll(fromOverview).toBeLessThan(1)
   await page.keyboard.press('Escape')
   await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
 })

@@ -186,7 +186,9 @@ onBeforeUnmount(() => off?.())
           data-marker="pit-selected"
         />
       </div>
-      <div ref="head" class="tz-timeline__head" aria-hidden="true"><span /></div>
+      <div class="tz-timeline__headlane" aria-hidden="true">
+        <div ref="head" class="tz-timeline__head"><span /></div>
+      </div>
       <div v-if="hover" class="tz-timeline__hover tz-tabular" :style="{ transform: `translateX(${hover.x}px)` }">
         {{ hover.label }}
       </div>
@@ -329,9 +331,17 @@ onBeforeUnmount(() => off?.())
   outline: 1px solid var(--tz-bg);
 }
 
+/* El cabezal se mueve con translateX(% del ancho de la pista): su carril lo recorta para no desbordar. */
+.tz-timeline__headlane {
+  position: absolute;
+  inset: 0 -2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .tz-timeline__head {
   position: absolute;
-  inset: 0;
+  inset: 0 2px;
   pointer-events: none;
   transform: translateX(0);
 }

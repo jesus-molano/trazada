@@ -46,6 +46,8 @@ export interface TrazadaHandle {
   readonly trackState: TrackStateSnapshot
   /** Instantes (ms) de los mensajes de race control, en orden. */
   readonly raceControlTimes: number[]
+  /** Coches desplazados por la separación visual (opción Estimado) en el último frame. */
+  readonly separatedCars: number
   seek(ms: number): void
   /** Estado de los coches en el último frame (copia). */
   cars(): { car: string; visible: boolean; inPit: boolean; s: number; x: number; y: number }[]
@@ -87,6 +89,9 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
       return rt.trackState.snapshot
     },
     raceControlTimes: rt.raceControl.map((e) => e.t),
+    get separatedCars() {
+      return rt.separatedCars
+    },
     seek: (ms: number) => rt.clock.seek(ms),
     cars: () => rt.model.states.map(({ car, visible, inPit, s, x, y }) => ({ car, visible, inPit, s, x, y })),
   }

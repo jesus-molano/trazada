@@ -62,10 +62,10 @@
     "contextLostHint": "Intentando recuperarlo…",
     "recover": "Reiniciar el mapa",
     "elevation": "Altura",
-    "exaggeration": "exageración visual ×{k}",
-    "exaggerationHint": "La altura de la pista está multiplicada para que se aprecie el desnivel: no es la real.",
     "flat": "Sin altitud fiable: pista plana",
-    "flatHint": "Los datos de esta sesión no traen una altitud fiable."
+    "flatHint": "Los datos de esta sesión no traen una altitud fiable.",
+    "separation": "Separar coches",
+    "separationHint": "Separa a lo ancho de la pista los coches que van juntos (solo visual)."
   },
   "controls": {
     "region": "Controles de reproducción",
@@ -98,7 +98,24 @@
     }
   },
   "estimated": {
-    "tag": "Estimado:"
+    "tag": "Estimado:",
+    "hintUnknown": "Este dato no viene tal cual de la fuente: se ha derivado.",
+    "fields": {
+      "elevation": "exageración visual ×{k}",
+      "separation": "separación visual",
+      "lap1": "tiempo de la vuelta 1",
+      "positions": "posiciones reconstruidas",
+      "telemetry": "telemetría reconstruida",
+      "trackStatus": "estado de pista deducido"
+    },
+    "hints": {
+      "elevation": "La altura de la pista está multiplicada para que se aprecie el desnivel: no es la real.",
+      "separation": "Los coches que van juntos se separan a lo ancho de la pista para poder distinguirlos. No hay dato lateral: su posición real es la línea central.",
+      "lap1": "El live timing no da el tiempo de la vuelta 1 en carrera. Se calcula como el paso por meta menos la hora de salida, así que incluye el tramo desde la parrilla.",
+      "positions": "La fuente no da posiciones muestreadas para esta sesión: se han reconstruido a partir de otros datos.",
+      "telemetry": "La telemetría de esta sesión se ha reconstruido a partir de otros datos, no viene tal cual de la fuente.",
+      "trackStatus": "Sin el estado de pista oficial: banderas y neutralizaciones se deducen de los mensajes de dirección de carrera."
+    }
   },
   "leaderboard": {
     "title": "Clasificación",
@@ -146,7 +163,11 @@
     "drsUnavailable": "No disponible en {season}",
     "drsUnavailableHint": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa (modo recta) y el modo adelantamiento, que dirección de carrera habilita para toda la pista.",
     "chartSpeed": "Velocidad en los últimos 20 s",
-    "chartPedals": "Pedales en los últimos 20 s"
+    "chartPedals": "Pedales en los últimos 20 s",
+    "lap": "Vuelta",
+    "lastLap": "Última vuelta",
+    "estimateLap1": "Estimar",
+    "estimateLap1Hint": "Estimar el tiempo de la vuelta 1 (no lo da el live timing)."
   },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."

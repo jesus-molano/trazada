@@ -1,15 +1,24 @@
 /** Solo para tests (Node): carga el fixture e2e desde disco con el mismo código que el Web Worker. */
 import { readFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { type DecodedTrzb, SCHEMA_VERSION } from '@trazada/schema'
 import { loadSession } from '../data/load-session'
 import type { LoadedSession } from '../data/types'
 
-export const FIXTURE_ROOT = fileURLToPath(new URL('../../tests/fixtures/data/', import.meta.url))
+/**
+ * Ruta relativa a apps/web, con `/` final. Sin `new URL(…, import.meta.url)`: Vite reescribe ese patrón
+ * como un asset en el entorno Nuxt de Vitest.
+ */
+function webPath(rel: string): string {
+  return `${resolve(dirname(fileURLToPath(import.meta.url)), '../..', rel)}/`
+}
+
+export const FIXTURE_ROOT = webPath('tests/fixtures/data')
 export const FIXTURE_FP1 = '2026/10-spa-francorchamps/fp1'
 
 /** Raíz de datos completos en local (data/ del repo, ignorado por git). */
-export const LOCAL_DATA_ROOT = fileURLToPath(new URL('../../../../data/', import.meta.url))
+export const LOCAL_DATA_ROOT = webPath('../../data')
 
 export function fixtureFetch(opts: { fail?: RegExp; chunk?: number; root?: string } = {}): typeof fetch {
   return (async (input: string | URL | Request) => {

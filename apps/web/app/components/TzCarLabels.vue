@@ -7,7 +7,7 @@ import { type Camera, Vector3 } from 'three'
 import type { CarState } from '~/engine/replay/ReplayModel'
 import { usePlaybackStore } from '~/stores/playback'
 
-const props = defineProps<{ states: CarState[] }>()
+const props = defineProps<{ states: CarState[]; offsets: Float32Array }>()
 const playback = usePlaybackStore()
 const root = ref<HTMLElement | null>(null)
 const v = new Vector3()
@@ -23,7 +23,8 @@ function update(camera: Camera, width: number, height: number, yScale: number, f
       node.style.visibility = 'hidden'
       continue
     }
-    v.set(st.x, (flat ? 0 : st.z) * yScale, -st.y).project(camera)
+    const o = props.offsets[i]!
+    v.set(st.x - Math.sin(st.heading) * o, (flat ? 0 : st.z) * yScale, -(st.y + Math.cos(st.heading) * o)).project(camera)
     const onScreen = v.z < 1 && v.z > -1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05
     node.style.visibility = onScreen ? 'visible' : 'hidden'
     if (onScreen) {
@@ -43,7 +44,7 @@ defineExpose({ update })
       type="button"
       class="tz-car"
       :class="{ 'is-selected': playback.selectedCar === st.car }"
-      :style="{ '--team': st.driver?.color ?? '#9BA4B0' }"
+      :style="{ '--team': st.driver?.color ?? 'var(--tz-team-unknown)' }"
       :data-car="st.car"
       :aria-label="st.driver ? `${st.driver.first} ${st.driver.last}` : st.car"
       :aria-pressed="playback.selectedCar === st.car"
@@ -72,7 +73,7 @@ defineExpose({ update })
   border: 0;
   border-left: 3px solid var(--team);
   border-radius: var(--tz-radius-sm);
-  background: rgb(17 20 26 / 0.82);
+  background: var(--tz-label-bg);
   color: var(--tz-text);
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-2xs);

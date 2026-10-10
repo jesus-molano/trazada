@@ -9,6 +9,7 @@ import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMate
 import type { NeutralKind, SectorFlagKind } from '~/engine/trackstate/TrackState'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { buildRibbon, rangeIndices, TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { token } from '~/design/tokens'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
 
@@ -16,15 +17,15 @@ const props = defineProps<{ model: CircuitModel; flat: boolean }>()
 const rt = getRuntime()!
 
 const NEUTRAL_COLOR: Record<NeutralKind, string> = {
-  red: cssToken('--tz-flag-red', '#ff4d4f'),
-  sc: cssToken('--tz-sc', '#f59e0b'),
-  vsc: cssToken('--tz-vsc', '#fbbf24'),
-  'vsc-ending': cssToken('--tz-vsc', '#fbbf24'),
+  red: token('--tz-flag-red'),
+  sc: token('--tz-sc'),
+  vsc: token('--tz-vsc'),
+  'vsc-ending': token('--tz-vsc'),
 }
 const FLAG_COLOR: Record<SectorFlagKind, string> = {
-  YELLOW: cssToken('--tz-flag-yellow', '#f5c518'),
-  'DOUBLE YELLOW': cssToken('--tz-flag-double-yellow', '#ff9f1a'),
-  RED: cssToken('--tz-flag-red', '#ff4d4f'),
+  YELLOW: token('--tz-flag-yellow'),
+  'DOUBLE YELLOW': token('--tz-flag-double-yellow'),
+  RED: token('--tz-flag-red'),
 }
 
 // Misma cinta que la pista (comparten forma); cada capa usa su propio índice sobre las posiciones.
