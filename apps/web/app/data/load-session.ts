@@ -14,6 +14,7 @@ import {
   ManifestError,
   type SessionEvents,
 } from '@trazada/schema'
+import { computeTangents } from '../engine/replay/motion'
 import { LoadError, type LoadedSession, type LoadStage, type LoadTimings } from './types'
 
 export interface LoadOptions {
@@ -175,21 +176,26 @@ export async function loadSession(
   opts.onProgress?.('decode', FILE_KEYS.length, FILE_KEYS.length)
   const t5 = now()
 
+  // 6. Tangentes de la interpolación (velocidad medida, con el limitador de monotonía)
+  const tangents = computeTangents(decoded.motion, decoded.car, 'speed')
+  const t6 = now()
+
   const timings: LoadTimings = {
     manifestMs: t1 - t0,
     downloadMs: t2 - t1,
     verifyMs: t3 - t2,
     decompressMs: t4 - t3,
     decodeMs: t5 - t4,
-    totalMs: t5 - t0,
+    tangentsMs: t6 - t5,
+    totalMs: t6 - t0,
     bytes: total,
   }
-  return { id, manifest: m, ...decoded, events, timings }
+  return { id, manifest: m, ...decoded, events, tangents, timings }
 }
 
 /** Buffers únicos de todos los typed arrays de la sesión, para transferirlos sin copia. */
 export function transferablesOf(session: LoadedSession): ArrayBuffer[] {
-  const out = new Set<ArrayBuffer>()
+  const out = new Set<ArrayBuffer>([session.tangents.buffer as ArrayBuffer])
   for (const dec of [session.motion, session.car, session.timing, session.circuit]) {
     for (const table of Object.values(dec.tables)) {
       for (const col of Object.values(table.columns)) out.add(col.buffer as ArrayBuffer)

@@ -17,6 +17,7 @@ export interface LoadTimings {
   verifyMs: number
   decompressMs: number
   decodeMs: number
+  tangentsMs: number
   totalMs: number
   bytes: number
 }
@@ -30,6 +31,8 @@ export interface LoadedSession {
   timing: DecodedTrzb
   circuit: DecodedTrzb
   events: SessionEvents
+  /** Tangentes ds/dt (m/ms) de la Hermite, alineadas con las filas de motion.pos (Web Worker). */
+  tangents: Float64Array
   timings: LoadTimings
 }
 

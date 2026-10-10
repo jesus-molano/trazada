@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs'
 import { expect, type Page, test } from '@playwright/test'
 import { gotoApp } from './helpers'
 
@@ -36,11 +35,7 @@ test('circuito: pit lane a ±10 % de las muestras y exageración marcada como Es
 test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }) => {
   // Las referencias se generan en el contenedor de CI (workflow "Snapshots"); otro Chromium da píxeles distintos.
   test.skip(!process.env.CI, 'las capturas de referencia solo se comparan en CI')
-  const baseline = test.info().snapshotPath('spa.png', { kind: 'screenshot' })
-  test.skip(
-    !existsSync(baseline) && ['none', 'missing'].includes(test.info().config.updateSnapshots),
-    'sin referencia todavía: la genera el workflow Snapshots',
-  )
+  test.skip(process.env.SKIP_SCREENSHOTS === 'true', 'el workflow Snapshots está regenerando las referencias')
   await page.addInitScript(() => localStorage.clear())
   await openScene(page)
   await page.mouse.move(0, 0)

@@ -12,5 +12,6 @@ test('el idioma se puede cambiar', async ({ page }) => {
   const heading = page.getByRole('heading', { level: 1 })
   const before = await heading.textContent()
   await page.getByTestId('lang-toggle').click()
-  await expect(heading).not.toHaveText(before ?? '')
+  // Los mensajes del otro idioma se cargan bajo demanda: con la CPU compartida puede tardar.
+  await expect(heading).not.toHaveText(before ?? '', { timeout: 15_000 })
 })

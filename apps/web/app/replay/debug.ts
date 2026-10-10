@@ -13,6 +13,9 @@ export const sceneStats = {
   pitSamplesLengthM: 0,
   corners: 0,
   elevationScale: 1,
+  /** Color (#RRGGBB) y coche de cada instancia del InstancedMesh, tal y como se subieron a la GPU. */
+  instanceColors: [] as string[],
+  instanceCars: [] as string[],
 }
 
 export interface TrazadaHandle {
@@ -27,6 +30,8 @@ export interface TrazadaHandle {
   readonly endMs: number
   readonly markers: ReplayRuntime['markers']
   readonly drivers: ReplayRuntime['drivers']
+  /** Estado de los coches en el último frame (copia). */
+  cars(): { car: string; visible: boolean; inPit: boolean; s: number; x: number; y: number }[]
 }
 
 declare global {
@@ -60,6 +65,7 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
     endMs: rt.clock.endMs,
     markers: rt.markers,
     drivers: rt.drivers,
+    cars: () => rt.model.states.map(({ car, visible, inPit, s, x, y }) => ({ car, visible, inPit, s, x, y })),
   }
   return () => {
     delete window.__trazada

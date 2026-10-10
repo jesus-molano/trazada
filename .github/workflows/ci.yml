@@ -33,6 +33,10 @@ jobs:
       - name: Install Chromium for Playwright
         run: pnpm --filter @trazada/web exec playwright install --with-deps chromium
       - run: pnpm e2e
+        env:
+          # Con [snapshots] en el mensaje, el workflow Snapshots regenera las referencias en paralelo:
+          # comparar aquí contra las anteriores no tendría sentido.
+          SKIP_SCREENSHOTS: ${{ contains(github.event.head_commit.message, '[snapshots]') }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

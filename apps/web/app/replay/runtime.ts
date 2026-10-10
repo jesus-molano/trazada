@@ -6,7 +6,10 @@
 import type { DriverInfo } from '@trazada/schema'
 import type { LoadedSession } from '~/data/types'
 import { type ClockEvent, type Rate, SessionClock } from '~/engine/clock/SessionClock'
+import { carTracks } from '~/engine/replay/motion'
+import { ReplayModel } from '~/engine/replay/ReplayModel'
 import { buildTimelineMarkers, type TimelineMarkers } from '~/engine/timeline/markers'
+import { type CircuitModel, circuitModel } from '~/engine/track/circuit'
 
 export const COARSE_INTERVAL_MS = 100
 /** En carrera, se empieza un poco antes de la salida (la ventana arranca 10 min antes). */
@@ -23,6 +26,9 @@ export interface ReplayRuntime {
   readonly clock: SessionClock
   readonly markers: TimelineMarkers
   readonly drivers: DriverInfo[]
+  readonly circuit: CircuitModel
+  /** Estado de todos los coches en el instante del reloj (se actualiza antes de los oyentes de frame). */
+  readonly model: ReplayModel
   /** Se llama en cada frame con reproducción, y una vez tras cada seek/cambio en pausa. */
   onFrame(cb: (timeMs: number) => void): () => void
   onCoarse(cb: (state: CoarseState) => void): () => void
@@ -40,6 +46,8 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     playback.lightsOutMs != null ? Math.max(playback.startMs, playback.lightsOutMs - PRE_START_MS) : playback.startMs
   const clock = new SessionClock(playback.startMs, playback.endMs, initial)
   const markers = buildTimelineMarkers(type, session.timing, session.events, playback.endMs)
+  const circuit = circuitModel(session.circuit)
+  const model = new ReplayModel(carTracks(session.motion, session.tangents), circuit, session.manifest.drivers)
 
   const frameListeners = new Set<(t: number) => void>()
   const coarseListeners = new Set<(s: CoarseState) => void>()
@@ -72,6 +80,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
       dirty = false
       frames++
       const t = clock.timeMs
+      model.update(t)
       for (const l of frameListeners) l(t)
       invalidate?.()
       if (clock.playing && now - lastCoarse >= COARSE_INTERVAL_MS) {
@@ -88,6 +97,8 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     clock,
     markers,
     drivers: session.manifest.drivers,
+    circuit,
+    model,
     onFrame(cb) {
       frameListeners.add(cb)
       dirty = true

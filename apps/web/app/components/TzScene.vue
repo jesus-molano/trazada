@@ -6,7 +6,7 @@
 import type { TresContext } from '@tresjs/core'
 import type { PerspectiveCamera } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
-import { circuitModel, cornerAnchor } from '~/engine/track/circuit'
+import { cornerAnchor } from '~/engine/track/circuit'
 import { frameCircuit } from '~/engine/track/framing'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
@@ -26,7 +26,8 @@ let ctx: TresContext | null = null
 let controls: MapControls | null = null
 
 const data = session.data!
-const model = circuitModel(data.circuit)
+const rt = getRuntime()!
+const model = rt.circuit
 const flat = data.manifest.channels.elevation === 'flat'
 const yScale = computed(() => (flat ? 1 : settings.elevationScale))
 /**
@@ -69,6 +70,9 @@ const cornerLabels: SceneLabel[] = model.corners.map((c) => {
   return { id: c.label, text: c.label, x, y: flat ? 0 : a.z, z: -y }
 })
 const labels = ref<{ update: (c: PerspectiveCamera, w: number, h: number, k: number) => void } | null>(null)
+const carLabels = ref<{
+  update: (c: PerspectiveCamera, w: number, h: number, k: number, flat: boolean) => void
+} | null>(null)
 
 function hasWebGL2(): boolean {
   try {
@@ -131,7 +135,10 @@ function onReady(context: TresContext) {
 function onRender() {
   sceneStats.renders++
   const cam = camera.value
-  if (cam && canvasEl && labels.value) labels.value.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
+  if (cam && canvasEl) {
+    labels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
+    carLabels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value, flat)
+  }
   if (!sceneStats.ready) sceneStats.ready = true
 }
 
@@ -181,10 +188,12 @@ onBeforeUnmount(() => {
       <TresPerspectiveCamera ref="camera" :position="cameraPosition" :fov="FOV" :near="5" :far="distance * 6" />
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
+        <TzCars :y-scale="yScale" :flat="flat" />
       </TresGroup>
     </TresCanvas>
 
     <TzSceneLabels v-if="supported" ref="labels" :labels="cornerLabels" kind="corner" />
+    <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" />
 
     <div v-if="supported" class="tz-scene__tools" data-testid="scene-tools">
       <div class="tz-scene__elev" role="group" :aria-label="t('scene.elevation')">

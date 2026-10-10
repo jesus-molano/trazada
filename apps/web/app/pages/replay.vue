@@ -34,10 +34,16 @@ watch(
       playback.detach()
       return
     }
-    const rt = createReplayRuntime(session.data)
-    playback.attach(rt)
-    removeDebug = installDebugHandle(rt, () => playback.selectedCar)
-    requestAnimationFrame(() => (sceneEnabled.value = true))
+    // El montaje (modelo, controles y escena) va en frames posteriores a "listo": así el mensaje de datos
+    // listos se procesa en un instante y la interfaz no se bloquea.
+    const data = session.data
+    requestAnimationFrame(() => {
+      if (session.data !== data) return
+      const rt = createReplayRuntime(data)
+      playback.attach(rt)
+      removeDebug = installDebugHandle(rt, () => playback.selectedCar)
+      requestAnimationFrame(() => (sceneEnabled.value = session.data === data))
+    })
   },
 )
 
