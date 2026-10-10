@@ -14,6 +14,7 @@
     "noSpoilersHint": "Activo: las gráficas solo usan los datos hasta el instante del reproductor. Desactívalo para ver la sesión entera.",
     "legend": "Pilotos: mostrar u ocultar su serie",
     "lapShort": "V{lap}",
+    "until": "hasta {x}",
     "noLaps": "Sin dato: esta sesión no trae vueltas cronometradas.",
     "nothingYet": "Todavía no hay datos hasta este instante. Avanza el reproductor o desactiva «Sin spoilers».",
     "identify": "Cada serie lleva la sigla de su piloto; la del segundo piloto de cada equipo es discontinua.",

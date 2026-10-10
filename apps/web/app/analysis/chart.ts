@@ -26,6 +26,11 @@ export interface ChartGroup {
   visible: boolean
   /** Destacado (coche elegido); con alguno destacado, el resto se atenúa. */
   emphasis: boolean
+  /**
+   * El coche dejó de pasar por meta antes del corte (`stoppedCars`): su serie acaba antes que las demás. Su sigla no
+   * se queda a media gráfica (salvo si está destacado): una marca de fin, y en la leyenda «hasta V30».
+   */
+  stopped?: boolean
 }
 
 export interface ChartSeries {
@@ -108,6 +113,37 @@ export function spreadLabels(ys: readonly number[], gap: number, lo: number, hi:
   }
   const out = new Array<number>(ys.length)
   order.forEach(([, i], k) => (out[i] = pos[k]!))
+  return out
+}
+
+/** Final de la serie de un grupo: su último punto con valor (en cualquiera de sus listas). */
+export interface SeriesEnd {
+  index: number
+  value: number
+}
+
+export function seriesEnd(spec: ChartSpec, group: string): SeriesEnd | null {
+  const lists = spec.series.filter((s) => s.group === group).map((s) => s.values)
+  const index = lastValueIndex(lists)
+  if (index < 0) return null
+  const value = lists.map((l) => l[index]).find((v) => v !== null && v !== undefined)
+  return value === null || value === undefined ? null : { index, value }
+}
+
+export interface EndPoint extends SeriesEnd {
+  group: ChartGroup
+  /** Con sigla; si no (serie que acaba antes, sin destacar), solo la marca de fin. */
+  label: boolean
+}
+
+/** Final de cada serie visible, y si lleva la sigla o solo la marca de fin (ver `ChartGroup.stopped`). */
+export function endPoints(spec: ChartSpec): EndPoint[] {
+  const out: EndPoint[] = []
+  for (const group of spec.groups) {
+    if (!group.visible) continue
+    const end = seriesEnd(spec, group.key)
+    if (end) out.push({ ...end, group, label: !group.stopped || group.emphasis })
+  }
   return out
 }
 

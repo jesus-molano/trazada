@@ -12,7 +12,7 @@
  */
 import { type ChartGroup, type ChartSeries, type ChartSpec, driverStyles, LAP_INCRS, TIME_INCRS } from '~/analysis/chart'
 import { outsideRange, pace, paceAxis, paceChart, paceEventTimes, representativeRange } from '~/engine/analysis/pace'
-import { lapStartMs, leaderLapAt } from '~/engine/analysis/raceTrace'
+import { lapStartMs, leaderLapAt, stoppedCars } from '~/engine/analysis/raceTrace'
 import { formatClock, formatLapTime } from '~/engine/format/time'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { token } from '~/design/tokens'
@@ -41,6 +41,8 @@ const top5 = playback.order.filter((c) => table.cars.has(c)).slice(0, 5)
 const times = rt.ext('analysis:paceTimes', (r) => paceEventTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const chart = computed(() => markRaw(paceChart(pace(table, cars, cutoff.value), axis)))
+/** Por vuelta (carrera y sprint): coches que dejaron de pasar por meta, con la serie más corta (sin sigla suelta). */
+const stopped = computed(() => (axis === 'lap' ? stoppedCars(table, cutoff.value) : new Map<string, number>()))
 
 const visibleList = computed<readonly string[]>(() => {
   const chosen = st.shown.value[TAB]
@@ -79,6 +81,7 @@ const spec = computed<ChartSpec>(() => {
       dash: style?.dash ?? false,
       visible: visible.value.has(car),
       emphasis: car === selected,
+      stopped: stopped.value.has(car),
     }
   })
   const series: ChartSeries[] = c.cars.flatMap((p) => [

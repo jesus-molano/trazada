@@ -1,6 +1,6 @@
 import type { DriverInfo } from '@trazada/schema'
 import { describe, expect, it } from 'vitest'
-import { driverStyles, lastValueIndex, nearestIndex, spreadLabels } from './chart'
+import { type ChartGroup, type ChartSpec, driverStyles, endPoints, lastValueIndex, nearestIndex, spreadLabels } from './chart'
 
 const driver = (number: string, tla: string, team: string, color = '#123456'): DriverInfo => ({
   number,
@@ -41,5 +41,42 @@ describe('gráficas de análisis', () => {
   it('último índice con valor', () => {
     expect(lastValueIndex([[1, null, null], [null, 2, null]])).toBe(1)
     expect(lastValueIndex([[null], [null]])).toBe(-1)
+  })
+
+  it('final de cada serie visible: con sigla, salvo la que acaba antes (solo marca de fin) si no está destacada', () => {
+    const group = (key: string, extra: Partial<ChartGroup> = {}): ChartGroup => ({
+      key,
+      label: key.toUpperCase(),
+      color: '#123456',
+      dash: false,
+      visible: true,
+      emphasis: false,
+      ...extra,
+    })
+    const spec = (groups: ChartGroup[]): ChartSpec => ({
+      x: [1, 2, 3, 4],
+      series: [
+        { group: 'a', mark: 'line', values: [0, 0, 0, 0] },
+        { group: 'b', mark: 'line', values: [1, 2, null, null] },
+        { group: 'c', mark: 'lineDot', values: [3, 4, 5, null] },
+        { group: 'c', mark: 'hollow', values: [null, null, null, 6] },
+        { group: 'd', mark: 'line', values: [null, null, null, null] },
+      ],
+      groups,
+      xRange: null,
+      yRange: null,
+      yDir: 1,
+      xIncrs: null,
+      formatX: String,
+      formatY: String,
+    })
+    const ends = (groups: ChartGroup[]) => endPoints(spec(groups)).map((e) => [e.group.key, e.index, e.value, e.label])
+    expect(ends([group('a'), group('b', { stopped: true }), group('c'), group('d')])).toEqual([
+      ['a', 3, 0, true],
+      ['b', 1, 2, false],
+      ['c', 3, 6, true],
+    ])
+    // Destacado, la serie que acaba antes sí lleva su sigla; oculta, nada.
+    expect(ends([group('a', { visible: false }), group('b', { stopped: true, emphasis: true })])).toEqual([['b', 1, 2, true]])
   })
 })

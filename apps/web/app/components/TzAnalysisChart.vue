@@ -14,7 +14,7 @@
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { type ChartSpec, DIM_ALPHA, lastValueIndex, nearestIndex, spreadLabels } from '~/analysis/chart'
+import { type ChartSpec, DIM_ALPHA, endPoints, nearestIndex, seriesEnd, spreadLabels } from '~/analysis/chart'
 import { token } from '~/design/tokens'
 
 const props = defineProps<{
@@ -29,6 +29,19 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ pick: [index: number]; toggle: [key: string] }>()
+
+const { t } = useI18n()
+/** «hasta V30» de las series que acaban antes (ver `ChartGroup.stopped`), por grupo. */
+const until = computed(() => {
+  const spec = props.spec
+  const out = new Map<string, string>()
+  for (const g of spec.groups) {
+    if (!g.stopped) continue
+    const end = seriesEnd(spec, g.key)
+    if (end) out.set(g.key, t('analysis.until', { x: spec.formatX(spec.x[end.index]!) }))
+  }
+  return out
+})
 
 const host = ref<HTMLElement | null>(null)
 let plot: uPlot | null = null
@@ -103,33 +116,40 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
   ]
 }
 
-/** Rótulo (sigla) al final de cada serie visible, sin pisarse, con una marca del color de su equipo. */
+/**
+ * Rótulo (sigla) al final de cada serie visible, sin pisarse, con una marca del color de su equipo. Una serie que
+ * acaba antes que las demás (el coche dejó de pasar por meta) lleva solo una marca de fin: su sigla quedaría suelta a
+ * media gráfica; la leyenda dice hasta qué vuelta llega (y con el coche destacado, sí lleva sigla).
+ */
 function drawEndLabels(u: uPlot, spec: ChartSpec) {
   const r = uPlot.pxRatio
   const dimmed = spec.groups.some((g) => g.visible && g.emphasis)
   const entries: { label: string; color: string; alpha: number; x: number; y: number }[] = []
-  for (const g of spec.groups) {
-    if (!g.visible) continue
-    const lists = spec.series.filter((s) => s.group === g.key).map((s) => s.values)
-    const i = lastValueIndex(lists)
-    if (i < 0) continue
-    const v = lists.map((l) => l[i]).find((x) => x !== null && x !== undefined)
-    if (v === null || v === undefined) continue
-    const x = u.valToPos(spec.x[i]!, 'x', true)
-    const y = u.valToPos(v, 'y', true)
+  const ends: { color: string; alpha: number; x: number; y: number }[] = []
+  for (const e of endPoints(spec)) {
+    const x = u.valToPos(spec.x[e.index]!, 'x', true)
+    const y = u.valToPos(e.value, 'y', true)
     // Fuera del área visible (rango fijo del eje y): sin rótulo; la leyenda lo nombra.
     if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue
-    entries.push({ label: g.label, color: g.color, alpha: dimmed && !g.emphasis ? DIM_ALPHA : 1, x, y })
+    const mark = { color: e.group.color, alpha: dimmed && !e.group.emphasis ? DIM_ALPHA : 1, x, y }
+    if (e.group.stopped) ends.push(mark)
+    if (e.label) entries.push({ ...mark, label: e.group.label })
   }
-  if (!entries.length) return
+  if (!entries.length && !ends.length) return
+  const ctx = u.ctx
+  ctx.save()
+  // Marca de fin: un trazo corto perpendicular a la línea, con el color del equipo.
+  for (const e of ends) {
+    ctx.globalAlpha = e.alpha
+    ctx.fillStyle = e.color
+    ctx.fillRect(e.x - r, e.y - 5 * r, 2 * r, 10 * r)
+  }
   const ys = spreadLabels(
     entries.map((e) => e.y),
     11 * r,
     u.bbox.top + 5 * r,
     u.bbox.top + u.bbox.height - 5 * r,
   )
-  const ctx = u.ctx
-  ctx.save()
   ctx.font = `${10 * r}px ${token('--tz-font-sans')}`
   ctx.textBaseline = 'middle'
   const text = token('--tz-text')
@@ -265,6 +285,7 @@ onBeforeUnmount(() => {
       >
         <span class="tz-achart__swatch" :class="{ 'is-dash': g.dash }" :style="{ '--swatch': g.color }" aria-hidden="true" />
         {{ g.label }}
+        <span v-if="until.has(g.key)" class="tz-achart__until" data-testid="analysis-legend-until">{{ until.get(g.key) }}</span>
       </button>
     </figcaption>
   </figure>
@@ -363,6 +384,12 @@ onBeforeUnmount(() => {
 
 .tz-achart__swatch.is-dash {
   border-top-style: dashed;
+}
+
+.tz-achart__until {
+  color: var(--tz-text-muted);
+  font-family: var(--tz-font-sans);
+  letter-spacing: normal;
 }
 
 .tz-achart__key[aria-pressed='false'] .tz-achart__swatch {

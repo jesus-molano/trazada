@@ -6,7 +6,7 @@
  * visibles por defecto; el coche elegido, destacado. Un clic en una vuelta salta a su inicio.
  */
 import { type ChartGroup, type ChartSpec, driverStyles, LAP_INCRS } from '~/analysis/chart'
-import { crossingTimes, lapStartMs, leaderLapAt, raceTrace } from '~/engine/analysis/raceTrace'
+import { crossingTimes, lapStartMs, leaderLapAt, raceTrace, stoppedCars } from '~/engine/analysis/raceTrace'
 import { token } from '~/design/tokens'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -24,6 +24,8 @@ const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const trace = computed(() => markRaw(raceTrace(table, cutoff.value)))
+/** Coches que dejaron de pasar por meta: su serie acaba antes (sin sigla suelta a media gráfica). */
+const stopped = computed(() => stoppedCars(table, cutoff.value))
 const visible = computed(() => new Set(st.shown.value[TAB] ?? cars))
 
 function toggle(car: string) {
@@ -50,6 +52,7 @@ const spec = computed<ChartSpec>(() => {
       dash: style?.dash ?? false,
       visible: visible.value.has(car),
       emphasis: car === selected,
+      stopped: stopped.value.has(car),
     }
   })
   const series = cars.map((car) => ({

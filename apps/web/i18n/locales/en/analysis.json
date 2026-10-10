@@ -14,6 +14,7 @@
     "noSpoilersHint": "On: the charts only use data up to the player's current time. Turn it off to see the whole session.",
     "legend": "Drivers: show or hide their series",
     "lapShort": "L{lap}",
+    "until": "to {x}",
     "noLaps": "No data: this session has no timed laps.",
     "nothingYet": "No data up to this moment yet. Move the player forward or turn off «No spoilers».",
     "identify": "Each series carries its driver's code; the second driver of each team is dashed.",

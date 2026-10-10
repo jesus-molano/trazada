@@ -387,4 +387,32 @@ describe('honestidad', () => {
     expect($('[data-testid="pace-lap1"]')!.textContent).toMatch(/Vuelta 1|Lap 1/)
     expect($('[data-testid="pace-no-time"]')!.textContent).toMatch(/2/)
   })
+
+  it('una serie que acaba antes (el coche dejó de pasar por meta) dice en la leyenda hasta qué vuelta llega', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec: ChartSpec = {
+      x: [1, 2, 3, 4],
+      series: [
+        { group: '1', mark: 'line', values: [0, 0, 0, 0] },
+        { group: '18', mark: 'line', values: [3, 4, null, null] },
+      ],
+      groups: [
+        { ...base, key: '1', label: 'AAA' },
+        { ...base, key: '18', label: 'BBB', stopped: true },
+      ],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    }
+    const chart = await mountSuspended(TzAnalysisChart, { props: { spec, cursorX: null, label: 'gráfica', legendLabel: 'pilotos' } })
+    unmounts.push(() => chart.unmount())
+    const until = chart.findAll('[data-testid="analysis-legend-until"]')
+    expect(until).toHaveLength(1)
+    expect(chart.find('[data-car="18"]').text()).toMatch(/^BBB\s+(hasta|to) V2$/)
+    expect(chart.find('[data-car="1"]').text()).toBe('AAA')
+  })
 })
+

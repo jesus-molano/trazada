@@ -78,6 +78,39 @@ export function raceTrace(table: LapTable, cutoffMs = Infinity): RaceTrace {
   return { laps: Int32Array.from({ length: n }, (_, i) => i + 1), leaderMs, leaderCar, series }
 }
 
+/** Vueltas que completa el primero desde el último paso por meta de un coche para darlo por detenido. */
+export const STOPPED_AFTER_LAPS = 3
+
+/**
+ * Coches que dejaron de pasar por meta hasta el corte, con su última vuelta: el primero ha completado al menos
+ * `STOPPED_AFTER_LAPS` vueltas desde su último paso. La fuente no dice por qué (retirado, parado o sin más datos), así
+ * que no se afirma nada más: solo sirve para que su sigla no se quede suelta a media gráfica. Un coche doblado sigue
+ * cruzando la línea cada vuelta (entre dos de sus pasos, el primero cruza una vez, dos si va más lento o entra en
+ * boxes), así que no cuenta.
+ */
+export function stoppedCars(table: LapTable, cutoffMs = Infinity): Map<string, number> {
+  const leader = new Map<number, number>()
+  const last = new Map<string, { ms: number; lap: number }>()
+  for (const c of table.cars.values()) {
+    for (let k = 0; k < c.lap.length; k++) {
+      const lap = c.lap[k]!
+      const x = crossing(c.crossMs, k, cutoffMs)
+      if (lap < 1 || Number.isNaN(x)) continue
+      const best = leader.get(lap)
+      if (best === undefined || x < best) leader.set(lap, x)
+      const prev = last.get(c.car)
+      if (!prev || x > prev.ms) last.set(c.car, { ms: x, lap })
+    }
+  }
+  const out = new Map<string, number>()
+  for (const [car, l] of last) {
+    let after = 0
+    for (const ms of leader.values()) if (ms > l.ms) after++
+    if (after >= STOPPED_AFTER_LAPS) out.set(car, l.lap)
+  }
+  return out
+}
+
 /**
  * Vuelta en curso del primero en t (para la línea del instante actual en las gráficas por vuelta): la siguiente a la
  * última que alguien completó, sin pasar de la última vuelta de la tabla; 1 si alguien ya empezó la primera y nadie
