@@ -9,6 +9,10 @@ software and data sources with their own terms:
 - Inter (Rasmus Andersson) and JetBrains Mono (JetBrains) — SIL Open Font License 1.1,
   self-hosted via the @fontsource packages. License texts ship with the font packages.
 - three.js, TresJS, Vue, Nuxt, Pinia, vue-i18n, uPlot, troika-three-text — MIT.
+- Lucide (@lucide/vue 1.48.0) — ISC, Copyright (c) 2026 Lucide Icons and Contributors. The icons that
+  Lucide derives from the Feather project are MIT, Copyright (c) 2013-present Cole Bemis. Icon SVGs are
+  bundled into the app from the npm package (no network requests); the full license text, with the list of
+  Feather-derived icons, ships with the package (node_modules/@lucide/vue/LICENSE).
 - country-flag-icons (@catamphetamine) — MIT. Flag SVGs bundled into the app from the npm package;
   the license text ships with the package.
 - bacinger/f1-circuits (Tomislav Bacinger) — MIT, Copyright (c) 2019-2025 Tomislav Bacinger. The circuit

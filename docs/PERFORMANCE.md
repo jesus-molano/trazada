@@ -63,6 +63,21 @@ En el contenedor todo el render es por software. El hilo principal está ocioso 
 - **Escena**: 8 draw calls y ~15 000 triángulos en la vista general (los coches son cuñas en un único InstancedMesh). Con coches cerca (seguimiento), el modelo detallado (D28) suma 3 draw calls y ~1.500 triángulos por coche cercano: 11 draw calls y ~18 500 triángulos siguiendo a un coche con otro delante (Spa, fixture). Render bajo demanda: en pausa no se dibuja nada. **Pendiente tuyo**: el bench siguiendo a un coche dentro del pelotón, con y sin `&car=wedge`.
 - **Carga**: de clic a "listo", 180–400 ms con la CPU ×4 y sin *long tasks* (fixture y sesión completa de Bélgica; H3). El montaje de la escena tras "listo" es una *long task* de 260–390 ms con la CPU ×4, unos 65–100 ms reales (H3/H6; pendiente de trocear si molesta en la máquina de referencia).
 
+### Por tanda de las 21 funciones
+
+Al cerrar cada tanda, el integrador pasa el bench en Bélgica Libres 1 y Japón carrera (datos completos, locales) a ×1 y ×16, antes y después de fusionar, en las mismas condiciones: contenedor con SwiftShader, 1440×900, `governor=off`, 5 s de calentamiento, 20 s de medida y dos rondas alternas. Los ms de JS por frame son el `ScriptDuration` de CDP durante la medida dividido entre los frames. Sirven solo para detectar regresiones, no como cifras de referencia.
+
+**Tanda 0 (H12, andamiaje sin cambios visibles).** No añade capas: con los huecos vacíos, las draw calls y los triángulos son los mismos (8 draw calls; 15.292 triángulos en Bélgica y 13.254 en Japón, en la vista general). El coste por frame no cambia: las diferencias caben en el ruido de las dos rondas, con los frames cuantizados al vsync en pasos de 16,7 ms. En Bélgica el p95 baja un escalón en las dos rondas y en Japón a ×16 sube uno, con el mismo JS por frame (unos 2 ms de frames de más de 100 ms: manda el raster por software).
+
+| Sesión | Velocidad | p95 antes | p95 después | JS/frame antes | JS/frame después |
+|---|---|---:|---:|---:|---:|
+| Bélgica 2026 Libres 1 | ×1 | 150 ms | 133 ms | 1,8–2,0 ms | 1,7–1,8 ms |
+| Ídem | ×16 | 150 ms | 133 ms | 2,1–2,2 ms | 2,0 ms |
+| Japón 2026 carrera (dev) | ×1 | 117–133 ms | 117–150 ms | 1,7–2,0 ms | 1,7–2,1 ms |
+| Ídem | ×16 | 150–167 ms | 167–183 ms | 2,0–2,2 ms | 2,0–2,4 ms |
+
+Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sceneStats.layers`). El tope de draw calls de los e2e pasa a ser el de la escena base (13, siguiendo a un coche con el modelo detallado) más lo de las capas activas, siempre por debajo de 30.
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.

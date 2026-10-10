@@ -1,6 +1,6 @@
 # Trazada: plan de la Fase 1
 
-> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H10; H11 preparado y pendiente de lo tuyo (ver "Progreso" en §8 y §9.7). Uso personal y privado: D23.
+> Estado: **aprobado** el 2026-10-10 y en ejecución. Hechos: H0–H10; H11 preparado y pendiente de lo tuyo (ver "Progreso" en §8 y §9.7). Uso personal y privado: D23. Las 21 funciones aprobadas después de la Fase 1 van por tandas (H12–H18); hecha la Tanda 0 (H12, andamiaje sin cambios visibles).
 > Documentos de apoyo:
 > - [`research/validacion-brief.md`](research/validacion-brief.md): cada afirmación del brief contrastada con fuentes primarias y verificación adversarial.
 > - [`research/empirico-2026.md`](research/empirico-2026.md): medidas sobre datos reales de 2026.
@@ -274,11 +274,13 @@ trazada/
 │   │   ├── pages/index.vue        # selector temporada → GP → sesión
 │   │   ├── pages/replay.vue       # replay: /replay?s=2026/03-japan/race
 │   │   ├── components/{ui,selector,replay,scene}/   # prefijo Tz
+│   │   ├── components/{scene-layers,scene-tools,replay-header,replay-overlays,replay-dock,timeline-lanes,leaderboard-cells}/   # huecos por glob (D29)
+│   │   ├── slots/                 # registro de cada hueco (D29)
 │   │   ├── composables/   stores/
-│   │   ├── engine/{clock,interp,track,replay,format}/   # TS puro + tests
+│   │   ├── engine/{clock,interp,track,replay,format,compare,analysis}/   # TS puro + tests (compare y analysis: motor compartido, H12)
 │   │   ├── data/          workers/session.worker.ts
 │   │   └── design/{tokens.css,motion.ts,typography.css}
-│   ├── i18n/locales/{es,en}.json
+│   ├── i18n/locales/{es,en}/<ns>.json   # base.json + un fichero por función (D29); i18n/messages.ts
 │   ├── public/{fonts/, decoders/}           # el coche se genera por código (D28)
 │   └── tests/{unit,e2e,fixtures}/
 ├── packages/schema/               # fuente única del esquema
@@ -520,6 +522,11 @@ Trampas:
 | D25 | **Solo local, sin Cloudflare** (2026-10-10): sin ningún despliegue; la app y los datos viven en el PC (`pnpm local`) | Lo decide el usuario. Es lo más simple y lo más claramente legal (D23). | El despliegue privado con contraseña (D24), que se implementó y se retiró. |
 | D24 | *(Retirada por D25.)* **Despliegue privado con contraseña** (2026-10-10): una Worker de Cloudflare (`deploy/private/`) con la app y los datos publicables, accesible solo con contraseña (cookie HMAC, `run_worker_first`) | El usuario quiere verla en una URL sin dejar de ser uso personal (D23). Workers Free: gratis y sin tarjeta, y el límite de 100 000 peticiones al día sobra. | Vercel: la protección con contraseña es de pago (Pro). Cloudflare Access: pide un método de pago incluso en el plan gratis. Público (D1/D2): descartado por D23. |
 | D22 | **Etiquetas (curvas y siglas) en DOM proyectado** en cada render, en lugar de troika-three-text | Texto nítido con las fuentes de la app (woff2, sin convertir a woff/ttf para troika), accesible, i18n directo, 0 draw calls. Coste: escribir `transform` en ~45 nodos por frame (solo capa de composición). | troika `BatchedText`: necesita fuentes woff/ttf autoalojadas y el `unicodeFontsURL`, y no aporta nada para ~45 etiquetas. |
+| D29 | **Puntos de extensión para trabajar en paralelo** (2026-10-10, H12): textos por namespace (`i18n/locales/<idioma>/<ns>.json`, una raíz por fichero; `i18n/messages.ts` falla con una raíz repetida). Huecos por glob (`components/{scene-layers,scene-tools,replay-header,replay-overlays,replay-dock,timeline-lanes,leaderboard-cells}/*.vue`, registros en `app/slots/`, orden por `order` o `renderOrder`). Teclas y Esc con prioridades fijas (`replay/keys.ts`, `ESC_PRIORITY`). `registerSceneStat` y `sceneStats.layers`. `rt.ext`, `initialMs` y `setSceneHidden`. Ficheros comunes con un solo dueño por tanda | Las 21 funciones se reparten entre varios workers por tanda: así cada una añade sus ficheros sin tocar los anfitriones ni pisar a otra. Con los huecos vacíos, la app es la misma. | Un fichero de textos único y anfitriones editados por cada función (conflictos en cada fusión); registro de huecos en un solo módulo (arrastraría la escena al chunk de la página). |
+| D30 | **Iconos con `@lucide/vue` 1.48.0** (2026-10-10, H12), dentro del bundle, con registro semántico (`design/icons.ts`, el único que importa Lucide), `TzIcon` y `TzHint`. Un icono nunca sustituye al texto honesto | ISC (MIT los derivados de Feather), sin red, solo se empaqueta lo registrado. Pasa la antigüedad mínima de pnpm. | `lucide-vue-next` (congelado), unplugin-icons, Shepherd (AGPL) y driver.js (no hace falta). |
+| D41 | **Estado por navegador en localStorage** (2026-10-10, H12) con el helper `stores/persisted.ts` (lectura que no falla, escritura que no lanza, versión opcional). Reanudar (LRU de 20), diseño de paneles y pistas vistas lo usarán en sus tandas | Patrón ya probado en `settings.ts`, que pasa a usarlo con el mismo formato. | Sincronizar dispositivos: la API del gestor solo atiende a loopback (D26). |
+| D42 | **Movimiento** (2026-10-10, H12): nunca se anima un valor de datos. Listas animadas solo a ≤ ×4, sin salto de reloj y con pocos cambios (`listMotionAllowed`). Nada infinito. Con reduced motion, duraciones, escalonado y desplazamiento a 0 y escala neutra | H8 (la muestra cruda vigente) y accesibilidad. Un test revisa todo el CSS. | Animar cifras (contadores, tweens de velocidad o gap): mostrarían valores que nunca existieron. |
+| D44 | **Jerarquía visual** (2026-10-10; base en H12): tokens de densidad (compacta con alto ≤ 860 px, zona táctil de 44 px con puntero grueso), el color de equipo nunca como texto (lo vigila un test), clases comunes en `base.css`. En la Tanda 5: layout propio del replay y `100dvh` con `100vh` de respaldo | El color de equipo no llega a 4,5:1 como texto. Densidad adaptada a portátiles de 800 px y al iPad. | Tokens por componente (sin coherencia entre paneles). |
 
 ## 7. Riesgos
 
@@ -548,6 +555,8 @@ Trampas:
 
 **Orden**: H0 → H1 → H2 → H3 → H4 → H5 → H6 → H7 → H8 → H9 → H10 → H11. H10 (UX transversal) se aplica en cada hito y se cierra al final. Cada hito se verifica antes de su commit.
 
+Después de la Fase 1, las 21 funciones aprobadas se implementan por tandas, un hito por tanda: H12 (Tanda 0, andamiaje) → H13 (T1) → H14 (T2) → H15 (T3) → H16 (T4) → H17 (T5) → H18 (T6). Cada tanda la fusiona un integrador, que vuelve a pasar la suite completa y actualiza estos documentos.
+
 ### Progreso
 
 | Hito | Estado | Notas |
@@ -564,6 +573,7 @@ Trampas:
 | H9 | ✅ (con matices) | **Feed** de dirección de carrera: texto original tal cual (marcado `lang="en"`) con el tipo traducido. Tras 20 seeks (17 con semilla fija y 3 justo en el borde de un mensaje), los visibles son exactamente los de t ≤ reloj (e2e). `TrackState` (TS puro) da las banderas por sector, la neutralización vigente (roja > SC > VSC > fin de VSC), la amarilla de TrackStatus y las ventanas de OVERTAKE/DRS. Se expone en `window.__trazada.trackState`; el asa ahora tiene `seek(ms)`, con precisión de ms. Escena: el SC, el VSC y la roja tiñen la cinta, y los sectores con bandera se colorean cuando hay geometría de MultiViewer. Sin ella (todos los datos de aquí), la bandera aparece como texto con su explicación. Hay chips de estado de pista siempre con texto (nunca solo color) y un carril de OVERTAKE/DRS bajo el timeline. Pipeline: una neutralización cierra la ventana de OVERTAKE/DRS hasta un nuevo ENABLED (Japón: había un ENABLED, el SC y otro ENABLED), y la última bandera a cuadros la cierra también (auditoría I). Tests: motor (sintético, fixture y Japón local), componentes en Nuxt y e2e en el fixture (doble amarilla del sector 7 a +1 s y su CLEAR a +1 s). **e2e en Japón 2026 solo en local** (`local-japan.spec.ts`, fuente dev no publicable): sector 21 a +1 s y su CLEAR a +1 s; SC a +100 ms en `trackState` y en el tinte de la escena; dos ventanas de OVERTAKE. **Pendiente**: comprobar sobre el mapa las capas por sector con un circuito que tenga sectores de comisarios (MultiViewer, §9). |
 | H10 | ✅ (con matices) | **Tokens**: `tokens.css` es la única fuente. three.js, uPlot y GSAP leen los valores con `token()`, que usa la propia hoja si no hay documento. Un test falla si aparece un color literal o un `--tz-*` fuera de la hoja. **i18n**: `no-raw-text` y `no-missing-keys` limpios, test de paridad es/en (claves y parámetros) y números, porcentajes y tiempos de vuelta con `Intl` (formatos cacheados por idioma). El reloj m:ss no depende del idioma. **Estimado**: registro único (`engine/estimated.ts`) con los campos del manifest (`positions`, `telemetry`, `trackStatus`; el pipeline los declara en las fuentes dev, y un campo desconocido se muestra con su nombre) y las opciones del usuario. Las opciones son la exageración de altura, la separación visual de coches solapados (apagada por defecto; solo visual, a lo ancho de la pista) y la estimación de la vuelta 1 en carrera (paso por meta − salida). Un test de componentes tiene un caso por campo y falla si falta alguno. Hay e2e de cada caso, en es y en; la vuelta 1 y la separación real en la salida se prueban en el e2e local de Japón. **Accesibilidad**: axe-core sin infracciones serias ni críticas en portada, replay (con telemetría y etiquetas) y error, en es y en. Para lograrlo, `--tz-text-faint` pasa a #848e9b (≥ 4,75:1 en todas las superficies). **Disclaimer** en el footer de todas las páginas y en el README (e2e). **Layout**: cabecera, escenario y dock en columna; las herramientas de la escena van a la cabecera. Paneles más estrechos hasta 1100 px. En tablet vertical, los paneles bajan a una franja inferior y el mapa se encuadra por encima. Sin scroll horizontal a 1440×900, 1280×800 y en iPad (táctil) a 1024×768 y 768×1024; en tablet, tocar un coche lo selecciona y arrastrar el timeline mueve el reloj (e2e). Arreglo: el CSS minificado escribe `900ms` como `.9s` y la duración de la cámara se leía como 0. **Pendiente**: revisión en un iPad real. |
 | H11 | 🟡 Preparado; faltan tus medidas y tus datos (§9.7). Solo local (D25): `pnpm local` | **Bench** `?bench=1` con 22 coches y la telemetría abierta. Calienta y mide: p50, p95, p99, frames > 50 ms, heap, DPR, draw calls, GPU y *long tasks*, y copia el JSON. En libres empieza en el momento con más coches en pista. **Degradación adaptativa** (`QualityGovernor`): con un p95 de más de 35 ms (dos vsync a 60 Hz con margen), sondea el DPR escalón a escalón hasta volver al presupuesto, o vuelve al del dispositivo si bajar no ayuda. Las subidas se comprueban, con espera creciente. 30 Hz estables no lo disparan. `?governor=off` la desactiva. Se quitó el `backdrop-filter` de los paneles: desenfocaba un lienzo animado en cada frame (−25 % de frame en SwiftShader). **Heap**: 42 MB con la carrera completa de Japón (≤ 300 MB). `docs/PERFORMANCE.md` tiene el método, los resultados (el contenedor está marcado como no representativo) y la tabla de peso por sesión generada desde los manifests (`pnpm perf:table`). **Despliegue** (preparado en H11: datos solo publicables, guarda contra fuentes dev y smoke post-deploy): *retirado por D25*. **Uso personal (D23)**: `pnpm local` sirve la app con los datos de `data/`, y con `--lan` en la red de casa; `noindex` y `robots.txt` por si algún día se despliega. **Banderas y trazados (D27)** en cada tarjeta de Gran Premio, con el país en el idioma de la interfaz. **Gestor de datos (D26)**: con `pnpm local`, el selector muestra el calendario completo y descarga cada sesión con un clic (cola, progreso, errores con «Reintentar», cancelar, en bloque por GP y carreras de la temporada); e2e con el servidor real y un pipeline falso. **Pendiente tuyo**: medidas en la RTX 3070 Ti y en el portátil, y datos reales 2023–2026 en tu PC. |
+| H12 | ✅ | **Tanda 0 de las 21 funciones (andamiaje, sin cambios visibles)**, en tres partes fusionadas por un integrador: 0a, puntos de extensión (D29, D41); 0b, motor compartido (base de D31–D35); 0c, base visual (D30, D42, D44). Verificado al integrar: lint, typecheck, Vitest con los `@local` de Spa FP1 y Japón, build, e2e completos y `local-japan` con los datos completos. Bench antes y después en el contenedor (Bélgica Libres 1 y Japón carrera, ×1 y ×16): mismas draw calls (8) y triángulos, y el mismo JS por frame (~2 ms); el p95 se mueve dentro del ruido (`docs/PERFORMANCE.md`). La captura de referencia no cambia. |
 
 **Correspondencia con el brief**:
 - punto 1 → H3; 2 → H2; 3 → H5; 4 → H6; 5 → H4; 6 → H7; 7 → H8; 8 → H9; 10 → H11;
@@ -726,6 +736,34 @@ Alcance:
 - **Despliegue**: CI despliega el Worker de la app y `pnpm data:deploy` el de datos. *(D25: sustituido por `pnpm local`; no hay despliegue.)*
 - Un smoke post-deploy con curl comprueba `Content-Type`, `immutable` y `Access-Control-Allow-Origin` en los datos, y que un deep link `/replay?s=…` devuelve 200 y se pinta. *(D25: sin despliegue, no aplica.)*
 - Coste: 0 €.
+
+### H12: Tanda 0, andamiaje para las 21 funciones
+Alcance: lo que permite trabajar en paralelo en las tandas siguientes, sin nada visible. Se hace en tres partes con un solo dueño por fichero común (0a: componentes, stores, runtime, i18n y e2e; 0b: `engine/` y `testing/`; 0c: `design/`, dos componentes nuevos y `package.json`).
+
+**Acepto si**:
+- **Nada cambia a la vista**: con los huecos vacíos, cada anfitrión se pinta como antes y sin contenedores vacíos (`tests/nuxt/slots-empty.test.ts`). Pasan todos los tests y e2e que ya existían, y la captura de referencia no cambia.
+- **0a, puntos de extensión (D29, D41)**:
+  - Textos por namespace: siguen todas las claves; es y en tienen los mismos namespaces y la misma paridad; una sola raíz por namespace; una raíz repetida entre ficheros es un error (`i18n-parity`, `i18n-messages`).
+  - Huecos: cada anfitrión monta los componentes de su carpeta en orden (`order` o `renderOrder`) y con sus props (`tests/nuxt/slots.test.ts`); un fichero sin su número falla al cargar (`app/slots/collect.test.ts`).
+  - Teclas y Esc: registro con las prioridades de `ESC_PRIORITY`; registrar sin modificador una tecla que ya usa el replay es un error (`replay/keys.test.ts`).
+  - `registerSceneStat` y `sceneStats.layers` (`replay/debug.test.ts`). El tope de draw calls de `cars.spec.ts` es 13 más lo de las capas activas, siempre < 30 (`extensions.spec.ts`).
+  - `rt.ext` perezoso y memoizado, con `dispose`; `initialMs` ajustado al intervalo; con `setSceneHidden` no se piden frames a la escena, pero el reloj y los oyentes siguen (`tests/nuxt/runtime.test.ts`).
+  - `stores/persisted.ts` con sus tests; `settings.ts` lo usa con el mismo formato.
+  - Estimado: `lapDelta`, `minisectors` y `drsZones` con su caso en `tests/nuxt/estimated.test.ts` y sus textos.
+  - e2e: `resetStorage(page)` en los specs que vaciaban el almacenamiento.
+- **0b, motor compartido** (TS puro, tests junto al código):
+  - ReplayModel usa `place.ts` (`placeOnCircuit` y `placeSample`).
+  - `compare/distance.ts`: `timeAtS` da el primer instante en una s acumulada; null en huecos, sin dato o fuera de los datos. `sAt` es lo que dibuja el replay.
+  - `compare/laps.ts`: inicio de vuelta en t (oficial, con respaldos) y en s (NaN sin posición).
+  - `analysis/lapTable.ts`: bits de clasificación y vuelta anulada desde la hora del mensaje de dirección de carrera (`lapFlagsAt`).
+  - La clasificación usa el índice con una salida idéntica a la de antes (hash de `compute`, `compoundAt` y `segmentAt`).
+  - Builders `testing/laps.ts` y `testing/motion.ts` (`fakeTrzb` no cambia).
+  - `@local` (`compare.local.test.ts`): s no decrece, ida y vuelta distancia↔tiempo exacta, índice de vueltas < 10 ms y barrido de minisectores de toda la sesión < 50 ms.
+- **0c, base visual (D30, D42, D44)**:
+  - `@lucide/vue` 1.48.0 exacta y anotada en `NOTICE`. `design/icons.ts` es el único que importa Lucide. `TzIcon` y `TzHint` son accesibles (`tests/nuxt/icon.test.ts`). Sin `<svg>` en línea ni glifos fuera de la lista permitida (`design/icons.test.ts`).
+  - Tokens de los ítems 1–21 (`tokens.test.ts`, que ahora escanea también los `.css` y falla con `var(--team)` en `color:`).
+  - `motion.ts`: `useReducedMotion`, `listMotionAllowed` y `stagger` (`motion.test.ts`, que revisa todo el CSS).
+  - `design-base.spec.ts`: densidad según el alto, zona táctil según el puntero, reduced motion, clases comunes y hover solo con `(hover: hover)`.
 
 ## 9. Lo que necesito de ti
 

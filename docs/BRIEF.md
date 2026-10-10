@@ -157,3 +157,46 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
   - **Monotonía**: PAVA por tramos de un mismo camino. Lo que tendría que mover más de 5 m y las paradas que la telemetría desmiente son sin dato. En Spa, las congelaciones de más de 1,5 s con el coche a más de 40 km/h bajan de 99 a 0, y los saltos en el pit lane, de 160 a 6.
   - **Cerca del pit lane decide la geometría**: fuera de la ventana de boxes, un coche más cerca del pit lane y a más de 2 m de la línea va al pit lane (en Spa había 517 s de coches dibujados a 12 m o más de su posición, sobre la trazada, y otros 514 s de la cola del semáforo de salida, a 4-5 m, dibujados parados sobre la trazada).
   - **Circuito**: se reutiliza solo si la sesión encaja; si no, variante `-v2` y aviso (D21). Si encaja, se reconstruye en su sitio cuando es de la versión anterior de la geometría o le faltan las curvas y la sesión las trae (Spa 7-a ya no se queda sin curvas para siempre), pero nunca perdiendo las que tiene, el pit lane (una sprint sin paradas no lo trae) ni los sectores de comisarios; si la sesión no basta para construirlo, se reutiliza como antes y se avisa.
+- **2026-10-10** — **Tanda 0 de las 21 funciones aprobadas (H12): andamiaje, sin cambios visibles**. Con los huecos vacíos, cada anfitrión se pinta como antes y no añade contenedores vacíos:
+  - **D29, puntos de extensión para trabajar en paralelo**:
+    - **Textos por namespace**: `i18n/locales/<idioma>/<ns>.json`. `base.json` lleva los textos comunes, con todas las claves de antes. Cada función añade su propio fichero, con una sola raíz que se llama como el fichero. `i18n/messages.ts` da a Nuxt la lista de ficheros y a los tests los mensajes fusionados. Una raíz repetida en dos ficheros es un error, porque @nuxtjs/i18n la fusionaría sin avisar. ESLint lee `./i18n/locales/*/*.json`.
+    - **Huecos por glob**: `components/<hueco>/*.vue`, con un registro por hueco en `app/slots/<hueco>.ts`. Van separados para que cada uno viaje en el chunk de su anfitrión; así, las capas de la escena van con three.js. Cada fichero exporta su `order` (en la escena, `renderOrder`) desde un `<script lang="ts">`, y si falta, la carga falla.
+    - **Los huecos y sus contratos**:
+      - `scene-layers`: TzScene, dentro del grupo de la pista, con las props `model`, `flat` y `yScale`. Materiales con `fog: false` y coste publicado con `registerSceneStat`.
+      - `scene-tools`: TzSceneTools, en los grupos «Capas» y «Cámara».
+      - `replay-header` y `replay-overlays`: la página del replay, con el runtime ya enganchado.
+      - `replay-dock`: la fila de los controles.
+      - `timeline-lanes`: carriles bajo las marcas, dentro de la pista del timeline.
+      - `leaderboard-cells`: con las props `row` y `preset`, y `width` y `presets` exportados. Sin dato, «—».
+    - **Teclas**: `replay/keys.ts` ofrece `registerShortcut({ key, mods })` y `registerEscape(prioridad)`. Las teclas que ya usan el replay o el navegador no se pueden registrar sin modificador. `ESC_PRIORITY` es fijo: resumen 100 > pistas 90 > análisis 80 > realización automática 70 > comparación 60 > seguir 50 > selección 40. Cada Esc cierra solo lo más prioritario que esté abierto. `useReplayShortcuts` consulta el registro, y seguir y selección ya pasan por él.
+    - **Escena y runtime**:
+      - `registerSceneStat(nombre, getter)` publica estadísticas en `sceneStats` y en `window.__trazada.scene`. Las que traen `drawCalls`, `triangles` y `fogged` cuentan en `sceneStats.layers`. El tope de draw calls de los e2e pasa a ser 13 más lo de las capas activas, siempre por debajo de 30.
+      - `rt.ext(clave, factory)` crea precálculos perezosos y memoizados, con `dispose`.
+      - La opción `initialMs` fija el instante inicial.
+      - `rt.setSceneHidden` deja de pedir frames a la escena mientras está tapada. El reloj y los oyentes siguen, y el gobernador no mide esos frames.
+    - **Estimado**: `lapDelta`, `minisectors` y `drsZones` ya están en el registro, con su etiqueta y su explicación, para las funciones que los pintarán.
+    - **e2e**: `resetStorage(page)` vacía el almacenamiento en cada carga, salvo las pistas de primer uso, que quedan como vistas.
+  - **Motor compartido** (base de D31–D35; TS puro con sus tests):
+    - `engine/replay/place.ts`: la colocación de ReplayModel, reutilizable por un fantasma.
+    - `engine/compare/distance.ts`: `timeAtS` da el primer instante en que el coche alcanza una distancia. Dentro de un hueco o fuera de los datos da null: nunca interpola donde el replay no lo hace.
+    - `engine/compare/laps.ts`: inicio de cada vuelta en tiempo y en distancia. Sin posición, NaN.
+    - `engine/analysis/lapTable.ts`: índice de vueltas con su clasificación (boxes, amarilla/SC/VSC/roja, vuelta 1, sin tiempo, anulada desde el mensaje de dirección de carrera). La clasificación lo usa y su salida no cambia (comparada con hash antes y después).
+    - Builders de test propios (`testing/laps.ts` y `testing/motion.ts`); `fakeTrzb` no cambia.
+    - D31–D35 se registran con sus tandas.
+  - **D30, iconos**: `@lucide/vue` 1.48.0 exacta, dentro del bundle y sin peticiones externas.
+    - **Licencia y versión**: ISC; los iconos derivados de Feather, MIT. Se publicó el 2026-09-24, así que pasa la antigüedad mínima de pnpm.
+    - **Piezas**: `design/icons.ts` es el registro semántico y el único fichero que importa Lucide. `TzIcon` es decorativo (`aria-hidden`), o `role="img"` si lleva etiqueta. `TzHint` es una pista «ⓘ» que se abre al pulsar, también en iPad, con Popover API y un panel fijo de respaldo.
+    - **Regla de honestidad**: un icono nunca sustituye al texto honesto («Estimado:», «sin dato»). Nada de iconos de IA, coches, trofeos ni marcas.
+    - **Test**: prohíbe el `<svg>` en línea y los glifos sueltos fuera de una lista permitida que solo puede encoger. La lista se vacía en la Tanda 5.
+    - **Descartados**: `lucide-vue-next` (congelado), unplugin-icons, Shepherd (AGPL) y driver.js (no hace falta).
+  - **D41, estado por navegador**: `stores/persisted.ts` lee sin fallar nunca y escribe sin lanzar nunca, con una versión de formato opcional y el almacenamiento inyectable. `settings.ts` ya lo usa, con el mismo formato de siempre. Reanudar, el diseño de paneles y las pistas vistas lo usarán en sus tandas. Cada dispositivo guarda lo suyo: no se sincroniza (D26).
+  - **D42, movimiento**: nunca se anima un valor de datos.
+    - **Helpers** (`design/motion.ts`): `useReducedMotion()`, `stagger()` y `listMotionAllowed(prev, next, jumped, rate, reduced)`, que solo deja animar una lista a ×4 o menos, sin salto de reloj y con pocos cambios.
+    - **Con reduced motion**: duraciones, escalonado y desplazamiento a 0. La escala al pulsar queda en 1 (neutra), porque a 0 el botón desaparecería.
+    - **Test**: revisa todo el CSS. Duraciones y curvas solo de tokens, sin `transition: all`, nada infinito y sin transiciones de `transform` en lo que se mueve en cada frame.
+  - **D44, jerarquía visual (base)**:
+    - **Tokens de densidad**: paneles, filas, cifras, tracking y una zona táctil de 44 px con puntero grueso. Con un alto de 860 px o menos, la densidad es compacta.
+    - **Tokens de las funciones 1–21**: comparación, calor apto para daltónicos, cronometraje, meteorología, estelas sin tonos de bandera, ganar/perder, cielo y niebla, DRS e iconos.
+    - **El color de equipo nunca es color de texto**: un test falla si aparece `var(--team)` en `color:`. El test de tokens escanea también los `.css`; el literal de `base.css` pasó a `--tz-accent-soft-hover`.
+    - **`base.css`**: clases comunes (`.tz-panel`, `.tz-num`, `.tz-chip`, `.tz-segmented`, `.tz-iconbtn`…), hover solo con `(hover: hover)` y `accent-color` dentro de `.tz-panel`. En `:root` cambiaría las casillas de hoy.
+    - El layout propio del replay y `100dvh` llegan en la Tanda 5.
