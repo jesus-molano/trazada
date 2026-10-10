@@ -54,6 +54,13 @@
   --tz-chart-speed: #4cc9f0;
   --tz-chart-throttle: #34d399;
   --tz-chart-brake: #ff6b6b;
+  /* Piezas neutras del coche 3D (la carrocería lleva el color del equipo; el casco nunca el de un piloto) */
+  --tz-car-carbon: #35373c;
+  --tz-car-dark: #1d1e22;
+  --tz-car-tyre: #242427;
+  --tz-car-rim: #6f7379;
+  --tz-car-halo: #3f4245;
+  --tz-car-helmet: #9599a0;
 
   /* Compuestos de neumático */
   --tz-tyre-soft: #ff3b30;

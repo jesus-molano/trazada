@@ -188,6 +188,7 @@
   "telemetry": {
     "title": "{tla} telemetry",
     "follow": "Follow",
+    "followHint": "While following the car: mouse wheel or pinch to zoom the camera in or out",
     "overview": "Overview",
     "close": "Close telemetry",
     "noData": "No telemetry at this moment.",

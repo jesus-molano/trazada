@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { clampFollowDistance, FOLLOW_DISTANCE_M } from '~/engine/camera/FollowCamera'
 
 export const ELEVATION_SCALES = [1, 2, 3] as const
 export type ElevationScale = (typeof ELEVATION_SCALES)[number]
@@ -15,6 +16,8 @@ interface Persisted {
   separation: boolean
   /** Estimar el tiempo de la vuelta 1 en carrera (Estimado). Apagado por defecto. */
   estimateLap1: boolean
+  /** Distancia de la cámara de seguimiento (m), con el zoom de la rueda o el pellizco. */
+  followDistance: number
 }
 
 function read(): Partial<Persisted> {
@@ -32,6 +35,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const gapMode = ref<GapMode>('leader')
   const separation = ref(false)
   const estimateLap1 = ref(false)
+  const followDistance = ref(FOLLOW_DISTANCE_M)
   let hydrated = false
 
   function hydrate(): void {
@@ -43,6 +47,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (saved.gapMode === 'leader' || saved.gapMode === 'interval') gapMode.value = saved.gapMode
     if (typeof saved.separation === 'boolean') separation.value = saved.separation
     if (typeof saved.estimateLap1 === 'boolean') estimateLap1.value = saved.estimateLap1
+    if (typeof saved.followDistance === 'number') followDistance.value = clampFollowDistance(saved.followDistance)
   }
 
   function persist(patch: Partial<Persisted>): void {
@@ -73,6 +78,11 @@ export const useSettingsStore = defineStore('settings', () => {
     persist({ separation: value })
   }
 
+  function setFollowDistance(value: number): void {
+    followDistance.value = clampFollowDistance(value)
+    persist({ followDistance: followDistance.value })
+  }
+
   function setEstimateLap1(value: boolean): void {
     estimateLap1.value = value
     persist({ estimateLap1: value })
@@ -84,11 +94,13 @@ export const useSettingsStore = defineStore('settings', () => {
     gapMode,
     separation,
     estimateLap1,
+    followDistance,
     hydrate,
     setElevationScale,
     setShowBlueFlags,
     setGapMode,
     setSeparation,
     setEstimateLap1,
+    setFollowDistance,
   }
 })

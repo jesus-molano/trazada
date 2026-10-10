@@ -114,6 +114,7 @@ watch(
         type="button"
         class="tz-tel__follow"
         :aria-pressed="playback.following"
+        :title="t('telemetry.followHint')"
         data-testid="follow-toggle"
         @click="playback.setFollowing(!playback.following)"
       >

@@ -14,6 +14,9 @@ export const YAW_OMEGA = 3 // rad/s (frecuencia natural del muelle)
 export const YAW_MAX_ACCEL = 6 // rad/s²: umbral documentado del test de suavidad (H8)
 export const YAW_MAX_VEL = 3 // rad/s
 export const FOLLOW_DISTANCE_M = 70
+/** Zoom del seguimiento (rueda o pellizco): de muy cerca del coche a un poco más lejos que por defecto. */
+export const FOLLOW_MIN_DISTANCE_M = 14
+export const FOLLOW_MAX_DISTANCE_M = 120
 export const FOLLOW_PITCH_DEG = 24
 const SUBSTEP_S = 1 / 240
 
@@ -21,6 +24,12 @@ export interface Vec3 {
   x: number
   y: number
   z: number
+}
+
+/** Distancia de seguimiento dentro de los límites del zoom (la de por defecto si no es un número). */
+export function clampFollowDistance(d: number): number {
+  if (!Number.isFinite(d)) return FOLLOW_DISTANCE_M
+  return Math.min(FOLLOW_MAX_DISTANCE_M, Math.max(FOLLOW_MIN_DISTANCE_M, d))
 }
 
 const TAU = Math.PI * 2
@@ -33,12 +42,13 @@ export class FollowCamera {
   yaw = 0
   yawVel = 0
   readonly pitch = (FOLLOW_PITCH_DEG * Math.PI) / 180
-  readonly distance: number
+  /** Distancia al coche (m); se puede cambiar en cualquier momento (zoom), dentro de los límites. */
+  distance: number
   private initialized = false
   readonly target: Vec3 = { x: 0, y: 0, z: 0 }
 
   constructor(distance = FOLLOW_DISTANCE_M) {
-    this.distance = distance
+    this.distance = clampFollowDistance(distance)
   }
 
   reset(): void {

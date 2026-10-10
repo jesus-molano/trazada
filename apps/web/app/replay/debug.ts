@@ -34,6 +34,9 @@ export const sceneStats = {
   drawCalls: 0,
   triangles: 0,
   gpu: '',
+  /** Coches: triángulos del modelo detallado y cuántos se dibujan con él o con la cuña en el último render. */
+  carTriangles: 0,
+  carLod: { detail: 0, wedge: 0 },
   /** Último encuadre de la vista general: caja del trazado y hueco libre (coordenadas de pantalla −1…1). */
   framing: null as null | {
     box: { x0: number; x1: number; y0: number; y1: number }

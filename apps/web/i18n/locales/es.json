@@ -188,6 +188,7 @@
   "telemetry": {
     "title": "Telemetría de {tla}",
     "follow": "Seguir",
+    "followHint": "Con la cámara siguiendo al coche: rueda del ratón o pellizco para acercarla o alejarla",
     "overview": "Vista general",
     "close": "Cerrar telemetría",
     "noData": "Sin dato de telemetría en este instante.",

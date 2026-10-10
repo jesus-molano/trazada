@@ -193,7 +193,7 @@ Medido con datos reales, quitando la mitad de las muestras: el error a lo largo 
 - Cinta de pista en una sola malla. Las banderas por sector se pintan en el shader con una textura 1D (sector → color), que solo se actualiza cuando cambia el estado.
 - Presupuesto: < 30 draw calls y < 150 000 triángulos.
 - **Sin post-proceso en la Fase 1**. El antialias es MSAA. Ver D10.
-- El GLB del coche (Meshopt, **≤ 150 KB**) se carga solo en `/replay`.
+- El coche 3D se genera por código (D28): cuña de lejos y monoplaza genérico de ~1.500 triángulos de cerca, todo instanciado. Si algún día hay un GLB (D14), con Meshopt, **≤ 150 KB** y solo en `/replay`.
 - **Calidad adaptativa**:
   - Si el p95 del frame supera 18 ms durante 3 s, se baja un escalón: DPR 2 → 1,5 → 1, luego MSAA off, luego etiquetas solo del coche seleccionado y del top 5.
   - Con `?debug=1` aparece un overlay con fps, p95, heap y draw calls.
@@ -272,7 +272,7 @@ trazada/
 │   │   ├── data/          workers/session.worker.ts
 │   │   └── design/{tokens.css,motion.ts,typography.css}
 │   ├── i18n/locales/{es,en}.json
-│   ├── public/{models/car.glb, fonts/, decoders/meshopt_decoder.module.js}
+│   ├── public/{fonts/, decoders/}           # el coche se genera por código (D28)
 │   └── tests/{unit,e2e,fixtures}/
 ├── packages/schema/               # fuente única del esquema
 │   ├── manifest.schema.json  catalog.schema.json  events.schema.json  circuit.schema.json
@@ -508,6 +508,7 @@ Trampas:
 | D21 | **Circuito canónico por trazado**, compartido entre sesiones | `s` es comparable entre sesiones y temporadas, como necesita el heatmap. Hay menos ficheros. | Línea central por sesión: los orígenes y longitudes difieren entre sesiones. |
 | D23 | **Uso personal y privado** (2026-10-10): no se publica ningún dato; la app se usa en local (`pnpm local`, con `--lan` para la red de casa) | Lo pidió el usuario: proyecto totalmente personal y «lo que sea legal». Usar los datos para uno mismo es legal; publicarlos sería redistribuirlos sin licencia (F1 y MultiViewer). | Despliegue público en Cloudflare (D1/D2), que queda en pausa; si algún día se despliega, solo con control de acceso. |
 | D27 | **Banderas y trazados en el selector** (2026-10-10): bandera SVG de `country-flag-icons` (MIT) y miniatura del trazado de `bacinger/f1-circuits` (MIT, fijado a un commit, simplificado con `trazada outlines` y versionado en el front), con el norte arriba | Lo pide el usuario. Ambas fuentes son gratis, con licencia MIT y sin datos de F1. Funcionan sin red y cubren todos los GP de 2018–2026, también los no descargados. | Emoji (en Windows salen dos letras); trazados propios (solo circuitos descargados); x/y de MultiViewer (sin licencia); OSM (ODbL) y Wikimedia (CC BY-SA). |
+| D28 | **Coche 3D genérico hecho por código** (2026-10-10): monoplaza de ~1.500 triángulos en `engine/car/carGeometry.ts`, cuña de lejos y modelo de cerca con histéresis, zoom de la cámara de seguimiento | Sin licencias ni procedencia de terceros, proporciones actuales y halo, colores desde tokens y sin red. Identidad solo por color de equipo, número y siglas. | GLB de Kenney «race» (CC0, solo verificable en un espejo; sin halo, proporciones de juguete); modelos de Sketchfab (réplicas de coches reales o CC-BY dudosos); un LOD intermedio (a 17–28 px se lee peor que la cuña). |
 | D26 | **Gestor de datos en la app** (2026-10-10): con `pnpm local`, el selector muestra el calendario de cada temporada y descarga cada sesión con un clic (cola, progreso, errores, en bloque por GP y carreras de la temporada) ejecutando el pipeline en el PC | Lo pide el usuario: rellenar los datos sin usar la terminal. El servidor local ya existía (D25); la API solo atiende al propio PC, del mismo origen y con cabecera propia, y el pipeline se lanza sin shell con argumentos validados. | Seguir con la CLI (incómodo para muchas sesiones). Un script de lote sin interfaz (no muestra qué falta ni el progreso). |
 | D25 | **Solo local, sin Cloudflare** (2026-10-10): sin ningún despliegue; la app y los datos viven en el PC (`pnpm local`) | Lo decide el usuario. Es lo más simple y lo más claramente legal (D23). | El despliegue privado con contraseña (D24), que se implementó y se retiró. |
 | D24 | *(Retirada por D25.)* **Despliegue privado con contraseña** (2026-10-10): una Worker de Cloudflare (`deploy/private/`) con la app y los datos publicables, accesible solo con contraseña (cookie HMAC, `run_worker_first`) | El usuario quiere verla en una URL sin dejar de ser uso personal (D23). Workers Free: gratis y sin tarjeta, y el límite de 100 000 peticiones al día sobra. | Vercel: la protección con contraseña es de pago (Pro). Cloudflare Access: pide un método de pago incluso en el plan gratis. Público (D1/D2): descartado por D23. |

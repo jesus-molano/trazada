@@ -10,8 +10,10 @@ import { type Camera, Vector3 } from 'three'
 import type { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { duration, GSAP_EASE } from '~/design/motion'
 import { FollowCamera } from '~/engine/camera/FollowCamera'
+import { carPose } from '~/engine/replay/carPose'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
+import { useSettingsStore } from '~/stores/settings'
 
 const props = defineProps<{
   controls: MapControls | null
@@ -24,7 +26,9 @@ const emit = defineEmits<{ invalidate: []; overview: [] }>()
 
 const rt = getRuntime()!
 const playback = usePlaybackStore()
-const follow = new FollowCamera()
+const settings = useSettingsStore()
+const follow = new FollowCamera(settings.followDistance)
+const pose = { x: 0, y: 0, z: 0 }
 
 type Mode = 'overview' | 'to-follow' | 'follow' | 'to-overview'
 let mode: Mode = 'overview'
@@ -170,9 +174,13 @@ onBeforeRender(({ camera, delta }) => {
     if (c) lookTarget.copy(c.target)
   }
   if (mode !== 'overview') {
-    const st = rt.model.states.find((s) => s.car === playback.selectedCar)
+    const i = rt.model.states.findIndex((s) => s.car === playback.selectedCar)
+    const st = rt.model.states[i]
+    follow.distance = settings.followDistance
     if (mode !== 'to-overview' && st?.visible) {
-      follow.update({ x: st.x, y: (props.flat ? 0 : st.z) * props.yScale, z: -st.y }, st.heading, delta)
+      // Misma pose que el coche dibujado (con la separación visual, si está activa).
+      carPose(st, rt.offsets[i]!, props.flat, pose)
+      follow.update({ x: pose.x, y: pose.y * props.yScale, z: pose.z }, st.heading, delta)
       follow.position(followPos)
       followTarget.set(follow.target.x, follow.target.y, follow.target.z)
       hasFix = true

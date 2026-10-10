@@ -54,3 +54,61 @@ test('en pausa, un seek mueve los coches; un clic en la sigla selecciona', async
   await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
   await expect(label).toHaveAttribute('aria-pressed', 'true')
 })
+
+test.describe('coche 3D (D28)', () => {
+  const follow = async (page: Page) => {
+    await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
+    await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+    await page.getByTestId('follow-toggle').click()
+    await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
+  }
+  const stats = (page: Page) => page.evaluate(() => ({ ...window.__trazada!.scene }))
+
+  test('de lejos, cuñas; siguiendo a un coche, el modelo detallado, dentro del presupuesto de la escena', async ({ page }) => {
+    await openScene(page)
+    await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 85_828))
+    await expect.poll(async () => (await stats(page)).carLod.wedge).toBeGreaterThan(5)
+    expect((await stats(page)).carLod.detail).toBe(0)
+    await follow(page)
+    await expect.poll(async () => (await stats(page)).carLod.detail).toBeGreaterThanOrEqual(1)
+    const s = await stats(page)
+    expect(s.carTriangles).toBeLessThanOrEqual(1600)
+    // PLAN §2.5: < 30 draw calls y < 150 000 triángulos.
+    expect(s.drawCalls).toBeLessThanOrEqual(13)
+    expect(s.triangles).toBeLessThan(60_000)
+  })
+
+  test('con ?car=wedge, siempre la cuña (para comparar en el bench)', async ({ page }) => {
+    await gotoApp(page, `${FP1}&car=wedge`)
+    await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
+    await follow(page)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    expect((await stats(page)).carLod.detail).toBe(0)
+  })
+
+  test('zoom de la cámara de seguimiento con la rueda (se recuerda); un clic en el coche lo deselecciona', async ({ page }) => {
+    await openScene(page)
+    await follow(page)
+    const car = await page.evaluate(() => window.__trazada!.selectedCar)
+    // Distancia horizontal de la cámara al coche (three: x, −y canónico).
+    const distance = async () =>
+      page.evaluate(() => {
+        const [x, , z] = window.__trazada!.scene.camera
+        const st = window.__trazada!.cars().find((c) => c.car === window.__trazada!.selectedCar)!
+        return Math.hypot(x - st.x, z + st.y)
+      })
+    const far = await distance()
+    const box = (await page.locator('[data-testid="scene"] canvas').boundingBox())!
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    await page.mouse.move(cx, cy)
+    for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -120)
+    await expect.poll(distance).toBeLessThan(far * 0.5)
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.settings') ?? '{}').followDistance)).toBeLessThan(35)
+    // El coche ocupa el centro de la pantalla: un clic sobre él (proxy de selección) lo deselecciona.
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    expect(car).not.toBeNull()
+    await page.mouse.click(cx, cy + 20)
+    await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
+  })
+})

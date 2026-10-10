@@ -60,7 +60,7 @@ En el contenedor todo el render es por software. El hilo principal está ocioso 
 ### Lo que se midió y se cambió
 
 - **`backdrop-filter: blur()`** en los paneles: con un lienzo animado detrás obliga a desenfocar de nuevo en cada frame. Con SwiftShader, quitarlo bajó el p50 de 133 a 100 ms. Se quitó de todos los paneles sobre la escena y el fondo pasó a ser más opaco (`--tz-overlay` 0,72 → 0,88).
-- **Escena**: 9 draw calls y ~15 000 triángulos (un único InstancedMesh para los 22 coches). Render bajo demanda: en pausa no se dibuja nada.
+- **Escena**: 8 draw calls y ~15 000 triángulos en la vista general (los coches son cuñas en un único InstancedMesh). Con coches cerca (seguimiento), el modelo detallado (D28) suma 3 draw calls y ~1.500 triángulos por coche cercano: 11 draw calls y ~18 500 triángulos siguiendo a un coche con otro delante (Spa, fixture). Render bajo demanda: en pausa no se dibuja nada. **Pendiente tuyo**: el bench siguiendo a un coche dentro del pelotón, con y sin `&car=wedge`.
 - **Carga**: de clic a "listo", 180–400 ms con la CPU ×4 y sin *long tasks* (fixture y sesión completa de Bélgica; H3). El montaje de la escena tras "listo" es una *long task* de 260–390 ms con la CPU ×4, unos 65–100 ms reales (H3/H6; pendiente de trocear si molesta en la máquina de referencia).
 
 ## Peso por sesión

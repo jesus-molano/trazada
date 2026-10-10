@@ -142,6 +142,17 @@ export class LeaderboardEngine {
     return out
   }
 
+  /** Compuesto con el que va un coche en t (el de su vuelta en curso); 'UNKNOWN' sin dato. */
+  compoundAt(car: string, t: number): string {
+    const laps = this.laps.get(car)
+    let compound = 'UNKNOWN'
+    if (!laps) return compound
+    for (let k = 0; k < laps.lap.length; k++) {
+      if (laps.start[k]! >= 0 && laps.start[k]! <= t) compound = ENUMS.compound[laps.compound[k]!] ?? 'UNKNOWN'
+    }
+    return compound
+  }
+
   compute(t: number, states: readonly CarState[]): LeaderboardRow[] {
     const blue = this.blueFlagsAt(t)
     const stateOf = new Map(states.map((s) => [s.car, s]))

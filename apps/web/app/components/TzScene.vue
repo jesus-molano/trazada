@@ -13,7 +13,7 @@ import { type Fit, fitCircuit, frameCircuit, type Insets } from '~/engine/track/
 import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
-import { getRuntime } from '~/stores/playback'
+import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
 import type { SceneLabel } from './TzSceneLabels.vue'
@@ -21,6 +21,7 @@ import type { SceneLabel } from './TzSceneLabels.vue'
 const { t } = useI18n()
 const session = useSessionStore()
 const settings = useSettingsStore()
+const playback = usePlaybackStore()
 
 const supported = ref<boolean | null>(null)
 const lost = ref(false)
@@ -52,6 +53,8 @@ const SCENE_BG = token('--tz-scene-bg')
  */
 const route = useRoute()
 const governorOn = route.query.governor !== 'off'
+/** `?car=wedge`: coches siempre como cuña (para comparar en el bench con el modelo detallado). */
+const carDetail = route.query.car !== 'wedge'
 const governor = new QualityGovernor(import.meta.client ? window.devicePixelRatio : 1)
 const dpr = ref(governor.dpr)
 const FOV = 35
@@ -300,11 +303,47 @@ function trackScreen(stepM: number): TrackScreenSample[] {
   return out
 }
 
+/**
+ * Zoom de la cámara de seguimiento: rueda o pellizco con dos dedos (con la vista general, el zoom es el de
+ * los controles del mapa). La distancia se guarda en las preferencias.
+ */
+let pinch: { distance: number; span: number } | null = null
+const span = (e: TouchEvent) => Math.hypot(e.touches[0]!.clientX - e.touches[1]!.clientX, e.touches[0]!.clientY - e.touches[1]!.clientY)
+function zoomFollow(distance: number) {
+  settings.setFollowDistance(distance)
+  ctx?.renderer.invalidate()
+}
+function onWheel(e: WheelEvent) {
+  if (!playback.following) return
+  e.preventDefault()
+  const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+  zoomFollow(settings.followDistance * Math.exp(dy * 0.0015))
+}
+function onTouchStart(e: TouchEvent) {
+  pinch = playback.following && e.touches.length === 2 ? { distance: settings.followDistance, span: span(e) } : null
+}
+function onTouchMove(e: TouchEvent) {
+  if (!pinch || e.touches.length !== 2) return
+  e.preventDefault()
+  zoomFollow((pinch.distance * pinch.span) / Math.max(1, span(e)))
+}
+function onTouchEnd(e: TouchEvent) {
+  if (e.touches.length < 2) pinch = null
+}
+const ZOOM_EVENTS = [
+  ['wheel', onWheel],
+  ['touchstart', onTouchStart],
+  ['touchmove', onTouchMove],
+  ['touchend', onTouchEnd],
+  ['touchcancel', onTouchEnd],
+] as const
+
 function detach() {
   resizeObserver?.disconnect()
   resizeObserver = null
   canvasEl?.removeEventListener('webglcontextlost', onLost)
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
+  for (const [type, fn] of ZOOM_EVENTS) canvasEl?.removeEventListener(type, fn as EventListener)
   controls?.dispose()
   controls = null
   controlsRef.value = null
@@ -317,6 +356,7 @@ function onReady(context: TresContext) {
   canvasEl = context.renderer.instance.domElement as HTMLCanvasElement
   canvasEl.addEventListener('webglcontextlost', onLost)
   canvasEl.addEventListener('webglcontextrestored', onRestored)
+  for (const [type, fn] of ZOOM_EVENTS) canvasEl.addEventListener(type, fn as EventListener, { passive: false })
   // Modo on-demand: el runtime pide un frame en cada tick con reproducción y tras cada seek.
   getRuntime()?.setInvalidate(() => context.renderer.invalidate())
   const cam = camera.value
@@ -444,7 +484,7 @@ onBeforeUnmount(() => {
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
         <TzTrackFlags :model="model" :flat="flat" />
-        <TzCars :y-scale="yScale" :flat="flat" />
+        <TzCars :y-scale="yScale" :flat="flat" :detail="carDetail" />
       </TresGroup>
     </TresCanvas>
 

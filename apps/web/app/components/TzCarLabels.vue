@@ -9,16 +9,26 @@
  * hueco para volver a mostrarse (si no, en un tren de coches parpadearían en cada frame).
  */
 import { type Camera, Vector3 } from 'three'
+import { carSizeScale } from '~/engine/car/carLod'
 import type { CarState } from '~/engine/replay/ReplayModel'
+import { carPose } from '~/engine/replay/carPose'
 import { usePlaybackStore } from '~/stores/playback'
 
 const props = defineProps<{ states: CarState[]; offsets: Float32Array }>()
 const playback = usePlaybackStore()
 const root = ref<HTMLElement | null>(null)
 const v = new Vector3()
+const top = new Vector3()
+const pose = { x: 0, y: 0, z: 0 }
 
-/** Separación de la sigla sobre el coche (px), holgura entre siglas y holgura extra para volver a mostrarse. */
+/**
+ * Separación de la sigla sobre la base del coche (px) y, como mínimo, sobre su parte más alta (m × tamaño
+ * visual, y px): de cerca, el coche es más alto que esos 14 px y la sigla no debe taparlo.
+ */
 const LIFT_PX = 14
+const TOP_M = 1.35
+const TOP_GAP_PX = 4
+/** Holgura entre siglas y holgura extra para volver a mostrarse. */
 const GAP_PX = 2
 const REVEAL_PX = 6
 const sx: number[] = []
@@ -49,11 +59,15 @@ function update(camera: Camera, width: number, height: number, yScale: number, f
     const st = props.states[i]!
     on[i] = false
     if (!st.visible || !nodes[i]) continue
-    const o = props.offsets[i]!
-    v.set(st.x - Math.sin(st.heading) * o, (flat ? 0 : st.z) * yScale, -(st.y + Math.cos(st.heading) * o)).project(camera)
+    carPose(st, props.offsets[i]!, flat, pose)
+    v.set(pose.x, pose.y * yScale, pose.z)
+    top.copy(v)
+    top.y += TOP_M * carSizeScale(camera.position.distanceTo(v))
+    v.project(camera)
+    top.project(camera)
     on[i] = v.z < 1 && v.z > -1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05
     sx[i] = ((v.x + 1) / 2) * width
-    sy[i] = ((1 - v.y) / 2) * height - LIFT_PX
+    sy[i] = Math.min(((1 - v.y) / 2) * height - LIFT_PX, ((1 - top.y) / 2) * height - TOP_GAP_PX)
     order.push(i)
   }
   // Prioridad: el coche elegido y, después, el que va por delante (más distancia recorrida).

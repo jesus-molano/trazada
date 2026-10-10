@@ -3,7 +3,15 @@ import { loadFixture } from '../../testing/fixture'
 import { carTracks } from '../replay/motion'
 import { ReplayModel } from '../replay/ReplayModel'
 import { circuitModel } from '../track/circuit'
-import { FOLLOW_PITCH_DEG, FollowCamera, YAW_MAX_ACCEL } from './FollowCamera'
+import {
+  clampFollowDistance,
+  FOLLOW_DISTANCE_M,
+  FOLLOW_MAX_DISTANCE_M,
+  FOLLOW_MIN_DISTANCE_M,
+  FOLLOW_PITCH_DEG,
+  FollowCamera,
+  YAW_MAX_ACCEL,
+} from './FollowCamera'
 
 /**
  * 60 s de sesión guionizados siguiendo a un coche real del fixture, a ×1 y ×16 (60 fps de reloj real).
@@ -71,5 +79,16 @@ describe('cámara de seguimiento: suavidad', () => {
     expect(p.x).toBeCloseTo(-100 * Math.cos((FOLLOW_PITCH_DEG * Math.PI) / 180), 6)
     expect(p.y).toBeCloseTo(100 * Math.sin((FOLLOW_PITCH_DEG * Math.PI) / 180), 6)
     expect(p.z).toBeCloseTo(0, 6)
+  })
+
+  it('zoom: la distancia se puede cambiar, dentro de sus límites', () => {
+    expect(clampFollowDistance(5)).toBe(FOLLOW_MIN_DISTANCE_M)
+    expect(clampFollowDistance(500)).toBe(FOLLOW_MAX_DISTANCE_M)
+    expect(clampFollowDistance(Number.NaN)).toBe(FOLLOW_DISTANCE_M)
+    expect(new FollowCamera(1).distance).toBe(FOLLOW_MIN_DISTANCE_M)
+    const cam = new FollowCamera()
+    cam.update({ x: 0, y: 0, z: 0 }, 0, 1 / 60)
+    cam.distance = 20
+    expect(cam.position({ x: 0, y: 0, z: 0 }).y).toBeCloseTo(20 * Math.sin((FOLLOW_PITCH_DEG * Math.PI) / 180), 6)
   })
 })

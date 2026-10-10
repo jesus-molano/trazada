@@ -73,6 +73,14 @@ describe('leaderboard sin torre (carrera)', () => {
     expect(rows[1]!.tyreLife).toBe(12)
   })
 
+  it('compuesto de un coche en un instante (el de la clasificación; para la banda del neumático en 3D)', () => {
+    const rows = lb.compute(185_000, [state('1', 3000), state('44', 2500), state('16', 2900)])
+    for (const r of rows) expect(lb.compoundAt(r.car, 185_000)).toBe(r.compound)
+    expect(lb.compoundAt('44', 50_000)).toBe('MEDIUM')
+    expect(lb.compoundAt('44', 95_000)).toBe('HARD')
+    expect(lb.compoundAt('99', 95_000)).toBe('UNKNOWN')
+  })
+
   it('al final de cada vuelta, la posición = Laps.Position', () => {
     const cases: [string, number, number][] = [
       ['1', 90000, 1],
