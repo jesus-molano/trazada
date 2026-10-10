@@ -1,0 +1,63 @@
+{
+  "analysis": {
+    "button": "Análisis",
+    "buttonHint": "Gráficas de la sesión con los tiempos oficiales: race trace, ritmo por vuelta y neumáticos",
+    "title": "Análisis de vueltas",
+    "close": "Cerrar el análisis",
+    "tabsLabel": "Gráficas",
+    "tabs": {
+      "raceTrace": "Race trace",
+      "pace": "Ritmo",
+      "stints": "Neumáticos"
+    },
+    "noSpoilers": "Sin spoilers: hasta ahora",
+    "noSpoilersHint": "Activo: las gráficas solo usan los datos hasta el instante del reproductor. Desactívalo para ver la sesión entera.",
+    "legend": "Pilotos: mostrar u ocultar su serie",
+    "lapShort": "V{lap}",
+    "noLaps": "Sin dato: esta sesión no trae vueltas cronometradas.",
+    "nothingYet": "Todavía no hay datos hasta este instante. Avanza el reproductor o desactiva «Sin spoilers».",
+    "identify": "Cada serie lleva la sigla de su piloto; la del segundo piloto de cada equipo es discontinua.",
+    "raceTrace": {
+      "chart": "Race trace: diferencia con el primero en cada paso por meta, vuelta a vuelta",
+      "axis": "Diferencia con el primero en la línea (s), por vuelta",
+      "basis": "Diferencia entre los pasos por meta oficiales de cada vuelta, sin corrección de combustible ni suavizado. Arriba, el primero de cada vuelta. Un coche doblado puede quedar a más de una vuelta; un coche que deja de cruzar la línea corta su serie.",
+      "onlyRace": "El race trace solo tiene sentido en carrera y sprint: en libres y clasificación cada piloto rueda a su aire y no hay una diferencia en pista que comparar vuelta a vuelta. Mira «Ritmo» o «Neumáticos»."
+    },
+    "pace": {
+      "chartLap": "Ritmo: tiempo oficial de cada vuelta, por vuelta",
+      "chartTime": "Ritmo: tiempo oficial de cada vuelta, según el momento de la sesión en que acaba",
+      "axisLap": "Tiempo de vuelta, por vuelta",
+      "axisTime": "Tiempo de vuelta, por hora de sesión",
+      "basis": "Tiempos oficiales por vuelta, sin corrección de combustible ni suavizado. Las vueltas que no sirven para comparar ritmo se marcan, no se quitan.",
+      "markNormal": "● vuelta representativa",
+      "markExcluded": "○ excluida: boxes, SC, VSC, bandera roja o vuelta 1",
+      "markDeleted": "✕ anulada (desde el mensaje de dirección de carrera)",
+      "noTime": "Sin tiempo oficial: {n} vuelta (no se dibuja) | Sin tiempo oficial: {n} vueltas (no se dibujan)",
+      "lap1": "Vuelta 1: sin tiempo oficial (salida desde la parrilla).",
+      "noTrackStatus": "Sin dato de estado de pista por vuelta: las vueltas con SC, VSC o bandera roja no se pueden marcar.",
+      "outside": "{n} vuelta queda fuera de la escala del ritmo. | {n} vueltas quedan fuera de la escala del ritmo.",
+      "showAll": "Ver todas",
+      "showPace": "Escala del ritmo",
+      "nothingShown": "Elige algún piloto en la leyenda para ver su ritmo."
+    },
+    "stints": {
+      "label": "Stints de neumáticos por piloto",
+      "basisRace": "Un stint por juego de neumáticos según el cronometraje, de la primera a la última vuelta. Pulsa uno para ir a su salida.",
+      "basisRuns": "Un stint por tanda en pista según el cronometraje, de la salida a la entrada al pit lane. Pulsa uno para ir a su salida.",
+      "bar": "{driver}: {compound}, {laps}; {tyre}; {state}",
+      "laps": "vuelta {from} | vueltas {from}–{to}",
+      "open": "en curso",
+      "tyreLife": "juego con {from}–{to} vueltas",
+      "tyreLifeNoData": "edad del juego: sin dato",
+      "tyreLifeHint": "Vueltas del juego de neumáticos según el cronometraje (TyreLife). Un juego usado puede traer vueltas de otras sesiones (libres o clasificación), así que no es la edad en esta sesión.",
+      "tyreLifeLabel": "Edad del juego",
+      "new": "nuevo",
+      "used": "usado",
+      "freshNoData": "nuevo o usado: sin dato",
+      "usedKey": "Rayado: juego usado",
+      "compoundNoData": "compuesto sin dato",
+      "noStints": "sin dato",
+      "compounds": "Compuestos"
+    }
+  }
+}
