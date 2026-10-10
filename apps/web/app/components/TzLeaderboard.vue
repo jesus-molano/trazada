@@ -2,7 +2,12 @@
 /**
  * Leaderboard del replay: posición, gap/intervalo, neumático y estado de cada piloto, y detrás las columnas de otras
  * funciones (hueco `components/leaderboard-cells/`, D29) que salen en el diseño `preset`.
+ *
+ * Clasificación animada (ítem 8, D42): al cambiar el orden, las filas se deslizan (FLIP de <TransitionGroup>) solo
+ * con reproducción a ≤ ×4 y sin salto del reloj; con reduced motion, al instante. Una fila que gana o pierde puestos
+ * lleva unos segundos una flecha con la cifra y su texto (nunca solo el color) y un destello breve.
  */
+import type { RankBadge } from '~/composables/useLeaderboard'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { cellsFor, LEADERBOARD_CELLS, type LayoutPreset } from '~/slots/leaderboard-cells'
@@ -20,7 +25,7 @@ const cellsStyle = computed(() =>
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
 const settings = useSettingsStore()
-const rows = useLeaderboard()
+const { rows, animate, changes, announcement, race } = useLeaderboard()
 settings.hydrate()
 const season = useSessionStore().data?.manifest.session.season ?? 0
 /** Color del compuesto (según la temporada) para el borde de su letra. */
@@ -42,6 +47,30 @@ function gapText(r: LeaderboardRow): string {
   }
   return `+${fmt.format(s)}`
 }
+
+/** Filas con su flecha de cambio de puesto (null si no la llevan). */
+const items = computed(() => rows.value.map((r) => ({ r, b: changes.value.get(r.car) ?? null })))
+
+/** «ganó 2 posiciones» / «perdió 1 posición». */
+function changeText(b: Pick<RankBadge, 'delta'>): string {
+  const n = Math.abs(b.delta)
+  return b.delta > 0 ? t('rank.gained', { n }, n) : t('rank.lost', { n }, n)
+}
+
+/** Lo que compara la flecha: el orden anterior en carrera; el orden por mejor vuelta en libres y clasificación. */
+function changeTitle(b: Pick<RankBadge, 'delta'>): string {
+  const change = changeText(b)
+  return race ? t('rank.titleRace', { change }) : t('rank.titleBestLap', { change })
+}
+
+/** Resumen para lectores de pantalla (aria-live, como mucho uno cada pocos segundos). */
+const liveText = computed(() => {
+  const a = announcement.value
+  if (!a) return ''
+  const parts = a.items.map((i) => t('rank.announceItem', { driver: i.tla, change: changeText(i), position: i.position }))
+  if (a.more > 0) parts.push(t('rank.announceMore', { n: a.more }))
+  return [race ? t('rank.announceRace') : t('rank.announceBestLap'), ...parts].join(' ')
+})
 
 function select(car: string) {
   playback.selectCar(playback.selectedCar === car ? null : car)
@@ -80,15 +109,23 @@ function select(car: string) {
       </div>
     </header>
 
-    <ol class="tz-lb__rows" role="list">
+    <!-- Sin animación (move-class sin transición), Vue no desliza las filas: ×8/×16, saltos y reduced motion. -->
+    <TransitionGroup
+      tag="ol"
+      class="tz-lb__rows"
+      role="list"
+      :move-class="animate ? 'tz-lb-move' : 'tz-lb-still'"
+      data-testid="lb-rows"
+    >
       <li
-        v-for="r in rows"
+        v-for="{ r, b } in items"
         :key="r.car"
         class="tz-lb__row"
         :class="{ 'is-selected': playback.selectedCar === r.car, 'is-nosignal': r.noSignal }"
         :data-car="r.car"
         :data-position="r.position"
         :data-position-known="r.positionKnown"
+        :data-change="b ? (b.delta > 0 ? 'up' : 'down') : undefined"
       >
         <button type="button" class="tz-lb__btn" :aria-pressed="playback.selectedCar === r.car" @click="select(r.car)">
           <span
@@ -99,6 +136,17 @@ function select(car: string) {
           <span class="tz-lb__team" :style="{ background: r.driver?.color ?? 'var(--tz-team-unknown)' }" aria-hidden="true" />
           <span class="tz-lb__tla">{{ r.driver?.tla ?? r.car }}</span>
           <span class="tz-lb__flags">
+            <span
+              v-if="b"
+              class="tz-lb__change"
+              :class="b.delta > 0 ? 'is-gain' : 'is-loss'"
+              :title="changeTitle(b)"
+              data-testid="rank-change"
+            >
+              <TzIcon :name="b.delta > 0 ? 'gain' : 'loss'" size="sm" />
+              <span class="tz-tabular" aria-hidden="true">{{ Math.abs(b.delta) }}</span>
+              <span class="tz-visually-hidden">{{ changeText(b) }}</span>
+            </span>
             <span
               v-if="r.blueFlag && settings.showBlueFlags"
               class="tz-lb__blue"
@@ -125,8 +173,18 @@ function select(car: string) {
           </span>
           <component :is="c.component" v-for="c in cells" :key="c.name" :row="r" :preset="preset" />
         </button>
+        <!-- Destello único por cambio (la clave lo repite con el siguiente); encima del botón, sin captar clics. -->
+        <span
+          v-if="b?.flash"
+          :key="b.seq"
+          class="tz-lb__flash"
+          :class="b.delta > 0 ? 'is-gain' : 'is-loss'"
+          aria-hidden="true"
+          data-testid="rank-flash"
+        />
       </li>
-    </ol>
+    </TransitionGroup>
+    <p class="tz-visually-hidden" role="status" aria-live="polite" data-testid="rank-live">{{ liveText }}</p>
 
     <label class="tz-lb__opt">
       <input
@@ -200,6 +258,65 @@ function select(car: string) {
   padding: 0;
   overflow-y: auto;
   list-style: none;
+  /* El FLIP mide las filas en cada reordenación: que el reflow no salga de la lista. */
+  contain: layout paint;
+}
+
+.tz-lb__row {
+  position: relative;
+}
+
+/* Reordenación (FLIP): solo transform y solo cuando se anima (move-class `tz-lb-still`, sin transición, si no). */
+.tz-lb-move {
+  transition: transform var(--tz-dur-slow) var(--tz-ease-standard);
+}
+
+/* Destello único al ganar o perder puestos: un velo del color del cambio que se desvanece (con reduce, 0 ms). */
+.tz-lb__flash {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--tz-radius-sm);
+  opacity: 0;
+  pointer-events: none;
+  animation: tz-lb-flash var(--tz-dur-flash) var(--tz-ease-exit);
+}
+
+.tz-lb__flash.is-gain {
+  background: var(--tz-gain);
+}
+
+.tz-lb__flash.is-loss {
+  background: var(--tz-loss);
+}
+
+@keyframes tz-lb-flash {
+  from {
+    opacity: 0.22;
+  }
+}
+
+/* Flecha ↑↓ con la cifra (y su texto oculto): forma y número, nunca solo el color. */
+.tz-lb__change {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  font-size: var(--tz-text-2xs);
+  font-weight: var(--tz-weight-semibold);
+  white-space: nowrap;
+}
+
+.tz-lb__change :deep(.tz-icon) {
+  width: var(--tz-text-xs);
+  height: var(--tz-text-xs);
+}
+
+.tz-lb__change.is-gain {
+  color: var(--tz-gain);
+}
+
+.tz-lb__change.is-loss {
+  color: var(--tz-loss);
 }
 
 .tz-lb__btn {

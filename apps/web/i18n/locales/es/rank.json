@@ -1,0 +1,12 @@
+{
+  "rank": {
+    "gained": "ganó {n} posición | ganó {n} posiciones",
+    "lost": "perdió {n} posición | perdió {n} posiciones",
+    "titleRace": "Respecto al orden anterior de la clasificación (nunca a la parrilla): {change}.",
+    "titleBestLap": "Orden por mejor vuelta, no un adelantamiento en pista: {change}.",
+    "announceRace": "Cambios en la clasificación:",
+    "announceBestLap": "Cambios en el orden por mejor vuelta:",
+    "announceItem": "{driver}, {change}, ahora {position}.º.",
+    "announceMore": "Y {n} más."
+  }
+}
