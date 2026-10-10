@@ -8,7 +8,9 @@ import TzEstimated from '~/components/TzEstimated.vue'
 import TzLeaderboard from '~/components/TzLeaderboard.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzSessionNotes from '~/components/TzSessionNotes.vue'
+import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
@@ -54,17 +56,41 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
       w.findAll('[data-testid="how-drawn-panel"] li').map((li) => [li.attributes('data-item'), li.text()]),
     )
     expect(Object.keys(items).sort()).toEqual(
-      ['car', 'centreLine', 'estimated', 'forward', 'interpolation', 'positions', 'timing', 'width'].sort(),
+      ['car', 'centreLine', 'estimated', 'forward', 'interpolation', 'pit', 'positions', 'timing', 'width'].sort(),
     )
     expect(items.positions).toMatch(/4/)
     expect(items.interpolation).toMatch(/(interpola|interpolated)/)
+    // Interpolar no cubre cualquier hueco: con más de SEGMENT_GAP_MS sin posición, el coche se oculta.
+    expect(items.interpolation).toContain(`${SEGMENT_GAP_MS / 1000} s`)
     expect(items.centreLine).toMatch(/(línea central|centre line)/)
-    expect(items.centreLine).toMatch(/30 m/)
+    // 30 m desde la línea central (no «una salida de pista de 30 m», que sería desde el borde).
+    expect(items.centreLine).toMatch(/(30 m de la línea central|30 m from the centre line)/)
+    // En boxes se dibuja sobre el pit lane, no sobre la línea central.
+    expect(items.pit).toMatch(/pit lane/)
     expect(items.forward).toMatch(/(marcha atrás|backwards)/)
-    expect(items.width).toMatch(/14 m/)
+    expect(items.width).toContain(`${TRACK_WIDTH_M} m`)
     expect(items.width).toMatch(/(genérica|generic)/)
     expect(items.car).toMatch(/(genérico|generic)/)
     for (const text of Object.values(items)) expect(text).not.toMatch(/(posición real|real position|anchura real|real width)/)
+  })
+})
+
+describe('«Cómo se dibuja» en una sesión con datos reconstruidos', () => {
+  it('no presenta como dato de la fuente lo que el manifest declara estimado (sesión dev: posiciones reconstruidas)', async () => {
+    const plain = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
+    expect(plain.find('[data-testid="how-drawn-panel"] [data-item="sessionEstimated"]').exists()).toBe(false)
+
+    const w = await mountSuspended(TzSceneTools, {
+      props: { flat: false, estimated: ['positions', 'telemetry', 'trackStatus', 'algoNuevo'] },
+    })
+    const panel = w.find('[data-testid="how-drawn-panel"]')
+    expect(panel.find('[data-item="sessionEstimated"]').text()).toMatch(/(no todo lo anterior|not all of the above)/)
+    const caveats = Object.fromEntries(panel.findAll('[data-estimated]').map((li) => [li.attributes('data-estimated'), li.text()]))
+    expect(Object.keys(caveats)).toEqual(['positions', 'telemetry', 'trackStatus', 'algoNuevo'])
+    expect(caveats.positions).toMatch(/^(Estimado|Estimated)/)
+    expect(caveats.positions).toMatch(/(reconstruido|reconstructed)/)
+    // Un campo que esta versión no conoce también se avisa (con la explicación genérica), nunca se calla.
+    expect(caveats.algoNuevo).toMatch(/(derivado|derived)/)
   })
 })
 

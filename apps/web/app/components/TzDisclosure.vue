@@ -2,7 +2,8 @@
 /**
  * Botón que despliega un panel flotante de texto (patrón «disclosure»): `aria-expanded` y `aria-controls`;
  * se abre y se cierra con clic, Enter o espacio. Esc lo cierra y devuelve el foco al botón (sin que llegue al
- * atajo global de Esc). Un clic fuera también lo cierra. El panel no atrapa el foco: es texto para leer.
+ * atajo global de Esc). Un clic fuera también lo cierra. El panel no atrapa el foco: es texto para leer, pero
+ * se puede enfocar (tabindex 0) para desplazarlo con el teclado cuando no cabe en su altura máxima.
  * Si no cabe en la ventana (tablet, cabecera partida), se desplaza en horizontal hasta que quepa.
  * `name`: nombre accesible (y título) más largo que el texto visible, si hace falta ahorrar sitio; debe
  * empezar por el texto visible (WCAG 2.5.3).
@@ -90,6 +91,7 @@ onBeforeUnmount(() => {
       :style="panelStyle"
       role="region"
       :aria-label="name ?? label"
+      tabindex="0"
       :data-testid="`${testid}-panel`"
     >
       <slot />
@@ -133,8 +135,8 @@ onBeforeUnmount(() => {
   position: absolute;
   top: calc(100% + var(--tz-space-1));
   z-index: var(--tz-z-overlay);
-  width: min(380px, calc(100vw - 2 * var(--tz-space-4)));
-  max-height: min(70vh, 520px);
+  width: min(460px, calc(100vw - 2 * var(--tz-space-4)));
+  max-height: min(75vh, 600px);
   overflow-y: auto;
   padding: var(--tz-space-3) var(--tz-space-4);
   border: 1px solid var(--tz-border-strong);

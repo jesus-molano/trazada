@@ -46,10 +46,13 @@ El replay mezcla datos de la fuente con un modelo para dibujarlos. En la app lo 
 - La posición de cada coche (x, y y altura), unas 4 veces por segundo.
 - Tiempos de vuelta, neumáticos, telemetría y mensajes de dirección de carrera, del cronometraje.
 
+En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruido: la app lo marca como «Estimado», también en «Cómo se dibuja».
+
 **Modelo (solo para dibujar)**
 
-- Entre una posición y la siguiente, el movimiento se interpola.
-- La fuente no indica en qué parte del ancho de la pista va cada coche. Por eso se dibuja sobre la línea central, según la distancia recorrida y con el morro en la dirección de la pista. Una salida de pista de hasta 30 m (por ejemplo, a la grava) se dibuja sobre la pista; más lejos, el coche se oculta.
+- Entre una posición y la siguiente, el movimiento se interpola. Si pasan más de 2 s sin posición, el coche no se dibuja en ese hueco.
+- La fuente no indica en qué parte del ancho de la pista va cada coche. Por eso se dibuja sobre la línea central, según la distancia recorrida y con el morro en la dirección de la pista. Si la fuente lo sitúa a menos de 30 m de la línea central (por ejemplo, en la grava), se dibuja sobre la pista; más lejos, el coche se oculta.
+- En boxes (entre la entrada y la salida que da el cronometraje), el coche se dibuja sobre la línea del pit lane; en el garaje, se oculta.
 - Un coche nunca se dibuja marcha atrás: si la fuente lo sitúa retrocediendo (ruido o un trompo), la distancia recorrida se ajusta para que no disminuya.
 - La pista tiene una anchura genérica de 14 m, no la de cada circuito. De lejos, la pista y los coches tienen un tamaño mínimo en pantalla.
 - El coche 3D es genérico: lleva el color del equipo y, en los neumáticos, el del compuesto que da el cronometraje (gris si no hay dato).

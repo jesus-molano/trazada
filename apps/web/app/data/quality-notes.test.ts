@@ -50,6 +50,14 @@ describe('avisos de calidad del manifest', () => {
     for (const known of KNOWN_NOTES) expect(src.includes(known.anchor), known.anchor).toBe(true)
   })
 
+  it('un umbral fijo que dice el texto traducido («99 %», «3 %») está en el ancla: si cambia en el pipeline, se avisa', () => {
+    const notes = (locale('es').sessionNotes as Tree).note as Tree
+    for (const known of KNOWN_NOTES) {
+      const fixed = [...(notes[known.code] as string).matchAll(/(\d+(?:,\d+)?) %/g)].map((m) => `${m[1]!.replace(',', '.')} %`)
+      for (const f of fixed) expect(known.anchor, `${known.code}: ${f}`).toContain(f)
+    }
+  })
+
   it('cada código tiene su texto en es y en, con los mismos parámetros que extrae', () => {
     for (const lang of ['es', 'en']) {
       const notes = ((locale(lang).sessionNotes as Tree).note ?? {}) as Tree

@@ -4,7 +4,9 @@
  * dato y qué es modelo en lo que se dibuja («Cómo se dibuja») y las etiquetas "Estimado" de lo que la escena
  * pinta sin ser dato real (opciones del usuario y campos del manifest).
  */
-import { sceneManifestFields } from '~/engine/estimated'
+import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
+import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
+import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
 
 const props = defineProps<{ flat: boolean; estimated: readonly string[] }>()
@@ -15,7 +17,17 @@ const manifestFields = computed(() => sceneManifestFields(props.estimated))
 
 /** «Cómo se dibuja»: primero lo que viene de la fuente y después lo que pone el modelo. */
 const HOW_DATA = ['positions', 'timing'] as const
-const HOW_MODEL = ['interpolation', 'centreLine', 'forward', 'width', 'car', 'estimated'] as const
+const HOW_MODEL = ['interpolation', 'centreLine', 'pit', 'forward', 'width', 'car', 'estimated'] as const
+/** Las cifras salen de las constantes que usa el motor: si cambian allí, el texto no se queda atrás. */
+const HOW_PARAMS: Partial<Record<(typeof HOW_MODEL)[number], Record<string, number>>> = {
+  interpolation: { s: SEGMENT_GAP_MS / 1000 },
+  width: { m: TRACK_WIDTH_M },
+}
+/**
+ * Lo que el manifest declara estimado en esta sesión (p. ej., posiciones reconstruidas en una sesión dev): la
+ * lista de «dato de la fuente» no puede presentarlo como dato, así que se avisa justo debajo, con su explicación.
+ */
+const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.${f}`) : t('estimated.hintUnknown'))
 </script>
 
 <template>
@@ -52,9 +64,17 @@ const HOW_MODEL = ['interpolation', 'centreLine', 'forward', 'width', 'car', 'es
       <ul class="tz-how__list" aria-labelledby="tz-how-data">
         <li v-for="k in HOW_DATA" :key="k" :data-item="k">{{ t(`howDrawn.${k}`) }}</li>
       </ul>
+      <template v-if="estimated.length">
+        <p id="tz-how-estimated" class="tz-how__heading" data-item="sessionEstimated">{{ t('howDrawn.sessionEstimated') }}</p>
+        <ul class="tz-how__list" aria-labelledby="tz-how-estimated">
+          <li v-for="f in estimated" :key="f" :data-estimated="f">
+            <span class="tz-how__tag">{{ t('estimated.tag') }}</span> {{ estimatedHint(f) }}
+          </li>
+        </ul>
+      </template>
       <p id="tz-how-model" class="tz-how__heading">{{ t('howDrawn.modelTitle') }}</p>
       <ul class="tz-how__list" aria-labelledby="tz-how-model">
-        <li v-for="k in HOW_MODEL" :key="k" :data-item="k">{{ t(`howDrawn.${k}`) }}</li>
+        <li v-for="k in HOW_MODEL" :key="k" :data-item="k">{{ t(`howDrawn.${k}`, HOW_PARAMS[k] ?? {}) }}</li>
       </ul>
     </TzDisclosure>
     <div class="tz-tools__estimated">
@@ -134,6 +154,11 @@ const HOW_MODEL = ['interpolation', 'centreLine', 'forward', 'width', 'car', 'es
   font-size: var(--tz-text-xs);
   font-weight: var(--tz-weight-semibold);
   color: var(--tz-text-muted);
+}
+
+.tz-how__tag {
+  font-weight: var(--tz-weight-semibold);
+  color: var(--tz-estimated);
 }
 
 .tz-how__list {

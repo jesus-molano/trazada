@@ -70,8 +70,9 @@ export const KNOWN_NOTES = [
   },
   {
     code: 'length',
-    pattern: /^longitud (\d+(?:\.\d+)?) m vs oficial (\d+(?:\.\d+)?) m/,
-    anchor: ' m vs oficial ',
+    // El texto traducido dice «más de un 3 %»: el umbral va en el patrón y en el ancla (si cambia, el test avisa).
+    pattern: /^longitud (\d+(?:\.\d+)?) m vs oficial (\d+(?:\.\d+)?) m \(> 3 %\)/,
+    anchor: ' m (> 3 %)',
     example: 'longitud 7104 m vs oficial 7004 m (> 3 %)',
     params: (m) => ({ m: num(m[1]), official: num(m[2]) }),
   },

@@ -123,6 +123,28 @@ test('en tablet vertical, los dos paneles caben en la ventana', async ({ page })
   }
 })
 
+test('en una ventana baja, el panel que no cabe se enfoca y se desplaza con el teclado', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 560 })
+  await open(page)
+  const button = page.getByTestId('how-drawn')
+  await button.focus()
+  await page.keyboard.press('Enter')
+  const panel = page.getByTestId('how-drawn-panel')
+  await expect(panel).toBeVisible()
+  // Condición del caso: el texto no cabe en la altura máxima del panel.
+  const { scroll, client } = await panel.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }))
+  expect(scroll).toBeGreaterThan(client)
+  await page.keyboard.press('Tab')
+  await expect(panel).toBeFocused()
+  await page.keyboard.press('End')
+  await expect.poll(() => panel.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+  expect(await seriousAxe(page)).toEqual([])
+  // Esc con el foco en el panel: se cierra y el foco vuelve al botón.
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+  await expect(button).toBeFocused()
+})
+
 test('en inglés, la explicación y los avisos también se traducen', async ({ page }) => {
   await open(page)
   const lang = await page.evaluate(() => document.documentElement.lang)
