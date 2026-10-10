@@ -17,7 +17,6 @@ En desarrollo (Fase 1, MVP replay). Plan, decisiones e hitos en [`docs/PLAN.md`]
 | `apps/web` | App Nuxt 4 + TresJS v5 (estática, `nuxt generate`) |
 | `packages/schema` | Esquema de datos compartido (JSON Schema, layouts TRZB, tipos TS) |
 | `pipeline` | Pipeline Python (FastF1) que genera los ficheros de cada sesión |
-| `deploy` | Configuración de los Workers de Cloudflare (solo assets: app y datos) |
 | `docs` | Brief, plan, formato de datos, rendimiento e investigación |
 
 ## Requisitos
@@ -49,18 +48,7 @@ pnpm local          # http://127.0.0.1:3000 con los datos de data/
 pnpm local --lan    # también en tu red de casa (p. ej. el iPad)
 ```
 
-### Verla en una URL (privada, con contraseña)
-
-Para entrar desde cualquier sitio sin publicar nada (D24), la app y tus sesiones van a una Worker de Cloudflare (gratis y sin tarjeta) que solo se abre con tu contraseña:
-
-```bash
-pnpm dlx wrangler@4 login   # la primera vez: cuenta gratis de Cloudflare
-pnpm deploy:private         # compila, sube y, la primera vez, pide la contraseña (12+ caracteres)
-```
-
-Después abre `https://trazada-privada.<tu-subdominio>.workers.dev`. Para cambiar la contraseña (cierra todas las sesiones): `pnpm dlx wrangler@4 secret put ACCESS_PASSWORD --config deploy/private/wrangler.jsonc`.
-
-El despliegue público (`deploy/app`, `deploy/data`, `pnpm data:deploy`) queda en pausa (D23).
+Todo se usa en local: no hay despliegue (decisión D25 en `docs/PLAN.md`).
 
 ## Rendimiento
 

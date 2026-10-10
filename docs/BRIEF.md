@@ -128,3 +128,4 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
   - **Por qué no las alternativas**: Vercel cobra la protección con contraseña (Pro), y Cloudflare Access pide un método de pago incluso en el plan gratis.
   - **Legal**: sigue siendo uso personal (D23), porque no se redistribuye nada.
   - **Cómo se despliega**: desde tu PC con `pnpm deploy:private`.
+- **2026-10-10** — **D25, solo local y sin Cloudflare**: el usuario prefiere usarla solo en local («que le den a Cloudflare»). Se eliminan el despliegue público (D1/D2) y el privado (D24): la Worker, los workflows, `data:deploy` y el smoke post-deploy. La app se usa con `pnpm local`. La revisión de seguridad de la Worker privada había encontrado una redirección abierta y la falta de freno a la fuerza bruta; al no desplegarse, desaparecen con el código.
