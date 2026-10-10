@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { localeFiles } from './i18n/messages'
 
 const localDataDir = fileURLToPath(new URL('../../data', import.meta.url))
 
@@ -43,9 +44,10 @@ export default defineNuxtConfig({
   i18n: {
     strategy: 'no_prefix',
     defaultLocale: 'es',
+    // Un fichero por namespace en i18n/locales/<idioma>/ (D29): base.json y uno por función.
     locales: [
-      { code: 'es', language: 'es-ES', name: 'Español', file: 'es.json' },
-      { code: 'en', language: 'en-GB', name: 'English', file: 'en.json' },
+      { code: 'es', language: 'es-ES', name: 'Español', files: localeFiles('es') },
+      { code: 'en', language: 'en-GB', name: 'English', files: localeFiles('en') },
     ],
     detectBrowserLanguage: {
       useCookie: true,

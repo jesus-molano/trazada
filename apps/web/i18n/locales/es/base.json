@@ -109,7 +109,11 @@
     "flat": "Sin altitud fiable: pista plana",
     "flatHint": "Los datos de esta sesión no traen una altitud fiable.",
     "separation": "Separar coches",
-    "separationHint": "Separa a lo ancho de la pista los coches que van juntos (solo visual)."
+    "separationHint": "Separa a lo ancho de la pista los coches que van juntos (solo visual).",
+    "toolGroups": {
+      "layers": "Capas",
+      "camera": "Cámara"
+    }
   },
   "howDrawn": {
     "button": "Cómo se dibuja",
@@ -202,7 +206,10 @@
       "lap1": "tiempo de la vuelta 1",
       "positions": "posiciones reconstruidas",
       "telemetry": "telemetría reconstruida",
-      "trackStatus": "estado de pista deducido"
+      "trackStatus": "estado de pista deducido",
+      "lapDelta": "diferencia en vivo (GPS)",
+      "minisectors": "minisectores calculados",
+      "drsZones": "zonas de DRS deducidas"
     },
     "hints": {
       "elevation": "La altura de la pista está multiplicada para que se aprecie el desnivel: no es la real.",
@@ -210,7 +217,10 @@
       "lap1": "El live timing no da el tiempo de la vuelta 1 en carrera. Se calcula como el paso por meta menos la hora de salida, así que incluye el tramo desde la parrilla.",
       "positions": "La fuente no da posiciones muestreadas para esta sesión: se han reconstruido a partir de otros datos.",
       "telemetry": "La telemetría de esta sesión se ha reconstruido a partir de otros datos, no viene tal cual de la fuente.",
-      "trackStatus": "Sin el estado de pista oficial: banderas y neutralizaciones se deducen de los mensajes de dirección de carrera."
+      "trackStatus": "Sin el estado de pista oficial: banderas y neutralizaciones se deducen de los mensajes de dirección de carrera.",
+      "lapDelta": "Se calcula con las posiciones GPS de los dos coches a la misma distancia recorrida, no con el cronometraje oficial. El GPS tiene un margen de unos metros, así que solo se dan décimas. La cifra exacta es la del cronometraje oficial al cerrar la vuelta.",
+      "minisectors": "Trazada divide la pista en minisectores y calcula quién es más rápido en cada uno con las posiciones GPS: no son los minisectores oficiales. Si la diferencia es muy pequeña, no se elige ganador.",
+      "drsZones": "Se deducen de dónde abren el DRS los coches según su telemetría: no son las zonas oficiales de detección y activación."
     }
   },
   "leaderboard": {

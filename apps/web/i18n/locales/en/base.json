@@ -109,7 +109,11 @@
     "flat": "No reliable altitude: flat track",
     "flatHint": "This session's data has no reliable altitude.",
     "separation": "Spread cars",
-    "separationHint": "Spreads cars running together across the track (visual only)."
+    "separationHint": "Spreads cars running together across the track (visual only).",
+    "toolGroups": {
+      "layers": "Layers",
+      "camera": "Camera"
+    }
   },
   "howDrawn": {
     "button": "How it is drawn",
@@ -202,7 +206,10 @@
       "lap1": "lap 1 time",
       "positions": "reconstructed positions",
       "telemetry": "reconstructed telemetry",
-      "trackStatus": "inferred track status"
+      "trackStatus": "inferred track status",
+      "lapDelta": "live gap (GPS)",
+      "minisectors": "computed minisectors",
+      "drsZones": "inferred DRS zones"
     },
     "hints": {
       "elevation": "Track height is multiplied so the elevation change is visible: it is not the real one.",
@@ -210,7 +217,10 @@
       "lap1": "Live timing does not give the lap 1 time in a race. It is computed as the line crossing minus the start time, so it includes the run from the grid.",
       "positions": "The source has no sampled positions for this session: they have been reconstructed from other data.",
       "telemetry": "Telemetry for this session has been reconstructed from other data, it does not come from the source as is.",
-      "trackStatus": "No official track status: flags and neutralisations are inferred from race control messages."
+      "trackStatus": "No official track status: flags and neutralisations are inferred from race control messages.",
+      "lapDelta": "Computed from the GPS positions of both cars at the same distance covered, not from official timing. GPS is off by a few metres, so only tenths are given. The exact figure is the official timing one when the lap ends.",
+      "minisectors": "Trazada splits the track into minisectors and works out who is faster in each one from GPS positions: they are not the official minisectors. When the difference is very small, no winner is picked.",
+      "drsZones": "Inferred from where cars open DRS according to their telemetry: they are not the official detection and activation zones."
     }
   },
   "leaderboard": {
