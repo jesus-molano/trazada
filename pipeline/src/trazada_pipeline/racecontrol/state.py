@@ -112,6 +112,19 @@ def toggle_windows(
     return out
 
 
+def clip_intervals(items: list[dict[str, Any]], end_ms: int | None) -> list[dict[str, Any]]:
+    """Recorta intervalos al final de la reproducción: fuera los que empiezan después, y el fin, saturado."""
+    if end_ms is None:
+        return items
+    out = []
+    for w in items:
+        if w["fromMs"] >= end_ms:
+            continue
+        to = w["toMs"]
+        out.append({**w, "toMs": end_ms if to is None or to > end_ms else to})
+    return out
+
+
 def build_events(
     rc: pd.DataFrame,
     track_status: pd.DataFrame,
@@ -122,12 +135,13 @@ def build_events(
     windows = status_windows(track_status, end_ms)
     windows += toggle_windows(events, "drs_enabled", "drs_disabled", "drs", end_ms)
     windows += toggle_windows(events, "overtake_enabled", "overtake_disabled", "overtake", end_ms)
+    windows = clip_intervals(windows, end_ms)
     windows.sort(key=lambda w: (w["fromMs"], w["kind"]))
     return {
         "schema": "trazada.events",
         "schemaVersion": schema.schema_version(),
         "raceControl": events,
-        "sectorFlags": sector_flags(events, end_ms),
+        "sectorFlags": clip_intervals(sector_flags(events, end_ms), end_ms),
         "windows": windows,
     }
 

@@ -88,6 +88,7 @@ onBeforeUnmount(() => {
       <TzLoadPanel />
     </div>
 
+    <TzLeaderboard v-if="playback.attached" :key="`lb-${session.id}`" />
     <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
   </section>
 </template>

@@ -114,11 +114,14 @@ def e2e_fixture(
     data: Path = typer.Option(DEFAULT_DATA, help="Raíz de datos de origen."),
     out: Path = typer.Option(REPO / "apps" / "web" / "tests" / "fixtures" / "data", help="Raíz del fixture."),
     minutes: float = typer.Option(9.0, help="Duración del extracto."),
+    start: float | None = typer.Option(
+        None, help="Minuto de sesión en que empieza (por defecto, el de más coches)."
+    ),
 ) -> None:
     """Genera el fixture e2e (extracto recortado + variantes de estado). Solo de fuentes publicables."""
     from trazada_pipeline.fixtures import make_e2e_fixture
 
-    summary = make_e2e_fixture(data, session, out, minutes)
+    summary = make_e2e_fixture(data, session, out, minutes, start)
     typer.echo(json.dumps(summary))
 
 

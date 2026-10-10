@@ -98,6 +98,31 @@
   "estimated": {
     "tag": "Estimado:"
   },
+  "leaderboard": {
+    "title": "Clasificación",
+    "gapMode": "Referencia del gap",
+    "toLeader": "Líder",
+    "interval": "Intervalo",
+    "leader": "LÍDER",
+    "lapsBehind": "+{n} V",
+    "blueFlag": "Bandera azul",
+    "pit": "PIT",
+    "noSignal": "sin señal",
+    "tyre": "{compound}, {laps} vueltas",
+    "showBlueFlags": "Mostrar banderas azules"
+  },
+  "compound": {
+    "UNKNOWN": "Desconocido",
+    "SOFT": "Blando",
+    "MEDIUM": "Medio",
+    "HARD": "Duro",
+    "INTERMEDIATE": "Intermedio",
+    "WET": "Lluvia",
+    "TEST_UNKNOWN": "De pruebas",
+    "HYPERSOFT": "Hiperblando",
+    "ULTRASOFT": "Ultrablando",
+    "SUPERSOFT": "Superblando"
+  },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."
   }

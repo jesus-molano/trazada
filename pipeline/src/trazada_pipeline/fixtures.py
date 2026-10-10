@@ -94,7 +94,9 @@ def _trim_events(events: dict[str, Any], a: int, b: int) -> dict[str, Any]:
     }
 
 
-def make_e2e_fixture(src_data: Path, session: str, out_data: Path, minutes: float = 9.0) -> dict[str, Any]:
+def make_e2e_fixture(
+    src_data: Path, session: str, out_data: Path, minutes: float = 9.0, start_min: float | None = None
+) -> dict[str, Any]:
     """Escribe el extracto en `out_data/v1/...` (borra lo anterior) y devuelve un resumen."""
     src_v1 = src_data / "v1"
     src_dir = src_v1 / "sessions" / session
@@ -107,7 +109,11 @@ def make_e2e_fixture(src_data: Path, session: str, out_data: Path, minutes: floa
     timing = _decode(src_dir, files["timing"])
     events = json.loads(gzip.decompress((src_dir / files["events"]["path"]).read_bytes()))
     pb = manifest["session"]["playback"]
-    a, b = best_window(motion, pb["startMs"], pb["endMs"], minutes)
+    if start_min is None:
+        a, b = best_window(motion, pb["startMs"], pb["endMs"], minutes)
+    else:
+        a = max(pb["startMs"], int(start_min * 60_000))
+        b = min(pb["endMs"], a + int(minutes * 60_000))
 
     out_v1 = out_data / "v1"
     if out_v1.exists():

@@ -42,7 +42,7 @@ test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }
   // Solo el lienzo: se oculta la interfaz superpuesta (y el chip con el tiempo de carga, que varía).
   await page.addStyleTag({
     content:
-      '.tz-replay__bar, [data-testid="replay-dock"], [data-testid="scene-tools"], .tz-labels { visibility: hidden !important; }',
+      '.tz-replay__bar, [data-testid="replay-dock"], [data-testid="scene-tools"], [data-testid="leaderboard"], .tz-labels, .tz-cars { visibility: hidden !important; }',
   })
   await expect(page.locator('[data-testid="scene"] canvas')).toHaveScreenshot('spa.png', { maxDiffPixelRatio: 0.01 })
 })

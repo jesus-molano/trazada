@@ -122,3 +122,18 @@ def test_track_status_from_race_control() -> None:
         (1000, 5),
         (2000, 1),
     ]
+
+
+def test_flags_and_windows_are_clipped_to_playback_end() -> None:
+    rc = _rc(
+        [
+            (1000, "Flag", "YELLOW", "Sector", 3, "YELLOW IN TRACK SECTOR 3"),
+            (12_000, "Flag", "DOUBLE YELLOW", "Sector", 9, "DOUBLE YELLOW IN TRACK SECTOR 9"),
+        ]
+    )
+    ts = pd.DataFrame({"t_ms": [0, 2000, 11_000], "code": [1, 4, 6]})
+    ev = build_events(rc, ts, 10_000)
+    assert ev["sectorFlags"] == [{"sector": 3, "flag": "YELLOW", "fromMs": 1000, "toMs": 10_000}]
+    assert [(w["kind"], w["fromMs"], w["toMs"]) for w in ev["windows"]] == [("sc", 2000, 10_000)]
+    for w in ev["sectorFlags"] + ev["windows"]:
+        assert w["toMs"] >= w["fromMs"]

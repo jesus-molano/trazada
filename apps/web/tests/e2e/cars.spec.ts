@@ -39,10 +39,18 @@ test('en pausa, un seek mueve los coches; un clic en la sigla selecciona', async
   expect(moved.length).toBeGreaterThan(3)
   for (const [i, c] of after.entries()) if (c.visible && before[i]!.visible) expect(c.s).toBeGreaterThanOrEqual(before[i]!.s - 1e-6)
 
-  const visible = after.find((c) => c.visible && !c.inPit)!
-  const label = page.locator(`[data-testid="car-labels"] [data-car="${visible.car}"]`)
-  await expect(label).toBeVisible()
+  // Una sigla que no tape otra (con los coches juntos, las etiquetas se solapan).
+  const car = await page.evaluate(() => {
+    for (const el of document.querySelectorAll<HTMLElement>('[data-testid="car-labels"] [data-car]')) {
+      if (getComputedStyle(el).visibility !== 'visible') continue
+      const r = el.getBoundingClientRect()
+      if (document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === el) return el.dataset.car!
+    }
+    return null
+  })
+  expect(car).not.toBeNull()
+  const label = page.locator(`[data-testid="car-labels"] [data-car="${car}"]`)
   await label.click()
-  await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(visible.car)
+  await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
   await expect(label).toHaveAttribute('aria-pressed', 'true')
 })

@@ -98,6 +98,31 @@
   "estimated": {
     "tag": "Estimated:"
   },
+  "leaderboard": {
+    "title": "Standings",
+    "gapMode": "Gap reference",
+    "toLeader": "Leader",
+    "interval": "Interval",
+    "leader": "LEADER",
+    "lapsBehind": "+{n} L",
+    "blueFlag": "Blue flag",
+    "pit": "PIT",
+    "noSignal": "no signal",
+    "tyre": "{compound}, {laps} laps",
+    "showBlueFlags": "Show blue flags"
+  },
+  "compound": {
+    "UNKNOWN": "Unknown",
+    "SOFT": "Soft",
+    "MEDIUM": "Medium",
+    "HARD": "Hard",
+    "INTERMEDIATE": "Intermediate",
+    "WET": "Wet",
+    "TEST_UNKNOWN": "Test",
+    "HYPERSOFT": "Hypersoft",
+    "ULTRASOFT": "Ultrasoft",
+    "SUPERSOFT": "Supersoft"
+  },
   "legal": {
     "disclaimer": "Trazada is an unofficial project and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
   }

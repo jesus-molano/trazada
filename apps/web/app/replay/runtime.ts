@@ -6,6 +6,7 @@
 import type { DriverInfo } from '@trazada/schema'
 import type { LoadedSession } from '~/data/types'
 import { type ClockEvent, type Rate, SessionClock } from '~/engine/clock/SessionClock'
+import { LeaderboardEngine } from '~/engine/leaderboard/leaderboard'
 import { carTracks } from '~/engine/replay/motion'
 import { ReplayModel } from '~/engine/replay/ReplayModel'
 import { buildTimelineMarkers, type TimelineMarkers } from '~/engine/timeline/markers'
@@ -29,6 +30,7 @@ export interface ReplayRuntime {
   readonly circuit: CircuitModel
   /** Estado de todos los coches en el instante del reloj (se actualiza antes de los oyentes de frame). */
   readonly model: ReplayModel
+  readonly leaderboard: LeaderboardEngine
   /** Se llama en cada frame con reproducción, y una vez tras cada seek/cambio en pausa. */
   onFrame(cb: (timeMs: number) => void): () => void
   onCoarse(cb: (state: CoarseState) => void): () => void
@@ -48,6 +50,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
   const markers = buildTimelineMarkers(type, session.timing, session.events, playback.endMs)
   const circuit = circuitModel(session.circuit)
   const model = new ReplayModel(carTracks(session.motion, session.tangents), circuit, session.manifest.drivers)
+  const leaderboard = new LeaderboardEngine(type, session.timing, session.events, session.manifest.drivers)
 
   const frameListeners = new Set<(t: number) => void>()
   const coarseListeners = new Set<(s: CoarseState) => void>()
@@ -99,6 +102,7 @@ export function createReplayRuntime(session: LoadedSession): ReplayRuntime {
     drivers: session.manifest.drivers,
     circuit,
     model,
+    leaderboard,
     onFrame(cb) {
       frameListeners.add(cb)
       dirty = true

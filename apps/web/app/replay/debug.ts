@@ -4,6 +4,9 @@
  */
 import type { ReplayRuntime } from './runtime'
 
+/** Duración (ms) de las últimas actualizaciones del leaderboard. */
+export const leaderboardStats = { updates: 0, durations: [] as number[] }
+
 export const sceneStats = {
   renders: 0,
   instances: 0,
@@ -26,6 +29,7 @@ export interface TrazadaHandle {
   readonly frames: number
   readonly renders: number
   readonly scene: typeof sceneStats
+  readonly leaderboard: typeof leaderboardStats
   readonly startMs: number
   readonly endMs: number
   readonly markers: ReplayRuntime['markers']
@@ -61,6 +65,7 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
       return sceneStats.renders
     },
     scene: sceneStats,
+    leaderboard: leaderboardStats,
     startMs: rt.clock.startMs,
     endMs: rt.clock.endMs,
     markers: rt.markers,
