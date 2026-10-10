@@ -7,7 +7,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const MANIFEST = '**/sessions/2026/10-spa-francorchamps/fp1/manifest.json'
@@ -109,9 +109,8 @@ const sceneBg = (page: Page) =>
   })
 const diff = (a: number[], b: number[]) => a.reduce((n, v, i) => n + Math.abs(v - b[i]!), 0)
 
-test.beforeEach(async ({ page }) => {
-  await resetStorage(page)
-})
+// Cada test tiene un contexto nuevo (almacenamiento vacío): sin `resetStorage`, que vaciaría también al recargar y
+// el test de «se recuerda al recargar» no podría comprobar nada.
 
 test('Spa de día: cielo y niebla solo en la pista, una draw call más dentro del presupuesto; la herramienta lo explica', async ({
   page,

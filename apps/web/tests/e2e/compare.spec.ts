@@ -179,13 +179,25 @@ for (const viewport of [
     await page.getByTestId('follow-toggle').click()
     await row(page, '23').getByRole('button').click({ modifiers: ['Shift'] })
     await expect(page.getByTestId('compare-delta')).toBeVisible()
-    const overflow = await page.evaluate(() =>
-      ['[data-testid="telemetry"]', '[data-testid="telemetry"] header', '[data-testid="compare"]']
+    const overflow = await page.evaluate(() => {
+      const out = ['[data-testid="telemetry"]', '[data-testid="telemetry"] header']
         .flatMap((sel) => [...document.querySelectorAll(sel)])
         .filter((el) => el.scrollWidth > el.clientWidth)
         .map((el) => `${el.className} ${el.scrollWidth} > ${el.clientWidth}`)
-        .concat(document.documentElement.scrollWidth > document.documentElement.clientWidth ? ['página'] : []),
-    )
+        .concat(document.documentElement.scrollWidth > document.documentElement.clientWidth ? ['página'] : [])
+      // Dentro de la comparación, cada elemento visible cabe en su caja. Se miden cajas y no `scrollWidth`: el área
+      // táctil ampliada de los botones de icono (un ::after hasta --tz-hit-min) sobresale a propósito del botón de la
+      // pista ⓘ del borde derecho, cae en el relleno del panel y ni es contenido ni da scroll (eso lo mide el panel).
+      const cmp = document.querySelector('[data-testid="compare"]')!
+      const box = cmp.getBoundingClientRect()
+      for (const el of cmp.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect()
+        if (r.width > 1 && (r.left < box.left - 0.5 || r.right > box.right + 0.5)) {
+          out.push(`${el.tagName}.${String(el.className)} ${Math.round(r.left)}–${Math.round(r.right)} fuera de ${Math.round(box.left)}–${Math.round(box.right)}`)
+        }
+      }
+      return out
+    })
     expect(overflow).toEqual([])
   })
 }
