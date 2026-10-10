@@ -506,7 +506,7 @@ Trampas:
 
 | # | Riesgo | Prob. | Impacto | Mitigación |
 |---|---|---|---|---|
-| R1 | **F1 devuelve 403 a IPs de nube**, y FastF1 no lanza error: devuelve tablas vacías | Alta (ya ocurre) | Alto | Ingesta en tu PC. `probe` que falla en ruidoso. Validación de "no vacío". Archivo privado para no tener que volver a descargar. En H0 se comprueba si el espejo de FastF1 responde desde la nube. Adaptador OpenF1 para automatizar. |
+| R1 | **F1 devuelve 403 a IPs de nube**, y FastF1 no lanza error: devuelve tablas vacías. **Confirmado el 2026-10-10 desde GitHub Actions**: F1 403, espejo de FastF1 404; OpenF1, MultiViewer y Jolpica 200. | Cierta | Alto | Ingesta en tu PC. `probe` que falla en ruidoso. Validación de "no vacío". Archivo privado para no tener que volver a descargar. Adaptador OpenF1 (accesible desde la nube) para automatizar 2023+. |
 | R2 | F1 pone autenticación también al archivo estático (el directo ya la tiene desde 2025) | Media | Alto | Archivar cada sesión procesada (bundles y caché). La app nunca vuelve a descargar. Adaptadores de fuente intercambiables. |
 | R3 | **Derechos sobre los datos**: términos de F1 (timing, TDM/IA), MultiViewer sin licencia, Jolpica CC BY-NC-SA, marcas | Media | Alto | §5 Legal: no comercial; datos mínimos y cuantizados; sin licencia abierta; separados del código y retirables; sin campos de Jolpica ni fotos; disclaimer; permiso de MultiViewer; posible consulta a brandprotection@f1.com. |
 | R4 | Semántica de 2026 incompleta: sin DRS, aero ni overtake por coche; puede haber canales nuevos que FastF1 ignora | Cierta | Medio | UI honesta ("No disponible en 2026"). Ventanas globales de overtake. En H0 se vuelca el `CarData.z` crudo. |
