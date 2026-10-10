@@ -15,7 +15,7 @@ import pandas as pd
 
 from trazada_pipeline import __version__, schema
 from trazada_pipeline.circuit import registry
-from trazada_pipeline.circuit.build import GEOMETRY_VERSION, Circuit, build_circuit
+from trazada_pipeline.circuit.build import GEOMETRY_VERSION, Circuit, CircuitBuildError, build_circuit
 from trazada_pipeline.circuit.fit import circuit_fit
 from trazada_pipeline.circuit.store import circuit_variants, load_circuit, next_variant_id, save_circuit
 from trazada_pipeline.encode import trzb
@@ -168,7 +168,9 @@ def _rel(from_dir: Path, target: Path) -> str:
 def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1: Path) -> list[str]:
     """Reconstruye en su sitio un circuito en el que la sesión encaja si está anticuado: de una versión
     anterior de la construcción (p. ej. con el desvío al garaje en el pit lane) o sin curvas ni rotación
-    oficial que esta sesión sí trae. Nunca si con ello perdería las curvas y la rotación que ya tiene."""
+    oficial que esta sesión sí trae. Nunca si con ello perdería las curvas y la rotación, el pit lane o los
+    sectores de comisarios que ya tiene (una sprint sin paradas no trae pit lane), ni si esta sesión no
+    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa."""
     outdated = stored.geometry_version < GEOMETRY_VERSION
     gains_info = stored.corners.empty and data.circuit_info is not None
     if not (outdated or gains_info):
@@ -178,7 +180,21 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
             f"El circuito {cid} es de una versión anterior de la geometría, pero esta sesión no trae curvas "
             "ni rotación oficial: se reutiliza tal cual. Reconstrúyelo con --rebuild-circuit cuando estén."
         ]
-    save_circuit(build_circuit(data, cid, name), v1)
+    try:
+        fresh = build_circuit(data, cid, name)
+    except CircuitBuildError as exc:
+        return [f"El circuito {cid} no se pudo reconstruir con esta sesión ({exc}): se reutiliza tal cual."]
+    lost = []
+    if stored.pitlane is not None and fresh.pitlane is None:
+        lost.append("el pit lane")
+    if stored.marshal_sectors is not None and fresh.marshal_sectors is None:
+        lost.append("los sectores de comisarios")
+    if lost:
+        return [
+            f"El circuito {cid} no se reconstruye con esta sesión porque perdería {' y '.join(lost)}: se "
+            "reutiliza tal cual. Reconstrúyelo con --rebuild-circuit desde una sesión que los tenga."
+        ]
+    save_circuit(fresh, v1)
     if outdated:
         return [f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye."]
     return [f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión."]

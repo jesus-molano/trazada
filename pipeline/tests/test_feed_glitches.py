@@ -214,6 +214,24 @@ def test_pit_run_after_the_last_lap_continues_from_the_lap_before() -> None:
     assert np.abs(m.s_m[late] * L / circuit.length - s_true[late]).max() < 6.0
 
 
+def test_pit_lane_behind_the_track_at_the_entry_keeps_s_monotonic() -> None:
+    """La s equivalente del pit lane puede quedar por detrás de la última de pista al cambiar de camino (cada
+    tramo es monótono por separado): la serie entera tampoco va hacia atrás, y no se pierde casi nada."""
+    from dataclasses import replace
+
+    data, _ = synthetic_session()
+    built = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    assert built.pit_entry_s is not None
+    lagging = replace(built, pit_entry_s=float(np.mod(built.pit_entry_s - 15.0, built.length)))
+
+    for car in ("1", "2"):
+        m = project_session(data, lagging)[car]
+        valid = m.path != PATH_NODATA
+        assert np.all(np.diff(m.s_m[valid]) >= -1e-9), car
+        assert np.any(m.path == PATH_PIT)
+        assert (~valid).sum() - (project_session(data, built)[car].path == PATH_NODATA).sum() <= 6, car
+
+
 # --- F: cerca del pit lane decide la geometría ---
 
 
@@ -237,6 +255,29 @@ def test_pit_lane_samples_outside_the_timing_window_stay_in_the_pit_lane() -> No
         in_lane = (mode == 1) & (_track_distance(circuit, xyz) > 8.0)
         assert in_lane.sum() > 40
         assert np.mean(m.path[in_lane] == PATH_PIT) > 0.95, car
+
+
+def test_queue_at_the_pit_exit_is_in_the_pit_lane() -> None:
+    """Spa FP1, coche 5 entre 900 y 925 s: espera 20 s en el semáforo de salida, a 4-5 m de la trazada y al
+    final del pit lane, y el cronometraje ya le había dado la salida de boxes. No se dibuja parado en
+    pista."""
+    data, _ = synthetic_session()
+    queue_v = PIT_LEN - 12.0  # a ~4,5 m de la línea, donde el pit lane se junta con la pista
+    c = CarSim("9", START_MS + 9000, 1.0).laps(2).to_pit_entry().pit(stop_at_v=queue_v, stop_s=20.0).laps(2)
+    add_car(data, c)
+    hold = next(g for g in c.segs if g.mode == "pit" and g.p0 == g.p1)
+    laps = data.laps
+    # El cronometraje da la salida de boxes al llegar a la cola, 20 s antes de que el coche la deje.
+    laps.loc[(laps["car"] == "9") & (laps["pit_out_ms"] >= 0), "pit_out_ms"] = round(hold.t0)
+    circuit = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    xyz, _, _ = c.truth(np.array([hold.t0]))
+    assert 3.0 < _track_distance(circuit, xyz)[0] < 6.0
+
+    m = project_session(data, circuit)["9"]
+    queued = (m.t_ms > hold.t0 + 3500) & (m.t_ms < hold.t1 - 500)
+    assert queued.sum() > 50
+    assert np.all(m.path[queued] == PATH_PIT)
+    assert m.proj_err_m[queued].max() < 2.0
 
 
 def test_off_both_paths_next_to_the_pit_entry_is_no_data() -> None:

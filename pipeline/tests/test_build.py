@@ -281,3 +281,50 @@ def test_outdated_circuit_is_not_rebuilt_if_it_would_lose_its_corners(tmp_path: 
     assert any("se reutiliza tal cual" in n for n in m["quality"]["notes"])
     kept = load_circuit("0-synthetic-dev", v1)
     assert kept is not None and len(kept.corners) == 1 and kept.geometry_version == 1
+
+
+def test_outdated_circuit_is_not_rebuilt_from_a_session_without_pit_stops(tmp_path: Path) -> None:
+    """Una sprint sin paradas encaja en el circuito, pero sin paradas no hay pit lane: reconstruirlo con ella
+    dejaría el circuito canónico sin pit lane para todas las sesiones siguientes."""
+    from dataclasses import replace
+
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(synthetic_session()[0], tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None and old.pitlane is not None
+    save_circuit(replace(old, geometry_version=1), v1)
+    sprint = synthetic_session(seed=7)[0]
+    sprint.laps[["pit_in_ms", "pit_out_ms"]] = -1
+    m = _manifest(build_session(sprint, tmp_path))
+    assert any("perdería el pit lane" in n for n in m["quality"]["notes"])
+    kept = load_circuit("0-synthetic-dev", v1)
+    assert kept is not None and kept.pitlane is not None and kept.geometry_version == 1
+
+
+def test_outdated_circuit_is_kept_if_the_session_cannot_rebuild_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Antes se reutilizaba: un circuito que esta sesión no sabe construir no tumba el build."""
+    from dataclasses import replace
+
+    import trazada_pipeline.build as build_mod
+    from trazada_pipeline.circuit.build import CircuitBuildError
+    from trazada_pipeline.circuit.store import load_circuit, save_circuit
+
+    v1 = tmp_path / "v1"
+    build_session(synthetic_session()[0], tmp_path)
+    old = load_circuit("0-synthetic-dev", v1)
+    assert old is not None
+    save_circuit(replace(old, geometry_version=1), v1)
+
+    def fail(*_args: object) -> None:
+        raise CircuitBuildError("hueco de 75 m sin muestras en la línea central")
+
+    monkeypatch.setattr(build_mod, "build_circuit", fail)
+    report = build_session(synthetic_session(seed=7)[0], tmp_path)
+    assert report.status == "ok"
+    assert any("no se pudo reconstruir" in n for n in _manifest(report)["quality"]["notes"])
+    kept = load_circuit("0-synthetic-dev", v1)
+    assert kept is not None and kept.geometry_version == 1

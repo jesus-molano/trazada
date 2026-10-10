@@ -5,9 +5,9 @@ Por coche:
    sustituye por la de sus vecinas (solo sirve para elegir el tramo en un cruce a distinta altura).
 2. Ventanas de pit (de `PitInTime` a `PitOutTime`, ±3 s, y antes de la primera salida de boxes): las
    muestras cercanas al pit lane van a `path = pit`; las lejanas (garaje), a `nodata`. Fuera de ellas
-   decide la geometría, porque esas horas no coinciden con la bifurcación: sobre el pit lane y fuera de la
-   pista, `pit`; junto al pit lane pero en ninguno de los dos caminos, `nodata`; si no, `track` (o
-   `nodata` si está lejos de la pista).
+   decide la geometría, porque esas horas no coinciden con la bifurcación: sobre el pit lane y a más de 2 m
+   de la línea (la cola del semáforo de salida), `pit`; junto al pit lane pero en ninguno de los dos
+   caminos, `nodata`; si no, `track` (o `nodata` si está lejos de la pista).
 3. Pista: proyección 3D con continuidad (candidatos múltiples, se elige el coherente con el avance
    posible desde la muestra anterior). Pit: proyección en planta sobre el pit lane y conversión a la s
    equivalente en pista entre `entry_s` y `exit_s`.
@@ -36,6 +36,11 @@ TRACK_MAX_DIST_M = 30.0
 PIT_MAX_DIST_M = 12.0
 #: A más de esto de la línea central el coche ya no va por la pista (medio ancho + ruido).
 OFF_TRACK_M = 6.0
+#: Fuera de la ventana de boxes, a más de esto de la línea y más cerca del pit lane, el coche va por el pit
+#: lane. El feed pega las posiciones de pista a una línea (Bélgica FP1 2026, fuera de boxes: p90 de 0,13 m),
+#: así que 2 m ya es salirse de la trazada. Con 6 m, la cola del semáforo de salida (a 4-5 m de la línea, al
+#: final del pit lane) se dibujaba parada sobre la trazada: 514 s de coche en esa sesión.
+PIT_OFF_LINE_M = 2.0
 #: Fuera de la ventana de boxes, junto al pit lane y a más de esto de la línea, sin estar sobre el pit lane:
 #: calle de entrada o de salida que la polilínea no cubre. Sin dato, nunca pegado a la trazada.
 NEAR_PIT_OFF_TRACK_M = 12.0
@@ -301,8 +306,9 @@ def project_car(
         on_pit = (pd_ < PIT_MAX_DIST_M) & (pd_ + 1.0 < d)
         # En la ventana de boxes basta con estar más cerca del pit lane. Fuera de ella decide la geometría:
         # las horas de entrada y salida del cronometraje no son las de la bifurcación (en Spa, varios
-        # segundos), y un coche en el pit lane no se pega a la trazada.
-        use_pit = on_pit & (in_pit | (d > OFF_TRACK_M))
+        # segundos; la salida, hasta 30 s antes de que el coche deje la cola del semáforo), y un coche en el
+        # pit lane no se pega a la trazada.
+        use_pit = on_pit & (in_pit | (d > PIT_OFF_LINE_M))
         path[use_pit] = PATH_PIT
         s_raw[use_pit] = np.mod(circuit.pit_entry_s + pu[use_pit] / pit_index.length * span, L)
         err[use_pit] = pd_[use_pit]
