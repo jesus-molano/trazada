@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * Los coches (D28). De lejos, una cuña con el color del equipo, que crece para verse a escala de mapa; de
- * cerca, un monoplaza genérico generado por código (engine/car/carGeometry.ts) a tamaño real, con la
- * carrocería del color del equipo y una banda en los neumáticos con el color del compuesto que lleva (dato
- * de timing; gris sin dato). El cambio entre los dos tiene histéresis (engine/car/carLod.ts).
+ * Los coches (D28). De lejos, una cuña con el color del equipo y sus caras sombreadas
+ * (engine/car/wedgeGeometry.ts), que crece para verse a escala de mapa; de cerca, un monoplaza genérico
+ * generado por código (engine/car/carGeometry.ts) a tamaño real, con la carrocería del color del equipo y
+ * el color del compuesto que lleva en los neumáticos (dato de timing; gris sin dato). El cambio entre los
+ * dos tiene histéresis (engine/car/carLod.ts).
  *
  * Todo instanciado: la cuña (una instancia por coche, en el orden de los estados), el modelo detallado en
  * tres capas que comparten matrices (solo los coches de cerca, compactados al principio) y un proxy
@@ -34,6 +35,7 @@ import {
 import { token } from '~/design/tokens'
 import { buildCar, CAR_PARTS, type CarLayerGeometry, type CarPart } from '~/engine/car/carGeometry'
 import { carSizeScale, nextDetail, screenLengthPx } from '~/engine/car/carLod'
+import { buildWedge } from '~/engine/car/wedgeGeometry'
 import { carPose } from '~/engine/replay/carPose'
 import { compoundToken } from '~/engine/timing/compound'
 import { sceneStats } from '~/replay/debug'
@@ -56,25 +58,14 @@ const SELECTED_SCALE = 1.35
 /** Longitud del coche (m) para el nivel de detalle. */
 const CAR_LENGTH_M = 5.25
 
-/** Cuña de 5,6 × 2 × 1 m apuntando a +x (sistema de three: Y arriba). */
+/** Cuña (engine/car/wedgeGeometry.ts): su sombreado horneado va en el color por vértice, como en el coche. */
 function wedgeGeometry(): BufferGeometry {
-  const L = 5.6
-  const W = 2
-  const H = 1
-  // Morro estrecho delante, alerón ancho detrás
-  const v = [
-    [L / 2, 0, -W * 0.15], [L / 2, 0, W * 0.15], [L / 2, H * 0.4, 0],
-    [-L / 2, 0, -W / 2], [-L / 2, 0, W / 2], [-L / 2, H, -W / 2], [-L / 2, H, W / 2],
-  ] // prettier-ignore
-  const faces = [
-    [0, 2, 1], [3, 4, 6], [3, 6, 5], // morro, trasera
-    [0, 1, 4], [0, 4, 3], // suelo
-    [1, 2, 6], [1, 6, 4], [0, 3, 5], [0, 5, 2], [2, 5, 6], // laterales y techo
-  ] // prettier-ignore
-  const pos = new Float32Array(faces.length * 9)
-  faces.forEach((f, i) => f.forEach((vi, j) => pos.set(v[vi]!, i * 9 + j * 3)))
+  const w = buildWedge()
+  const colors = new Float32Array(w.shade.length * 3)
+  for (let i = 0; i < w.shade.length; i++) colors.fill(w.shade[i]!, i * 3, i * 3 + 3)
   const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(pos, 3))
+  g.setAttribute('position', new BufferAttribute(w.positions, 3))
+  g.setAttribute('color', new BufferAttribute(colors, 3))
   return g
 }
 
@@ -109,7 +100,8 @@ const material = (vertexColors: boolean, depth: boolean) =>
   new MeshBasicMaterial({ color: 0xffffff, vertexColors, toneMapped: false, transparent: true, depthTest: depth, depthWrite: depth })
 
 // Cuña: una instancia por coche (índice = estado), con el color del equipo.
-const wedge = new InstancedMesh(wedgeGeometry(), material(false, false), N)
+// Convexa: sin profundidad, sus caras no se pisan (solo se dibujan las de delante).
+const wedge = new InstancedMesh(wedgeGeometry(), material(true, false), N)
 wedge.frustumCulled = false
 wedge.renderOrder = 10
 // Se dibuja antes que el modelo detallado (y nunca se oculta con `visible`, o no se llamaría): borra la

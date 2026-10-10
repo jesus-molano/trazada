@@ -91,8 +91,11 @@ test('replay: vista general con clasificación, dirección de carrera y timeline
 })
 
 test('siguiendo a un coche: modelo 3D, telemetría y gráficas', async ({ page, baseURL }) => {
-  await openReplay(page, baseURL!, { followDistance: 24 })
+  await openReplay(page, baseURL!, { followDistance: 20 })
   await follow(page, 0)
+  // Saliendo de una curva: la cámara gira con algo de retraso y el coche se ve de tres cuartos.
+  await page.evaluate((at) => window.__trazada!.seek(window.__trazada!.startMs + at), AT_MS + 15_000)
+  await page.waitForTimeout(800)
   await shot(page, 'coche')
 })
 
