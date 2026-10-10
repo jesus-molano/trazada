@@ -20,6 +20,8 @@ export const usePlaybackStore = defineStore('playback', () => {
   const playing = ref(false)
   const rate = ref<Rate>(1)
   const selectedCar = ref<string | null>(null)
+  /** Cámara de seguimiento del coche seleccionado (si no, vista general). */
+  const following = ref(false)
   /** Orden para ↑/↓: lo fija el leaderboard; por defecto, el orden del manifest. */
   const order = shallowRef<string[]>([])
 
@@ -28,6 +30,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     runtime = rt
     order.value = rt.drivers.map((d) => d.number)
     selectedCar.value = null
+    following.value = false
     offCoarse = rt.onCoarse((s) => {
       timeMs.value = s.timeMs
       playing.value = s.playing
@@ -53,7 +56,19 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   function selectCar(car: string | null): void {
     selectedCar.value = car
+    if (!car) following.value = false
     runtime?.requestFrame()
+  }
+
+  function setFollowing(value: boolean): void {
+    following.value = value && selectedCar.value !== null
+    runtime?.requestFrame()
+  }
+
+  /** Esc: primero sale del seguimiento (vista general); después, deselecciona. */
+  function escape(): void {
+    if (following.value) setFollowing(false)
+    else if (selectedCar.value) selectCar(null)
   }
 
   /** ↑ (−1) / ↓ (+1) recorren el orden; sin selección, empiezan por el primero o el último. */
@@ -71,6 +86,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     playing,
     rate,
     selectedCar,
+    following,
     order,
     attach,
     detach,
@@ -82,5 +98,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     seekBy,
     selectCar,
     selectRelative,
+    setFollowing,
+    escape,
   }
 })

@@ -24,6 +24,8 @@ const canvasKey = ref(0)
 let canvasEl: HTMLCanvasElement | null = null
 let ctx: TresContext | null = null
 let controls: MapControls | null = null
+/** Los controles, para el rig de cámara (que los desactiva al seguir a un coche). */
+const controlsRef = shallowRef<MapControls | null>(null)
 
 const data = session.data!
 const rt = getRuntime()!
@@ -101,6 +103,7 @@ function detach() {
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
   controls?.dispose()
   controls = null
+  controlsRef.value = null
   canvasEl = null
 }
 
@@ -125,6 +128,7 @@ function onReady(context: TresContext) {
     controls.screenSpacePanning = false
     controls.addEventListener('change', () => context.renderer.invalidate())
     controls.update()
+    controlsRef.value = controls
   }
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0
   sceneStats.pitSamplesLengthM = model.meta.quality?.pitSamplesLengthM ?? 0
@@ -185,7 +189,8 @@ onBeforeUnmount(() => {
       @render="onRender"
       @error="onError"
     >
-      <TresPerspectiveCamera ref="camera" :position="cameraPosition" :fov="FOV" :near="5" :far="distance * 6" />
+      <TresPerspectiveCamera ref="camera" :position="cameraPosition" :fov="FOV" :near="2" :far="distance * 6" />
+      <TzCameraRig :controls="controlsRef" :y-scale="yScale" :flat="flat" @invalidate="ctx?.renderer.invalidate()" />
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
         <TzCars :y-scale="yScale" :flat="flat" />

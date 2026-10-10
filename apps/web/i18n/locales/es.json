@@ -123,6 +123,29 @@
     "ULTRASOFT": "Ultrablando",
     "SUPERSOFT": "Superblando"
   },
+  "telemetry": {
+    "title": "Telemetría de {tla}",
+    "follow": "Seguir",
+    "overview": "Vista general",
+    "close": "Cerrar telemetría",
+    "noData": "Sin dato de telemetría en este instante.",
+    "speed": "Velocidad",
+    "kmh": "km/h",
+    "gear": "Marcha",
+    "rpm": "RPM",
+    "throttle": "Acelerador",
+    "brake": "Freno",
+    "drsLabel": "DRS",
+    "drs": {
+      "open": "Abierto",
+      "available": "Disponible",
+      "closed": "Cerrado"
+    },
+    "drsUnavailable": "No disponible en {season}",
+    "drsUnavailableHint": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa (modo recta) y el modo adelantamiento, que dirección de carrera habilita para toda la pista.",
+    "chartSpeed": "Velocidad en los últimos 20 s",
+    "chartPedals": "Pedales en los últimos 20 s"
+  },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."
   }

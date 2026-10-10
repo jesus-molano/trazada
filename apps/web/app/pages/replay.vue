@@ -14,10 +14,13 @@ useReplayShortcuts()
 const id = computed(() => (typeof route.query.s === 'string' ? route.query.s : ''))
 const parsed = computed(() => parseSessionId(id.value))
 
+// La página se prerenderiza sin `?s=`: hasta montar, el título es el genérico (sin desajuste de hidratación).
+const mounted = ref(false)
+onMounted(() => (mounted.value = true))
 const title = computed(() => {
   const m = session.manifest
   if (m) return `${m.session.event} · ${t(`session.${m.session.type}`)} · ${m.session.season}`
-  return parsed.value ? `${parsed.value.season} · ${t(`session.${parsed.value.type}`)}` : t('replay.title')
+  return mounted.value && parsed.value ? `${parsed.value.season} · ${t(`session.${parsed.value.type}`)}` : t('replay.title')
 })
 useHead({ title })
 
@@ -89,6 +92,7 @@ onBeforeUnmount(() => {
     </div>
 
     <TzLeaderboard v-if="playback.attached" :key="`lb-${session.id}`" />
+    <TzTelemetry v-if="playback.attached && playback.selectedCar" :key="`tel-${session.id}`" />
     <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
   </section>
 </template>

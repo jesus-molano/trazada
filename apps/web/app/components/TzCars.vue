@@ -82,7 +82,20 @@ onBeforeRender(({ camera }) => {
     mesh.setMatrixAt(i, m)
   }
   mesh.instanceMatrix.needsUpdate = true
+  // three cachea la esfera envolvente de las instancias en el primer raycast: se invalida al moverlas,
+  // o un raycast hecho con los coches ocultos (escala 0) dejaría una esfera diminuta y nunca acertaría.
+  mesh.boundingSphere = null
 })
+
+/** Selección con clic o toque sobre el coche (raycast de Tres sobre las instancias). */
+function onClick(event: { instanceId?: number; stopPropagation?: () => void }) {
+  const i = event.instanceId
+  if (i === undefined) return
+  const st = states[i]
+  if (!st?.visible) return
+  event.stopPropagation?.()
+  playback.selectCar(playback.selectedCar === st.car ? null : st.car)
+}
 
 onBeforeUnmount(() => {
   geometry.dispose()
@@ -92,5 +105,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <primitive :object="mesh" />
+  <primitive :object="mesh" @click="onClick" />
 </template>

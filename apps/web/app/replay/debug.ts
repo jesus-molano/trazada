@@ -19,6 +19,9 @@ export const sceneStats = {
   /** Color (#RRGGBB) y coche de cada instancia del InstancedMesh, tal y como se subieron a la GPU. */
   instanceColors: [] as string[],
   instanceCars: [] as string[],
+  /** Modo de cámara y posición (three) tras el último render. */
+  cameraMode: 'overview' as 'overview' | 'to-follow' | 'follow' | 'to-overview',
+  camera: [0, 0, 0] as [number, number, number],
 }
 
 export interface TrazadaHandle {

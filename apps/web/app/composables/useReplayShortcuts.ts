@@ -14,21 +14,34 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return !!role && EDITABLE_ROLES.has(role)
 }
 
-/** Atajos del replay: espacio, 1–5, ←/→ (Shift: ×6), ↑/↓. */
+/** Atajos del replay: espacio, 1–5, ←/→ (Shift: ×6), ↑/↓, Esc. */
 export function useReplayShortcuts(): void {
   const playback = usePlaybackStore()
 
+  /** Último botón o enlace enfocado con el puntero (`:focus-visible` no sirve: se activa al teclear). */
+  let pointerFocused: Element | null = null
+  function onPointerDown(event: PointerEvent) {
+    pointerFocused = (event.target as Element | null)?.closest?.('button, a') ?? null
+  }
+
   function onKeydown(event: KeyboardEvent) {
+    if (event.key === 'Tab') pointerFocused = null
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return
     if (!playback.attached || isEditableTarget(event.target)) return
     const target = event.target as Element | null
     switch (event.key) {
-      case ' ':
-        // En un botón, el espacio lo activa (comportamiento nativo): no se duplica.
-        if (target?.closest('button, a')) return
+      case 'Escape':
+        playback.escape()
+        return
+      case ' ': {
+        // En un botón al que se llegó con el teclado, el espacio lo activa (nativo). Si el foco vino de un
+        // clic, el espacio es reproducir/pausa (y se cancela la activación del botón).
+        const control = target?.closest('button, a')
+        if (control && control !== pointerFocused) return
         event.preventDefault()
         playback.toggle()
         return
+      }
       case 'ArrowLeft':
       case 'ArrowRight': {
         event.preventDefault()
@@ -51,6 +64,12 @@ export function useReplayShortcuts(): void {
     }
   }
 
-  onMounted(() => window.addEventListener('keydown', onKeydown))
-  onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+  onMounted(() => {
+    window.addEventListener('keydown', onKeydown)
+    window.addEventListener('pointerdown', onPointerDown, true)
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('pointerdown', onPointerDown, true)
+  })
 }
