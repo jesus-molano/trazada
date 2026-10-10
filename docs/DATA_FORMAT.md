@@ -89,6 +89,12 @@ Cabecera:
 - 255 en `u8` para "sin dato";
 - 0 en `position` cuando no aplica.
 
+**Circuito y movimiento**:
+- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m y las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h). Su `s` vale 0 y no se usa.
+- `circuit.pitlane.z` es la altura de la pista más cercana, no la del feed (que da la misma a todo el pit lane).
+- El `meta` del circuito lleva `geometryVersion`, la versión de su construcción. Un circuito sin el campo es de la versión 1.
+- Un trazado puede tener variantes `{circuitKey}-{layoutId}-v2`, `-v3`…: se crean cuando una sesión no encaja en el circuito guardado (D21).
+
 ## Eventos (JSON, `events.schema.json`)
 
 - `raceControl[]`: todos los mensajes, con `t` en tiempo de sesión (ms) y el **texto original sin modificar**. `parsed` añade `kind`, `cars`, `turn`, `lap`, `outcome`, `s` y `marshalSector`.
