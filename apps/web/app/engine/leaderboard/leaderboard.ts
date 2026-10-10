@@ -7,7 +7,8 @@
  *   torre, ocupa un puesto en la lista pero su posición es desconocida (`positionKnown: false`).
  * - Gap e intervalo: los de la torre; si faltan, los tiempos de paso por la línea (carrera) o la
  *   diferencia de mejor vuelta (resto). Nunca negativos: si saldrían negativos (orden de la torre y mejores
- *   vueltas desacompasados), sin dato.
+ *   vueltas desacompasados), sin dato. En carrera sin torre, «+N vueltas» solo para un coche doblado; uno al que
+ *   el líder solo le saca la línea que acaba de cruzar no está doblado: su gap de esa vuelta es sin dato.
  * - Vueltas anuladas: cuentan hasta el mensaje de dirección de carrera que las anula (ver `deletionTimes`).
  * - Clasificación (Q y SQ): las mejores vueltas son las de la tanda en curso (Q1/Q2/Q3), delimitadas por los
  *   mensajes de bandera a cuadros (fin de tanda) y luz verde (inicio de la siguiente). Sin esos mensajes, toda
@@ -333,9 +334,12 @@ export class LeaderboardEngine {
       // Sin paso por meta, el puesto en la lista no es una posición (p. ej. antes de la salida).
       r.positionKnown = r._done > 0
       if (!leader || r._done === 0) return
-      r.lapsBehind = leader._done - r._done
+      // Vueltas perdidas: solo si está doblado. Lo está si el líder ya había completado más vueltas cuando el
+      // coche cruzó la línea por última vez, o si el líder le saca dos líneas o más (al menos una vuelta). Si el
+      // líder solo acaba de cruzar la línea siguiente, no está doblado: el gap de esta vuelta aún no se conoce.
+      r.lapsBehind = Math.max(0, this.doneAt(leader.car, r._cross) - r._done, leader._done - r._done - 1)
       const leaderCross = this.crossingOf(leader.car, r._done)
-      r.gapMs = r.lapsBehind === 0 && leaderCross !== null ? r._cross - leaderCross : null
+      r.gapMs = leader._done === r._done && leaderCross !== null ? r._cross - leaderCross : null
       const ahead = rows[i - 1]
       if (ahead) {
         const aheadCross = this.crossingOf(ahead.car, r._done)
@@ -346,6 +350,14 @@ export class LeaderboardEngine {
       leader.gapMs = 0
       leader.intervalMs = null
     }
+  }
+
+  /** Vueltas completadas por un coche hasta el instante x (pasos por meta reales). */
+  private doneAt(car: string, x: number): number {
+    const laps = this.laps.get(car)
+    let done = 0
+    if (laps) for (let k = 0; k < laps.lap.length; k++) if (laps.end[k]! > 0 && laps.end[k]! <= x) done = laps.lap[k]!
+    return done
   }
 
   private crossingOf(car: string, lap: number): number | null {

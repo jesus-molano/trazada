@@ -117,6 +117,13 @@ describe('posición sin dato (ni torre, ni paso por meta, ni vuelta válida)', (
     ])
   })
 
+  it('con torre: una fila de la torre con posición 0 (sin dato) no es una posición', () => {
+    const fp = timing([[1, 1, 0, 90_000, 90_000]], { t: [1000, 1000], car: [1, 44], position: [1, 0] })
+    const rows = new LeaderboardEngine('fp1', fp, ev(), drivers).compute(100_000, states)
+    expect(at(rows, '1').positionKnown).toBe(true)
+    expect(at(rows, '44').positionKnown).toBe(false)
+  })
+
   it('con torre: un coche que la torre no lista no tiene posición', () => {
     const fp = timing([[1, 1, 0, 90_000, 90_000]], { t: [1000, 1000], car: [1, 44], position: [1, 2] })
     const rows = new LeaderboardEngine('fp1', fp, ev(), drivers).compute(100_000, states)
@@ -125,6 +132,41 @@ describe('posición sin dato (ni torre, ni paso por meta, ni vuelta válida)', (
       ['44', 2, true],
       ['16', 3, false],
     ])
+  })
+})
+
+describe('carrera sin torre: «+N vueltas» solo para un coche doblado', () => {
+  // 1 lidera con vueltas de 90 s; 44 va a 1 s; 16 hace una vuelta 2 de 180 s (parada larga) y queda doblado.
+  const race = timing([
+    [1, 1, 0, 90_000, -1],
+    [1, 2, 90_000, 180_000, 90_000],
+    [1, 3, 180_000, 270_000, 90_000],
+    [1, 4, 270_000, 360_000, 90_000],
+    [44, 1, 0, 91_000, -1],
+    [44, 2, 91_000, 181_000, 90_000],
+    [16, 1, 0, 100_000, -1],
+    [16, 2, 100_000, 280_000, 180_000],
+    [16, 3, 280_000, 380_000, 100_000],
+  ])
+  const lb = new LeaderboardEngine('race', race, ev(), drivers)
+
+  it('el líder acaba de cruzar la línea: los demás no están doblados (gap de la vuelta sin dato)', () => {
+    const rows = lb.compute(180_500, states)
+    expect(rows.map((r) => [r.car, r.lapsBehind, r.gapMs])).toEqual([
+      ['1', 0, 0],
+      ['44', 0, null],
+      ['16', 0, null],
+    ])
+    // Al cruzar 44 la línea, su gap de la vuelta 2.
+    expect(at(lb.compute(181_500, states), '44')).toMatchObject({ lapsBehind: 0, gapMs: 1000 })
+  })
+
+  it('doblado: el líder le saca dos líneas, o ya había cruzado la siguiente cuando él pasó por meta', () => {
+    // 270 s: el líder completa la 3 y 16 solo la 1 (dos líneas: al menos una vuelta perdida).
+    expect(at(lb.compute(275_000, states), '16')).toMatchObject({ lapsBehind: 1, gapMs: null })
+    // 280 s: 16 cierra la 2 cuando el líder ya había cerrado la 3.
+    expect(at(lb.compute(285_000, states), '16')).toMatchObject({ lapsBehind: 1, gapMs: null })
+    expect(at(lb.compute(361_000, states), '16')).toMatchObject({ lapsBehind: 1, gapMs: null })
   })
 })
 
