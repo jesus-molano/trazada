@@ -1,0 +1,19 @@
+{
+  "schema": "trazada.events",
+  "schemaVersion": "1.0.0",
+  "raceControl": [
+    {
+      "t": 1000,
+      "lap": 4,
+      "category": "Other",
+      "flag": null,
+      "scope": null,
+      "sector": null,
+      "car": null,
+      "text": "CAR 18 (STR) LAP DELETED - TRACK LIMITS AT TURN 13 LAP 1 14:15:19",
+      "parsed": { "kind": "track_limits_lap_deleted", "cars": ["18"], "turn": 13, "lap": 1, "outcome": null, "detail": null, "s": null, "marshalSector": null }
+    }
+  ],
+  "sectorFlags": [{ "sector": 21, "flag": "YELLOW", "fromMs": 500, "toMs": 900 }],
+  "windows": [{ "kind": "sc", "fromMs": 600, "toMs": 800 }]
+}

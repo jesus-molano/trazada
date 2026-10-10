@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "layouts": {
+    "motion": {
+      "revision": 1,
+      "sha256": "975404812a1645f1a5ff736967f7951fc3cbd1e582d8760decb0d0de4d6e8511"
+    },
+    "car": {
+      "revision": 1,
+      "sha256": "724a62ac3d4a2d30bcbab0f7d6e0f8d913284c33c6c527969f6c5b9833b6f257"
+    },
+    "circuit": {
+      "revision": 1,
+      "sha256": "69e5858bd7ff9afdf22b0a33d6b70e1056c5e333aa94109849ef6e4f6b49241b"
+    },
+    "timing": {
+      "revision": 1,
+      "sha256": "548c1ec4957d657e0c56d66dda75e123102c74d3d511c9c02e0efe0351c21456"
+    }
+  }
+}

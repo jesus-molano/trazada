@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trazada/schema/catalog.schema.json",
+  "title": "Catálogo de sesiones de Trazada",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "generatedAt", "seasons"],
+  "properties": {
+    "schema": { "const": "trazada.catalog" },
+    "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "seasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["season", "events"],
+        "properties": {
+          "season": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["round", "slug", "event", "country", "sessions"],
+              "properties": {
+                "round": { "type": "integer" },
+                "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                "event": { "type": "string" },
+                "country": { "type": "string" },
+                "dateStart": { "type": "string", "format": "date" },
+                "sessions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["session", "name", "status", "path"],
+                    "properties": {
+                      "session": { "enum": ["fp1", "fp2", "fp3", "sq", "sprint", "q", "race"] },
+                      "name": { "type": "string" },
+                      "status": { "enum": ["ok", "partial", "no-position"] },
+                      "path": { "type": "string", "description": "Ruta del manifest relativa a /v1/" },
+                      "bytes": { "type": "integer", "minimum": 0 },
+                      "dev": { "type": "boolean", "description": "Datos de desarrollo (fuente secundaria): no publicar" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -11,7 +11,18 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "lib": ["ES2023", "DOM", "WebWorker"]
+    "lib": [
+      "ES2023",
+      "DOM",
+      "WebWorker"
+    ],
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src", "test", "*.ts"]
+  "include": [
+    "src",
+    "test",
+    "*.ts"
+  ]
 }

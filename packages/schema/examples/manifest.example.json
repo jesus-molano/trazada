@@ -1,0 +1,34 @@
+{
+  "schema": "trazada.session",
+  "schemaVersion": "1.0.0",
+  "minReader": "1.0.0",
+  "generatedAt": "2026-10-10T00:00:00Z",
+  "pipeline": { "version": "0.1.0", "source": "synthetic" },
+  "session": {
+    "season": 2026,
+    "round": 1,
+    "slug": "example",
+    "event": "Example Grand Prix",
+    "type": "race",
+    "name": "Race",
+    "circuit": "0-a",
+    "t0Utc": "2026-01-01T00:00:00Z",
+    "gmtOffset": "+00:00",
+    "playback": { "startMs": 0, "endMs": 1000, "lightsOutMs": null },
+    "totalLaps": 1,
+    "status": "ok"
+  },
+  "drivers": [
+    { "number": "1", "tla": "AAA", "first": "Ana", "last": "Ejemplo", "team": "Equipo", "color": "#336699", "finish": null }
+  ],
+  "channels": { "drs": "absent", "elevation": "flat" },
+  "quality": { "coverage": { "1": { "pos": 1, "car": 1 } }, "estimated": [] },
+  "files": {
+    "motion": { "path": "motion.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "motion@1", "compression": "gzip" },
+    "car": { "path": "car.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "car@1", "compression": "gzip" },
+    "timing": { "path": "timing.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "timing@1", "compression": "gzip" },
+    "events": { "path": "events.00000000.json.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "events@1", "compression": "gzip" },
+    "circuit": { "path": "../../../circuits/0-a/circuit.00000000.trzb.gz", "bytes": 0, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "layout": "circuit@1", "compression": "gzip" }
+  },
+  "attribution": ["Datos sintéticos de ejemplo"]
+}

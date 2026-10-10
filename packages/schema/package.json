@@ -9,10 +9,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lock:update": "node scripts/update-lock.mjs"
   },
   "devDependencies": {
     "typescript": "6.0.3",
-    "vitest": "5.0.3"
+    "vitest": "5.0.3",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "@types/node": "24.19.2"
   }
 }

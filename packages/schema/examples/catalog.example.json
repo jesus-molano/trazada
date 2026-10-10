@@ -1,0 +1,20 @@
+{
+  "schema": "trazada.catalog",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-10-10T00:00:00Z",
+  "seasons": [
+    {
+      "season": 2026,
+      "events": [
+        {
+          "round": 1,
+          "slug": "example",
+          "event": "Example Grand Prix",
+          "country": "Nowhere",
+          "dateStart": "2026-03-01",
+          "sessions": [{ "session": "race", "name": "Race", "status": "ok", "path": "sessions/2026/01-example/race/manifest.json", "bytes": 1234 }]
+        }
+      ]
+    }
+  ]
+}
