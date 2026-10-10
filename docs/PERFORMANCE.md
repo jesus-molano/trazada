@@ -78,6 +78,23 @@ Al cerrar cada tanda, el integrador pasa el bench en Bélgica Libres 1 y Japón 
 
 Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sceneStats.layers`). El tope de draw calls de los e2e pasa a ser el de la escena base (13, siguiendo a un coche con el modelo detallado) más lo de las capas activas, siempre por debajo de 30.
 
+**Tanda 1 (H13: clasificación animada, estelas, tarjeta de fin de sesión y reanudar).** Se mide la base (Tanda 0) contra la Tanda 1 con las estelas apagadas, que es lo de por defecto, y con las estelas «Velocidad», el modo más caro: además de la velocidad, busca una muestra de telemetría por punto.
+
+- **Escena por defecto (estelas apagadas)**: no cambia nada. Mismas draw calls (8) y triángulos, el mismo JS por frame (~2 ms) y el mismo encuadre. La captura del lienzo de la prueba `@screenshot` es idéntica píxel a píxel entre los dos builds (0 píxeles distintos), así que no hace falta regenerar la referencia.
+- **Con estelas**: +1 draw call (9) y +1.364 triángulos (22 coches × 31 tramos × 2; Bélgica 16.656 y Japón 14.618), con 704 puntos (22 × 32). El JS por frame sube 0,3–1,0 ms (de ~2 a 2,4–2,9 ms) y el p95 no se mueve fuera del ruido. Al principio la capa costaba 2 draw calls, porque three.js pinta en dos pasadas un material transparente de doble cara; con `forceSinglePass` cuesta 1.
+- **Clasificación animada**: el `<TransitionGroup>` mide las filas en cada actualización de la clasificación (6,7 Hz). Lo medido es ~0,02 ms de layout más por frame (0,05 layouts más por frame) y el mismo p95 en tres rondas alternas de Bélgica ×1. En la primera ronda completa, el p95 de Bélgica ×1 salió un escalón peor (200 y 150 ms frente a 133); las rondas aisladas lo dejan en ruido.
+
+| Sesión | Velocidad | p95 base | p95 Tanda 1 | p95 con estelas | JS/frame base | JS/frame Tanda 1 | JS/frame con estelas |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Bélgica 2026 Libres 1 | ×1 | 133 ms | 150–200 ms¹ | 150 ms | 1,9–2,1 ms | 1,9–2,0 ms | 2,8–2,9 ms |
+| Ídem | ×16 | 150 ms | 150–167 ms | 133–150 ms | 2,2–2,3 ms | 2,2–2,3 ms | 2,9 ms |
+| Japón 2026 carrera (dev) | ×1 | 117–133 ms | 133 ms | 117–133 ms | 1,8–2,0 ms | 1,9–2,2 ms | 2,4–2,5 ms |
+| Ídem | ×16 | 150–183 ms | 133–150 ms | 133–183 ms | 2,3–2,5 ms | 2,1 ms | 2,7–2,9 ms |
+
+¹ En tres rondas aisladas y alternas, base y Tanda 1 dan el mismo p95 (117, 133 y 117 ms) y el mismo JS por frame (1,6–1,8 ms).
+
+**Pendiente tuyo**: el bench con estelas en el iPad (`pnpm local --lan`, `/replay?s=…&bench=1` tras elegir «Capas → Estelas → Velocidad», que se recuerda) y el escenario «todas las capas» de `perf.spec.ts`, que se añade al cerrar la Tanda 4.
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.

@@ -31,7 +31,10 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 ## Qué hace
 
 - Replay 3D de cualquier sesión (libres, clasificación, sprint, carrera) de 2023 en adelante, con un único reloj para todo: coches, clasificación, telemetría y mensajes. Velocidades de ×1 a ×16 y saltos a cualquier instante.
-- Clasificación en vivo con gap al líder o intervalo, compuesto y vueltas del neumático, boxes y banderas azules.
+- Clasificación en vivo con gap al líder o intervalo, compuesto y vueltas del neumático, boxes y banderas azules. Cuando cambia el orden, las filas se deslizan y llevan unos segundos una flecha ↑↓ con los puestos ganados o perdidos.
+- Estelas opcionales detrás de cada coche (menú «Capas»), con el color del equipo o el de la velocidad medida.
+- Al terminar la sesión, un resumen: los tres primeros según el cronometraje, la vuelta rápida y, en carrera, las paradas con su tiempo en el pit lane.
+- Cada sesión se retoma donde la dejaste, con el coche y la velocidad que tenías, y la portada ofrece «Seguir viendo» (se guarda en el navegador de cada dispositivo).
 - Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
 - Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
@@ -56,6 +59,7 @@ En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruid
 - Un coche nunca se dibuja marcha atrás: si la fuente lo sitúa retrocediendo (ruido o un trompo), la distancia recorrida se ajusta para que no disminuya. Si ese ajuste tuviera que moverlo más de 5 m, o la telemetría dice que iba en marcha mientras la posición seguía congelada, ese tramo queda sin dato y el coche no se dibuja.
 - La pista tiene una anchura genérica de 14 m, no la de cada circuito. De lejos, la pista y los coches tienen un tamaño mínimo en pantalla.
 - El coche 3D es genérico: lleva el color del equipo y, en los neumáticos, el del compuesto que da el cronometraje (gris si no hay dato).
+- Las estelas son los últimos 3 s del mismo movimiento que se dibuja para el coche, así que también van sobre la línea central y se cortan donde el coche no se dibuja. Por velocidad, cada punto lleva la última velocidad medida de hace 2 s como mucho, sin interpolar; si no hay ninguna, gris.
 - Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
 
 ## Estado
