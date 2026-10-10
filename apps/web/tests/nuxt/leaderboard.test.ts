@@ -12,6 +12,7 @@ const row = (car: string, tla: string, position: number, over: Partial<Leaderboa
   car,
   driver: driver(car, tla),
   position,
+  positionKnown: true,
   gapMs: position === 1 ? 0 : 1234 * position,
   intervalMs: 1234,
   lapsBehind: 0,
@@ -72,6 +73,33 @@ describe('TzLeaderboard', () => {
     expect(w.find('[data-car="44"] .tz-lb__compound').text()).toBe('M')
     // Plural de la edad del neumático (y sin dato, sin número inventado)
     expect(w.find('[data-car="44"] .tz-lb__tyre').attributes('title')).toMatch(/7 (vueltas|laps)$/)
+  })
+
+  it('posición sin dato: «—» en vez del puesto en la lista, y sin «LÍDER»', async () => {
+    usePlaybackStore().attach(
+      fakeRuntime([
+        row('1', 'AAA', 1, { positionKnown: false, gapMs: null, intervalMs: null }),
+        row('44', 'BBB', 2, { positionKnown: false, gapMs: null, intervalMs: null }),
+      ]),
+    )
+    const w = await mountSuspended(TzLeaderboard)
+    expect(w.findAll('[data-testid="lb-position"]').map((p) => p.text())).toEqual(['—', '—'])
+    expect(w.findAll('[data-car]').map((r) => r.attributes('data-position-known'))).toEqual(['false', 'false'])
+    expect(w.findAll('.tz-lb__gap').map((g) => g.text())).toEqual(['—', '—'])
+  })
+
+  it('un gap o intervalo negativo no se pinta nunca (sin dato)', async () => {
+    usePlaybackStore().attach(
+      fakeRuntime([row('1', 'AAA', 1), row('44', 'BBB', 2, { gapMs: -970, intervalMs: -970 })]),
+    )
+    const settings = useSettingsStore()
+    settings.setGapMode('leader')
+    const w = await mountSuspended(TzLeaderboard)
+    const gap = () => w.find('[data-car="44"] .tz-lb__gap').text()
+    expect(gap()).toBe('—')
+    await w.find('[data-testid="gap-interval"]').trigger('click')
+    expect(gap()).toBe('—')
+    settings.setGapMode('leader')
   })
 
   it('edad del neumático en singular y sin dato', async () => {

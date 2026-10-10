@@ -51,6 +51,8 @@ test.describe('gestor de datos local', () => {
     await expect(page.getByTestId('event-suzuka')).toBeVisible()
     await expect(page.getByTestId('event-yas-marina')).toBeVisible()
     await expect(page.getByTestId('built-suzuka')).toContainText('0/5')
+    // Bélgica: de sus 6 sesiones, 4 se pueden ver; Libres 2 se generó sin posiciones («No disponible») y no cuenta.
+    await expect(page.getByTestId('built-spa-francorchamps')).toContainText('4/6')
     await page.getByTestId('event-suzuka').click()
 
     const fp1 = page.getByTestId('session-fp1')
@@ -65,6 +67,8 @@ test.describe('gestor de datos local', () => {
 
     await expect(fp1).toHaveAttribute('data-state', 'link', { timeout: 15_000 })
     await expect(fp1).toHaveAttribute('href', /\/replay\?s=2026\/03-suzuka\/fp1/)
+    // El pipeline falso marca Suzuka como dev (su circuito usa fuentes dev): la insignia sale ya.
+    await expect(fp1.locator('.tz-badge--dev')).toBeVisible()
     await expect(page.getByTestId('built-suzuka')).toContainText('1/5')
     await expect(page.getByTestId('download-queue')).toHaveCount(0)
   })

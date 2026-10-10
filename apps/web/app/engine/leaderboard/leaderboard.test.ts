@@ -67,7 +67,9 @@ describe('leaderboard sin torre (carrera)', () => {
     expect(rows[0]!.gapMs).toBe(0)
     expect(rows[1]!.gapMs).toBe(3000) // 183000 − 180000 (vuelta 2)
     expect(rows[1]!.intervalMs).toBe(3000)
-    expect(rows[2]!.lapsBehind).toBe(1) // 44 solo completó la vuelta 1
+    // 44 solo completó la vuelta 1, pero no está doblado (cuando la cerró, el líder también llevaba 1): no es
+    // «+1 vuelta»; el gap de su vuelta 2 aún no se conoce.
+    expect(rows[2]!.lapsBehind).toBe(0)
     expect(rows[2]!.gapMs).toBeNull()
     expect(rows[1]!.compound).toBe('MEDIUM')
     expect(rows[1]!.tyreLife).toBe(12)

@@ -402,6 +402,8 @@ export function createJobQueue({ pipeline, dataDir, timeoutMs = BUILD_TIMEOUT_MS
             session: typeof session === 'string' && SESSION_ID.test(session) ? session : null,
             status: text(ev.payload.status, 32),
             bytes: Number.isFinite(ev.payload.bytes) ? ev.payload.bytes : null,
+            // Sesión de desarrollo (p. ej. circuito con fuentes dev): la insignia DEV sale ya antes de releer el catálogo.
+            dev: ev.payload.dev === true,
           }
           return
         }

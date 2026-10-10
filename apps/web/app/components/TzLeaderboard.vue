@@ -18,10 +18,11 @@ const compoundStyle = (compound: string) => ({ '--compound': `var(${compoundToke
 const gapFmt = computed(() => new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
 
 function gapText(r: LeaderboardRow): string {
-  if (r.position === 1) return r.gapMs === null && r.bestLapMs === null ? '' : t('leaderboard.leader')
+  if (r.position === 1 && r.positionKnown) return r.gapMs === null && r.bestLapMs === null ? '' : t('leaderboard.leader')
   if (r.lapsBehind > 0 && settings.gapMode === 'leader') return t('leaderboard.lapsBehind', { n: r.lapsBehind })
   const ms = settings.gapMode === 'leader' ? r.gapMs : r.intervalMs
-  if (ms === null) return '—'
+  // Un gap negativo no existe: sin dato (el motor ya no los da; esto lo garantiza en pantalla).
+  if (ms === null || ms < 0) return '—'
   const s = ms / 1000
   const fmt = gapFmt.value
   if (s >= 60) {
@@ -70,9 +71,14 @@ function select(car: string) {
         :class="{ 'is-selected': playback.selectedCar === r.car, 'is-nosignal': r.noSignal }"
         :data-car="r.car"
         :data-position="r.position"
+        :data-position-known="r.positionKnown"
       >
         <button type="button" class="tz-lb__btn" :aria-pressed="playback.selectedCar === r.car" @click="select(r.car)">
-          <span class="tz-lb__pos tz-tabular">{{ r.position }}</span>
+          <span
+            class="tz-lb__pos tz-tabular"
+            :title="r.positionKnown ? undefined : t('leaderboard.positionUnknown')"
+            data-testid="lb-position"
+          >{{ r.positionKnown ? r.position : '—' }}</span>
           <span class="tz-lb__team" :style="{ background: r.driver?.color ?? 'var(--tz-team-unknown)' }" aria-hidden="true" />
           <span class="tz-lb__tla">{{ r.driver?.tla ?? r.car }}</span>
           <span class="tz-lb__flags">

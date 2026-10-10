@@ -4,6 +4,8 @@
 //   sq  → no termina nunca (para probar cancelar)
 //   sprint → como sq, pero con un nieto que hereda las tuberías (como python bajo `uv run`)
 //   resto → progreso por pasos y la sesión entra en <data>/v1/catalog.json
+// Las sesiones de Suzuka (ronda 3) salen como dev (su circuito usa fuentes de desarrollo, como el real):
+// `dev: true` en el resultado y en el catálogo.
 // Variables: FAKE_STEP_MS (pausa entre pasos), FAKE_SCHEDULE_FAIL=1 (el calendario falla por red),
 // FAKE_SCHEDULE_BIG=1 (calendario de más de 10 KB en una línea), FAKE_SCHEDULE_HANG=1 (el calendario no
 // termina nunca; deja su pid en <cache>/schedule.pid).
@@ -53,6 +55,8 @@ function schedule(season) {
   }
 }
 
+const isDev = (round) => round === 3
+
 function addToCatalog(dataDir, season, round, session) {
   const event = schedule(season).events.find((e) => e.round === round)
   if (!event) throw new Error(`ronda ${round} no está en el calendario falso`)
@@ -71,7 +75,14 @@ function addToCatalog(dataDir, season, round, session) {
   }
   const id = `${season}/${String(round).padStart(2, '0')}-${event.slug}/${session}`
   e.sessions = e.sessions.filter((x) => x.session !== session)
-  e.sessions.push({ session, name: session, status: 'complete', path: `sessions/${id}/manifest.json`, bytes: 123_456 })
+  e.sessions.push({
+    session,
+    name: session,
+    status: 'complete',
+    path: `sessions/${id}/manifest.json`,
+    bytes: 123_456,
+    ...(isDev(round) ? { dev: true } : {}),
+  })
   s.events.sort((a, b) => a.round - b.round)
   catalog.seasons.sort((a, b) => b.season - a.season)
   mkdirSync(v1, { recursive: true })
@@ -141,7 +152,7 @@ async function main() {
     await sleep(stepMs)
     emit('progress', { pct: 88, phase: 'process', step: 'process' })
     const id = addToCatalog(dataDir, Number(season), Number(round), session)
-    emit('result', { session: id, status: 'complete', bytes: 123_456, warnings: [] })
+    emit('result', { session: id, status: 'complete', bytes: 123_456, dev: isDev(Number(round)), warnings: [] })
     return
   }
   console.error(`orden desconocida: ${command}`)

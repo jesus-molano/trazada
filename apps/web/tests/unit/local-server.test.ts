@@ -313,9 +313,10 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     const done = (await waitFor(async () => {
       const j = await jobOf(port, second!.id)
       return j?.state === 'done' ? j : null
-    })) as unknown as { result: { session: string; status: string }; pct: number }
+    })) as unknown as { result: { session: string; status: string; dev: boolean }; pct: number }
     expect(done.pct).toBe(100)
-    expect(done.result).toMatchObject({ session: '2026/03-suzuka/race', status: 'complete' })
+    // `dev` del pipeline pasa tal cual: la insignia DEV sale antes de releer el catálogo.
+    expect(done.result).toMatchObject({ session: '2026/03-suzuka/race', status: 'complete', dev: true })
     const catalog = JSON.parse(readFileSync(join(data, 'v1', 'catalog.json'), 'utf8'))
     const suzuka = catalog.seasons[0].events.find((e: { slug: string }) => e.slug === 'suzuka')
     expect(suzuka.sessions.map((s: { session: string }) => s.session).sort()).toEqual(['fp1', 'race'])

@@ -11,7 +11,9 @@ import {
   parseJob,
   parseSchedule,
   queueSummary,
+  readyCount,
   type ScheduleEvent,
+  type SessionView,
   sessionView,
 } from './model'
 
@@ -107,7 +109,15 @@ describe('sessionView', () => {
       bytes: 10,
       dev: true,
     })
-    expect(sessionView(s('fp1', null, { ...cat, status: 'no-position' }), null, NOW, false)).toEqual({ kind: 'unavailable' })
+    expect(sessionView(s('fp1', null, { ...cat, status: 'no-position' }), null, NOW, false)).toEqual({
+      kind: 'unavailable',
+      reason: 'no-position',
+    })
+  })
+
+  it('una entrada de catálogo con ruta no válida no se abre, pero no se atribuye a la falta de posiciones', () => {
+    const bad = { session: 'fp1', name: 'Practice 1', status: 'ok', path: '../../fuera/manifest.json' } as const
+    expect(sessionView(s('fp1', null, bad), null, NOW, true)).toEqual({ kind: 'unavailable', reason: 'invalid' })
   })
 
   it('pasada y sin generar → descargar (solo con gestor); futura o en curso → con fecha', () => {
@@ -124,10 +134,33 @@ describe('sessionView', () => {
     expect(sessionView(base, job({ state: 'running', pct: 40 }), NOW, true).kind).toBe('running')
     expect(sessionView(base, job({ state: 'error', error: { code: 'empty', message: '' } }), NOW, true).kind).toBe('error')
     expect(sessionView(base, job({ state: 'cancelled' }), NOW, true).kind).toBe('download')
-    const done = job({ state: 'done', result: { session: '2026/10-spa-francorchamps/fp1', status: 'ok', bytes: 5 } })
+    const done = job({
+      state: 'done',
+      result: { session: '2026/10-spa-francorchamps/fp1', status: 'ok', bytes: 5, dev: false },
+    })
     expect(sessionView(base, done, NOW, true)).toMatchObject({ kind: 'link', to: '/replay?s=2026/10-spa-francorchamps/fp1' })
-    const bogus = job({ state: 'done', result: { session: '../../x', status: 'ok', bytes: 5 } })
+    const bogus = job({ state: 'done', result: { session: '../../x', status: 'ok', bytes: 5, dev: false } })
     expect(sessionView(base, bogus, NOW, true).kind).toBe('download')
+    const empty = job({ state: 'done', result: { session: '2026/10-spa-francorchamps/fp1', status: 'no-position', bytes: 5, dev: false } })
+    expect(sessionView(base, empty, NOW, true)).toEqual({ kind: 'unavailable', reason: 'no-position' })
+  })
+
+  it('recién descargada y sin releer el catálogo: la insignia DEV sale ya (del resultado del pipeline)', () => {
+    const base = s('fp1', '2026-07-17T10:30:00Z')
+    const done = job({ state: 'done', result: { session: '2026/03-suzuka/fp1', status: 'ok', bytes: 5, dev: true } })
+    expect(sessionView(base, done, NOW, true)).toEqual({ kind: 'link', to: '/replay?s=2026/03-suzuka/fp1', bytes: 5, dev: true })
+  })
+
+  it('readyCount: solo las sesiones que se pueden ver (las «no disponibles» no cuentan como descargadas)', () => {
+    const views: SessionView[] = [
+      { kind: 'link', to: '/replay?s=2026/10-spa-francorchamps/fp1', bytes: 1, dev: false },
+      { kind: 'unavailable', reason: 'no-position' },
+      { kind: 'unavailable', reason: 'invalid' },
+      { kind: 'download' },
+      { kind: 'future', at: null },
+    ]
+    expect(readyCount(views)).toBe(1)
+    expect(readyCount([])).toBe(0)
   })
 })
 
@@ -182,6 +215,11 @@ describe('validación de respuestas', () => {
         ?.error,
     ).toEqual({ code: 'failed', message: '' })
     expect(parseJob({ id: 1, season: 2026, round: 3, session: 'fp1', state: 'done' })).toBeNull()
+    const result = (dev: unknown) =>
+      parseJob({ id: '1', season: 2026, round: 3, session: 'fp1', state: 'done', result: { session: 'x', status: 'ok', dev } })
+        ?.result?.dev
+    expect(result(true)).toBe(true)
+    expect([result(false), result('sí'), result(undefined)]).toEqual([false, false, false])
     expect(parseJob({ id: '1', season: 2026, round: 3, session: 'fp1', state: 'otro' })).toBeNull()
   })
 })

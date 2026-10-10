@@ -12,6 +12,12 @@ const job = computed(() =>
   props.view.kind === 'queued' || props.view.kind === 'running' || props.view.kind === 'error' ? props.view.job : null,
 )
 const pct = computed(() => Math.round(job.value?.pct ?? 0))
+/** El motivo real de «No disponible» (sin posiciones o entrada de catálogo no válida). */
+const unavailableHint = computed(() =>
+  props.view.kind === 'unavailable' && props.view.reason === 'invalid'
+    ? t('selector.unavailableInvalidHint')
+    : t('selector.unavailableHint'),
+)
 const barStyle = computed(() => ({ transform: `scaleX(${pct.value / 100})` }))
 /** Mensaje del error y, después, el registro (sin repetir el mensaje si el registro ya lo trae). */
 const details = computed(() => {
@@ -102,12 +108,13 @@ watch(
     aria-disabled="true"
     tabindex="-1"
     data-state="unavailable"
-    :title="t('selector.unavailableHint')"
+    :data-reason="view.reason"
+    :title="unavailableHint"
     :data-testid="`session-${type}`"
   >
     <span class="tz-session__name">{{ name }}</span>
     <span class="tz-badge">{{ t('selector.unavailable') }}</span>
-    <span class="tz-visually-hidden">{{ t('selector.unavailableHint') }}</span>
+    <span class="tz-visually-hidden">{{ unavailableHint }}</span>
   </div>
 
   <div

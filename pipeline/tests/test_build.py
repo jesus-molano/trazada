@@ -171,6 +171,8 @@ def test_dev_circuit_taints_the_session(tmp_path: Path) -> None:
     catalog = json.loads((tmp_path / "v1" / "catalog.json").read_text())
     entry = catalog["seasons"][0]["events"][0]["sessions"][0]
     assert entry["dev"] is True
+    # El informe también (el gestor local lo pasa a la interfaz antes de releer el catálogo).
+    assert report.dev is True
     assert any("fuentes de desarrollo" in w for w in report.warnings)
 
 

@@ -14,7 +14,7 @@ const playback = usePlaybackStore()
 const settings = useSettingsStore()
 const rt = getRuntime()!
 const s = rt.session.manifest.session
-const laps = new LapTimes(rt.session.timing, s.type, s.playback.lightsOutMs ?? null)
+const laps = new LapTimes(rt.session.timing, s.type, s.playback.lightsOutMs ?? null, rt.session.events.raceControl)
 
 const info = computed(() => laps.at(props.car, playback.timeMs, settings.estimateLap1))
 const lastText = computed(() => (info.value.lastLapMs === null ? '—' : formatLapTime(info.value.lastLapMs, locale.value)))
@@ -33,7 +33,13 @@ const offerLap1 = computed(() => laps.canEstimateLap1 && info.value.lastLap === 
         {{ t('telemetry.lastLap') }}<template v-if="info.lastLap"> ({{ info.lastLap }})</template>
       </dt>
       <dd>
-        <span class="tz-tabular" data-testid="lap-last">{{ lastText }}</span>
+        <span class="tz-tabular" :class="{ 'is-deleted': info.deleted }" data-testid="lap-last">{{ lastText }}</span>
+        <span
+          v-if="info.deleted"
+          class="tz-lap__deleted"
+          :title="t('telemetry.lapDeletedHint')"
+          data-testid="lap-last-deleted"
+        >{{ t('telemetry.lapDeleted') }}</span>
         <button
           v-if="offerLap1"
           type="button"
@@ -72,6 +78,21 @@ const offerLap1 = computed(() => laps.canEstimateLap1 && info.value.lastLap === 
   margin: 2px 0 0;
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-sm);
+}
+
+/* Tiempo anulado por dirección de carrera: tachado y con su insignia (no se oculta: es un dato real). */
+.is-deleted {
+  color: var(--tz-text-muted);
+  text-decoration: line-through;
+}
+
+.tz-lap__deleted {
+  padding: 0 var(--tz-space-1);
+  border: 1px solid var(--tz-danger);
+  border-radius: var(--tz-radius-sm);
+  color: var(--tz-danger);
+  font-family: var(--tz-font-sans);
+  font-size: var(--tz-text-2xs);
 }
 
 .tz-lap__toggle {

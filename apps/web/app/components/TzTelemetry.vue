@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
  * Panel del coche seleccionado: muestra cruda vigente de la telemetría (sin interpolar), DRS si el canal
- * existe y mini gráficas de los últimos 20 s. Los valores se escriben por frame en el DOM.
+ * existe y mini gráficas de los últimos 20 s. Los valores se escriben por frame en el DOM. Sin muestra vigente
+ * del coche seleccionado (también justo al cambiar de coche), cada celda dice «—» y las gráficas se vacían:
+ * nunca quedan cifras ni trazos de otro coche u otro instante.
  */
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
@@ -25,11 +27,13 @@ const speedEl = ref<HTMLElement | null>(null)
 const gearEl = ref<HTMLElement | null>(null)
 const rpmEl = ref<HTMLElement | null>(null)
 const throttleEl = ref<HTMLElement | null>(null)
+const throttleTrack = ref<HTMLElement | null>(null)
 const throttleBar = ref<HTMLElement | null>(null)
 const brakeEl = ref<HTMLElement | null>(null)
 const drsEl = ref<HTMLElement | null>(null)
-const speedChart = ref<{ setData: (d: uPlot.AlignedData) => void } | null>(null)
-const pedalChart = ref<{ setData: (d: uPlot.AlignedData) => void } | null>(null)
+type Chart = { setData: (d: uPlot.AlignedData) => void; clear: () => void }
+const speedChart = ref<Chart | null>(null)
+const pedalChart = ref<Chart | null>(null)
 const hasSample = ref(true)
 
 // Formatos de Intl creados una vez por idioma (no en cada frame).
@@ -39,26 +43,59 @@ const num = (v: number) => intFmt.value.format(v)
 
 const sample: TelemetrySample = { t: 0, speedKmh: 0, rpm: 0, gear: 0, throttle: null, brake: false, drsRaw: null }
 let lastChart = -Infinity
+/** Las gráficas están vacías (para no vaciarlas en cada frame sin dato). */
+let chartsCleared = false
+
+const setText = (el: HTMLElement | null, text: string) => {
+  if (el && el.textContent !== text) el.textContent = text
+}
+
+/** Sin muestra vigente: «—» en todas las celdas, sin barra ni luz de freno, y gráficas vacías. */
+function paintNoData() {
+  for (const el of [speedEl.value, gearEl.value, rpmEl.value, throttleEl.value]) setText(el, '—')
+  if (throttleTrack.value) throttleTrack.value.dataset.known = 'false'
+  if (brakeEl.value) {
+    brakeEl.value.dataset.on = 'none'
+    setText(brakeEl.value, '—')
+  }
+  if (drsEl.value && drsChannel) {
+    drsEl.value.dataset.state = 'none'
+    setText(drsEl.value, '—')
+  }
+  if (!chartsCleared) {
+    speedChart.value?.clear()
+    pedalChart.value?.clear()
+    chartsCleared = true
+  }
+}
 
 function paint(timeMs: number) {
   const car = playback.selectedCar
   if (!car) return
   const s = telemetry.sampleAt(car, timeMs, sample)
   if (hasSample.value !== !!s) hasSample.value = !!s
-  if (!s) return
-  if (speedEl.value) speedEl.value.textContent = num(s.speedKmh)
-  if (gearEl.value) gearEl.value.textContent = s.gear === 0 ? 'N' : String(s.gear)
-  if (rpmEl.value) rpmEl.value.textContent = num(s.rpm)
-  if (throttleEl.value) throttleEl.value.textContent = s.throttle === null ? '—' : pctFmt.value.format(s.throttle / 100)
+  if (!s) {
+    paintNoData()
+    return
+  }
+  setText(speedEl.value, num(s.speedKmh))
+  setText(gearEl.value, s.gear === 0 ? 'N' : String(s.gear))
+  setText(rpmEl.value, num(s.rpm))
+  setText(throttleEl.value, s.throttle === null ? '—' : pctFmt.value.format(s.throttle / 100))
+  // Acelerador sin dato: sin barra (una barra vacía diría 0 %).
+  if (throttleTrack.value) throttleTrack.value.dataset.known = String(s.throttle !== null)
   if (throttleBar.value) throttleBar.value.style.transform = `scaleX(${(s.throttle ?? 0) / 100})`
-  if (brakeEl.value) brakeEl.value.dataset.on = String(s.brake)
+  if (brakeEl.value) {
+    brakeEl.value.dataset.on = String(s.brake)
+    setText(brakeEl.value, '')
+  }
   if (drsEl.value && drsChannel) {
     const st = drsState(s.drsRaw)
     drsEl.value.dataset.state = st ?? 'none'
-    drsEl.value.textContent = st ? t(`telemetry.drs.${st}`) : '—'
+    setText(drsEl.value, st ? t(`telemetry.drs.${st}`) : '—')
   }
   const now = performance.now()
-  if (now - lastChart >= CHART_INTERVAL_MS || !rt.clock.playing) {
+  if (chartsCleared || now - lastChart >= CHART_INTERVAL_MS || !rt.clock.playing) {
     lastChart = now
     drawCharts(car, timeMs)
   }
@@ -66,7 +103,13 @@ function paint(timeMs: number) {
 
 function drawCharts(car: string, timeMs: number) {
   const series = telemetry.seriesOf(car)
-  if (!series) return
+  if (!series) {
+    speedChart.value?.clear()
+    pedalChart.value?.clear()
+    chartsCleared = true
+    return
+  }
+  chartsCleared = false
   const [from, to] = telemetry.windowOf(car, timeMs - CHART_WINDOW_S * 1000, timeMs)
   const n = to - from
   const x = new Float64Array(n)
@@ -77,7 +120,7 @@ function drawCharts(car: string, timeMs: number) {
   for (let i = 0; i < n; i++) {
     const th = series.throttle[from + i]!
     throttle[i] = th === 255 ? Number.NaN : th
-    brake[i] = series.brake[from + i]! > 0 ? 100 : 0
+    brake[i] = series.brake[from + i]! > 0 ? 1 : 0
   }
   speedChart.value?.setData([x, speed])
   pedalChart.value?.setData([x, throttle, brake])
@@ -145,13 +188,13 @@ watch(
       <div class="tz-tel__cell tz-tel__cell--wide">
         <dt>{{ t('telemetry.throttle') }}</dt>
         <dd>
-          <span class="tz-tel__bar" aria-hidden="true"><span ref="throttleBar" /></span>
+          <span ref="throttleTrack" class="tz-tel__bar" data-known="false" aria-hidden="true"><span ref="throttleBar" /></span>
           <span ref="throttleEl" class="tz-tabular" data-testid="tel-throttle">—</span>
         </dd>
       </div>
       <div class="tz-tel__cell">
         <dt>{{ t('telemetry.brake') }}</dt>
-        <dd ref="brakeEl" class="tz-tel__brake" data-on="false" data-testid="tel-brake" />
+        <dd ref="brakeEl" class="tz-tel__brake" data-on="none" :title="t('telemetry.brakeHint')" data-testid="tel-brake">—</dd>
       </div>
       <div class="tz-tel__cell tz-tel__cell--full">
         <dt>{{ t('telemetry.drsLabel') }}</dt>
@@ -178,9 +221,9 @@ watch(
       :label="t('telemetry.chartPedals')"
       :series="[
         { label: t('telemetry.throttle'), color: token('--tz-chart-throttle'), scale: 'pct' },
-        { label: t('telemetry.brake'), color: token('--tz-chart-brake'), scale: 'pct' },
+        { label: t('telemetry.brakeOnOff'), color: token('--tz-chart-brake'), scale: 'onoff', stepped: true },
       ]"
-      :ranges="{ pct: [0, 105] }"
+      :ranges="{ pct: [0, 105], onoff: [0, 4] }"
       :window-s="CHART_WINDOW_S"
     />
   </section>
@@ -299,6 +342,10 @@ watch(
   vertical-align: middle;
 }
 
+.tz-tel__bar[data-known='false'] {
+  visibility: hidden;
+}
+
 .tz-tel__bar span {
   display: block;
   height: 100%;
@@ -307,7 +354,8 @@ watch(
   transform: scaleX(0);
 }
 
-.tz-tel__brake {
+/* Encendido/apagado (el canal no da la presión): una luz, o «—» sin dato. */
+.tz-tel__brake:not([data-on='none']) {
   width: 14px;
   height: 14px;
   margin-top: 3px !important;

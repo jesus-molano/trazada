@@ -20,6 +20,7 @@
     "pickEvent": "Elige un Gran Premio para ver sus sesiones.",
     "unavailable": "No disponible",
     "unavailableHint": "Sin datos de posición: no se puede reproducir.",
+    "unavailableInvalidHint": "La entrada del catálogo no es válida: no se puede abrir.",
     "dev": "DEV",
     "devHint": "Datos de desarrollo: no se publican.",
     "noOutline": "Sin trazado"
@@ -48,7 +49,7 @@
     "availableFrom": "Disponible desde el {date}",
     "notYet": "Aún no disponible",
     "built": "{built}/{total}",
-    "builtLabel": "{built} de {total} sesiones descargadas",
+    "builtLabel": "{built} de {total} sesiones listas para ver",
     "queueRunning": "Descargando {season} R{round} · {session} ({pct} %)",
     "queueWaiting": "{n} descarga en cola | {n} descargas en cola",
     "queueMore": "{n} más en cola | {n} más en cola",
@@ -171,7 +172,8 @@
     "noSignal": "sin señal",
     "tyre": "{compound}, {laps} vuelta | {compound}, {laps} vueltas",
     "showBlueFlags": "Mostrar banderas azules",
-    "tyreNoLife": "{compound}, vueltas sin dato"
+    "tyreNoLife": "{compound}, vueltas sin dato",
+    "positionUnknown": "Posición sin dato: aún no ha pasado por meta ni tiene vuelta válida, o la torre no lo incluye"
   },
   "compound": {
     "UNKNOWN": "Desconocido",
@@ -198,11 +200,14 @@
     "rpm": "RPM",
     "throttle": "Acelerador",
     "brake": "Freno",
+    "brakeOnOff": "Freno (sí/no)",
+    "brakeHint": "Si pisa o no el freno: el dato no da la presión.",
     "drsLabel": "DRS",
     "drs": {
       "open": "Abierto",
       "available": "Disponible",
-      "closed": "Cerrado"
+      "closed": "Cerrado",
+      "unknown": "Sin dato"
     },
     "drsUnavailable": "No disponible en {season}",
     "drsUnavailableHint": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa (modo recta) y el modo adelantamiento, que dirección de carrera habilita para toda la pista.",
@@ -212,7 +217,9 @@
     "lap": "Vuelta",
     "lastLap": "Última vuelta",
     "estimateLap1": "Estimar",
-    "estimateLap1Hint": "Estimar el tiempo de la vuelta 1 (no lo da el live timing)."
+    "estimateLap1Hint": "Estimar el tiempo de la vuelta 1 (no lo da el live timing).",
+    "lapDeleted": "Anulada",
+    "lapDeletedHint": "Dirección de carrera anuló el tiempo de esta vuelta."
   },
   "legal": {
     "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."
