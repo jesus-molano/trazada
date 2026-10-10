@@ -7,6 +7,8 @@ Limitaciones (documentadas en el manifest):
 - La telemetría viene fusionada por vuelta: las muestras de posición se recuperan como las filas con
   X/Y/Z enteras (valores crudos en dm) y las de coche como las filas con velocidad y rpm enteras.
 - No hay TrackStatus ni torre de tiempos: el estado de pista se aproxima desde race control.
+- Como en la fuente FastF1, se descartan las vueltas que inventa FastF1 (marca `ff1G` o, sin ella, el
+  patrón de la vuelta final de 150 000 ms sin tiempo ni sectores).
 - Los tiempos/posiciones de vuelta de carrera de esa fuente están sobrescritos con datos de Ergast/Jolpica;
   por eso aquí la vuelta 1 va sin tiempo y no se usa nada más de esa procedencia en producción.
 """
@@ -29,6 +31,7 @@ from trazada_pipeline.sources.base import (
     RC_COLUMNS,
     CircuitInfo,
     Driver,
+    QualityNote,
     SessionData,
 )
 
@@ -64,6 +67,44 @@ def _ms(v: Any) -> int:
 
 def _is_int(a: np.ndarray) -> np.ndarray:
     return np.isfinite(a) & np.isclose(a, np.round(a), atol=1e-6)
+
+
+#: Duración que FastF1 supone para la última vuelta de un coche parado en pista si no sabe cuándo se paró.
+FASTF1_ASSUMED_LAP_MS = 150_000
+
+
+def _no_timing(row: dict[str, Any]) -> bool:
+    return all(row[k] < 0 for k in ("lap_ms", "s1_ms", "s2_ms", "s3_ms"))
+
+
+def real_laps(rows: list[dict[str, Any]], generated: list[bool] | None) -> list[dict[str, Any]]:
+    """Vueltas de un coche sin las que inventa FastF1 (la fuente es derivada de FastF1).
+
+    Con la marca `ff1G` (FastF1Generated) se descartan las marcadas. Sin ella, el mismo patrón: el
+    tramo final de vueltas sin tiempo ni sectores, desde la que dura exactamente 150 000 ms (el fin
+    supuesto de FastF1 para un coche parado en pista) en adelante.
+    """
+    if generated is not None:
+        return [r for r, g in zip(rows, generated, strict=True) if not g]
+    order = sorted(range(len(rows)), key=lambda i: rows[i]["lap"])
+    tail = len(order)
+    while tail > 0 and _no_timing(rows[order[tail - 1]]):
+        tail -= 1
+    cut = next(
+        (
+            k
+            for k in range(tail, len(order))
+            if rows[order[k]]["start_ms"] >= 0
+            and rows[order[k]]["end_ms"] - rows[order[k]]["start_ms"] == FASTF1_ASSUMED_LAP_MS
+        ),
+        len(order),
+    )
+    drop = set(order[cut:])
+    return [r for i, r in enumerate(rows) if i not in drop]
+
+
+def _flag(value: Any) -> bool:
+    return value is True or str(value).strip().lower() == "true"
 
 
 def load_ti_corners(path: Path) -> CircuitInfo:
@@ -118,6 +159,7 @@ def load_tracinginsights(
         lt = json.loads(lt_path.read_text(encoding="utf-8"))
         n = len(lt["lap"])
         lap_start = {}
+        car_rows: list[dict[str, Any]] = []
         for i in range(n):
             lap = int(_num(lt["lap"][i]) or 0)
             lst = _num(lt["lST"][i])
@@ -128,7 +170,10 @@ def load_tracinginsights(
             lap_ms = _ms(lt["time"][i])
             if session_type in ("race", "sprint") and lap == 1:
                 lap_ms = -1
-            lap_rows.append(
+            compound = str(_none(lt["compound"][i]) or "UNKNOWN").upper()
+            # Derivado de FastF1: sin compuesto, su `fresh` = False no significa «usado» (ver _fresh).
+            fresh = -1 if compound in ("", "UNKNOWN") else {True: 1, False: 0}.get(_none(lt["fresh"][i]), -1)
+            car_rows.append(
                 {
                     "car": number,
                     "lap": lap,
@@ -138,9 +183,9 @@ def load_tracinginsights(
                     "s1_ms": _ms(lt["s1"][i]),
                     "s2_ms": _ms(lt["s2"][i]),
                     "s3_ms": _ms(lt["s3"][i]),
-                    "compound": str(_none(lt["compound"][i]) or "UNKNOWN").upper(),
+                    "compound": compound,
                     "tyre_life": _num(lt["life"][i]) if _num(lt["life"][i]) is not None else np.nan,
-                    "fresh": {True: 1, False: 0}.get(_none(lt["fresh"][i]), -1),
+                    "fresh": fresh,
                     "stint": int(_num(lt["stint"][i]) or 0),
                     "pit_in_ms": _ms(lt["pin"][i]),
                     "pit_out_ms": _ms(lt["pout"][i]),
@@ -150,6 +195,9 @@ def load_tracinginsights(
                     "accurate": bool(_none(lt["iacc"][i]) or False),
                 }
             )
+        # Las muestras de posición y telemetría de una vuelta inventada sí son reales: solo sobra la fila.
+        generated = [_flag(v) for v in lt["ff1G"]] if "ff1G" in lt else None
+        lap_rows += real_laps(car_rows, generated)
         p_parts, c_parts = [], []
         for lap, lst in lap_start.items():
             if lst is None:
@@ -266,8 +314,16 @@ def load_tracinginsights(
         dev=True,
         estimated=["positions", "telemetry", "trackStatus"],
         notes=[
-            "Datos de desarrollo (fuente secundaria TracingInsights): no publicar.",
-            "Muestras de posición y telemetría reconstruidas desde telemetría fusionada por vuelta.",
-            "Estado de pista aproximado desde race control; sin torre de tiempos.",
+            QualityNote(
+                "dev-source", "Datos de desarrollo (fuente secundaria TracingInsights): no publicar."
+            ),
+            QualityNote(
+                "merged-telemetry",
+                "Muestras de posición y telemetría reconstruidas desde telemetría fusionada por vuelta.",
+            ),
+            QualityNote(
+                "track-status-from-race-control",
+                "Estado de pista aproximado desde race control; sin torre de tiempos.",
+            ),
         ],
     )

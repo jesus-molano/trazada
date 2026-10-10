@@ -57,8 +57,9 @@ async function openReplay(page: Page, baseURL: string, settings: object = {}) {
   await page.waitForTimeout(800)
 }
 
-async function follow(page: Page, nth: number) {
-  await page.locator('[data-testid="leaderboard"] [data-car]').nth(nth).getByRole('button').click()
+/** Sigue a un coche por su número: quién va primero depende de la torre de tiempos del fixture, no de la escena. */
+async function follow(page: Page, car: string) {
+  await page.locator(`[data-testid="leaderboard"] [data-car="${car}"]`).getByRole('button').click()
   await page.getByTestId('follow-toggle').click()
   await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')
   await page.waitForTimeout(800)
@@ -92,7 +93,7 @@ test('replay: vista general con clasificación, dirección de carrera y timeline
 
 test('siguiendo a un coche: modelo 3D, telemetría y gráficas', async ({ page, baseURL }) => {
   await openReplay(page, baseURL!, { followDistance: 20 })
-  await follow(page, 0)
+  await follow(page, '1') // NOR rueda por la pista en ese instante; el primero de la clasificación puede estar en el pit
   // Saliendo de una curva: la cámara gira con algo de retraso y el coche se ve de tres cuartos.
   await page.evaluate((at) => window.__trazada!.seek(window.__trazada!.startMs + at), AT_MS + 15_000)
   await page.waitForTimeout(800)

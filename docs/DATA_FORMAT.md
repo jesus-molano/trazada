@@ -102,6 +102,23 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
+- `quality.notes`: avisos de calidad que la UI puede mostrar. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y no se muestra en la interfaz. Un manifest anterior puede traer cadenas sueltas (texto libre, sin código). Códigos:
+
+  | `code` | Qué significa | `params` |
+  |---|---|---|
+  | `finish-line-fallback` | Línea de meta aproximada: menos de 3 inicios de vuelta servían para situarla y se usa la primera muestra de la vuelta de referencia. Va con el circuito: la llevan todas las sesiones que lo reutilizan (en el circuito, `quality.finishLineLaps`). | `laps` |
+  | `no-corners` | Circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible). | — |
+  | `centerline-not-closed` | La línea central no cierra (> 2 m). | `closureM` |
+  | `length-vs-official` | Longitud a más de un 3 % de la oficial. | `lengthM`, `officialM` |
+  | `position-coverage-low` | Cobertura de posición < 99 % en algún piloto. | `cars`, `minPos` |
+  | `lights-out-unknown` | Carrera o sprint sin hora de salida (ni inicio de la vuelta 1 ni de la sesión): `playback.lightsOutMs` es `null` y no se estima la vuelta 1. | — |
+  | `dev-circuit` | El circuito usa fuentes de desarrollo: la sesión queda como dev. | `circuit` |
+  | `dev-source`, `merged-telemetry`, `track-status-from-race-control` | Fuente de desarrollo (TracingInsights) y sus limitaciones. | — |
+  | `dev-corners` | Curvas y rotación de una copia de desarrollo de MultiViewer. | — |
+  | `e2e-extract` | Extracto recortado del fixture e2e (`trazada e2e-fixture`). | — |
+  | `e2e-variant` | Variante del fixture e2e inventada para probar un estado (no disponible, versión, fichero corrupto): no es una sesión real. | — |
+
+  Un lector debe tolerar códigos que no conoce (un aviso genérico, nunca el `text` en español). En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
 
 ## Estado de la versión 1
 

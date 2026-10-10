@@ -1,7 +1,18 @@
 """Fixture e2e: extracto recortado de una sesión ya generada, más variantes para probar estados del front.
 
 El extracto conserva todos los coches en una ventana de pocos minutos (la de más coches en pista) y se
-re-codifica con el mismo esquema. Las variantes reutilizan sus ficheros:
+re-codifica con el mismo esquema. Para que la clasificación, los contadores de vuelta y el feed de
+dirección de carrera del extracto sean los que hubo (nunca un estado que no existió), lleva además, de
+antes de la ventana:
+
+- de cada coche, la última fila de la torre anterior o igual al inicio de la ventana (con su instante
+  real: el lector toma la última fila con t ≤ reloj, así que no hace falta moverla);
+- todas las vueltas empezadas antes del final de la ventana (vueltas completadas y mejor vuelta);
+- todos los mensajes de dirección de carrera anteriores al final de la ventana (el recuento del feed, las
+  banderas azules de los segundos previos y los mensajes de vuelta anulada son los de la sesión).
+
+Las variantes son estados **inventados solo para los tests** (el catálogo las marca `dev` y su manifest
+lleva la nota `e2e-variant`). Reutilizan los ficheros del extracto:
 
 - `fp2`: sesión `no-position` (no disponible en el catálogo; su manifest lo declara);
 - `fp3`: manifest con un `minReader` de un major futuro (versión no soportada);
@@ -21,10 +32,20 @@ from typing import Any
 import numpy as np
 
 from trazada_pipeline import schema
+from trazada_pipeline.build import SESSION_ORDER
 from trazada_pipeline.encode import trzb
 from trazada_pipeline.files import write_hashed
 
 PATH_TRACK = 0
+#: Tope del fixture e2e (política de fixtures: extractos mínimos, ≤ 1 MB en total).
+FIXTURE_MAX_BYTES = 1_000_000
+#: Variantes de estado (inventadas para los tests): tipo de sesión → nombre en el catálogo.
+VARIANTS = {"fp2": "Practice 2", "fp3": "Practice 3", "q": "Qualifying", "race": "Race"}
+EXTRACT_NOTE = {"code": "e2e-extract", "text": "Extracto recortado para tests e2e."}
+VARIANT_NOTE = {
+    "code": "e2e-variant",
+    "text": "Variante inventada para los tests e2e (estado de error o no disponible): no es una sesión real.",
+}
 
 
 def _decode(folder: Path, ref: dict[str, Any]) -> trzb.Decoded:
@@ -68,15 +89,30 @@ def _trim_per_car(dec: trzb.Decoded, table: str, a: int, b: int) -> dict[str, di
     }
 
 
+def _stream_rows(stream: dict[str, np.ndarray], a: int, b: int) -> np.ndarray:
+    """Filas de la torre de la ventana, más la última de cada coche anterior o igual a `a`."""
+    t, car = stream["t"], stream["car"]
+    keep = (t > a) & (t <= b)
+    for c in np.unique(car):
+        before = np.flatnonzero((car == c) & (t <= a))
+        if len(before):
+            # La que usa el lector: la de mayor t y, a igual t, la última (su orden es estable).
+            keep[before[t[before] == t[before].max()][-1]] = True
+    return keep
+
+
 def _trim_timing(dec: trzb.Decoded, a: int, b: int) -> dict[str, dict[str, np.ndarray]]:
     laps = dec.tables["laps"]
-    overlap = (laps["endMs"] >= a) & ((laps["startMs"] <= b) | (laps["startMs"] < 0))
+    # Todas las vueltas empezadas antes del final (o sin inicio conocido): las completadas antes de la
+    # ventana hacen falta para el contador de vueltas y la mejor vuelta.
+    started = laps["startMs"] <= b
     st = dec.tables["stream"]
     ts = dec.tables["trackStatus"]
     ss = dec.tables["sessionStatus"]
+    keep = _stream_rows(st, a, b)
     return {
-        "laps": {k: v[overlap] for k, v in laps.items()},
-        "stream": {k: v[(st["t"] >= a) & (st["t"] <= b)] for k, v in st.items()},
+        "laps": {k: v[started] for k, v in laps.items()},
+        "stream": {k: v[keep] for k, v in st.items()},
         "trackStatus": {k: v[ts["t"] <= b] for k, v in ts.items()},
         "sessionStatus": {k: v[ss["t"] <= b] for k, v in ss.items()},
     }
@@ -88,7 +124,8 @@ def _trim_events(events: dict[str, Any], a: int, b: int) -> dict[str, Any]:
 
     return {
         **events,
-        "raceControl": [e for e in events["raceControl"] if a <= e["t"] <= b],
+        # También los anteriores a la ventana: el feed muestra todos los mensajes con t ≤ reloj.
+        "raceControl": [e for e in events["raceControl"] if e["t"] <= b],
         "sectorFlags": [w for w in events["sectorFlags"] if overlaps(w)],
         "windows": [w for w in events["windows"] if overlaps(w)],
     }
@@ -103,6 +140,8 @@ def make_e2e_fixture(
     manifest = json.loads((src_dir / "manifest.json").read_text(encoding="utf-8"))
     if manifest["pipeline"]["source"] in ("tracinginsights-dev",):
         raise ValueError("el fixture e2e solo puede salir de una fuente publicable (no dev)")
+    if manifest["session"]["type"] in VARIANTS:
+        raise ValueError(f"las variantes de test ocupan {', '.join(VARIANTS)}: usa otra sesión de origen")
     files = manifest["files"]
     motion = _decode(src_dir, files["motion"])
     car = _decode(src_dir, files["car"])
@@ -167,10 +206,7 @@ def make_e2e_fixture(
         **manifest,
         "generatedAt": "2026-01-01T00:00:00Z",
         "session": {**manifest["session"], "playback": {**pb, "startMs": a, "endMs": b}},
-        "quality": {
-            **manifest["quality"],
-            "notes": [*manifest["quality"].get("notes", []), "Extracto recortado para tests e2e."],
-        },
+        "quality": {**manifest["quality"], "notes": [*manifest["quality"].get("notes", []), EXTRACT_NOTE]},
         "files": new_files,
     }
     schema.validate("manifest", fixture)
@@ -178,20 +214,28 @@ def make_e2e_fixture(
         json.dumps(fixture, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
-    # Variantes de estado (mismo evento)
+    # Variantes de estado (mismo evento), inventadas para los tests: lo dicen su nota y el catálogo (dev).
     event_dir = folder.parent
     # Las variantes están a la misma profundidad que la sesión: el circuito conserva su ruta relativa.
     shared = {
         k: v if k == "circuit" else {**v, "path": f"../{folder.name}/{v['path']}"}
         for k, v in new_files.items()
     }
-    unsupported = {**fixture, "schemaVersion": "99.0.0", "minReader": "99.0.0", "files": shared}
-    (event_dir / "fp3").mkdir()
-    (event_dir / "fp3" / "manifest.json").write_text(
-        json.dumps(unsupported, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
 
-    no_position = {**fixture, "session": {**fixture["session"], "status": "no-position"}, "files": shared}
+    def variant(stype: str, **over: Any) -> dict[str, Any]:
+        doc = {**fixture, "files": shared, **over}
+        session_over = over.get("session", {})
+        return {
+            **doc,
+            "session": {**fixture["session"], **session_over, "type": stype, "name": VARIANTS[stype]},
+            "quality": {**fixture["quality"], "notes": [*fixture["quality"]["notes"], VARIANT_NOTE]},
+        }
+
+    unsupported = variant("fp3", schemaVersion="99.0.0", minReader="99.0.0")
+    _write_json(event_dir / "fp3" / "manifest.json", unsupported)
+
+    no_position = variant("fp2", session={"status": "no-position"})
+    schema.validate("manifest", no_position)
     _write_json(event_dir / "fp2" / "manifest.json", no_position)
 
     good = (folder / new_files["motion"]["path"]).read_bytes()
@@ -200,15 +244,39 @@ def make_e2e_fixture(
         bad[i] ^= 0xA5
     (event_dir / "q").mkdir()
     (event_dir / "q" / "motion.corrupt.trzb.gz").write_bytes(bytes(bad))
-    corrupt = {
-        **fixture,
-        "files": {**shared, "motion": {**new_files["motion"], "path": "motion.corrupt.trzb.gz"}},
-    }
+    corrupt = variant(
+        "q", files={**shared, "motion": {**new_files["motion"], "path": "motion.corrupt.trzb.gz"}}
+    )
+    schema.validate("manifest", corrupt)
     _write_json(event_dir / "q" / "manifest.json", corrupt)
 
     s = fixture["session"]
     base = f"sessions/{session}"
     rel = base.rsplit("/", 1)[0]
+    status = {"fp2": "no-position", "fp3": "ok", "q": "ok", "race": "ok"}  # race: manifest inexistente (404)
+    src_event = _source_event(src_v1, s)
+    # Si la sesión de origen es dev (p. ej. por su circuito), el extracto también.
+    src_dev = any(e.get("dev") for e in src_event.get("sessions", []) if e.get("session") == s["type"])
+    sessions = [
+        {
+            "session": s["type"],
+            "name": s["name"],
+            "status": "ok",
+            "path": f"{base}/manifest.json",
+            "bytes": sum(f["bytes"] for f in new_files.values()),
+            **({"dev": True} if src_dev else {}),
+        },
+        *(
+            {
+                "session": stype,
+                "name": name,
+                "status": status[stype],
+                "path": f"{rel}/{stype}/manifest.json",
+                "dev": True,
+            }
+            for stype, name in VARIANTS.items()
+        ),
+    ]
     catalog = {
         "schema": "trazada.catalog",
         "schemaVersion": schema.schema_version(),
@@ -221,40 +289,8 @@ def make_e2e_fixture(
                         "round": s["round"],
                         "slug": s["slug"],
                         "event": s["event"],
-                        "country": _country(src_v1, s),
-                        "sessions": [
-                            {
-                                "session": "fp1",
-                                "name": "Practice 1",
-                                "status": "ok",
-                                "path": f"{base}/manifest.json",
-                                "bytes": sum(f["bytes"] for f in new_files.values()),
-                            },
-                            {
-                                "session": "fp2",
-                                "name": "Practice 2",
-                                "status": "no-position",
-                                "path": f"{rel}/fp2/manifest.json",
-                            },
-                            {
-                                "session": "fp3",
-                                "name": "Practice 3",
-                                "status": "ok",
-                                "path": f"{rel}/fp3/manifest.json",
-                            },
-                            {
-                                "session": "q",
-                                "name": "Qualifying",
-                                "status": "ok",
-                                "path": f"{rel}/q/manifest.json",
-                            },
-                            {
-                                "session": "race",
-                                "name": "Race",
-                                "status": "ok",
-                                "path": f"{rel}/race/manifest.json",
-                            },
-                        ],
+                        "country": str(src_event.get("country", "")),
+                        "sessions": sorted(sessions, key=lambda e: SESSION_ORDER.index(e["session"])),
                     }
                 ],
             }
@@ -265,14 +301,17 @@ def make_e2e_fixture(
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     total = sum(p.stat().st_size for p in out_v1.rglob("*") if p.is_file())
+    if total > FIXTURE_MAX_BYTES:
+        raise ValueError(f"el fixture ocupa {total} bytes (> {FIXTURE_MAX_BYTES}): acorta la ventana")
     return {"window": [a, b], "bytes": total, "files": {k: v["bytes"] for k, v in new_files.items()}}
 
 
-def _country(src_v1: Path, s: dict[str, Any]) -> str:
+def _source_event(src_v1: Path, s: dict[str, Any]) -> dict[str, Any]:
+    """Entrada del evento de origen en su catálogo (vacía si no está)."""
     cat = src_v1 / "catalog.json"
     if cat.exists():
         for season in json.loads(cat.read_text(encoding="utf-8"))["seasons"]:
             for ev in season["events"]:
                 if season["season"] == s["season"] and ev["round"] == s["round"]:
-                    return str(ev["country"])
-    return ""
+                    return dict(ev)
+    return {}

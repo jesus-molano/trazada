@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from typing import Any
 
 import pandas as pd
 
@@ -65,6 +66,25 @@ class CircuitInfo:
 
 
 @dataclass
+class QualityNote:
+    """Aviso de calidad de la sesión (`quality.notes` del manifest).
+
+    `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log
+    y para quien lea el JSON. Los códigos válidos son el `enum` de `qualityNote` en el esquema.
+    """
+
+    code: str
+    text: str
+    params: dict[str, float | int | str] = field(default_factory=dict)
+
+    def to_json(self) -> dict[str, Any]:
+        doc: dict[str, Any] = {"code": self.code, "text": self.text}
+        if self.params:
+            doc["params"] = dict(self.params)
+        return doc
+
+
+@dataclass
 class SessionData:
     season: int
     round: int
@@ -92,7 +112,7 @@ class SessionData:
     source: str
     source_versions: dict[str, str | int] = field(default_factory=dict)
     dev: bool = False
-    notes: list[str] = field(default_factory=list)
+    notes: list[QualityNote] = field(default_factory=list)
     # Datos que la fuente no da y se derivan (el front los pinta con la etiqueta "Estimado"):
     # `positions`, `telemetry`, `trackStatus`.
     estimated: list[str] = field(default_factory=list)

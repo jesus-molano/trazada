@@ -117,6 +117,52 @@ def test_neutralization_closes_overtake_until_explicit_enable() -> None:
     assert got == [("overtake", 100, 2000), ("overtake", 3500, 6000), ("drs", 5000, 6000)]
 
 
+def _assist(ev: dict) -> list[tuple]:
+    return [(w["kind"], w["fromMs"], w["toMs"]) for w in ev["windows"] if w["kind"] in ("overtake", "drs")]
+
+
+def test_chequered_flag_closes_overtake_and_drs() -> None:
+    # Japón 2026: el último OVERTAKE ENABLED seguía abierto en la vuelta de enfriamiento.
+    rc = _rc(
+        [
+            (1000, "Other", None, None, None, "OVERTAKE ENABLED"),
+            (1500, "Drs", None, None, None, "DRS ENABLED"),
+            (8000, "Flag", "CHEQUERED", "Track", None, "CHEQUERED FLAG"),
+        ]
+    )
+    ev = build_events(rc, pd.DataFrame({"t_ms": [0], "code": [1]}), 9500)
+    assert _assist(ev) == [("overtake", 1000, 8000), ("drs", 1500, 8000)]
+
+
+def test_qualifying_keeps_drs_until_the_last_chequered_flag() -> None:
+    # Clasificación: una bandera a cuadros por tanda y ningún DRS ENABLED nuevo en Q2 ni en Q3.
+    rc = _rc(
+        [
+            (100, "Drs", None, None, None, "DRS ENABLED"),
+            (1000, "Flag", "CHEQUERED", "Track", None, "CHEQUERED FLAG"),
+            (2000, "Flag", "CHEQUERED", "Track", None, "CHEQUERED FLAG"),
+            (3000, "Flag", "CHEQUERED", "Track", None, "CHEQUERED FLAG"),
+        ]
+    )
+    ev = build_events(rc, pd.DataFrame({"t_ms": [0], "code": [1]}), 5000)
+    assert _assist(ev) == [("drs", 100, 3000)]
+
+
+def test_single_zone_messages_do_not_change_the_global_window() -> None:
+    rc = _rc(
+        [
+            (100, "Drs", None, None, None, "DRS ENABLED"),
+            (500, "Other", None, None, None, "DRS DISABLED IN ZONE 2"),
+            (900, "Other", None, None, None, "DRS ENABLED IN ZONE 2"),
+            (2000, "Drs", None, None, None, "DRS DISABLED"),
+            (2500, "Other", None, None, None, "DRS ENABLED IN ZONE 1"),
+        ]
+    )
+    ev = build_events(rc, pd.DataFrame({"t_ms": [0], "code": [1]}), 5000)
+    # Ni el DISABLED de la zona 2 cierra la ventana global ni el ENABLED de la zona 1 la abre.
+    assert _assist(ev) == [("drs", 100, 2000)]
+
+
 def test_turn_maps_to_canonical_s() -> None:
     rc = _rc([(100, "Other", None, None, None, "TURN 3 INCIDENT INVOLVING CAR 1 (VER) NOTED - TRACK LIMITS")])
     ev = build_events(rc, pd.DataFrame({"t_ms": [0], "code": [1]}), 1000, corner_s={3: 812.34})

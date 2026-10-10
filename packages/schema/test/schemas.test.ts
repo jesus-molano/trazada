@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import Ajv2020 from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
 import { describe, expect, it } from 'vitest'
-import { assertManifest, canRead, ManifestError } from '../src'
+import { assertManifest, canRead, ManifestError, QUALITY_NOTE_CODES } from '../src'
 
 const read = (p: string) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), 'utf8'))
 
@@ -22,6 +22,17 @@ describe('JSON Schemas', () => {
     const ok = validate(read(example))
     expect(validate.errors ?? []).toEqual([])
     expect(ok).toBe(true)
+  })
+
+  it('las notas de calidad llevan un código conocido (el mismo enum en el esquema y en TS)', () => {
+    const schema = read('manifest.schema.json')
+    expect(schema.$defs.qualityNote.properties.code.enum).toEqual([...QUALITY_NOTE_CODES])
+    const validate = validator('manifest.schema.json')
+    const m = read('examples/manifest.example.json')
+    m.quality.notes = [{ code: 'inventado', text: 'x' }]
+    expect(validate(m)).toBe(false)
+    m.quality.notes = [{ code: 'no-corners' }]
+    expect(validate(m)).toBe(false) // sin texto
   })
 
   it('el manifest rechaza el nombre oficial con patrocinadores en campos no previstos', () => {

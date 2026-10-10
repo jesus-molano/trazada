@@ -95,6 +95,12 @@ def status_windows(track_status: pd.DataFrame, end_ms: int | None) -> list[dict[
 NEUTRALIZATIONS = ("sc", "vsc", "red")
 
 
+def final_chequered_flag(events: list[dict[str, Any]]) -> int | None:
+    """Instante de la última bandera a cuadros de la sesión (None si no hay)."""
+    times = [ev["t"] for ev in events if ev["parsed"]["kind"] == "chequered_flag"]
+    return max(times) if times else None
+
+
 def toggle_windows(
     events: list[dict[str, Any]],
     on: str,
@@ -108,6 +114,13 @@ def toggle_windows(
     Una neutralización (SC, VSC o roja) también cierra la ventana: el reglamento lo desactiva y race
     control no siempre lo anuncia (Japón 2026: OVERTAKE ENABLED, safety car, OVERTAKE ENABLED). Solo
     se reabre con un mensaje explícito de activación.
+
+    La bandera a cuadros también la cierra (Japón 2026: sin ella, «Overtake activado» seguía en la vuelta
+    de enfriamiento). Si hay varias, cierra la última: en clasificación hay una por tanda y dirección de
+    carrera no vuelve a anunciar el DRS en Q2 ni en Q3 (docs/RACE_CONTROL.md).
+
+    Los mensajes de una sola zona (`DRS DISABLED IN ZONE 2`) no cambian el estado global: el resto de
+    zonas siguen activas y el mensaje se ve en el feed de dirección de carrera.
     """
     stream: list[tuple[int, int, str]] = []  # (t, orden, acción): a igual t, cerrar antes que abrir
     for ev in events:
@@ -121,6 +134,9 @@ def toggle_windows(
     for w in neutralizations or []:
         if w["kind"] in NEUTRALIZATIONS:
             stream.append((w["fromMs"], 0, "off"))
+    chequered = final_chequered_flag(events)
+    if chequered is not None:
+        stream.append((chequered, 0, "off"))
     out = []
     start: int | None = None
     for t, _, action in sorted(stream):

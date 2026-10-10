@@ -129,6 +129,25 @@ def test_playback_window_for_race(built) -> None:
     assert end == min(data_end, chequered + 5 * 60 * 1000)
 
 
+@pytest.mark.parametrize("session_start", [-1, 0, None])
+def test_unknown_lights_out_is_not_invented(session_start: int | None) -> None:
+    """Sin inicio de la vuelta 1 ni de la sesión (-1, 0 o nada), la salida queda sin dato."""
+    data, _ = synthetic_session()
+    data.laps.loc[data.laps["lap"] == 1, "start_ms"] = -1
+    data.session_start_ms = session_start
+    start, _, lights_out = playback_window(data)
+    assert lights_out is None and start == 0
+
+
+def test_unknown_lights_out_reaches_the_manifest(tmp_path: Path) -> None:
+    data, _ = synthetic_session()
+    data.laps.loc[data.laps["lap"] == 1, "start_ms"] = -1
+    data.session_start_ms = -1
+    manifest = json.loads(build_session(data, tmp_path).manifest_path.read_text())
+    assert manifest["session"]["playback"]["lightsOutMs"] is None
+    assert "lights-out-unknown" in {n["code"] for n in manifest["quality"]["notes"]}
+
+
 def test_coverage_ratio() -> None:
     t = np.arange(0, 10_001, 250)
     assert coverage_ratio(t, [(0, 10_000)]) == 1.0
@@ -164,3 +183,40 @@ def test_old_circuit_with_dev_sources_is_detected(tmp_path: Path) -> None:
     circuit_id = next((v1 / "circuits").iterdir()).name
     c = load_circuit(circuit_id, v1)
     assert c is not None and c.dev is True  # sesión sintética: su circuito es dev
+
+
+def _note_codes() -> set[str]:
+    doc = json.loads((schema.schema_dir() / "manifest.schema.json").read_text())
+    return set(doc["$defs"]["qualityNote"]["properties"]["code"]["enum"])
+
+
+def test_quality_notes_are_machine_readable(built) -> None:
+    """Cada aviso lleva un código estable (la UI lo traduce) y su texto, el mismo que se imprime."""
+    _, _, report = built
+    notes = json.loads(report.manifest_path.read_text())["quality"]["notes"]
+    assert notes and all(isinstance(n, dict) and n["code"] in _note_codes() for n in notes)
+    assert [n["text"] for n in notes] == report.warnings
+    assert "no-corners" in {n["code"] for n in notes}  # la sesión sintética no trae curvas
+    assert "finishLineLaps" not in report.quality  # con vueltas de sobra, la meta no es la de reserva
+
+
+def test_finish_line_fallback_is_recorded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pocas vueltas para situar la meta: el aviso llega al manifest (también al reutilizar el circuito)."""
+    from trazada_pipeline.circuit import build as circuit_build
+    from trazada_pipeline.circuit.build import build_centerline, finish_line_s
+
+    data, _ = synthetic_session()
+    line, _ = build_centerline(data)
+    _, laps = finish_line_s(data, line)
+    assert laps >= 3
+
+    monkeypatch.setattr(circuit_build, "MIN_FINISH_LAPS", laps + 1)
+    report = build_session(data, tmp_path)
+    assert report.quality["finishLineLaps"] == laps
+    monkeypatch.undo()
+    again = build_session(synthetic_session()[0], tmp_path)  # circuito ya guardado: se reutiliza
+    for r in (report, again):
+        notes = json.loads(r.manifest_path.read_text())["quality"]["notes"]
+        fallback = [n for n in notes if n["code"] == "finish-line-fallback"]
+        assert len(fallback) == 1 and fallback[0]["params"] == {"laps": laps}
+        assert fallback[0]["text"] in r.warnings
