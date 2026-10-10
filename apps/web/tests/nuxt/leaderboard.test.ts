@@ -8,6 +8,7 @@ import type { LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
+import { testLapTable, withExt } from '~/testing/runtime'
 
 const driver = (number: string, tla: string) => ({ number, tla, first: '', last: '', team: '', color: '#3366FF' })
 
@@ -30,10 +31,11 @@ const row = (car: string, tla: string, position: number, over: Partial<Leaderboa
 })
 
 function fakeRuntime(rows: LeaderboardRow[]): ReplayRuntime {
-  return {
+  return withExt({
     clock: { timeMs: 0, rate: 1, playing: false },
     model: { states: [] },
-    leaderboard: { compute: () => rows },
+    // Sin vueltas: las celdas de sectores (hueco leaderboard-cells) quedan «sin dato».
+    leaderboard: { compute: () => rows, lapTable: testLapTable() },
     drivers: rows.map((r) => r.driver!),
     onFrame: () => () => {},
     onCoarse: (cb: (s: { timeMs: number; playing: boolean; rate: 1 }) => void) => {
@@ -42,7 +44,7 @@ function fakeRuntime(rows: LeaderboardRow[]): ReplayRuntime {
     },
     requestFrame: () => {},
     dispose: () => {},
-  } as unknown as ReplayRuntime
+  }) as unknown as ReplayRuntime
 }
 
 // Se usa la instancia de Pinia de la app Nuxt de test (la misma que ve el componente).
@@ -125,10 +127,10 @@ function liveRuntime(initial: LeaderboardRow[], opts: { race?: boolean; rate?: n
   vi.spyOn(performance, 'now').mockImplementation(() => wall)
   const listeners = new Set<(t: number) => void>()
   const clock = { timeMs: 10_000, rate: opts.rate ?? 1, playing: true }
-  const rt = {
+  const rt = withExt({
     clock,
     model: { states: [] },
-    leaderboard: { race: opts.race ?? true, compute: () => current },
+    leaderboard: { race: opts.race ?? true, compute: () => current, lapTable: testLapTable() },
     drivers: initial.map((r) => r.driver!),
     onFrame: (cb: (t: number) => void) => {
       listeners.add(cb)
@@ -140,7 +142,7 @@ function liveRuntime(initial: LeaderboardRow[], opts: { race?: boolean; rate?: n
     },
     requestFrame: () => {},
     dispose: () => {},
-  } as unknown as ReplayRuntime
+  }) as unknown as ReplayRuntime
   const emit = () => {
     for (const l of listeners) l(clock.timeMs)
   }

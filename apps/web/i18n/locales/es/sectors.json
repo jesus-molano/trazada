@@ -1,0 +1,22 @@
+{
+  "sectors": {
+    "title": "Sectores",
+    "short": "S{n}",
+    "lapTag": "V{lap}",
+    "status": {
+      "best": "mejor de la sesión al completarlo",
+      "personal": "mejor personal",
+      "normal": "sin mejora",
+      "none": "sin dato"
+    },
+    "cell": "S{n} {time} ({status})",
+    "cellDeleted": "S{n} {time}",
+    "cellNoData": "S{n}: sin dato",
+    "lap": "Sectores de la vuelta {lap}: {list}.",
+    "lapDeleted": "Sectores de la vuelta {lap}, anulada por dirección de carrera (no cuenta): {list}.",
+    "noLap": "Sectores: sin vuelta completada (sin dato).",
+    "basis": "Colores calculados por Trazada con los tiempos oficiales; no son las marcas del cronometraje.",
+    "hintLabel": "Cómo se calculan los colores de sector",
+    "hint": "Morado: mejor tiempo de la sesión en ese sector al completarlo (un empate no cuenta). Verde: mejor personal. Amarillo: sin mejora. Gris: sin dato. Cada color se fija al completar el sector y no cambia después. Las vueltas anuladas dejan de contar desde el mensaje de dirección de carrera. Colores calculados por Trazada con los tiempos oficiales; no son las marcas del cronometraje."
+  }
+}

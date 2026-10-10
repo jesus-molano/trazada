@@ -17,10 +17,15 @@ import { useSettingsStore } from '~/stores/settings'
 
 const props = withDefaults(defineProps<{ preset?: LayoutPreset }>(), { preset: 'spectator' })
 const cells = computed(() => cellsFor(LEADERBOARD_CELLS, props.preset))
-/** Pistas de la rejilla de cada fila para las columnas extra (solo si hay alguna). */
-const cellsStyle = computed(() =>
-  cells.value.length ? { '--lb-cells': cells.value.map((c) => c.width).join(' ') } : undefined,
-)
+/**
+ * Pistas de la rejilla de cada fila para las columnas extra (solo si hay alguna) y lo que se ensancha el panel por
+ * ellas (sus anchos más un hueco de la rejilla por cada una): las columnas fijas no ceden sitio.
+ */
+const cellsStyle = computed(() => {
+  const widths = cells.value.map((c) => c.width)
+  if (!widths.length) return undefined
+  return { '--lb-cells': widths.join(' '), '--lb-cells-w': `calc(${widths.join(' + ')} + ${widths.length} * var(--lb-gap))` }
+})
 
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
@@ -200,14 +205,19 @@ function select(car: string) {
 
 <style scoped>
 .tz-lb {
-  /* Columnas fijas de cada fila; con celdas de otras funciones (leaderboard-cells/), sus pistas van detrás. */
+  /*
+   * Columnas fijas de cada fila; con celdas de otras funciones (leaderboard-cells/), sus pistas van detrás y el panel
+   * se ensancha lo que ocupan (`--lb-cells-w`).
+   */
   --lb-cols: 22px 4px 38px 1fr 76px 38px;
+  --lb-gap: var(--tz-space-2);
+  --lb-w: 290px;
   position: absolute;
   top: 0;
   left: 0;
   display: flex;
   flex-direction: column;
-  width: 290px;
+  width: var(--lb-w);
   max-height: 100%;
   padding: var(--tz-space-2);
   border: 1px solid var(--tz-border);
@@ -323,7 +333,7 @@ function select(car: string) {
   display: grid;
   grid-template-columns: var(--lb-cols);
   align-items: center;
-  gap: var(--tz-space-2);
+  gap: var(--lb-gap);
   width: 100%;
   padding: 3px var(--tz-space-2);
   border: 0;
@@ -332,6 +342,10 @@ function select(car: string) {
   font-size: var(--tz-text-sm);
   text-align: start;
   cursor: pointer;
+}
+
+.tz-lb.has-cells {
+  width: calc(var(--lb-w) + var(--lb-cells-w));
 }
 
 .tz-lb.has-cells .tz-lb__btn {
@@ -435,16 +449,14 @@ function select(car: string) {
 @media (width <= 1100px) {
   .tz-lb {
     --lb-cols: 20px 4px 34px 1fr 64px 34px;
-    width: 250px;
-  }
-
-  .tz-lb__btn {
-    gap: 6px;
+    --lb-gap: 6px;
+    --lb-w: 250px;
   }
 }
 
 @media (width <= 900px) and (orientation: portrait) {
-  .tz-lb {
+  .tz-lb,
+  .tz-lb.has-cells {
     width: auto;
   }
 }
