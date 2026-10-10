@@ -1,0 +1,33 @@
+{
+  "summary": {
+    "button": "Resumen",
+    "buttonHint": "Resumen de la sesión: los tres primeros, la vuelta rápida y las paradas",
+    "title": "Resumen de la sesión",
+    "subtitle": "{event} · {session}",
+    "close": "Cerrar el resumen",
+    "basisEnd": "Según el cronometraje al terminar la sesión; no incluye sanciones posteriores.",
+    "basisDataEnd": "Los datos no traen el final de la sesión: según el cronometraje al final de los datos; no incluye sanciones posteriores.",
+    "topRace": "Los tres primeros",
+    "topBestLap": "Los tres primeros por mejor vuelta",
+    "noData": "sin dato",
+    "positionNoData": "Posición {n}: sin dato",
+    "leader": "Líder",
+    "lapsBehind": "+{n} V",
+    "gapNoData": "Gap: sin dato",
+    "laps": "{n} vuelta | {n} vueltas",
+    "lapsNoData": "Vueltas: sin dato",
+    "fastest": "Vuelta rápida",
+    "fastestLap": "vuelta {lap}",
+    "tyres": "Neumáticos por stint: {list}",
+    "tyresNoData": "Neumáticos: sin dato",
+    "compoundNoData": "Compuesto sin dato",
+    "stops": "Sin paradas | {n} parada | {n} paradas",
+    "stopsNoData": "Paradas: sin dato",
+    "pitLane": "Pit lane",
+    "pitLaneHint": "Tiempo en el pit lane, de la entrada a la salida: no es el tiempo de la parada en el box, que no está en los datos. Solo cuenta como parada si cambian los neumáticos.",
+    "pitLaneTime": "V{lap}: {s} s",
+    "pitLaneNoTime": "V{lap}: sin dato",
+    "passes": "{n} paso por el pit lane sin cambio de neumáticos | {n} pasos por el pit lane sin cambio de neumáticos",
+    "unknownVisits": "{n} paso por el pit lane sin dato de neumáticos | {n} pasos por el pit lane sin dato de neumáticos"
+  }
+}
