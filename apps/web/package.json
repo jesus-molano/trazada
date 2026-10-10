@@ -1,0 +1,47 @@
+{
+  "name": "@trazada/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@nuxtjs/i18n": "10.6.0",
+    "@pinia/nuxt": "1.0.2",
+    "@trazada/schema": "workspace:*",
+    "@tresjs/cientos": "5.9.3",
+    "@tresjs/core": "5.9.3",
+    "@tresjs/nuxt": "5.7.3",
+    "gsap": "3.15.0",
+    "nuxt": "4.5.2",
+    "pinia": "4.0.3",
+    "three": "~0.186.1",
+    "troika-three-text": "0.52.5",
+    "uplot": "1.6.32",
+    "vue": "3.5.43"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@intlify/eslint-plugin-vue-i18n": "4.5.1",
+    "@nuxt/eslint": "1.17.0",
+    "@nuxt/test-utils": "4.3.3",
+    "@playwright/test": "1.64.0",
+    "@types/three": "0.186.0",
+    "@vue/devtools-api": "8.2.1",
+    "eslint": "10.12.0",
+    "happy-dom": "20.14.6",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3",
+    "vue-tsc": "3.3.12"
+  }
+}

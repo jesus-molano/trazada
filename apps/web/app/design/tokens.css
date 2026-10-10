@@ -1,0 +1,114 @@
+/*
+ * Design tokens de Trazada. Única fuente de verdad para color, espacio, tipografía,
+ * radios, capas y movimiento. motion.ts lee las duraciones y curvas desde aquí.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Superficies */
+  --tz-bg: #0a0c0f;
+  --tz-surface-1: #11141a;
+  --tz-surface-2: #171b22;
+  --tz-surface-3: #1e232c;
+  --tz-overlay: rgb(10 12 15 / 0.72);
+  --tz-border: #262c36;
+  --tz-border-strong: #384150;
+
+  /* Texto */
+  --tz-text: #e8ebf0;
+  --tz-text-muted: #9ba4b0;
+  --tz-text-faint: #697381;
+  --tz-text-inverse: #0a0c0f;
+
+  /* Acento de marca (neutro, sin asociación con marcas de terceros) */
+  --tz-accent: #4cc9f0;
+  --tz-accent-strong: #8ee3ff;
+  --tz-accent-soft: rgb(76 201 240 / 0.16);
+  --tz-focus: #8ee3ff;
+
+  /* Semánticos de carrera */
+  --tz-flag-green: #2ecc71;
+  --tz-flag-yellow: #f5c518;
+  --tz-flag-double-yellow: #ff9f1a;
+  --tz-flag-red: #ff4d4f;
+  --tz-flag-blue: #3b82f6;
+  --tz-flag-chequered: #e8ebf0;
+  --tz-sc: #f59e0b;
+  --tz-vsc: #fbbf24;
+  --tz-pit: #a78bfa;
+  --tz-estimated: #c084fc;
+  --tz-danger: #ff6b6b;
+  --tz-success: #34d399;
+
+  /* Compuestos de neumático */
+  --tz-tyre-soft: #ff3b30;
+  --tz-tyre-medium: #ffd60a;
+  --tz-tyre-hard: #eef0f3;
+  --tz-tyre-inter: #34c759;
+  --tz-tyre-wet: #0a84ff;
+  --tz-tyre-unknown: #697381;
+
+  /* Espaciado (base 4 px) */
+  --tz-space-0: 0;
+  --tz-space-1: 4px;
+  --tz-space-2: 8px;
+  --tz-space-3: 12px;
+  --tz-space-4: 16px;
+  --tz-space-5: 20px;
+  --tz-space-6: 24px;
+  --tz-space-8: 32px;
+  --tz-space-10: 40px;
+  --tz-space-12: 48px;
+
+  /* Radios */
+  --tz-radius-sm: 4px;
+  --tz-radius-md: 8px;
+  --tz-radius-lg: 12px;
+  --tz-radius-pill: 999px;
+
+  /* Tipografía */
+  --tz-font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tz-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+  --tz-text-2xs: 10px;
+  --tz-text-xs: 11px;
+  --tz-text-sm: 12px;
+  --tz-text-md: 14px;
+  --tz-text-lg: 16px;
+  --tz-text-xl: 20px;
+  --tz-text-2xl: 28px;
+  --tz-text-3xl: 40px;
+  --tz-weight-regular: 400;
+  --tz-weight-medium: 500;
+  --tz-weight-semibold: 600;
+  --tz-weight-bold: 700;
+  --tz-leading-tight: 1.2;
+  --tz-leading-normal: 1.5;
+
+  /* Capas */
+  --tz-z-canvas: 0;
+  --tz-z-panels: 10;
+  --tz-z-header: 20;
+  --tz-z-overlay: 100;
+  --tz-z-toast: 1000;
+
+  /* Sombras */
+  --tz-shadow-panel: 0 8px 24px rgb(0 0 0 / 0.35);
+
+  /* Movimiento: duraciones y curvas (Material-like, sobrias) */
+  --tz-dur-fast: 120ms;
+  --tz-dur-base: 200ms;
+  --tz-dur-slow: 360ms;
+  --tz-dur-camera: 900ms;
+  --tz-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --tz-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --tz-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tz-dur-fast: 0ms;
+    --tz-dur-base: 0ms;
+    --tz-dur-slow: 0ms;
+    --tz-dur-camera: 0ms;
+  }
+}

@@ -388,7 +388,7 @@ Versiones verificadas en npm y PyPI el 2026-10-10 y fijadas con lockfile. Lo mar
 |---|---|---|---|
 | Node | **24 LTS (≥ 24.15)** | MIT | Nuxt 4.6.1 exige `^22.22.3 \|\| ^24.15 \|\| >=26`. |
 | pnpm (workspaces) | 12.x | MIT | *Propuesta*: instalación estricta y rápida. No hace falta orquestador de monorepo. |
-| Nuxt | **4.6.1** | MIT | No hay Nuxt 5 estable (estimado para el T4 de 2026; la 4.x tendrá soporte 6 meses después). La 4.6 tiene días; si da problemas con TresJS, que se prueba sobre 4.5.2, se vuelve a 4.5.2. `ssr: true` + `nuxt generate`. |
+| Nuxt | **4.5.2** (actualizado en H0) | MIT | La 4.6.1 se publicó el día anterior y la rechazó la protección de antigüedad mínima de pnpm, así que se usa la 4.5.2, sobre la que se prueba TresJS. Se subirá a la 4.6 cuando madure. No hay Nuxt 5 estable (estimado para el T4 de 2026). `ssr: true` + `nuxt generate`. |
 | TypeScript | **6.0.x** (strict) | Apache-2.0 | `latest` es la 7.0.2, con compilador nativo; su compatibilidad con `vue-tsc` está por comprobar (en H0). |
 | @tresjs/core / nuxt / cientos | **5.9.3 / 5.7.3 / 5.9.3** | MIT | `@tresjs/nuxt` fija `core` **exactamente** a 5.9.3. |
 | @tresjs/post-processing | 3.10.0 | MIT | **No se usa en la Fase 1** (D10). |

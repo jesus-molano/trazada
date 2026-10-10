@@ -1,0 +1,26 @@
+node_modules/
+.nuxt/
+.output/
+.data/
+dist/
+dist
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+
+# Datos generados por el pipeline y cachés (nunca en git)
+/data/*
+!/data/.gitkeep
+.cache/
+pipeline/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

@@ -1,0 +1,22 @@
+Trazada — third-party notices
+=============================
+
+This project's source code is MIT-licensed (see LICENSE). It depends on third-party
+software and data sources with their own terms:
+
+- GSAP (GreenSock) — "Standard 'no charge' license" (https://gsap.com/standard-license).
+  Proprietary, free of charge; not an OSI open-source license. Used for UI/camera transitions.
+- Inter (Rasmus Andersson) and JetBrains Mono (JetBrains) — SIL Open Font License 1.1,
+  self-hosted via the @fontsource packages. License texts ship with the font packages.
+- three.js, TresJS, Vue, Nuxt, Pinia, vue-i18n, uPlot, troika-three-text — MIT.
+- FastF1 (pipeline) — MIT. Used to read the public F1 live-timing archive.
+- MultiViewer — circuit markers (corners, marshal sectors, map rotation) obtained via FastF1.
+  No public licence is published; used with attribution, pending explicit permission.
+- OpenF1 (optional cross-check in the pipeline) — API consumed under its terms (personal /
+  non-commercial). No OpenF1 code is included in this repository.
+
+Data notice: see DATA_NOTICE.md.
+
+Trazada is unofficial and is not associated in any way with the Formula 1 companies. F1,
+FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are
+trade marks of Formula One Licensing B.V.

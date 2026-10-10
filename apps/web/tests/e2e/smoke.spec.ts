@@ -1,0 +1,15 @@
+import { expect, test } from '@playwright/test'
+
+test('la portada carga con título y disclaimer', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByTestId('disclaimer')).toContainText('Formula One Licensing B.V.')
+})
+
+test('el idioma se puede cambiar', async ({ page }) => {
+  await page.goto('/')
+  const heading = page.getByRole('heading', { level: 1 })
+  const before = await heading.textContent()
+  await page.getByTestId('lang-toggle').click()
+  await expect(heading).not.toHaveText(before ?? '')
+})

@@ -1,0 +1,22 @@
+// @ts-check
+import vueI18n from '@intlify/eslint-plugin-vue-i18n'
+import withNuxt from './.nuxt/eslint.config.mjs'
+
+export default withNuxt(
+  ...vueI18n.configs['flat/recommended'],
+  {
+    settings: {
+      'vue-i18n': {
+        localeDir: './i18n/locales/*.json',
+        messageSyntaxVersion: '^11.0.0',
+      },
+    },
+    rules: {
+      // Ningún texto visible fuera de i18n.
+      '@intlify/vue-i18n/no-raw-text': ['error', { ignorePattern: '^[-#:()&.,/·×+%\\d\\s]+$' }],
+      '@intlify/vue-i18n/no-missing-keys': 'error',
+      '@intlify/vue-i18n/no-unused-keys': ['warn', { extensions: ['.ts', '.vue'] }],
+      '@intlify/vue-i18n/no-v-html': 'error',
+    },
+  },
+)

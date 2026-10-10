@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (lint, typecheck, unit, build, e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @trazada/web exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  pipeline:
+    name: Pipeline (ruff, pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pytest
+
+  probe:
+    name: Probe data sources from cloud (informativo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: HTTP status from a GitHub-hosted runner
+        run: |
+          probe() { printf '%-60s %s\n' "$1" "$(curl -s -o /dev/null -m 20 -w '%{http_code}' -A 'BestHTTP' "$1" || echo ERR)"; }
+          probe https://livetiming.formula1.com/static/2026/Index.json
+          probe https://livetiming-mirror.fastf1.dev/static/2026/Index.json
+          probe 'https://api.openf1.org/v1/sessions?year=2026&session_type=Race'
+          probe https://api.multiviewer.app/api/v1/circuits
+          probe https://api.jolpi.ca/ergast/f1/2026.json

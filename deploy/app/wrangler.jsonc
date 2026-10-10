@@ -1,0 +1,10 @@
+// Worker de Cloudflare solo de assets para la app (sin script: peticiones gratis e ilimitadas).
+// Lo despliega GitHub Actions: wrangler deploy --config deploy/app/wrangler.jsonc
+{
+  "name": "trazada",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "../../apps/web/.output/public",
+    "not_found_handling": "404-page"
+  }
+}

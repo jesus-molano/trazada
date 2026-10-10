@@ -1,0 +1,17 @@
+{
+  "app": {
+    "name": "Trazada",
+    "switchLanguage": "Switch language to Spanish",
+    "otherLocaleShort": "ES"
+  },
+  "home": {
+    "title": "Relive every race",
+    "lead": "Pick a season, Grand Prix and session to watch the 3D replay with telemetry, timeline and race control."
+  },
+  "replay": {
+    "title": "Replay"
+  },
+  "legal": {
+    "disclaimer": "Trazada is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V."
+  }
+}

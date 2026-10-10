@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Solo estos paquetes pueden ejecutar scripts de instalación.
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  vue-demi: true

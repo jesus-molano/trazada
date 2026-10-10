@@ -1,0 +1,17 @@
+{
+  "app": {
+    "name": "Trazada",
+    "switchLanguage": "Cambiar idioma a inglés",
+    "otherLocaleShort": "EN"
+  },
+  "home": {
+    "title": "Revive cada carrera",
+    "lead": "Elige temporada, Gran Premio y sesión para ver el replay en 3D con telemetría, timeline y dirección de carrera."
+  },
+  "replay": {
+    "title": "Replay"
+  },
+  "legal": {
+    "disclaimer": "Trazada es un proyecto no oficial y no está asociado en modo alguno con las compañías de Fórmula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX y las marcas relacionadas son marcas registradas de Formula One Licensing B.V."
+  }
+}
