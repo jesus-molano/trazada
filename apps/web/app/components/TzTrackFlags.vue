@@ -8,7 +8,9 @@ import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial } from 'three'
 import type { NeutralKind, SectorFlagKind } from '~/engine/trackstate/TrackState'
 import type { CircuitModel } from '~/engine/track/circuit'
-import { buildRibbon, rangeIndices, TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { useMapWidth } from '~/composables/useMapWidth'
+import { MIN_TRACK_PX } from '~/engine/track/mapWidth'
+import { buildRibbon, rangeIndices, setRibbonHalfWidth, TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { token } from '~/design/tokens'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
@@ -51,10 +53,17 @@ function overlayMaterial(opacity: number, offset: number): MeshBasicMaterial {
   })
 }
 
+// Misma anchura de mapa que la pista (mismos parámetros → mismo valor en cada frame).
+useMapWidth(TRACK_WIDTH_M / 2, MIN_TRACK_PX, props.flat ? 0 : (props.model.zRange[0] + props.model.zRange[1]) / 2, (half) => {
+  setRibbonHalfWidth(ribbon, half)
+  position.needsUpdate = true
+})
+
 const group = new Group()
 const tint = new Mesh(geometry(ribbon.indices), overlayMaterial(0.5, -1))
 tint.renderOrder = 1
 tint.visible = false
+tint.frustumCulled = false
 group.add(tint)
 
 const sectors = new Map<number, Mesh<BufferGeometry, MeshBasicMaterial>>()
@@ -62,6 +71,7 @@ for (const ms of props.model.marshalSectors) {
   const mesh = new Mesh(geometry(rangeIndices(props.model.centerline, ms.sStart, ms.sEnd)), overlayMaterial(0.85, -2))
   mesh.renderOrder = 1
   mesh.visible = false
+  mesh.frustumCulled = false
   sectors.set(ms.number, mesh)
   group.add(mesh)
 }

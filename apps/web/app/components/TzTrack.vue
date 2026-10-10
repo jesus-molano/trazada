@@ -4,9 +4,12 @@
  * La exageración de altura se aplica con la escala Y del grupo padre.
  */
 import { BufferAttribute, BufferGeometry, Color } from 'three'
+import { useMapWidth } from '~/composables/useMapWidth'
 import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
-import { buildRibbon, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { MIN_PIT_PX, MIN_TRACK_PX } from '~/engine/track/mapWidth'
+import { buildRibbon, setRibbonHalfWidth, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { sceneStats } from '~/replay/debug'
 
 const props = defineProps<{ model: CircuitModel; flat: boolean }>()
 
@@ -20,7 +23,8 @@ const PIT = token('--tz-pit')
 function ribbonGeometry(width: number, path = props.model.centerline) {
   const r = buildRibbon(path, width, props.flat)
   const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(r.positions, 3))
+  const position = new BufferAttribute(r.positions, 3)
+  g.setAttribute('position', position)
   const colors = new Float32Array(r.shade.length * 3)
   const c = new Color()
   for (let i = 0; i < r.shade.length; i++) c.lerpColors(LOW, HIGH, r.shade[i]!).toArray(colors, i * 3)
@@ -31,33 +35,54 @@ function ribbonGeometry(width: number, path = props.model.centerline) {
     e.setAttribute('position', new BufferAttribute(pts, 3))
     return e
   })
-  return { ribbon: g, edges }
+  /** Reescribe la cinta y sus bordes con otra semianchura (misma forma). */
+  const setHalf = (half: number) => {
+    setRibbonHalfWidth(r, half)
+    position.needsUpdate = true
+    for (const e of edges) e.getAttribute('position').needsUpdate = true
+  }
+  return { ribbon: g, edges, setHalf }
 }
 
 const track = shallowRef(ribbonGeometry(TRACK_WIDTH_M))
 const pit = shallowRef(props.model.pitlane ? ribbonGeometry(PIT_WIDTH_M, props.model.pitlane) : null)
 
-/** Línea de meta: un rectángulo de 2 m a través de la pista en s = 0. */
+/** Línea de meta: un rectángulo a través de la pista en s = 0 (2 m de largo, o más si la pista se ensancha). */
+const finishPos = new Float32Array(12)
 const finish = shallowRef<BufferGeometry>(finishLine())
-function finishLine(): BufferGeometry {
+function writeFinish(trackHalf: number) {
   const p = props.model.centerline.sample(0, { x: 0, y: 0, z: 0, tx: 1, ty: 0 })
   const nx = -p.ty
   const ny = p.tx
-  const half = TRACK_WIDTH_M / 2 + 1
+  const half = trackHalf + 1
+  const len = Math.max(1, trackHalf / 7)
   const z = (props.flat ? 0 : p.z) + 0.05
-  const pos = new Float32Array(12)
   const corners: [number, number][] = [
-    [p.x + nx * half - p.tx, p.y + ny * half - p.ty],
-    [p.x - nx * half - p.tx, p.y - ny * half - p.ty],
-    [p.x + nx * half + p.tx, p.y + ny * half + p.ty],
-    [p.x - nx * half + p.tx, p.y - ny * half + p.ty],
+    [p.x + nx * half - p.tx * len, p.y + ny * half - p.ty * len],
+    [p.x - nx * half - p.tx * len, p.y - ny * half - p.ty * len],
+    [p.x + nx * half + p.tx * len, p.y + ny * half + p.ty * len],
+    [p.x - nx * half + p.tx * len, p.y - ny * half + p.ty * len],
   ]
-  corners.forEach(([x, y], i) => toThree(x, y, z, pos, i * 3))
+  corners.forEach(([x, y], i) => toThree(x, y, z, finishPos, i * 3))
+}
+function finishLine(): BufferGeometry {
+  writeFinish(TRACK_WIDTH_M / 2)
   const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(pos, 3))
+  g.setAttribute('position', new BufferAttribute(finishPos, 3))
   g.setIndex([0, 1, 2, 1, 3, 2])
   return g
 }
+
+// Anchura de mapa: la real de cerca y un mínimo en pantalla al alejarse (si no, a escala de circuito, un hilo).
+const groundY = props.flat ? 0 : (props.model.zRange[0] + props.model.zRange[1]) / 2
+sceneStats.trackHalfWidthM = TRACK_WIDTH_M / 2
+useMapWidth(TRACK_WIDTH_M / 2, MIN_TRACK_PX, groundY, (half) => {
+  track.value.setHalf(half)
+  writeFinish(half)
+  finish.value.getAttribute('position').needsUpdate = true
+  sceneStats.trackHalfWidthM = half
+})
+useMapWidth(PIT_WIDTH_M / 2, MIN_PIT_PX, groundY, (half) => pit.value?.setHalf(half))
 
 onBeforeUnmount(() => {
   for (const g of [track.value.ribbon, ...track.value.edges, finish.value]) g.dispose()
@@ -70,7 +95,7 @@ defineExpose({ trackWidth: TRACK_WIDTH_M })
 <template>
   <TresGroup>
     <!-- polygonOffset: los bordes (líneas coplanarias) quedan siempre por encima de la cinta -->
-    <TresMesh :geometry="track.ribbon" :render-order="1">
+    <TresMesh :geometry="track.ribbon" :render-order="1" :frustum-culled="false">
       <TresMeshBasicMaterial vertex-colors :side="2" :polygon-offset="true" :polygon-offset-factor="1" :polygon-offset-units="1" />
     </TresMesh>
     <TresLineLoop v-for="(edge, i) in track.edges" :key="`e${i}`" :geometry="edge" :render-order="2">
@@ -81,7 +106,7 @@ defineExpose({ trackWidth: TRACK_WIDTH_M })
     </TresMesh>
     <template v-if="pit">
       <!-- El pit lane se dibuja primero y sin profundidad: donde se solapa con la pista, manda la pista. -->
-      <TresMesh :geometry="pit.ribbon" :render-order="0">
+      <TresMesh :geometry="pit.ribbon" :render-order="0" :frustum-culled="false">
         <TresMeshBasicMaterial :color="PIT" :transparent="true" :opacity="0.35" :side="2" :depth-test="false" :depth-write="false" />
       </TresMesh>
       <TresLine v-for="(edge, i) in pit.edges" :key="`p${i}`" :geometry="edge">

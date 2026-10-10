@@ -251,14 +251,14 @@ onBeforeUnmount(() => {
 
   .tz-replay__stage > * {
     position: relative;
-    max-height: 40vh;
+    max-height: 34vh;
   }
 
   .tz-replay__side {
     position: relative;
     inset: auto;
     width: auto;
-    height: 40vh;
+    height: 34vh;
   }
 }
 

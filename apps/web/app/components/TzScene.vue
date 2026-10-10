@@ -9,7 +9,7 @@ import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { token } from '~/design/tokens'
 import { QualityGovernor } from '~/engine/perf/QualityGovernor'
 import { cornerAnchor } from '~/engine/track/circuit'
-import { frameCircuit } from '~/engine/track/framing'
+import { fitCircuit, frameCircuit, type Insets } from '~/engine/track/framing'
 import { sceneStats } from '~/replay/debug'
 import { getRuntime } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
@@ -61,22 +61,56 @@ const distance = initial.distance
 const cameraPosition = initial.position
 const camera = shallowRef<PerspectiveCamera | null>(null)
 
+/** Elementos de la interfaz que tapan el lienzo (y cuyo tamaño, si cambia, obliga a reencuadrar). */
+const INSET_SOURCES =
+  '.tz-replay__bar, [data-testid="scene-tools"], [data-testid="replay-dock"], [data-testid="leaderboard"], .tz-replay__stage > *, .tz-replay__side > *'
+const FRAME_PAD_TOP_PX = 36
+const FRAME_PAD_PX = 18
+
 /**
- * Fracción inferior del lienzo que tapan los controles y, en tablet vertical, los paneles (la página
- * lo indica con `--replay-panels-bottom: 1`; en escritorio van a los lados y no cuentan).
+ * Fracciones del lienzo que tapa la interfaz: la barra de arriba, los controles de abajo y los paneles (a los
+ * lados en escritorio; abajo en tablet vertical, que la página indica con `--replay-panels-bottom: 1`).
  */
-function bottomInset(canvas: HTMLCanvasElement): number {
+function insets(canvas: HTMLCanvasElement): Insets {
   const c = canvas.getBoundingClientRect()
+  const out: Insets = { left: 0, right: 0, top: 0, bottom: 0 }
+  if (c.width <= 0 || c.height <= 0) return out
   const stage = document.querySelector<HTMLElement>('.tz-replay__stage')
   const panelsBottom = !!stage && getComputedStyle(stage).getPropertyValue('--replay-panels-bottom').trim() === '1'
-  const selector = panelsBottom ? '[data-testid="replay-dock"], .tz-replay__stage > *' : '[data-testid="replay-dock"]'
-  let top = c.bottom
-  for (const el of document.querySelectorAll(selector)) {
-    const r = el.getBoundingClientRect()
-    if (r.height > 0) top = Math.min(top, r.top)
+  const each = (selector: string, fn: (r: DOMRect) => void) => {
+    for (const el of document.querySelectorAll(selector)) {
+      const r = el.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0) fn(r)
+    }
   }
-  return Math.min(0.6, Math.max(0, (c.bottom - top) / c.height))
+  each('.tz-replay__bar, [data-testid="scene-tools"]', (r) => (out.top = Math.max(out.top, (r.bottom - c.top) / c.height)))
+  each('[data-testid="replay-dock"]', (r) => (out.bottom = Math.max(out.bottom, (c.bottom - r.top) / c.height)))
+  if (panelsBottom) {
+    each('.tz-replay__stage > *', (r) => (out.bottom = Math.max(out.bottom, (c.bottom - r.top) / c.height)))
+  } else {
+    each('[data-testid="leaderboard"]', (r) => (out.left = Math.max(out.left, (r.right - c.left) / c.width)))
+    each('.tz-replay__side > *', (r) => (out.right = Math.max(out.right, (c.right - r.left) / c.width)))
+  }
+  // Holgura en píxeles: las siglas van por encima de los coches y las curvas numeradas, por fuera de la pista.
+  out.top += FRAME_PAD_TOP_PX / c.height
+  out.bottom += FRAME_PAD_PX / c.height
+  out.left += FRAME_PAD_PX / c.width
+  out.right += FRAME_PAD_PX / c.width
+  return out
 }
+
+/** Eje de la pista cada ~20 m, en ejes de three: lo que tiene que caber en el encuadre. */
+const footprint = (() => {
+  const path = model.centerline
+  const step = Math.max(1, Math.round(path.count / 400))
+  const out: number[] = []
+  const p = { x: 0, y: 0, z: 0 }
+  for (let i = 0; i < path.count; i += step) {
+    path.vertex(i, p)
+    out.push(p.x, flat ? 0 : p.z, -p.y)
+  }
+  return new Float32Array(out)
+})()
 
 const TRACK_HALF_WIDTH = 7
 const LABEL_OFFSET = TRACK_HALF_WIDTH + 16
@@ -128,7 +162,15 @@ let interacting = false
 let userMoved = false
 
 function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
-  const f = frame(el.clientWidth / Math.max(1, el.clientHeight), bottomInset(el))
+  const f = fitCircuit({
+    points: footprint,
+    groundY: flat ? 0 : zMid,
+    fovDeg: FOV,
+    aspect: el.clientWidth / Math.max(1, el.clientHeight),
+    tiltDeg: TILT_DEG,
+    insets: insets(el),
+  })
+  sceneStats.framing = { box: f.box, free: f.free }
   cam.position.set(...f.position)
   cam.lookAt(...f.target)
   if (controls) {
@@ -137,12 +179,20 @@ function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
   }
 }
 
+/** Lo que determina el encuadre: tamaño del lienzo y huecos de la interfaz (redondeados, sin temblores). */
+function layoutKey(el: HTMLCanvasElement): string {
+  const i = insets(el)
+  const r = (v: number) => Math.round(v * 200)
+  return `${el.clientWidth}x${el.clientHeight}|${r(i.left)},${r(i.right)},${r(i.top)},${r(i.bottom)}`
+}
+
+/** El lienzo o los paneles han cambiado de tamaño (p. ej. la clasificación se llena después del primer encuadre). */
 function onResize() {
   const cam = camera.value
   if (!canvasEl || !cam || !controls) return
-  const size = `${canvasEl.clientWidth}x${canvasEl.clientHeight}`
-  if (size === lastSize) return
-  lastSize = size
+  const key = layoutKey(canvasEl)
+  if (key === lastSize) return
+  lastSize = key
   // `enabled` es false mientras la cámara sigue a un coche (TzCameraRig).
   if (userMoved || !controls.enabled) return
   frameOverview(cam, canvasEl)
@@ -184,9 +234,10 @@ function onReady(context: TresContext) {
       context.renderer.invalidate()
     })
     controlsRef.value = controls
-    lastSize = `${canvasEl.clientWidth}x${canvasEl.clientHeight}`
+    lastSize = layoutKey(canvasEl)
     resizeObserver = new ResizeObserver(onResize)
     resizeObserver.observe(canvasEl)
+    for (const el of document.querySelectorAll(INSET_SOURCES)) resizeObserver.observe(el)
   }
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0
   sceneStats.pitSamplesLengthM = model.meta.quality?.pitSamplesLengthM ?? 0

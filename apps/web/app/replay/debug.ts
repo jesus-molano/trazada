@@ -34,6 +34,13 @@ export const sceneStats = {
   drawCalls: 0,
   triangles: 0,
   gpu: '',
+  /** Último encuadre de la vista general: caja del trazado y hueco libre (coordenadas de pantalla −1…1). */
+  framing: null as null | {
+    box: { x0: number; x1: number; y0: number; y1: number }
+    free: { x0: number; x1: number; y0: number; y1: number }
+  },
+  /** Semianchura con la que se dibuja la pista ahora (m): la real de cerca, mayor al alejarse. */
+  trackHalfWidthM: 0,
 }
 
 export interface TrazadaHandle {
