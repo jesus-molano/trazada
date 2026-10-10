@@ -1,0 +1,42 @@
+{
+  "tv": {
+    "name": "Realización automática",
+    "short": "Realización",
+    "off": "No",
+    "on": "Sí",
+    "key": "T",
+    "keyHint": "Tecla T: encender o apagar",
+    "buttonStart": "Encender la realización automática (tecla T)",
+    "buttonStop": "Apagar la realización automática (tecla T)",
+    "unavailable": "Sin escena 3D no hay realización automática",
+    "hintLabel": "Qué hace la realización automática",
+    "hint": {
+      "what": "La cámara elige sola qué enseñar. En carrera, el duelo más cerrado según el intervalo de la torre de tiempos oficial (menos de {s} s), con preferencia por los de delante. Sin intervalos oficiales (libres, clasificación o sesiones sin torre), dos coches seguidos y cerca en pista.",
+      "number": "La única cifra que da es el intervalo de la torre; si los elige por cercanía en pista, no da ninguna.",
+      "neutral": "En carrera, con coche de seguridad (real o virtual), sigue al líder de la clasificación; con bandera roja, o fuera de carrera, la vista general.",
+      "cuts": "Persigue a la pareja o la ve pasar desde una cámara fija en algunas curvas, y no corta más de una vez cada {s} s.",
+      "exit": "Se apaga en cuanto tocas algo: elegir o seguir un coche, mover el mapa, Esc o la tecla T."
+    },
+    "chip": {
+      "label": "Realización automática",
+      "starting": "Buscando el duelo más cerrado…",
+      "duelTower": "Sigue a {ahead} y {behind} (P{p1}–P{p2}), a {interval} s",
+      "duelTowerNoInterval": "Sigue a {ahead} y {behind} (P{p1}–P{p2})",
+      "duel": "Sigue a {a} y {b}",
+      "duelProximity": "Sigue a {a} y {b}, cerca en pista",
+      "leader": "Sigue al líder, {driver}",
+      "leaderNeutral": "Sigue al líder, {driver} · {neutral}",
+      "overview": "Vista general: ningún duelo cerca",
+      "overviewNeutral": "Vista general · {neutral}",
+      "corner": "cámara en la curva {label}",
+      "cornerNoLabel": "cámara fija en una curva",
+      "towerTitle": "La cifra es el intervalo de la torre de tiempos oficial.",
+      "proximityTitle": "Elegidos por su cercanía en pista: sin intervalo oficial, no se da cifra.",
+      "leaderTitle": "El líder según la clasificación oficial.",
+      "overviewTitle": "Nada que seguir ahora mismo.",
+      "announce": "Realización automática: {text}",
+      "exit": "Salir",
+      "exitLabel": "Salir de la realización automática"
+    }
+  }
+}
