@@ -1,0 +1,16 @@
+{
+  "trails": {
+    "label": "Trails",
+    "modes": {
+      "off": "Off",
+      "team": "Team",
+      "speed": "Speed"
+    },
+    "legendLabel": "Trail colour scale by speed",
+    "legend": "{min}–{max} km/h",
+    "noSample": "no data",
+    "hintLabel": "What the trails show",
+    "hint": "The last {s} s of each car, on the centre line, like the car: the source does not say where across the track it is. Where the position is missing, the trail stops: it is never filled in.",
+    "hintSpeed": "By speed: at each point, the last measured speed (at most {age} s old), not interpolated. If there is none, the point is grey (“no data”)."
+  }
+}

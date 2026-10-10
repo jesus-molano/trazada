@@ -26,7 +26,8 @@ export interface CarState {
 export class ReplayModel {
   readonly states: CarState[]
   private readonly samples: CarSample[]
-  private readonly tracks: CarTrack[]
+  /** Pistas de movimiento de cada coche, en el orden de `states` (las estelas muestrean de ellas). */
+  readonly tracks: readonly CarTrack[]
   private readonly circuit: CircuitModel
   private readonly pitSpan: number
   private readonly scratch = newPlaceScratch()
