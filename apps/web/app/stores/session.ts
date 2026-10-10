@@ -52,6 +52,7 @@ export const useSessionStore = defineStore('session', () => {
       data.value = markRaw(session)
       progress.value = 1
       status.value = 'ready'
+      performance.mark('trazada:ready') // instante exacto de "listo" (medidas de rendimiento)
     } catch (err) {
       if (signal.aborted) return
       status.value = 'error'

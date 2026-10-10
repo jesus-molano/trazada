@@ -24,11 +24,18 @@ test('de clic a "listo" sin long tasks > 50 ms en el hilo principal (CPU ×4)', 
   const clickAt = await page.evaluate(() => performance.now())
   await page.getByTestId('session-fp1').click()
   await expect(page.getByTestId('replay-status')).toHaveAttribute('data-state', 'ready', { timeout: 30_000 })
-  const readyAt = await page.evaluate(() => performance.now())
+  // Fin de la ventana: la marca que pone la app al quedar lista (no cuando Playwright lo detecta, que
+  // ya incluiría el montaje de la escena, que va después).
+  const readyAt = await page.evaluate(() => performance.getEntriesByName('trazada:ready').at(-1)!.startTime)
+  await page.waitForTimeout(1000)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
 
   const tasks = await page.evaluate(() => window.__longTasks)
   const inWindow = tasks.filter((t) => t.start + t.duration > clickAt && t.start < readyAt)
-  console.log(`clic→listo ${Math.round(readyAt - clickAt)} ms (CPU ×4); long tasks: ${JSON.stringify(inWindow)}`)
+  const after = tasks.filter((t) => t.start >= readyAt)
+  console.log(
+    `clic→listo ${Math.round(readyAt - clickAt)} ms (CPU ×4); long tasks: ${JSON.stringify(inWindow)}; ` +
+      `tras "listo" (montaje de la escena): ${JSON.stringify(after.map((t) => Math.round(t.duration)))}`,
+  )
   expect(inWindow.filter((t) => t.duration > 50)).toEqual([])
 })
