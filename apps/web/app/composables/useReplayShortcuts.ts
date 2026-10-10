@@ -1,4 +1,5 @@
 import { RATES } from '~/engine/clock/SessionClock'
+import { ESC_PRIORITY, handleEscape, registerEscape, runShortcut } from '~/replay/keys'
 import { usePlaybackStore } from '~/stores/playback'
 
 export const SEEK_STEP_MS = 5_000
@@ -14,7 +15,11 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return !!role && EDITABLE_ROLES.has(role)
 }
 
-/** Atajos del replay: espacio, 1–5, ←/→ (Shift: ×6), ↑/↓, Esc. */
+/**
+ * Atajos del replay: espacio, 1–5, ←/→ (Shift: ×6), ↑/↓ y Esc, más los que registran las funciones en
+ * `replay/keys.ts` (D29). Esc cierra lo más prioritario que esté abierto (`ESC_PRIORITY`): de lo que registran las
+ * funciones y, al final, el seguimiento y después la selección.
+ */
 export function useReplayShortcuts(): void {
   const playback = usePlaybackStore()
 
@@ -26,12 +31,15 @@ export function useReplayShortcuts(): void {
 
   function onKeydown(event: KeyboardEvent) {
     if (event.key === 'Tab') pointerFocused = null
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return
-    if (!playback.attached || isEditableTarget(event.target)) return
+    if (event.defaultPrevented || !playback.attached) return
+    const editable = isEditableTarget(event.target)
+    // Los atajos registrados van antes del corte por Ctrl/⌘/Alt: alguno lo lleva (Ctrl+K).
+    if (runShortcut(event, editable)) return
+    if (event.ctrlKey || event.metaKey || event.altKey || editable) return
     const target = event.target as Element | null
     switch (event.key) {
       case 'Escape':
-        playback.escape()
+        handleEscape()
         return
       case ' ': {
         // En un botón al que se llegó con el teclado, el espacio lo activa (nativo). Si el foco vino de un
@@ -64,11 +72,25 @@ export function useReplayShortcuts(): void {
     }
   }
 
+  let offEscapes: (() => void)[] = []
   onMounted(() => {
+    // Esc del propio replay: primero sale del seguimiento (vista general); después, deselecciona.
+    offEscapes = [
+      registerEscape(ESC_PRIORITY.follow, {
+        active: () => playback.following,
+        run: () => playback.setFollowing(false),
+      }),
+      registerEscape(ESC_PRIORITY.selection, {
+        active: () => playback.selectedCar !== null,
+        run: () => playback.selectCar(null),
+      }),
+    ]
     window.addEventListener('keydown', onKeydown)
     window.addEventListener('pointerdown', onPointerDown, true)
   })
   onBeforeUnmount(() => {
+    for (const off of offEscapes) off()
+    offEscapes = []
     window.removeEventListener('keydown', onKeydown)
     window.removeEventListener('pointerdown', onPointerDown, true)
   })

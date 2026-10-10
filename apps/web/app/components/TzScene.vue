@@ -13,6 +13,7 @@ import { type Fit, fitCircuit, frameCircuit, type Insets } from '~/engine/track/
 import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
+import { SCENE_LAYERS } from '~/slots/scene-layers'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
@@ -158,7 +159,12 @@ function onLost(event: Event) {
 
 function onRestored() {
   lost.value = false
-  ctx?.renderer.invalidate()
+  invalidate()
+}
+
+/** Pide un frame, salvo con la escena tapada (`rt.setSceneHidden`): al destaparla, el runtime pide uno. */
+function invalidate() {
+  if (!rt.sceneHidden) ctx?.renderer.invalidate()
 }
 
 /**
@@ -219,7 +225,7 @@ function onOverview() {
   const cam = camera.value
   if (staleOverview && !userMoved && cam && canvasEl) {
     frameOverview(cam, canvasEl)
-    ctx?.renderer.invalidate()
+    invalidate()
   }
 }
 
@@ -244,7 +250,7 @@ function onResize() {
     return
   }
   frameOverview(cam, canvasEl)
-  ctx?.renderer.invalidate()
+  invalidate()
 }
 
 /** Sonda para los e2e: el eje de la pista en pantalla y la anchura con la que debería dibujarse ahí. */
@@ -315,7 +321,7 @@ let pinch: { distance: number; span: number } | null = null
 const span = (e: TouchEvent) => Math.hypot(e.touches[0]!.clientX - e.touches[1]!.clientX, e.touches[0]!.clientY - e.touches[1]!.clientY)
 function zoomFollow(distance: number) {
   settings.setFollowDistance(distance)
-  ctx?.renderer.invalidate()
+  invalidate()
 }
 function onWheel(e: WheelEvent) {
   if (!following()) return
@@ -374,7 +380,7 @@ function onReady(context: TresContext) {
     controls.addEventListener('end', () => (interacting = false))
     controls.addEventListener('change', () => {
       if (interacting) userMoved = true
-      context.renderer.invalidate()
+      invalidate()
     })
     controlsRef.value = controls
     lastSize = layoutKey(canvasEl)
@@ -390,7 +396,7 @@ function onReady(context: TresContext) {
   const gl = (context.renderer.instance as WebGLRenderer).getContext()
   const info = gl.getExtension('WEBGL_debug_renderer_info')
   sceneStats.gpu = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER))
-  context.renderer.invalidate()
+  invalidate()
 }
 
 function onRender() {
@@ -428,7 +434,7 @@ watch(
 
 watch(yScale, (k) => {
   sceneStats.elevationScale = k
-  ctx?.renderer.invalidate()
+  invalidate()
 })
 
 let offFrames: (() => void) | null = null
@@ -437,7 +443,9 @@ let lastFrameAt = 0
 onMounted(() => {
   offFrames = rt.onFrame(() => {
     const now = performance.now()
-    if (governorOn && rt.clock.playing && lastFrameAt > 0) {
+    // Con la escena tapada no se renderiza: esos frames no dicen nada de lo que cuesta pintarla.
+    const measuring = rt.clock.playing && !rt.sceneHidden
+    if (governorOn && measuring && lastFrameAt > 0) {
       const next = governor.frame(now - lastFrameAt)
       if (next !== null) {
         dpr.value = next
@@ -445,7 +453,7 @@ onMounted(() => {
         sceneStats.dprChanges = governor.changes.length
       }
     }
-    lastFrameAt = rt.clock.playing ? now : 0
+    lastFrameAt = measuring ? now : 0
   })
   settings.hydrate()
   for (const [type, fn] of ZOOM_EVENTS) sceneEl.value?.addEventListener(type, fn as EventListener, { passive: false })
@@ -482,13 +490,22 @@ onBeforeUnmount(() => {
         :y-scale="yScale"
         :flat="flat"
         :refresh-overview="refreshOverview"
-        @invalidate="ctx?.renderer.invalidate()"
+        @invalidate="invalidate"
         @overview="onOverview"
       />
       <TresGroup :scale="groupScale">
         <TzTrack :model="model" :flat="flat" />
         <TzTrackFlags :model="model" :flat="flat" />
         <TzCars :y-scale="yScale" :flat="flat" :detail="carDetail" />
+        <!-- Capas de components/scene-layers/ (D29), en orden de renderOrder; la lista es una constante del módulo. -->
+        <component
+          :is="layer.component"
+          v-for="layer in SCENE_LAYERS"
+          :key="layer.name"
+          :model="model"
+          :flat="flat"
+          :y-scale="yScale"
+        />
       </TresGroup>
     </TresCanvas>
 

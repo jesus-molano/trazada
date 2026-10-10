@@ -1,10 +1,21 @@
 <script setup lang="ts">
-/** Leaderboard del replay: posición, gap/intervalo, neumático y estado de cada piloto. */
+/**
+ * Leaderboard del replay: posición, gap/intervalo, neumático y estado de cada piloto, y detrás las columnas de otras
+ * funciones (hueco `components/leaderboard-cells/`, D29) que salen en el diseño `preset`.
+ */
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
+import { cellsFor, LEADERBOARD_CELLS, type LayoutPreset } from '~/slots/leaderboard-cells'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
+
+const props = withDefaults(defineProps<{ preset?: LayoutPreset }>(), { preset: 'spectator' })
+const cells = computed(() => cellsFor(LEADERBOARD_CELLS, props.preset))
+/** Pistas de la rejilla de cada fila para las columnas extra (solo si hay alguna). */
+const cellsStyle = computed(() =>
+  cells.value.length ? { '--lb-cells': cells.value.map((c) => c.width).join(' ') } : undefined,
+)
 
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
@@ -38,7 +49,13 @@ function select(car: string) {
 </script>
 
 <template>
-  <section class="tz-lb" :aria-label="t('leaderboard.title')" data-testid="leaderboard">
+  <section
+    class="tz-lb"
+    :class="{ 'has-cells': cells.length > 0 }"
+    :style="cellsStyle"
+    :aria-label="t('leaderboard.title')"
+    data-testid="leaderboard"
+  >
     <header class="tz-lb__head">
       <h2 class="tz-lb__title">{{ t('leaderboard.title') }}</h2>
       <div class="tz-lb__modes" role="group" :aria-label="t('leaderboard.gapMode')">
@@ -106,6 +123,7 @@ function select(car: string) {
             <span class="tz-lb__compound" :class="{ 'is-long': compoundLetter(r.compound).length > 1 }">{{ compoundLetter(r.compound) }}</span>
             <span class="tz-lb__life tz-tabular">{{ r.tyreLife ?? '' }}</span>
           </span>
+          <component :is="c.component" v-for="c in cells" :key="c.name" :row="r" :preset="preset" />
         </button>
       </li>
     </ol>
@@ -124,6 +142,8 @@ function select(car: string) {
 
 <style scoped>
 .tz-lb {
+  /* Columnas fijas de cada fila; con celdas de otras funciones (leaderboard-cells/), sus pistas van detrás. */
+  --lb-cols: 22px 4px 38px 1fr 76px 38px;
   position: absolute;
   top: 0;
   left: 0;
@@ -184,7 +204,7 @@ function select(car: string) {
 
 .tz-lb__btn {
   display: grid;
-  grid-template-columns: 22px 4px 38px 1fr 76px 38px;
+  grid-template-columns: var(--lb-cols);
   align-items: center;
   gap: var(--tz-space-2);
   width: 100%;
@@ -195,6 +215,10 @@ function select(car: string) {
   font-size: var(--tz-text-sm);
   text-align: start;
   cursor: pointer;
+}
+
+.tz-lb.has-cells .tz-lb__btn {
+  grid-template-columns: var(--lb-cols) var(--lb-cells);
 }
 
 .tz-lb__btn:hover {
@@ -293,11 +317,11 @@ function select(car: string) {
 
 @media (width <= 1100px) {
   .tz-lb {
+    --lb-cols: 20px 4px 34px 1fr 64px 34px;
     width: 250px;
   }
 
   .tz-lb__btn {
-    grid-template-columns: 20px 4px 34px 1fr 64px 34px;
     gap: 6px;
   }
 }

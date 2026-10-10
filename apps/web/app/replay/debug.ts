@@ -42,6 +42,55 @@ export const sceneStats = {
     box: { x0: number; x1: number; y0: number; y1: number }
     free: { x0: number; x1: number; y0: number; y1: number }
   },
+  /**
+   * Capas registradas (`registerSceneStat` con coste): su contribución al último render. El tope de draw calls de
+   * los e2e es el de la escena base más la suma de las capas activas.
+   */
+  get layers(): SceneLayerStat[] {
+    const out: SceneLayerStat[] = []
+    for (const [name, getter] of registered) {
+      const v = getter() as Partial<SceneLayerCost>
+      if (typeof v.drawCalls === 'number' && typeof v.triangles === 'number' && typeof v.fogged === 'boolean') {
+        out.push({ name, drawCalls: v.drawCalls, triangles: v.triangles, fogged: v.fogged })
+      }
+    }
+    return out
+  },
+}
+
+/** Lo que una capa de la escena añade al render (D29): 0 draw calls si está apagada. */
+export interface SceneLayerCost {
+  drawCalls: number
+  triangles: number
+  /** ¿Usa la niebla de la escena? Solo la pista debería (plan §3: materiales nuevos con `fog: false`). */
+  fogged: boolean
+}
+export interface SceneLayerStat extends SceneLayerCost {
+  name: string
+}
+
+/** Estadísticas de la escena: las fijas y las que registran capas y herramientas (`registerSceneStat`). */
+export type SceneStats = typeof sceneStats & { readonly [name: string]: unknown }
+
+const BUILTIN_STATS: ReadonlySet<string> = new Set(Object.keys(sceneStats))
+const registered = new Map<string, () => object>()
+
+/**
+ * Publica una estadística con nombre en `sceneStats` (y así en `window.__trazada.scene.<nombre>` y en las copias
+ * `{ ...scene }` de los e2e), leída en el momento con `getter`: cada capa o herramienta expone lo suyo (`trails`,
+ * `heat`, `tv`…) sin tocar este fichero. Si lo que devuelve lleva `drawCalls`, `triangles` y `fogged`
+ * (`SceneLayerCost`), cuenta como capa en `sceneStats.layers`. Con el mismo nombre, manda el último registro.
+ * Devuelve la baja (que no borra un registro posterior con el mismo nombre).
+ */
+export function registerSceneStat(name: string, getter: () => object): () => void {
+  if (BUILTIN_STATS.has(name)) throw new Error(`sceneStats.${name} ya existe: elige otro nombre`)
+  registered.set(name, getter)
+  Object.defineProperty(sceneStats, name, { get: getter, enumerable: true, configurable: true })
+  return () => {
+    if (registered.get(name) !== getter) return
+    registered.delete(name)
+    Reflect.deleteProperty(sceneStats, name)
+  }
 }
 
 /** Punto del eje de la pista en pantalla (px CSS de la página), con lo que la escena debería dibujar ahí. */
@@ -76,7 +125,7 @@ export interface TrazadaHandle {
   readonly selectedCar: string | null
   readonly frames: number
   readonly renders: number
-  readonly scene: typeof sceneStats
+  readonly scene: SceneStats
   readonly leaderboard: typeof leaderboardStats
   readonly startMs: number
   readonly endMs: number
@@ -88,6 +137,8 @@ export interface TrazadaHandle {
   readonly raceControlTimes: number[]
   /** Coches desplazados por la separación visual (opción Estimado) en el último frame. */
   readonly separatedCars: number
+  /** La escena está tapada (`rt.setSceneHidden`) y no se le piden frames. */
+  readonly sceneHidden: boolean
   seek(ms: number): void
   /** Resultado del bench (`?bench=1`) cuando termina. */
   readonly bench: unknown
@@ -135,6 +186,9 @@ export function installDebugHandle(rt: ReplayRuntime, selected: () => string | n
     raceControlTimes: rt.raceControl.map((e) => e.t),
     get separatedCars() {
       return rt.separatedCars
+    },
+    get sceneHidden() {
+      return rt.sceneHidden
     },
     seek: (ms: number) => rt.clock.seek(ms),
     get bench() {
