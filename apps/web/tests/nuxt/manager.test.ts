@@ -20,6 +20,13 @@ const job = (over: Partial<Job>): Job => ({
 })
 
 describe('TzSessionRow (gestor de datos local)', () => {
+  it('enlace a una sesión dev: insignia DEV', async () => {
+    const w = await mountSuspended(TzSessionRow, {
+      props: { type: 'fp1', view: { kind: 'link', to: '/replay?s=2026/03-suzuka/fp1', bytes: null, dev: true } },
+    })
+    expect(w.find('a[data-testid="session-fp1"] .tz-badge--dev').text()).toBe('DEV')
+  })
+
   it('enlace a la sesión generada, sin botones', async () => {
     const w = await mountSuspended(TzSessionRow, {
       props: { type: 'fp1', view: { kind: 'link', to: '/replay?s=2026/03-suzuka/fp1', bytes: 1_840_000, dev: false } },
@@ -70,6 +77,20 @@ describe('TzSessionRow (gestor de datos local)', () => {
     // Si el registro ya trae el mensaje, no se repite.
     await w.setProps({ view: { kind: 'error', job: { ...failed, log: ['x', 'EmptySessionError: sesión vacía'] } } })
     expect(w.find('details pre').text()).toBe('x\nEmptySessionError: sesión vacía')
+  })
+
+  it('no disponible: explica el motivo real (sin posiciones o entrada de catálogo no válida)', async () => {
+    const hint = async (reason: 'no-position' | 'invalid') => {
+      const w = await mountSuspended(TzSessionRow, { props: { type: 'fp2', view: { kind: 'unavailable', reason } } })
+      const row = w.find('[data-testid="session-fp2"]')
+      expect(row.attributes('data-state')).toBe('unavailable')
+      expect(row.attributes('aria-disabled')).toBe('true')
+      return row.attributes('title')
+    }
+    expect(await hint('no-position')).toMatch(/(posición|position)/)
+    const invalid = await hint('invalid')
+    expect(invalid).toMatch(/(catálogo|catalogue)/)
+    expect(invalid).not.toMatch(/(posición|position)/)
   })
 
   it('futura: deshabilitada, con la fecha desde la que se podrá descargar', async () => {

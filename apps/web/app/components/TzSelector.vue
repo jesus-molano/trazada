@@ -8,6 +8,7 @@ import {
   jobKey,
   mergeEvents,
   queueSummary,
+  readyCount,
   sessionView,
 } from '~/manager/model'
 import { useCatalogStore } from '~/stores/catalog'
@@ -78,12 +79,9 @@ function eventMeta(e: BrowseEvent): string {
     .join(' · ')
 }
 
-/** Sesiones ya descargadas (también las que no se pueden reproducir por falta de posiciones). */
+/** Sesiones listas para ver (las «no disponibles» no cuentan: se generaron, pero no se pueden reproducir). */
 function builtCount(e: BrowseEvent): number {
-  return e.sessions.filter((s) => {
-    const kind = viewOf(e, s).kind
-    return kind === 'link' || kind === 'unavailable'
-  }).length
+  return readyCount(e.sessions.map((s) => viewOf(e, s)))
 }
 
 const eventMissing = computed(() =>

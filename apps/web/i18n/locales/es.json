@@ -20,6 +20,7 @@
     "pickEvent": "Elige un Gran Premio para ver sus sesiones.",
     "unavailable": "No disponible",
     "unavailableHint": "Sin datos de posición: no se puede reproducir.",
+    "unavailableInvalidHint": "La entrada del catálogo no es válida: no se puede abrir.",
     "dev": "DEV",
     "devHint": "Datos de desarrollo: no se publican.",
     "noOutline": "Sin trazado"
@@ -48,7 +49,7 @@
     "availableFrom": "Disponible desde el {date}",
     "notYet": "Aún no disponible",
     "built": "{built}/{total}",
-    "builtLabel": "{built} de {total} sesiones descargadas",
+    "builtLabel": "{built} de {total} sesiones listas para ver",
     "queueRunning": "Descargando {season} R{round} · {session} ({pct} %)",
     "queueWaiting": "{n} descarga en cola | {n} descargas en cola",
     "queueMore": "{n} más en cola | {n} más en cola",

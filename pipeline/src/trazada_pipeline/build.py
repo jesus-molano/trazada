@@ -48,6 +48,8 @@ class BuildReport:
     sizes: dict[str, int]
     quality: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
+    # Sesión de desarrollo (fuente dev o circuito con fuentes dev): el catálogo la marca igual.
+    dev: bool = False
 
 
 def playback_window(data: SessionData) -> tuple[int, int, int | None]:
@@ -338,6 +340,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
         sizes={k: v["bytes"] for k, v in files.items()},
         quality={**circuit.quality, **elev_q},
         warnings=warnings,
+        dev=bool(data.dev),
     )
 
 

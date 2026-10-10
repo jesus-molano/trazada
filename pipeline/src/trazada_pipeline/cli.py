@@ -113,6 +113,7 @@ def build(
             "session": report.manifest_path.parent.relative_to(sessions_dir).as_posix(),
             "status": report.status,
             "bytes": sum(report.sizes.values()),
+            "dev": report.dev,
             "warnings": report.warnings,
         },
     )

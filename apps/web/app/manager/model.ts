@@ -50,7 +50,8 @@ export interface Job {
   pct: number
   phase: 'download' | 'process' | null
   error: { code: JobErrorCode; message: string } | null
-  result: { session: string | null; status: string; bytes: number | null } | null
+  /** `dev`: la sesión quedó marcada como de desarrollo (p. ej. su circuito usa fuentes dev). */
+  result: { session: string | null; status: string; bytes: number | null; dev: boolean } | null
   /** Cuándo se creó (ISO 8601): junto con el id, identifica el trabajo aunque el servidor se reinicie. */
   createdAt: string
   /** Últimas líneas del registro del pipeline (solo si falló). */
@@ -151,9 +152,12 @@ export function availableFrom(s: { session: SessionType; startUtc: string | null
   return Number.isNaN(start) ? null : start + (DURATION_MIN[s.session] + DATA_DELAY_MIN) * 60_000
 }
 
+/** Por qué una sesión generada no se puede abrir: sin datos de posición, o una entrada de catálogo no válida. */
+export type UnavailableReason = 'no-position' | 'invalid'
+
 export type SessionView =
   | { kind: 'link'; to: string; bytes: number | null; dev: boolean }
-  | { kind: 'unavailable' }
+  | { kind: 'unavailable'; reason: UnavailableReason }
   | { kind: 'queued'; job: Job }
   | { kind: 'running'; job: Job }
   | { kind: 'error'; job: Job }
@@ -167,22 +171,31 @@ export function sessionView(s: BrowseSession, job: Job | null, now: number, mana
   if (job?.state === 'queued') return { kind: 'queued', job }
   if (job?.state === 'running') return { kind: 'running', job }
   if (s.catalog) {
+    if (s.catalog.status === 'no-position') return { kind: 'unavailable', reason: 'no-position' }
     const id = sessionIdFromManifestPath(s.catalog.path)
-    return id && s.catalog.status !== 'no-position'
+    return id
       ? { kind: 'link', to: linkTo(id), bytes: s.catalog.bytes ?? null, dev: !!s.catalog.dev }
-      : { kind: 'unavailable' }
+      : { kind: 'unavailable', reason: 'invalid' }
   }
   // Recién generada y el catálogo aún no se ha releído (o el pipeline la guardó con otro slug).
   const built = job?.state === 'done' && job.result?.session && parseSessionId(job.result.session) ? job.result : null
   if (built?.session) {
     return built.status === 'no-position'
-      ? { kind: 'unavailable' }
-      : { kind: 'link', to: linkTo(built.session), bytes: built.bytes, dev: false }
+      ? { kind: 'unavailable', reason: 'no-position' }
+      : { kind: 'link', to: linkTo(built.session), bytes: built.bytes, dev: built.dev }
   }
   if (job?.state === 'error') return { kind: 'error', job }
   const from = availableFrom(s)
   if (manager && (from === null || now >= from)) return { kind: 'download' }
   return { kind: 'future', at: from }
+}
+
+/**
+ * Sesiones listas para ver (enlace al replay). Las «no disponibles» se generaron pero no se pueden reproducir:
+ * no cuentan.
+ */
+export function readyCount(views: readonly SessionView[]): number {
+  return views.filter((v) => v.kind === 'link').length
 }
 
 /** Sesiones de un evento que se pueden descargar ahora (sin generar y sin trabajo en curso). */
@@ -264,6 +277,7 @@ export function parseJob(v: unknown): Job | null {
           session: typeof res.session === 'string' ? res.session : null,
           status: typeof res.status === 'string' ? res.status : '',
           bytes: typeof res.bytes === 'number' ? res.bytes : null,
+          dev: res.dev === true,
         }
       : null,
     createdAt: typeof v.createdAt === 'string' ? v.createdAt : '',

@@ -289,11 +289,31 @@ def test_build_progress_reports_steps_and_result(monkeypatch: pytest.MonkeyPatch
             "session": "2026/10-spa-francorchamps/fp2",
             "status": "complete",
             "bytes": 3000,
+            "dev": False,
             "warnings": ["aviso de prueba"],
         }
     ]
     # El manejador de progreso no se queda colgado del logger de FastF1.
     assert not any(isinstance(h, FastF1ProgressHandler) for h in logging.getLogger("fastf1").handlers)
+
+
+def test_build_progress_result_says_if_the_session_is_dev(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Una sesión que queda como dev (p. ej. por su circuito) lo dice en el resultado: la insignia DEV sale
+    en el gestor antes de releer el catálogo."""
+
+    def fake_build(_season, _event, _session, data, *_rest, on_loaded=None):
+        report = _fake_report(data)
+        report.dev = True
+        return report
+
+    monkeypatch.setattr(cli, "_build", fake_build)
+    result = CliRunner().invoke(
+        cli.app, ["build", "2026", "10", "fp2", "--data", str(tmp_path), "--progress"]
+    )
+    assert result.exit_code == 0, result.output
+    assert _lines(result.stdout, "result")[0]["dev"] is True
 
 
 def test_build_progress_reports_classified_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

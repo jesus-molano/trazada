@@ -20,6 +20,7 @@
     "pickEvent": "Pick a Grand Prix to see its sessions.",
     "unavailable": "Unavailable",
     "unavailableHint": "No position data: it cannot be replayed.",
+    "unavailableInvalidHint": "The catalogue entry is not valid: it cannot be opened.",
     "dev": "DEV",
     "devHint": "Development data: never published.",
     "noOutline": "No outline"
@@ -48,7 +49,7 @@
     "availableFrom": "Available from {date}",
     "notYet": "Not available yet",
     "built": "{built}/{total}",
-    "builtLabel": "{built} of {total} sessions downloaded",
+    "builtLabel": "{built} of {total} sessions ready to replay",
     "queueRunning": "Downloading {season} R{round} · {session} ({pct}%)",
     "queueWaiting": "{n} download queued | {n} downloads queued",
     "queueMore": "{n} more queued | {n} more queued",
