@@ -2,6 +2,7 @@
 
 Solo se usan campos que vienen del live timing. Se descartan explícitamente:
 - todo lo que FastF1 trae de Ergast/Jolpica (resultados, tiempo de la vuelta 1 en carrera; CC BY-NC-SA);
+- las vueltas que FastF1 inventa (`FastF1Generated`): no son del cronometraje;
 - `HeadshotUrl` (fotos de pilotos).
 """
 
@@ -164,8 +165,29 @@ def _car_frames(car_data: dict[str, Any], drs_present: bool) -> dict[str, pd.Dat
     return out
 
 
+def _is_true(value: Any) -> bool:
+    """Solo un booleano verdadero cuenta (None, NaN o la columna ausente valen False)."""
+    return isinstance(value, bool | np.bool_) and bool(value)
+
+
+def generated_mask(df: pd.DataFrame) -> np.ndarray:
+    """Vueltas que FastF1 añade por su cuenta (`FastF1Generated`): no vienen del cronometraje.
+
+    - Vuelta 1 de un piloto sin vueltas en carrera, con el fin = el primer paso por meta de la parrilla
+      (FastF1 avisa: «potentially adds a nonexistent lap» para quien no tomó la salida).
+    - Vuelta N+1 de un coche parado en pista, con un fin supuesto (velocidad 0 o +150 s).
+    """
+    if "FastF1Generated" not in df:
+        return np.zeros(len(df), dtype=bool)
+    return np.array([_is_true(v) for v in df["FastF1Generated"]], dtype=bool)
+
+
 def _laps(laps: pd.DataFrame, race_like: bool) -> pd.DataFrame:
     df = pd.DataFrame(laps)
+    generated = generated_mask(df)
+    if generated.any():
+        log.info("Se descartan %d vueltas inventadas por FastF1 (FastF1Generated)", int(generated.sum()))
+        df = df[~generated].reset_index(drop=True)
     lap_ms = _series_ms(df["LapTime"])
     lap_no = df["LapNumber"].fillna(0).astype(int).to_numpy()
     if race_like:
