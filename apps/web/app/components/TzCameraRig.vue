@@ -40,6 +40,8 @@ let hasFix = false
 let pendingFollow = false
 /** Guardar la vista general al arrancar el seguimiento (solo si se sale de la vista general). */
 let saveOverview = false
+/** Hay una vista general guardada a la que volver (nunca se vuela a una sin guardar). */
+let hasOverview = false
 
 /** Los MapControls son un objeto de three que el rig gobierna (no estado de Vue). */
 function mapControls(): MapControls | null {
@@ -63,6 +65,7 @@ function startTween(to: 'follow' | 'overview') {
       overviewPos.copy(cam.position)
       overviewTarget.copy(c?.target ?? tmpTarget.set(0, 0, 0))
       saveOverview = false
+      hasOverview = true
     }
     if (c) c.enabled = false
   }
@@ -115,7 +118,17 @@ function transition(to: 'follow' | 'overview') {
     emit('invalidate') // el seguimiento arranca en el primer render con el coche visible
     return
   }
-  pendingFollow = false
+  if (pendingFollow || !hasOverview) {
+    // El seguimiento no llegó a mover la cámara (esperaba al coche) o no hay vista guardada:
+    // se cancela sin tween y la cámara se queda donde está, con los controles del usuario.
+    pendingFollow = false
+    saveOverview = false
+    setMode('overview')
+    const c = mapControls()
+    if (c) c.enabled = true
+    emit('invalidate')
+    return
+  }
   saveOverview = false
   startTween('overview')
 }
@@ -138,10 +151,12 @@ onBeforeRender(({ camera, delta }) => {
   const cam = camera.value
   if (!cam) return
   cameraRef = cam
-  if (mode === 'overview') {
+  if (mode === 'overview' || pendingFollow) {
+    // El usuario mueve el mapa (también mientras el seguimiento espera al coche).
     const c = mapControls()
     if (c) lookTarget.copy(c.target)
-  } else {
+  }
+  if (mode !== 'overview') {
     const st = rt.model.states.find((s) => s.car === playback.selectedCar)
     if (mode !== 'to-overview' && st?.visible) {
       follow.update({ x: st.x, y: (props.flat ? 0 : st.z) * props.yScale, z: -st.y }, st.heading, delta)
@@ -171,6 +186,11 @@ onBeforeRender(({ camera, delta }) => {
     }
   }
   sceneStats.camera = [cam.position.x, cam.position.y, cam.position.z]
+})
+
+// Un rig nuevo (p. ej. tras recuperar el contexto WebGL) se sincroniza con el seguimiento en curso.
+onMounted(() => {
+  if (playback.following) transition('follow')
 })
 
 onBeforeUnmount(() => {

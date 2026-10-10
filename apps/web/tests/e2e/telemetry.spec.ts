@@ -97,7 +97,14 @@ test('seguir a un coche sin señal: la cámara espera (no salta al origen) y arr
   const still = await page.evaluate(() => window.__trazada!.scene.camera)
   expect(Math.hypot(still[0]! - overview[0]!, still[1]! - overview[1]!, still[2]! - overview[2]!)).toBeLessThan(1)
   expect(await page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('to-follow')
-  // En cuanto el coche tiene posición, empieza el seguimiento.
+  // Cancelar mientras espera: la cámara no se mueve (no hay vista general guardada a la que volar).
+  await page.keyboard.press('Escape')
+  await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode)).toBe('overview')
+  await page.waitForTimeout(1200)
+  const after = await page.evaluate(() => window.__trazada!.scene.camera)
+  expect(Math.hypot(after[0]! - overview[0]!, after[1]! - overview[1]!, after[2]! - overview[2]!)).toBeLessThan(1)
+  // Otra vez a seguir; en cuanto el coche tiene posición, empieza el seguimiento.
+  await page.getByTestId('follow-toggle').click()
   await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 60_000))
   await expect.poll(() => page.evaluate((c) => window.__trazada!.cars().find((x) => x.car === c)!.visible, car)).toBe(true)
   await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode), { timeout: 5000 }).toBe('follow')

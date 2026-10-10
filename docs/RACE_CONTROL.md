@@ -80,7 +80,7 @@ Las horas que aparecen en el texto (`14:15:19`, `(15:29:34)`, `TIMED AT 15:29:34
 - **OVERTAKE (2026) y DRS (2023–25)**: una ventana se abre con `…_enabled` y se cierra con `…_disabled`. Una neutralización (SC, VSC o roja) también la cierra, y solo un nuevo `…_enabled` la vuelve a abrir. El reglamento los desactiva durante la neutralización, pero dirección de carrera no siempre lo anuncia. En Japón 2026 hay `OVERTAKE ENABLED`, después el safety car sin ningún `DISABLED`, y otra vez `OVERTAKE ENABLED`. Sin esta regla, la ventana cruzaría el safety car entero.
 - Todos los intervalos se recortan al final de la reproducción.
 
-En el front, un intervalo está activo en t si `fromMs ≤ t < toMs` (`TrackState`). La escena tiñe la pista con la neutralización vigente (roja > SC > VSC > fin de VSC) y colorea los sectores de comisarios con bandera cuando el circuito tiene su geometría (MultiViewer). Si no la tiene, la bandera se muestra solo como texto, con su explicación.
+En el front, un intervalo está activo en t si `fromMs ≤ t < toMs` (`TrackState`). La excepción es un intervalo que llega al final de la reproducción (`toMs` nulo o recortado justo en el final): ese sigue activo también en `endMs`, donde se para el reloj, para que una sesión que acaba bajo roja o SC se vea así hasta el final. La escena tiñe la pista con la neutralización vigente (roja > SC > VSC > fin de VSC) y colorea los sectores de comisarios con bandera cuando el circuito tiene su geometría (MultiViewer). Si no la tiene, la bandera se muestra solo como texto, con su explicación.
 
 ## Golden set
 

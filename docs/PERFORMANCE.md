@@ -9,7 +9,7 @@ Con `?bench=1`, 22 coches y el panel de telemetría abierto:
 | Máquina | Condiciones | Objetivo |
 |---|---|---|
 | Sobremesa con RTX 3070 Ti | 1440p, DPR nativo (`governor=off`) | p95 ≤ 16,7 ms, p99 ≤ 20 ms y 0 frames > 50 ms tras el calentamiento |
-| Portátil de referencia (GPU integrada) | Pantalla del portátil, con la degradación activada (por defecto) | p95 ≤ 33 ms tras la degradación |
+| Portátil de referencia (GPU integrada) | Pantalla del portátil, con la degradación activada (por defecto) | p95 ≤ 33 ms tras la degradación (a 60 Hz, dos vsync = 33,3 ms; el gobernador tolera hasta 35 ms por el jitter) |
 | Cualquiera | Una carrera completa cargada | Heap JS ≤ 300 MB |
 
 ## Cómo medir
@@ -33,12 +33,11 @@ Los frames se miden como el intervalo entre `requestAnimationFrame` consecutivos
 
 ### Degradación adaptativa
 
-`QualityGovernor` (`apps/web/app/engine/perf/`) vigila el p95 de cada ventana de 90 frames con reproducción:
+`QualityGovernor` (`apps/web/app/engine/perf/`) vigila el p95 de cada ventana de 90 frames con reproducción. Los frames son intervalos de rAF: a 60 Hz van cuantizados al vsync (16,7 / 33,3 / 50 ms) e incluyen el tope de la pantalla o del navegador.
 
-- si pasa de 33,3 ms, baja un escalón la resolución de render (DPR 2 → 1,5 → 1,25 → 1 → 0,75);
-- si en tres ventanas seguidas el p95 baja de 20 ms, sube un escalón, como mucho hasta el DPR del dispositivo;
-- entre 20 y 33 ms no cambia (histéresis);
-- comprueba cada bajada: si en la ventana siguiente el p95 no mejora al menos un 10 %, el límite no es la resolución (pantalla o navegador a 30 Hz, modo de ahorro de energía, CPU), así que deshace el paso y no vuelve a bajar mientras la carga no empeore claramente (un 25 % más). Así una pantalla a 30 Hz no deja el lienzo borroso;
+- **presupuesto 35 ms**: dos vsync a 60 Hz con margen para el jitter. Un tope estable de 30 Hz (pantalla, ahorro de energía) no lo supera, así que no se toca la resolución;
+- si se pasa, **sondea** escalón a escalón (DPR 2 → 1,5 → 1,25 → 1 → 0,75) hasta volver al presupuesto, porque un paso que no cambia de "cubo" de vsync no significa que el siguiente no ayude. Si llega al mínimo sin lograrlo, se queda con el DPR más alto cuyo p95 esté a menos de un 10 % del mejor medido: si bajar no ayuda (CPU), vuelve al DPR del dispositivo y no reintenta hasta que la carga empeore un 25 %;
+- **sube** un escalón tras tres ventanas seguidas con p95 < 20 ms, como mucho hasta el DPR del dispositivo, y **comprueba** la subida: si en la ventana siguiente se pasa, la deshace y la siguiente prueba exige el doble de ventanas (hasta 96), sin oscilar;
 - descarta los 10 frames siguientes a cada cambio (el redimensionado del lienzo da un tirón);
 - ignora los frames de más de 1 s (pestaña en segundo plano).
 
