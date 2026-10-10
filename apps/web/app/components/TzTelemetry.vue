@@ -152,12 +152,15 @@ watch(
         <dt>{{ t('telemetry.brake') }}</dt>
         <dd ref="brakeEl" class="tz-tel__brake" data-on="false" data-testid="tel-brake" />
       </div>
-      <div class="tz-tel__cell tz-tel__cell--wide">
+      <div class="tz-tel__cell tz-tel__cell--full">
         <dt>{{ t('telemetry.drsLabel') }}</dt>
         <dd v-if="drsChannel" ref="drsEl" class="tz-tel__drs" data-state="none" data-testid="tel-drs">—</dd>
-        <dd v-else class="tz-tel__drs-na" :title="t('telemetry.drsUnavailableHint')" data-testid="tel-drs-unavailable">
+        <dd v-else class="tz-tel__drs-na" data-testid="tel-drs-unavailable">
           {{ t('telemetry.drsUnavailable', { season }) }}
-          <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
+          <details class="tz-tel__why">
+            <summary>{{ t('telemetry.drsWhy') }}</summary>
+            <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
+          </details>
         </dd>
       </div>
     </dl>
@@ -184,7 +187,9 @@ watch(
 
 <style scoped>
 .tz-tel {
-  flex: 0 1 auto;
+  /* Prioridad sobre la dirección de carrera: la telemetría (con sus gráficas) no encoge; si no cabe, scroll. */
+  flex: 0 0 auto;
+  max-height: calc(100% - var(--replay-rc-min, 150px) - var(--tz-space-3));
   min-height: 0;
   overflow-y: auto;
   padding: var(--tz-space-3);
@@ -265,10 +270,21 @@ watch(
 
 .tz-tel__cell--big dd {
   font-size: var(--tz-text-xl);
+  /* «261 km/h» en una línea: el panel es estrecho y cada línea de más empuja las gráficas fuera. */
+  white-space: nowrap;
+}
+
+.tz-tel__cell--big small {
+  font-size: var(--tz-text-2xs);
+  color: var(--tz-text-muted);
 }
 
 .tz-tel__cell--wide {
   grid-column: span 2;
+}
+
+.tz-tel__cell--full {
+  grid-column: 1 / -1;
 }
 
 .tz-tel__bar {
@@ -314,6 +330,22 @@ watch(
   font-family: var(--tz-font-sans) !important;
   font-size: var(--tz-text-xs) !important;
   color: var(--tz-text-muted);
+}
+
+.tz-tel__why {
+  display: inline;
+}
+
+.tz-tel__why summary {
+  display: inline;
+  margin-left: var(--tz-space-1);
+  color: var(--tz-accent-strong);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tz-tel__why summary::-webkit-details-marker {
+  display: none;
 }
 
 .tz-tel__hint {

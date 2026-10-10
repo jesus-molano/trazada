@@ -93,8 +93,9 @@ function tone(kind: string): string {
 }
 
 .tz-rc.is-open {
-  flex: 1 1 auto;
-  min-height: 150px;
+  /* Ocupa lo que deje la telemetría (base 0): su lista larga no le quita sitio. */
+  flex: 1 1 0;
+  min-height: var(--replay-rc-min, 150px);
 }
 
 .tz-rc__heading {

@@ -83,6 +83,23 @@ for (const vp of VIEWPORTS) {
       expect(await overflowing(page)).toEqual([])
     })
 
+    if (!vp.touch) {
+      test('con un coche elegido, las gráficas de telemetría se ven sin hacer scroll', async ({ page }) => {
+        await open(page)
+        await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+        const panel = page.getByTestId('telemetry')
+        await expect(panel).toBeVisible()
+        const hidden = await panel.evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          return [...el.querySelectorAll('.tz-chart, [data-testid^="tel-chart"]')]
+            .map((c) => c.getBoundingClientRect())
+            .filter((r) => r.height > 0 && (r.bottom > box.bottom + 1 || r.top < box.top - 1)).length
+        })
+        expect(hidden).toBe(0)
+        expect(await panel.locator('.tz-chart, [data-testid^="tel-chart"]').count()).toBeGreaterThan(0)
+      })
+    }
+
     if (vp.touch) {
       test('tocar un coche lo selecciona; arrastrar el timeline con el dedo mueve el reloj', async ({ page }) => {
         await open(page)
@@ -105,3 +122,43 @@ for (const vp of VIEWPORTS) {
     }
   })
 }
+
+test.describe('girar la tablet', () => {
+  test.use({ hasTouch: true })
+
+  const camera = (page: Page) => page.evaluate(() => window.__trazada!.scene.camera)
+  const close = (a: number[], b: number[]) => a.every((v, i) => Math.abs(v - b[i]!) <= Math.max(1, Math.abs(b[i]!) * 0.01))
+
+  test('vertical → horizontal: la cámara vuelve a encuadrar el circuito como si se abriera en horizontal', async ({ browser }) => {
+    const landscape = await browser.newPage({ viewport: { width: 1024, height: 768 }, hasTouch: true })
+    await open(landscape)
+    const expected = await camera(landscape)
+    await landscape.close()
+
+    const page = await browser.newPage({ viewport: { width: 768, height: 1024 }, hasTouch: true })
+    await open(page)
+    const portrait = await camera(page)
+    expect(close(portrait, expected)).toBe(false)
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await expect.poll(async () => close(await camera(page), expected), { timeout: 5000 }).toBe(true)
+    await page.close()
+  })
+
+  test('si el usuario ha movido la cámara, girar no se la recoloca', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await open(page)
+    const box = (await page.locator('[data-testid="scene"] canvas').boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 3
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + 120, y + 60, { steps: 8 })
+    await page.mouse.up()
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    const moved = await camera(page)
+    await page.setViewportSize({ width: 768, height: 1024 })
+    await page.waitForTimeout(500)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    expect(close(await camera(page), moved)).toBe(true)
+  })
+})

@@ -205,6 +205,7 @@
     },
     "drsUnavailable": "No disponible en {season}",
     "drsUnavailableHint": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa (modo recta) y el modo adelantamiento, que dirección de carrera habilita para toda la pista.",
+    "drsWhy": "¿Por qué?",
     "chartSpeed": "Velocidad en los últimos 20 s",
     "chartPedals": "Pedales en los últimos 20 s",
     "lap": "Vuelta",

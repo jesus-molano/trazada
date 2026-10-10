@@ -217,6 +217,18 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 
+/* Con un coche elegido, la dirección de carrera cede sitio (se ve su último mensaje) para que quepan las gráficas. */
+.tz-replay__side:has([data-testid='telemetry']) {
+  --replay-rc-min: 104px;
+}
+
+/* Portátiles bajos (≤ 860 px de alto): con un coche elegido, de la dirección de carrera solo queda su cabecera. */
+@media (height <= 860px) {
+  .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: 48px;
+  }
+}
+
 /* Tablet en horizontal y portátiles pequeños: paneles más estrechos. */
 @media (width <= 1100px) {
   .tz-replay__side {

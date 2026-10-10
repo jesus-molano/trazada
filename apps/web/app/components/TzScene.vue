@@ -118,7 +118,40 @@ function onRestored() {
   ctx?.renderer.invalidate()
 }
 
+/**
+ * Encuadre de la vista general: al montar y, mientras el usuario no haya movido la cámara ni siga a un coche,
+ * cada vez que cambia el tamaño del lienzo (girar la tablet, redimensionar la ventana).
+ */
+let resizeObserver: ResizeObserver | null = null
+let lastSize = ''
+let interacting = false
+let userMoved = false
+
+function frameOverview(cam: PerspectiveCamera, el: HTMLCanvasElement) {
+  const f = frame(el.clientWidth / Math.max(1, el.clientHeight), bottomInset(el))
+  cam.position.set(...f.position)
+  cam.lookAt(...f.target)
+  if (controls) {
+    controls.target.set(...f.target)
+    controls.update()
+  }
+}
+
+function onResize() {
+  const cam = camera.value
+  if (!canvasEl || !cam || !controls) return
+  const size = `${canvasEl.clientWidth}x${canvasEl.clientHeight}`
+  if (size === lastSize) return
+  lastSize = size
+  // `enabled` es false mientras la cámara sigue a un coche (TzCameraRig).
+  if (userMoved || !controls.enabled) return
+  frameOverview(cam, canvasEl)
+  ctx?.renderer.invalidate()
+}
+
 function detach() {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   canvasEl?.removeEventListener('webglcontextlost', onLost)
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
   controls?.dispose()
@@ -137,18 +170,23 @@ function onReady(context: TresContext) {
   getRuntime()?.setInvalidate(() => context.renderer.invalidate())
   const cam = camera.value
   if (cam) {
-    const f = frame(canvasEl.clientWidth / Math.max(1, canvasEl.clientHeight), bottomInset(canvasEl))
-    cam.position.set(...f.position)
-    cam.lookAt(...f.target)
     controls = new MapControls(cam, canvasEl)
-    controls.target.set(...f.target)
     controls.maxPolarAngle = (80 * Math.PI) / 180
     controls.minDistance = 80
     controls.maxDistance = distance * 3
     controls.screenSpacePanning = false
-    controls.addEventListener('change', () => context.renderer.invalidate())
-    controls.update()
+    frameOverview(cam, canvasEl)
+    // Solo cuenta como «movida a mano» si la cámara cambia durante un gesto (un clic para elegir coche, no).
+    controls.addEventListener('start', () => (interacting = true))
+    controls.addEventListener('end', () => (interacting = false))
+    controls.addEventListener('change', () => {
+      if (interacting) userMoved = true
+      context.renderer.invalidate()
+    })
     controlsRef.value = controls
+    lastSize = `${canvasEl.clientWidth}x${canvasEl.clientHeight}`
+    resizeObserver = new ResizeObserver(onResize)
+    resizeObserver.observe(canvasEl)
   }
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0
   sceneStats.pitSamplesLengthM = model.meta.quality?.pitSamplesLengthM ?? 0
