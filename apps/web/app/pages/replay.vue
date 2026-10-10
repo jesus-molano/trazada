@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { parseSessionId } from '~/data/session-id'
 import { installDebugHandle } from '~/replay/debug'
-import { createReplayRuntime } from '~/replay/runtime'
+import {
+  parseTimeParam,
+  planResume,
+  RESUME_EXT,
+  type ResumeApplied,
+  resumeInfo,
+  resumeStore,
+  type ResumeTracker,
+  trackResume,
+} from '~/replay/resume'
+import { createReplayRuntime, defaultInitialMs } from '~/replay/runtime'
 import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
@@ -27,16 +37,27 @@ useHead({ title })
 
 /** `?bench=1`: bench de rendimiento (docs/PERFORMANCE.md). */
 const benchMode = computed(() => route.query.bench === '1')
+/** `?t=<ms de sesión>`: instante de arranque explícito; manda sobre la posición guardada (ítem 13). */
+const urlTime = computed(() => parseTimeParam(route.query.t))
 
 // La escena (y three.js) se monta un frame después de "listo": su coste no entra en la carga de datos.
 const sceneEnabled = ref(false)
 let removeDebug: (() => void) | null = null
+/** Guardado de la posición de la sesión abierta (ítem 13). */
+let tracker: ResumeTracker | null = null
+/** Guarda por última vez la sesión que se deja; antes de soltar su runtime. */
+function stopTracking() {
+  tracker?.stop()
+  tracker = null
+}
+
 watch(
   () => session.status,
   (status) => {
     removeDebug?.()
     removeDebug = null
     if (status !== 'ready' || !session.data) {
+      stopTracking()
       sceneEnabled.value = false
       playback.detach()
       return
@@ -46,12 +67,43 @@ watch(
     const data = session.data
     requestAnimationFrame(() => {
       if (session.data !== data) return
-      const rt = createReplayRuntime(data)
+      stopTracking()
+      // Reanudar donde se dejó (ítem 13): en pausa, en ese instante, con el coche (si sigue en la sesión), el
+      // seguimiento y la velocidad. `?t=` manda sobre lo guardado; el bench ni lo usa ni guarda nada.
+      const pb = data.manifest.session.playback
+      const defaultMs = defaultInitialMs(pb)
+      const plan =
+        benchMode.value || urlTime.value !== null
+          ? null
+          : planResume(resumeStore.get(data.id), {
+              t0Utc: data.manifest.session.t0Utc,
+              startMs: pb.startMs,
+              endMs: pb.endMs,
+              defaultMs,
+              cars: data.manifest.drivers.map((d) => d.number),
+            })
+      const rt = createReplayRuntime(data, { initialMs: urlTime.value ?? plan?.t })
+      const info = resumeInfo(data, rt.markers, defaultMs)
+      // Lo retomado, para el aviso (components/replay-overlays/TzResumeToast.vue), antes de que se monte.
+      rt.ext<ResumeApplied | null>(RESUME_EXT, () => (plan ? { plan, info } : null))
+      if (plan) rt.clock.setRate(plan.rate)
       playback.attach(rt)
+      if (plan?.car) {
+        playback.selectCar(plan.car)
+        playback.setFollowing(plan.follow)
+      }
       removeDebug = installDebugHandle(rt, () => playback.selectedCar)
+      if (!benchMode.value) {
+        tracker = trackResume(rt, info, () => ({ car: playback.selectedCar, follow: playback.following }))
+      }
       requestAnimationFrame(() => (sceneEnabled.value = session.data === data))
     })
   },
+)
+// Elegir otro coche o dejar de seguirlo también se recuerda (1 s después del último cambio).
+watch(
+  () => [playback.selectedCar, playback.following],
+  () => tracker?.touch(),
 )
 
 const readyDetail = computed(() => {
@@ -66,6 +118,7 @@ const readyDetail = computed(() => {
 onMounted(() => void session.load(id.value))
 watch(id, (value) => void session.load(value))
 onBeforeUnmount(() => {
+  stopTracking()
   removeDebug?.()
   playback.detach()
   session.unload()
