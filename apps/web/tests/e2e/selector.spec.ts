@@ -22,13 +22,16 @@ test.describe('selector de sesiones', () => {
     await expect(page.getByTestId('replay-title')).toContainText('Belgian Grand Prix')
   })
 
-  test('cada Gran Premio lleva la miniatura del trazado y la bandera del país', async ({ page }) => {
+  test('cada Gran Premio lleva la miniatura del trazado y la bandera del país', async ({ page, baseURL }) => {
+    await page.context().addCookies([{ name: 'trazada_lang', value: 'es', url: baseURL! }])
     await gotoApp(page, '/')
     const card = page.getByTestId('event-spa-francorchamps')
     await expect(card.getByTestId('track-outline').locator('path')).toHaveAttribute('d', /^M[\d. ]+Z$/)
     await expect(card.getByTestId('flag')).toHaveAttribute('data-iso', 'BE')
     // Nombre del país en el idioma de la interfaz (Intl), no el texto en inglés del calendario.
-    await expect(card).toContainText(/Bélgica|Belgium/)
+    const meta = card.locator('.tz-event__meta')
+    await expect(meta).toContainText('Bélgica')
+    await expect(meta).not.toContainText('Belgium')
     // Sin peticiones externas: la bandera va incrustada.
     expect(await card.getByTestId('flag').getAttribute('src')).toMatch(/^data:image\/svg\+xml,/)
   })

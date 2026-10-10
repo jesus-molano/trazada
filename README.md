@@ -41,7 +41,7 @@ uv run ruff check && uv run pytest
 
 ## Datos
 
-Los datos no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md). Es un proyecto **personal**: los datos se generan en tu PC con el pipeline (IP residencial) y **no se publican**. Para usar la app con ellos:
+Los datos de F1 no forman parte de este repositorio ni de su licencia: ver [`DATA_NOTICE.md`](DATA_NOTICE.md) (las miniaturas de trazado son de bacinger/f1-circuits, MIT). Es un proyecto **personal**: los datos se generan en tu PC con el pipeline (IP residencial) y **no se publican**. Para usar la app con ellos:
 
 ```bash
 cd pipeline && uv sync && cd ..   # una vez: entorno del pipeline

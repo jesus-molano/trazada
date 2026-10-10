@@ -115,6 +115,23 @@ test.describe('gestor de datos local', () => {
     await expect(page.getByTestId('download-season-races')).toHaveCount(0)
   })
 
+  test('en tablet, las tarjetas de una misma fila miden lo mismo aunque un nombre ocupe dos líneas', async ({ page }) => {
+    for (const width of [1024, 768]) {
+      await page.setViewportSize({ width, height: 1024 })
+      await open(page, '?season=2026')
+      await expect(page.getByTestId('event-yas-marina')).toBeVisible()
+      const boxes = await page.locator('.tz-event').evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect()
+          return { top: Math.round(r.top), height: Math.round(r.height) }
+        }),
+      )
+      const rows = new Map<number, number[]>()
+      for (const b of boxes) rows.set(b.top, [...(rows.get(b.top) ?? []), b.height])
+      for (const heights of rows.values()) expect(Math.max(...heights) - Math.min(...heights), `${width}px`).toBeLessThanOrEqual(1)
+    }
+  })
+
   test('accesible con descargas en curso y errores', async ({ page }) => {
     await open(page, '?season=2026&event=03-suzuka')
     await page.getByTestId('download-fp2').click()

@@ -377,6 +377,8 @@ const queueText = computed(() => {
   align-items: center;
   gap: var(--tz-space-3);
   width: 100%;
+  /* Todas las tarjetas de una fila, igual de altas aunque algún nombre ocupe dos líneas. */
+  height: 100%;
   padding: var(--tz-space-3) var(--tz-space-4);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-md);
@@ -404,7 +406,8 @@ const queueText = computed(() => {
 
 .tz-event__name {
   display: flex;
-  align-items: center;
+  /* La bandera, en la primera línea si el nombre ocupa dos. */
+  align-items: first baseline;
   gap: var(--tz-space-2);
   font-weight: var(--tz-weight-semibold);
 }
