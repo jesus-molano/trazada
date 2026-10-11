@@ -87,9 +87,14 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
     })
     observe()
     schedule()
+    // La ventana también avisa: el ResizeObserver de la cabecera llega con el siguiente frame, y con la escena en pausa
+    // un navegador sin pantalla puede no pintar ninguno tras cambiar de tamaño (la cabecera se quedaba con el nivel de
+    // antes, sin medir).
+    window.addEventListener('resize', schedule, { passive: true })
   })
 
   onBeforeUnmount(() => {
+    window.removeEventListener('resize', schedule)
     resize?.disconnect()
     mutation?.disconnect()
     if (raf) cancelAnimationFrame(raf)

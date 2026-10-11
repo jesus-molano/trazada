@@ -51,6 +51,12 @@ describe('avisos de calidad del manifest', () => {
       { code: 'circuit-rebuilt', key: 'circuit-rebuilt.outdated', params: { circuit: '7-a', reason: 'outdated' } },
     ])
     expect(noteKey('circuit-outdated-kept', { reason: 'nuevo-motivo' })).toBe('circuit-outdated-kept.other')
+    // Circuito sin pit lane: por qué (el de antes de la versión 3 de la geometría, `unknown`, sin motivo).
+    expect(noteKey('circuit-rebuilt', { circuit: '18-a', reason: 'gains-pit' })).toBe('circuit-rebuilt.gains-pit')
+    expect(noteKey('pitlane-missing', { reason: 'dropped', stopShare: 12 })).toBe('pitlane-missing.dropped')
+    expect(noteKey('pitlane-missing', { reason: 'none-valid', stops: 3 })).toBe('pitlane-missing.none-valid')
+    expect(noteKey('pitlane-missing', { reason: 'no-stops' })).toBe('pitlane-missing.no-stops')
+    expect(noteKey('pitlane-missing', { reason: 'unknown' })).toBe('pitlane-missing.other')
   })
 
   it('un código desconocido (pipeline más nuevo) no se descarta: se muestra su texto original', () => {

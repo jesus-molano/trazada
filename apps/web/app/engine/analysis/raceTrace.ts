@@ -181,29 +181,40 @@ export function stoppedCars(table: LapTable, cutoffMs = Infinity): Map<string, n
   return out
 }
 
-/** Leyenda del race trace por grupos (D49): los que siguen, de arriba abajo, y los detenidos, como la clasificación. */
+/**
+ * Leyenda del race trace por grupos (D49): los que siguen, de arriba abajo; los detenidos, como la clasificación; y, con
+ * todos los pasos por meta a la vista, los que no tienen ninguno en los datos.
+ */
 export interface LegendOrder {
   /**
-   * Coches que no se han detenido: los que tienen algún paso por meta, por el valor de su último dato (el gap: arriba,
-   * el menor), luego por su último paso y luego por `order`; detrás, los que aún no tienen ninguno, en el orden de
-   * `order`. Es el orden en que acaban las líneas de arriba abajo, así que nombra las siglas que no caben.
+   * Coches que no se han detenido y tienen algún paso por meta, por el valor de su último dato (el gap: arriba, el
+   * menor), luego por su último paso y luego por `order`: es el orden en que acaban las líneas de arriba abajo, así que
+   * nombra las siglas que no caben. Con corte, detrás van los que aún no tienen ninguno, en el orden de `order`.
    */
   running: string[]
   /** Detenidos (`stoppedCars`): por última vuelta, de más a menos, y luego por su último paso. */
   stopped: string[]
+  /**
+   * Con todos los pasos por meta a la vista (`allVisible`): los que no tienen ninguno en los datos, en el orden de
+   * `order`. Con corte, vacío: decir que un coche no tiene vueltas en los datos adelantaría que no va a completar
+   * ninguna, así que se quedan al final de `running`, como los que aún no han cruzado.
+   */
+  none: string[]
 }
 
 /**
- * Orden de la leyenda del race trace. `order`: el orden por defecto (el del manifest; por defecto, el de las series);
- * los coches de las series que no estén en él van detrás, en el orden de las series.
+ * Orden de la leyenda del race trace. `order`: el orden por defecto (el del manifest, con los pilotos que no están en
+ * las series; por defecto, el de las series); los coches de las series que no estén en él van detrás, en el orden de
+ * las series. `allVisible`: el corte no deja fuera ningún paso por meta.
  */
 export function legendOrder(
   trace: RaceTrace,
   stopped: ReadonlyMap<string, number>,
   last: ReadonlyMap<string, LastCrossing>,
   order: readonly string[] = trace.series.map((s) => s.car),
+  allVisible = false,
 ): LegendOrder {
-  const cars = [...order.filter((c) => trace.series.some((s) => s.car === c)), ...trace.series.map((s) => s.car).filter((c) => !order.includes(c))]
+  const cars = [...order, ...trace.series.map((s) => s.car).filter((c) => !order.includes(c))]
   const rank = new Map(cars.map((c, i) => [c, i]))
   const endValue = new Map<string, number>()
   for (const s of trace.series) {
@@ -224,7 +235,12 @@ export function legendOrder(
       (last.get(a)?.ms ?? Infinity) - (last.get(b)?.ms ?? Infinity) ||
       rank.get(a)! - rank.get(b)!,
   )
-  return { running: [...crossed, ...waiting], stopped: out }
+  return allVisible ? { running: crossed, stopped: out, none: waiting } : { running: [...crossed, ...waiting], stopped: out, none: [] }
+}
+
+/** ¿El corte deja ver todos los pasos por meta? `times`: `crossingTimes` (ordenados). */
+export function allCrossingsVisible(times: Float64Array, cutoffMs: number): boolean {
+  return times.length === 0 || cutoffMs >= times[times.length - 1]!
 }
 
 /**

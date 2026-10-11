@@ -46,6 +46,7 @@ export const QUALITY_NOTE_CODES = [
   'circuit-rebuilt',
   'circuit-outdated-kept',
   'position-glitches',
+  'pitlane-missing',
 ] as const
 export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
 

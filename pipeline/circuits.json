@@ -7,6 +7,7 @@
     }
   },
   "dev": {
+    "marina-bay": { "name": "Marina Bay", "layoutId": "marina-bay-dev", "officialLengthM": 4927, "lengthSource": "longitud oficial publicada (4,927 km); pendiente de verificar contra fuente primaria" },
     "suzuka": { "name": "Suzuka", "layoutId": "suzuka-dev", "officialLengthM": 5807, "lengthSource": "longitud oficial publicada (5,807 km); pendiente de verificar contra fuente primaria" }
   }
 }

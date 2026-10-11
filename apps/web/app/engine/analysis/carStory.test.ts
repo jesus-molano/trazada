@@ -42,6 +42,10 @@ describe('ficha de un coche (D49)', () => {
     expect(at(170_000).rcMore).toBe(0)
     expect(at(Infinity).rc.map((e) => e.t)).toEqual([200_000, 160_000])
     expect(at(Infinity).rcMore).toBe(1)
+    // Forma corta de la ficha: solo el más reciente; los demás se cuentan.
+    const short = carStory(table, rc, '23', Infinity, 1)
+    expect(short.rc.map((e) => e.t)).toEqual([200_000])
+    expect(short.rcMore).toBe(2)
     // Otro coche: solo los que lo nombran.
     expect(carStory(table, rc, '1').rc.map((e) => e.t)).toEqual([210_000])
     expect(carStory(table, rc, '5').rc.map((e) => e.t)).toEqual([120_000])

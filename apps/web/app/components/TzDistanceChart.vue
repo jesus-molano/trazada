@@ -11,6 +11,7 @@
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { token } from '~/design/tokens'
+import { canDraw2d } from '~/utils/canvas2d'
 
 const props = defineProps<{
   label: string
@@ -34,14 +35,6 @@ let resize: (() => void) | null = null
 /** Alto del canal de encendido/apagado respecto al de las demás. */
 const COMPACT = 0.6
 const chartHeight = () => Math.round(Number.parseFloat(token('--tz-chart-h')) * (props.compact ? COMPACT : 1))
-
-function canDraw(): boolean {
-  try {
-    return typeof document !== 'undefined' && !!document.createElement('canvas').getContext('2d')
-  } catch {
-    return false
-  }
-}
 
 const empty = (): uPlot.AlignedData => [[], ...props.series.map(() => [])]
 
@@ -69,7 +62,7 @@ function setCursor(d: number | null): void {
 
 onMounted(() => {
   const el = host.value
-  if (!el || !canDraw()) return
+  if (!el || !canDraw2d()) return
   const scales: uPlot.Scales = { x: { time: false, range: [0, props.lengthM] } }
   for (const [k, r] of Object.entries(props.ranges)) scales[k] = { range: r }
   plot = new uPlot(

@@ -187,7 +187,7 @@ test('«Dirección de carrera» deja solo su lista; el dock lo dice y ⏭ va al 
   await expect(page.getByTestId('moments-others').locator('h3')).toContainText('Dirección de carrera')
   for (const row of await page.getByTestId('other-row').all()) await expect(row).toHaveAttribute('data-kind', 'raceControl')
   const chip = page.getByTestId('jump-filter-chip')
-  await expect(chip).toHaveText('Solo dirección de carrera')
+  await expect(page.getByTestId('jump-filter-text')).toHaveText('Solo dirección de carrera')
   const start = await time(page)
   const next = (await stat(page)).targets.find((m) => m.kind === 'raceControl' && m.seekMs > start)!
   await page.getByTestId('jump-next').click()
@@ -218,12 +218,16 @@ for (const vp of [
   test.describe(`${vp.name} táctil (D49)`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: true })
 
-    test('con el chip del dock a la vista, ni la página ni el dock se desbordan', async ({ page }) => {
+    test('con el chip del dock a la vista, ni la página ni el dock se desbordan, y el dock no crece', async ({ page }) => {
       await openReplay(page)
       await page.getByTestId('analysis-button').tap()
       await page.getByTestId('analysis-tab-moments').tap()
+      const dockHeight = async () => (await page.getByTestId('replay-dock').boundingBox())!.height
+      const before = await dockHeight()
+      // La clase de nombre más largo: con «Solo dirección de carrera ×», a 768 px el dock pasaba a dos filas.
       await page.locator('[data-testid="moments-filter"] [data-filter="raceControl"]').tap()
       await expect(page.getByTestId('jump-filter-chip')).toBeVisible()
+      expect(await dockHeight()).toBe(before)
       const overflow = await page.evaluate(() => {
         const dock = document.querySelector('[data-testid="replay-dock"]')!
         const doc = document.documentElement

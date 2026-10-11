@@ -12,6 +12,7 @@ import { defineComponent, h } from 'vue'
 import TzCompare from '~/components/TzCompare.vue'
 import TzLeaderboard from '~/components/TzLeaderboard.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
+import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { ESC_PRIORITY, handleEscape, registerEscape } from '~/replay/keys'
 import { useCompareStore } from '~/stores/compare'
 import { usePlaybackStore } from '~/stores/playback'
@@ -46,8 +47,8 @@ let frame: (t: number) => void = () => {}
 const wrappers: VueWrapper[] = []
 const track = <W extends VueWrapper>(w: W): W => (wrappers.push(w), w)
 
-function attach() {
-  const { rt, frame: f } = compareTestRuntime()
+function attach(estimated: readonly string[] = []) {
+  const { rt, frame: f } = compareTestRuntime(estimated)
   usePlaybackStore().attach(rt as never)
   frame = f
   return rt
@@ -159,6 +160,40 @@ describe('TzCompare: diferencia en vivo y oficial', () => {
     await w.find('[data-testid="compare-car"]').setValue('2')
     expect(useCompareStore().compareCar).toBe('2')
     expect(w.find('[data-testid="compare-delta"]').exists()).toBe(true)
+  })
+})
+
+describe('TzCompare: la explicación dice qué es dato y qué no', () => {
+  const hintText = (w: VueWrapper) => w.find('[data-testid="compare-hint-panel"]').text()
+
+  it('telemetría y posiciones de la fuente: trazas con las muestras reales y fantasma con la posición real', async () => {
+    attach()
+    const w = await mountCompare('1', '2')
+    const { t } = useNuxtApp().$i18n
+    expect(hintText(w)).toContain(t('compare.hintTraces'))
+    expect(hintText(w)).toContain(t('compare.hintGhost', { gap: SEGMENT_GAP_MS / 1000 }))
+    expect(hintText(w)).not.toMatch(/(reconstruid|reconstructed)/)
+    expect(attr(w, 'compare-ghost', 'title')).toBe(t('compare.ghostHint'))
+  })
+
+  it('telemetría y posiciones reconstruidas (manifest de una sesión dev): ni «muestras reales» ni «posición real»', async () => {
+    attach(['positions', 'telemetry', 'trackStatus'])
+    const w = await mountCompare('1', '2')
+    const { t } = useNuxtApp().$i18n
+    expect(hintText(w)).toContain(t('compare.hintTracesEstimated'))
+    expect(hintText(w)).toContain(t('compare.hintGhostEstimated', { gap: SEGMENT_GAP_MS / 1000 }))
+    expect(hintText(w)).not.toContain(t('compare.hintTraces'))
+    expect(hintText(w)).not.toMatch(/(muestras reales|posición real|real telemetry samples|real position)/)
+    expect(attr(w, 'compare-ghost', 'title')).toBe(t('compare.ghostHintEstimated'))
+  })
+
+  it('solo la telemetría reconstruida: las trazas lo dicen y el fantasma sigue siendo la posición real', async () => {
+    attach(['telemetry'])
+    const w = await mountCompare('1', '2')
+    const { t } = useNuxtApp().$i18n
+    expect(hintText(w)).toContain(t('compare.hintTracesEstimated'))
+    expect(hintText(w)).toContain(t('compare.hintGhost', { gap: SEGMENT_GAP_MS / 1000 }))
+    expect(attr(w, 'compare-ghost', 'title')).toBe(t('compare.ghostHint'))
   })
 })
 

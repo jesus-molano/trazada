@@ -1,7 +1,9 @@
 /**
  * Saltos (ítem 14): a una vuelta («vuelta 30», «v30», «lap 30», «vuelta 7 de VER»), a la siguiente o la anterior
  * («siguiente vuelta», «vuelta anterior») y a los marcadores del timeline: coche de seguridad, virtual, bandera roja,
- * amarilla, bandera a cuadros y paradas («siguiente sc», «parada de NOR»). Con el servicio de momentos (ítem 5), también
+ * amarilla, bandera a cuadros y entradas en boxes («siguiente sc», «parada de NOR»: todas las entradas en el pit lane
+ * que da el cronometraje, también un drive-through o una vuelta al garaje, así que el título dice «entrada en boxes» y
+ * «parada» queda como otra forma de pedirlo). Con el servicio de momentos (ítem 5), también
  * al siguiente o al anterior momento; sin él, no se ofrece.
  *
  * Datos: los marcadores (`TimelineMarkers`, de `timing` y `events`) y las vueltas de cada coche (`LapTable`). La «vuelta
@@ -37,7 +39,19 @@ const TARGET_WORDS: Readonly<Record<MarkerTarget, readonly Phrase[]>> = {
   red: phrases('bandera roja', 'roja', 'red flag', 'red', 'interrupcion'),
   yellow: phrases('bandera amarilla', 'amarilla', 'yellow flag', 'yellow'),
   chequered: phrases('bandera a cuadros', 'cuadros', 'chequered flag', 'chequered', 'checkered flag', 'checkered'),
-  pit: phrases('parada', 'paradas', 'pit stop', 'pit', 'pits', 'box', 'boxes', 'entrada a boxes'),
+  pit: phrases(
+    'parada',
+    'paradas',
+    'pit stop',
+    'pit',
+    'pits',
+    'box',
+    'boxes',
+    'entrada a boxes',
+    'entrada en boxes',
+    'pit lane',
+    'pit entry',
+  ),
   moment: phrases('momento', 'momentos', 'moment', 'moments'),
 }
 const TARGETS = Object.keys(TARGET_WORDS) as MarkerTarget[]

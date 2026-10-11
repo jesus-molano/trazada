@@ -8,10 +8,10 @@
  * usan, así que conservan su color. De noche (sol por debajo del horizonte, según el ambiente) la pista se aclara un
  * poco hacia `--tz-track-night-tint`, como con focos: se recolorea solo al cambiar ese tono, nunca en cada frame.
  */
-import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, LineBasicMaterial, MeshBasicMaterial, SRGBColorSpace } from 'three'
 import { setMapAttributes, useMapWidth } from '~/composables/useMapWidth'
 import { useSceneAmbience } from '~/composables/useSceneAmbience'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { MIN_PIT_PX, MIN_TRACK_PX } from '~/engine/track/mapWidth'
@@ -157,8 +157,7 @@ function applyTint(k: number) {
   towardNight(PIT_EDGE, k, pitEdgeMaterial.color)
 }
 
-const { onBeforeRender } = useLoop()
-onBeforeRender(() => {
+useSceneFrame(() => {
   const k = ambience?.look(rt.clock.timeMs)?.trackTint ?? 0
   if (k !== tint) applyTint(k)
 })

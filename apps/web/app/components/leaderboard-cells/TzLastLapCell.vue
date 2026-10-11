@@ -11,6 +11,7 @@
  * mientras alguna fila la enseñe (dentro del botón de la fila no cabe un control).
  */
 import { formatLapTime } from '~/engine/format/time'
+import type { LapInfo } from '~/engine/timing/laps'
 import type { LeaderboardCellProps } from '~/slots/leaderboard-cells'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
@@ -21,7 +22,21 @@ const playback = usePlaybackStore()
 const settings = useSettingsStore()
 const laps = runtimeLapTimes(getRuntime()!)
 
-const info = computed(() => laps.at(props.row.car, playback.timeMs, settings.estimateLap1))
+/**
+ * La última vuelta en el instante del reloj. `LapTimes.at` da un objeto nuevo en cada tick grueso (10 Hz): si la vuelta
+ * que se enseña no cambió, se devuelve el anterior y el tiempo formateado y el título no se recalculan (cambian una vez
+ * por vuelta). La vuelta en curso (`lap`) no se usa aquí.
+ */
+const info = computed<LapInfo>((prev) => {
+  const next = laps.at(props.row.car, playback.timeMs, settings.estimateLap1)
+  const same =
+    prev !== undefined &&
+    prev.lastLap === next.lastLap &&
+    prev.lastLapMs === next.lastLapMs &&
+    prev.estimated === next.estimated &&
+    prev.deleted === next.deleted
+  return same ? prev : next
+})
 const time = computed(() => (info.value.lastLapMs === null ? null : formatLapTime(info.value.lastLapMs, locale.value)))
 const title = computed(() => {
   const { lastLap, estimated, deleted } = info.value

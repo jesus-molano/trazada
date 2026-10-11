@@ -20,7 +20,10 @@ from trazada_pipeline.circuit.build import (
     MIN_FINISH_LAPS,
     Circuit,
     CircuitBuildError,
+    add_pitlane,
     build_circuit,
+    circuit_pit_fit,
+    pit_stops,
 )
 from trazada_pipeline.circuit.fit import circuit_fit
 from trazada_pipeline.circuit.store import circuit_variants, load_circuit, next_variant_id, save_circuit
@@ -219,7 +222,59 @@ def circuit_notes(circuit: Circuit, official_length_m: float | None) -> list[Qua
                 "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)",
             )
         )
+    if circuit.pitlane is None:
+        notes.append(_pitlane_missing(q))
     return notes
+
+
+def _pitlane_missing(q: dict[str, float]) -> QualityNote:
+    """Aviso de un circuito sin pit lane: los coches en el pit lane no se dibujan (`projection`, punto 8).
+    Se recupera solo: una sesión con paradas que lo dé se lo añade (`_refresh_circuit`)."""
+    after = (
+        " Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé."
+    )
+    if "pitDroppedStopShare" in q:
+        share = round(100 * q["pitDroppedStopShare"])
+        return QualityNote(
+            "pitlane-missing",
+            f"Circuito sin pit lane: el que tenía no seguía a los coches (lo seguía el {share} % de las "
+            "paradas, hace falta el 50 %) y ninguna parada daba uno bueno." + after,
+            {"reason": "dropped", "stopShare": share},
+        )
+    if "pitStops" in q and q["pitStops"] > 0:
+        stops = int(q["pitStops"])
+        return QualityNote(
+            "pitlane-missing",
+            f"Circuito sin pit lane: ninguna de las {stops} paradas de la sesión que lo construyó lo daba "
+            "sin huecos y por donde van los coches." + after,
+            {"reason": "none-valid", "stops": stops},
+        )
+    if "pitStops" in q:
+        return QualityNote(
+            "pitlane-missing",
+            "Circuito sin pit lane: la sesión que lo construyó no tenía paradas." + after,
+            {"reason": "no-stops"},
+        )
+    return QualityNote("pitlane-missing", "Circuito sin pit lane." + after, {"reason": "unknown"})
+
+
+def _add_pitlane(data: SessionData, stored: Circuit, cid: str, v1: Path) -> list[QualityNote]:
+    """A un circuito sin pit lane (la sesión que lo construyó no tenía paradas o ninguna lo daba bien) se le
+    añade el de esta sesión si lo da (`add_pitlane`); lo demás no cambia. Sin esto, un circuito que se quedó
+    sin pit lane no lo recuperaba nunca (el gestor de datos no reconstruye circuitos)."""
+    if not pit_stops(data):
+        return []
+    grown = add_pitlane(data, stored)
+    if grown is None:
+        return []
+    save_circuit(grown, v1)
+    return [
+        QualityNote(
+            "circuit-rebuilt",
+            f"El circuito {cid} no tenía pit lane: se le añade el de esta sesión (lo demás no cambia).",
+            {"circuit": cid, "reason": "gains-pit"},
+        )
+    ]
 
 
 def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1: Path) -> list[QualityNote]:
@@ -227,11 +282,14 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
     anterior de la construcción (p. ej. con el desvío al garaje en el pit lane) o sin curvas ni rotación
     oficial que esta sesión sí trae. Nunca si con ello perdería las curvas y la rotación, el pit lane o los
     sectores de comisarios que ya tiene (una sprint sin paradas no trae pit lane), ni si esta sesión no
-    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa."""
+    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa. Un pit lane guardado que
+    no sigue a los coches de esta sesión (`circuit_pit_fit`; la cuerda de Singapur 2026, de la versión 2) no
+    se conserva: mejor sin pit lane que uno por donde no van los coches. Un circuito al día sin pit lane gana
+    el de esta sesión si lo da (`_add_pitlane`)."""
     outdated = stored.geometry_version < GEOMETRY_VERSION
     gains_info = stored.corners.empty and data.circuit_info is not None
     if not (outdated or gains_info):
-        return []
+        return _add_pitlane(data, stored, cid, v1) if stored.pitlane is None else []
     if not stored.corners.empty and data.circuit_info is None:
         return [
             QualityNote(
@@ -253,8 +311,13 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
             )
         ]
     lost = []
+    dropped_pit = None
     if stored.pitlane is not None and fresh.pitlane is None:
-        lost.append("el pit lane")
+        stored_fit = circuit_pit_fit(data, stored)
+        if stored_fit is None or stored_fit.ok:
+            lost.append("el pit lane")
+        else:
+            dropped_pit = stored_fit
     if stored.marshal_sectors is not None and fresh.marshal_sectors is None:
         lost.append("los sectores de comisarios")
     if lost:
@@ -266,19 +329,31 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
                 {"circuit": cid, "reason": "would-lose"},
             )
         ]
+    if dropped_pit is not None:
+        # Va con el circuito: el aviso `pitlane-missing` de cada sesión que lo use dice por qué no lo tiene.
+        fresh = replace(fresh, quality={**fresh.quality, "pitDroppedStopShare": dropped_pit.stop_share})
     save_circuit(fresh, v1)
+    dropped = (
+        ""
+        if dropped_pit is None
+        else " Su pit lane no seguía a los coches de esta sesión (lo seguía el "
+        f"{100 * dropped_pit.stop_share:.0f} % de sus paradas, hace falta el 50 %) y ninguna parada da uno "
+        "bueno: queda sin pit lane hasta que lo dé otra sesión con paradas."
+    )
     if outdated:
         return [
             QualityNote(
                 "circuit-rebuilt",
-                f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye.",
+                f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye."
+                + dropped,
                 {"circuit": cid, "reason": "outdated"},
             )
         ]
     return [
         QualityNote(
             "circuit-rebuilt",
-            f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión.",
+            f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión."
+            + dropped,
             {"circuit": cid, "reason": "gains-corners"},
         )
     ]

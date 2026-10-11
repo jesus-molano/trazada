@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { persisted } from './persisted'
 
-/** Estelas (ítem 7): apagadas, con el color del equipo o con el de la última velocidad medida. */
+/**
+ * Estelas (ítem 7): apagadas, con el color del equipo o con el de la última muestra de velocidad de la telemetría
+ * (medida, o reconstruida si el manifest lo declara: entonces lleva «Estimado», ver TzTrailsTool).
+ */
 export const TRAIL_MODES = ['off', 'team', 'speed'] as const
 export type TrailMode = (typeof TRAIL_MODES)[number]
 

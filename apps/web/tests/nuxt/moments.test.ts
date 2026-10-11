@@ -253,6 +253,40 @@ describe('«Ver y saltar entre» filtra también la pestaña (D49)', () => {
     expect($$('[data-testid="other-row"]')).toHaveLength(2)
   })
 
+  it('los textos siguen al filtro: la explicación de la lista de abajo y qué se elige al pulsar, solo de lo que se ve', async () => {
+    attachRace()
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    const moments = useMomentsStore()
+    const pick = () => $('[data-testid="moments-pick"]')!.textContent!.replace(/\s+/g, ' ').trim()
+    const basis = () => $('[data-testid="others-basis"]')?.textContent ?? null
+    const PICK = /^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)/
+    // Todos: las tres listas y las dos frases de quién se elige.
+    expect(pick()).toMatch(PICK)
+    expect(pick()).toMatch(/(antes\. En un adelantamiento.*persigue|before it\. For an overtake.*chasing)/)
+    expect(basis()).toMatch(/SC, VSC.*luz verde|SC, VSC.*green light/)
+    moments.setFilter('overtake')
+    await settle()
+    expect(pick()).toMatch(/(antes\. Se elige al que adelanta|before it\. The overtaking driver is selected)\.$/)
+    expect(pick()).not.toMatch(/persigue|chasing/)
+    expect(basis()).toBeNull()
+    moments.setFilter('duel')
+    await settle()
+    expect(pick()).toMatch(/persigue|chasing/)
+    expect(pick()).not.toMatch(/adelanta|overtak/)
+    // Neutralizaciones: ni adelantamientos ni duelos a la vista, así que solo «Pulsa uno…»; y la explicación, solo de ellas.
+    moments.setFilter('neutralisation')
+    await settle()
+    expect(pick()).toMatch(/^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)$/)
+    expect(basis()).toMatch(/SC, VSC/)
+    expect(basis()).not.toMatch(/luz verde|green light|en inglés|in English/)
+    moments.setFilter('raceControl')
+    await settle()
+    expect(pick()).toMatch(/^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)$/)
+    expect(basis()).toMatch(/luz verde|green light/)
+    expect(basis()).not.toMatch(/SC, VSC/)
+  })
+
   it('pulsar una fila salta adonde salta ⏭ (5 s antes)', async () => {
     attachRace()
     useAnalysis().noSpoilers.value = false
@@ -387,7 +421,11 @@ describe('botones de saltos (hueco replay-dock)', () => {
     expect(chip()).toBeNull()
     useMomentsStore().setFilter('duel')
     await settle()
-    expect(chip()!.textContent!.trim()).toMatch(/^(Solo duelos|Only battles)$/)
+    expect($('[data-testid="jump-filter-text"]')!.textContent!.trim()).toMatch(/^(Solo duelos|Only battles)$/)
+    // Forma corta (por debajo de 900 px): solo la clase, oculta a los lectores de pantalla (leen el texto entero).
+    const short = $('[data-testid="jump-filter-short"]')!
+    expect(short.textContent!.trim()).toMatch(/^(Duelos|Battles)$/)
+    expect(short.getAttribute('aria-hidden')).toBe('true')
     expect(chip()!.getAttribute('title')).toMatch(/duelos|battles/)
     const clear = $<HTMLButtonElement>('[data-testid="jump-filter-clear"]')!
     expect(clear.getAttribute('aria-label')).toMatch(/Saltar entre todos los momentos|Jump between all moments/)

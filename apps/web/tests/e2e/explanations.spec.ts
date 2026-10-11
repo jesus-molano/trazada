@@ -40,10 +40,11 @@ test('avisos de calidad del manifest: se cuentan, se traducen y se leen con el t
   const lang = await page.evaluate(() => document.documentElement.lang)
   const es = lang.startsWith('es')
   // El manifest del fixture trae cuatro avisos reales del procesado: cobertura de posición, fallos del feed
-  // (coche 5), circuito sin curvas oficiales y extracto recortado para tests.
+  // (coche 5), circuito sin curvas oficiales y extracto recortado para tests. Al ser de 2026, se suma el del
+  // reglamento (información, aparte de la lista).
   const button = page.getByTestId('session-notes')
-  await expect(button).toHaveText(es ? '4 avisos' : '4 notes')
-  await expect(button).toHaveAccessibleName(es ? '4 avisos sobre los datos' : '4 notes on the data')
+  await expect(button).toHaveText(es ? '5 avisos' : '5 notes')
+  await expect(button).toHaveAccessibleName(es ? '5 avisos sobre los datos' : '5 notes on the data')
   await expect(button).toHaveAttribute('aria-expanded', 'false')
   await button.focus()
   await page.keyboard.press('Enter')
@@ -57,6 +58,10 @@ test('avisos de calidad del manifest: se cuentan, se traducen y se leen con el t
   await expect(panel.locator('li[data-code="position-glitches"]')).toBeVisible()
   await expect(panel.locator('li[data-code="e2e-extract"]')).toBeVisible()
   await expect(panel.locator('li[data-code="unknown"]')).toHaveCount(0)
+  const regulation = panel.getByRole('group', { name: es ? 'Información Reglamento de 2026' : 'Information 2026 regulations' })
+  await expect(regulation).toBeVisible()
+  await expect(regulation).toContainText(es ? 'no incluyen, por ahora' : 'For now, the public timing data does not include')
+  await expect(regulation).toContainText(es ? '«Overtake activado»' : '“Overtake enabled”')
   await expectOnTop(panel)
   expect(await seriousAxe(page)).toEqual([])
   await page.keyboard.press('Escape')

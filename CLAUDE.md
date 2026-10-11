@@ -49,6 +49,7 @@ uv run pytest                 # excluye @local; uv run pytest -m local para test
 
 # Datos (salen en data/v1/, ignorado por git)
 uv run trazada probe                                      # ¿esta red puede leer el live timing? (nube: 403)
+uv run trazada probe-feed 2026 10 race [--offline]        # R4/D48: temas del feed y canales de CarData.z que el pipeline no lee (IP residencial)
 uv run trazada build 2026 "Belgian Grand Prix" fp1        # FastF1 online (solo IP residencial)
 uv run trazada schedule 2026                              # calendario (una línea JSON) para el gestor de datos
 uv run trazada build 2026 10 fp1 --progress               # líneas ::progress/::result/::error (las lee el gestor)

@@ -249,3 +249,83 @@ test.describe('sprint de Singapur 2026 (D49)', () => {
     await expect(page.getByTestId('analysis-card')).toBeVisible()
   })
 })
+
+/**
+ * D49, revisión: a 1440 y 1280 px (los portátiles más comunes) el área de datos mide 160-270 px de alto y la ficha de
+ * un detenido no cabía: se ponía a la derecha del dato y tapaba el resto de su línea, su raya y su sigla. Ahora va donde
+ * menos tapa de su serie (también fuera del área de datos, sobre la leyenda) y, más alta que el área de datos, en su
+ * forma corta. Con el dedo, la ficha fijada, igual.
+ */
+for (const vp of [
+  { width: 1440, height: 900, touch: false },
+  { width: 1280, height: 800, touch: false },
+  { width: 1024, height: 768, touch: true },
+]) {
+  test.describe(`sprint de Singapur a ${vp.width}×${vp.height}${vp.touch ? ' táctil' : ''} (D49)`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch })
+
+    test('la ficha de ALB en la V10 no tapa el dato, su raya en la V14 ni su sigla, ni su nombre en la leyenda', async ({ page }) => {
+      test.setTimeout(120_000)
+      await recordLabels(page)
+      await openSingapore(page)
+      const chart = page.getByTestId('race-trace-chart')
+      const over = (await chart.locator('.u-over').boundingBox())!
+      // El eje va de la V1 a la V20: la V10, a 9/19 del ancho, y la V14, a 13/19.
+      const x = over.x + (9 / 19) * over.width
+      let at: number | null = null
+      for (let y = over.y + 2; y < over.y + over.height && at === null; y += 4) {
+        if (vp.touch) await page.touchscreen.tap(x, y)
+        else await page.mouse.move(x, y)
+        await twoFrames(page)
+        const preview = await chart.getAttribute('data-preview')
+        if (preview === '23') at = y
+        // Con el dedo, la ficha fijada de otro coche taparía los toques siguientes: fuera (Esc).
+        else if (vp.touch && preview) {
+          await page.keyboard.press('Escape')
+          await twoFrames(page)
+        }
+      }
+      expect(at).not.toBeNull()
+      const card = page.getByTestId('analysis-card')
+      await expect(card).toBeVisible()
+      await expect(card).toHaveAttribute('data-mode', vp.touch ? 'pinned' : 'hover')
+      await twoFrames(page)
+      const box = (await card.boundingBox())!
+      const canvas = await chart.locator('canvas').elementHandle()
+      const cbox = (await chart.locator('canvas').boundingBox())!
+      const dpr = await chart.locator('canvas').evaluate((c: HTMLCanvasElement) => c.width / c.getBoundingClientRect().width)
+      const labels = await page.evaluate(
+        (c) => (window as unknown as { __labels: (c: HTMLCanvasElement) => { text: string; x: number; y: number; width: number }[] }).__labels(c!),
+        canvas,
+      )
+      // La sigla resaltada de ALB, justo después de su raya, a la altura de su último dato (V14).
+      const alb = labels.filter((l) => l.text === 'ALB').at(-1)!
+      expect(alb).toBeDefined()
+      const label = { x0: cbox.x + alb.x / dpr, x1: cbox.x + (alb.x + alb.width) / dpr, y0: cbox.y + alb.y / dpr - 7, y1: cbox.y + alb.y / dpr + 7 }
+      const endX = over.x + (13 / 19) * over.width
+      const end = { x0: endX - 6, x1: endX + 8, y0: label.y0, y1: label.y1 }
+      expect(Math.abs(label.x0 - endX)).toBeLessThan(20)
+      const point = { x0: x - 4, x1: x + 4, y0: at! - 4, y1: at! + 4 }
+      const key = (await chart.locator('[data-testid="analysis-legend-item"][data-car="23"]').boundingBox())!
+      const legendKey = { x0: key.x, x1: key.x + key.width, y0: key.y, y1: key.y + key.height }
+      const covers = (r: { x0: number; x1: number; y0: number; y1: number }) =>
+        r.x0 < box.x + box.width && box.x < r.x1 && r.y0 < box.y + box.height && box.y < r.y1
+      expect({ label: covers(label), end: covers(end), point: covers(point), legendKey: covers(legendKey) }).toEqual({
+        label: false,
+        end: false,
+        point: false,
+        legendKey: false,
+      })
+      // Más alta que el área de datos: la forma corta (un solo mensaje de dirección de carrera, y cuántos más).
+      await expect(card).toHaveAttribute('data-compact', 'true')
+      await expect(page.getByTestId('analysis-card-rc')).toHaveCount(1)
+      await expect(page.getByTestId('analysis-card-rc-more')).toHaveText('y 2 más en dirección de carrera')
+      await expect(page.getByTestId('analysis-card-after')).toBeVisible()
+      // Entera dentro de lo que se ve de la hoja.
+      const sheet = (await page.getByTestId('analysis-sheet').boundingBox())!
+      expect(box.y).toBeGreaterThanOrEqual(sheet.y)
+      expect(box.y + box.height).toBeLessThanOrEqual(sheet.y + sheet.height + 0.5)
+      expect(box.x + box.width).toBeLessThanOrEqual(sheet.x + sheet.width + 0.5)
+    })
+  })
+}

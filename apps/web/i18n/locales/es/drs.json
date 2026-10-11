@@ -18,6 +18,6 @@
     "hintZone": "Si dirección de carrera desactiva una sola zona, solo se ve en su feed: sin la geometría de las zonas no se puede saber cuál es.",
     "hintSeason": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa y el modo adelantamiento, que dirección de carrera habilita para toda la pista. La fuente no da ni la geometría de las zonas ni un canal por coche.",
     "hintNoChannel": "Sin el canal de DRS de cada coche no se puede saber dónde lo abrieron, y ninguna fuente da la geometría oficial de las zonas.",
-    "hintInsufficient": "Una zona necesita al menos {passes} pasadas (un coche en una vuelta) abriendo en el mismo sitio, de al menos {cars} coches. En mojado o con pocas vueltas puede no haberlas."
+    "hintInsufficient": "Una zona necesita al menos {passes} pasadas (un coche en una vuelta) abriendo en el mismo sitio, de al menos {cars} coches (o del único que lo abriera). En mojado o con pocas vueltas puede no haberlas."
   }
 }

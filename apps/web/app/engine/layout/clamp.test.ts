@@ -35,6 +35,27 @@ describe('límites de los paneles (ítem 15)', () => {
     expect(sceneMinWidth(800)).toBe(SCENE_MIN_PX)
     expect(sceneMinWidth(1872)).toBe(Math.round(1872 * SCENE_MIN_SHARE))
   })
+
+  it('las cifras que promete D44: max(320 px, 35 % del escenario), en literales y no con las constantes', () => {
+    // Si alguien cambia el 35 % o los 320 px, estas cifras dejan de cuadrar (con las constantes, no lo notaría nadie).
+    expect(sceneMinWidth(800)).toBe(320)
+    expect(sceneMinWidth(914)).toBe(320) // 319,9 → el mínimo absoluto
+    expect(sceneMinWidth(1232)).toBe(431) // ventana de 1280 px
+    expect(sceneMinWidth(1392)).toBe(487) // 1440 px
+    expect(sceneMinWidth(1872)).toBe(655) // 1920 px
+    expect(sceneMinWidth(2512)).toBe(879) // 2560 px
+  })
+
+  it('con los dos paneles al máximo y las columnas de «Análisis», el mapa conserva el 35 % del escenario', () => {
+    for (const vw of [1280, 1440, 1920, 2560]) {
+      const g = geo(vw, 182)
+      const w = clampWidths({ lb: 480, side: 480 }, g)
+      expect(scene(g, w), `${vw} px`).toBeGreaterThanOrEqual(Math.round(0.35 * g.stage))
+      expect(scene(g, w), `${vw} px`).toBeGreaterThanOrEqual(320)
+    }
+    // A 1440 px los paneles ceden: el mapa se queda justo en su 35 % (487 px de 1392), no en los 320 px.
+    expect(scene(geo(1440, 182), clampWidths({ lb: 480, side: 480 }, geo(1440, 182)))).toBe(488)
+  })
 })
 
 describe('anchos guardados: lo corrupto vuelve al de por defecto (null)', () => {

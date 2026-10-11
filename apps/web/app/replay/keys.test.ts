@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ESC_PRIORITY, findShortcut, handleEscape, registerEscape, registerShortcut, runShortcut } from './keys'
 
-/** KeyboardEvent mínimo (Node no lo tiene). */
-function key(k: string, mods: { ctrl?: boolean; meta?: boolean; alt?: boolean; shift?: boolean } = {}) {
+/** KeyboardEvent mínimo (Node no lo tiene). `repeat`: la tecla mantenida (repetición automática del teclado). */
+function key(k: string, mods: { ctrl?: boolean; meta?: boolean; alt?: boolean; shift?: boolean; repeat?: boolean } = {}) {
   let prevented = false
   return {
     key: k,
@@ -10,6 +10,7 @@ function key(k: string, mods: { ctrl?: boolean; meta?: boolean; alt?: boolean; s
     metaKey: !!mods.meta,
     altKey: !!mods.alt,
     shiftKey: !!mods.shift,
+    repeat: !!mods.repeat,
     preventDefault: () => (prevented = true),
     get defaultPrevented() {
       return prevented
@@ -25,7 +26,7 @@ afterEach(() => {
 
 describe('registro de Esc', () => {
   it('las prioridades fijas van de lo que está más encima a la selección', () => {
-    const order = ['summary', 'palette', 'tips', 'analysis', 'tv', 'compare', 'follow', 'selection'] as const
+    const order = ['summary', 'palette', 'tips', 'analysisCard', 'analysis', 'tv', 'compare', 'follow', 'selection'] as const
     const values = order.map((k) => ESC_PRIORITY[k])
     expect([...values].sort((a, b) => b - a)).toEqual(values)
     expect(new Set(values).size).toBe(values.length)
@@ -139,5 +140,27 @@ describe('registro de atajos', () => {
     expect(a).toHaveBeenCalledTimes(2)
     expect(b).toHaveBeenCalledTimes(1)
     expect(findShortcut(key('x'), false)).toBeNull()
+  })
+
+  it('con la tecla mantenida, un conmutador cuenta una vez (la repetición se atiende sin hacer nada); un salto, cada vez', () => {
+    const toggle = vi.fn()
+    const jump = vi.fn()
+    track(registerShortcut({ key: 'l' }, toggle))
+    track(registerShortcut({ key: '.' }, jump, { repeat: true }))
+
+    expect(runShortcut(key('l'), false)).toBe(true)
+    for (let i = 0; i < 5; i++) {
+      const held = key('l', { repeat: true })
+      // Atendida (no llega al navegador ni a los atajos fijos del replay), pero sin volver a alternar.
+      expect(runShortcut(held, false)).toBe(true)
+      expect(held.defaultPrevented).toBe(true)
+    }
+    expect(toggle).toHaveBeenCalledTimes(1)
+
+    runShortcut(key('.'), false)
+    for (let i = 0; i < 5; i++) runShortcut(key('.', { repeat: true }), false)
+    expect(jump).toHaveBeenCalledTimes(6)
+    // Sin atajo para la tecla, la repetición sigue su camino.
+    expect(runShortcut(key('x', { repeat: true }), false)).toBe(false)
   })
 })

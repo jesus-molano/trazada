@@ -188,3 +188,29 @@ for (const lang of ['es', 'en'] as const) {
     })
   }
 }
+
+/**
+ * D49, revisión: a 768 px en español, «Solo dirección de carrera ×» pasaba el reloj del dock a una segunda fila (el dock
+ * crecía unos 40 px y la hoja encogía). Por debajo de 900 px el chip dice solo la clase y, si no cabe, la corta con «…».
+ */
+for (const lang of ['es', 'en'] as const) {
+  test.describe(`chip del dock a 768 px táctil (${lang})`, () => {
+    test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true })
+
+    test('con cualquier clase elegida, el dock no crece ni se desborda', async ({ page }) => {
+      await page.context().addCookies([{ name: 'trazada_lang', value: lang, url: BASE! }])
+      await open(page)
+      await page.getByTestId('analysis-button').tap()
+      await page.getByTestId('analysis-tab-moments').tap()
+      const dock = page.getByTestId('replay-dock')
+      const before = (await dock.boundingBox())!.height
+      for (const kind of ['overtake', 'duel', 'neutralisation', 'raceControl']) {
+        await page.locator(`[data-testid="moments-filter"] [data-filter="${kind}"]`).tap()
+        await expect(page.getByTestId('jump-filter-chip')).toBeVisible()
+        expect((await dock.boundingBox())!.height, kind).toBe(before)
+        const overflow = await dock.evaluate((el) => el.scrollWidth > el.clientWidth)
+        expect(overflow, kind).toBe(false)
+      }
+    })
+  })
+}

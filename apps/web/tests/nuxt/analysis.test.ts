@@ -498,6 +498,39 @@ describe('coche elegido en la hoja (D49)', () => {
     expect($(`[data-testid="pace-chart"] [data-car="${a}"]`)!.classList).not.toContain('is-emphasis')
   })
 
+  it('tras la ×, el coche que se elija después también sale en «Ritmo» (destacado) y el quitado sigue sin destacar; al cerrar la hoja, se olvida', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    const withLaps = playback.order.filter((c) => rt.leaderboard.lapTable.cars.has(c))
+    const [a, b] = [withLaps[10]!, withLaps[12]!]
+    const item = (car: string) => $(`[data-testid="pace-chart"] [data-car="${car}"]`)!
+    playback.selectCar(a)
+    await mountBoth()
+    await openSheet()
+    await selectTab('stints')
+    clear().click()
+    await settle()
+    // Como una fila de «Momentos»: elegir otro coche con la hoja abierta.
+    playback.selectCar(b)
+    await settle()
+    await selectTab('pace')
+    expect(item(b).getAttribute('aria-pressed')).toBe('true')
+    expect(item(b).classList).toContain('is-emphasis')
+    expect(item(a).getAttribute('aria-pressed')).toBe('true')
+    expect(item(a).classList).not.toContain('is-emphasis')
+    // Lo que el usuario elige en la leyenda manda (y conserva a los dos).
+    item(withLaps[11]!).click()
+    await settle()
+    expect(item(withLaps[11]!).getAttribute('aria-pressed')).toBe('true')
+    expect(item(a).getAttribute('aria-pressed')).toBe('true')
+    expect(item(b).getAttribute('aria-pressed')).toBe('true')
+
+    // Al cerrar la hoja se olvida lo quitado (en otra sesión de la hoja, sin elección del usuario).
+    useAnalysis().close()
+    await settle()
+    expect(useAnalysis().paceKept.value).toEqual([])
+  })
+
   it('al elegir a otro con la hoja abierta, en «Ritmo» el anterior sigue dibujado y el nuevo se ve destacado', async () => {
     attach()
     const playback = usePlaybackStore()
@@ -748,6 +781,10 @@ describe('honestidad', () => {
     await selectTab('pace')
     expect($('[data-testid="pace"]')!.dataset.axis).toBe('lap')
     expect($('[data-testid="pace-lap1"]')!.textContent).toMatch(/Vuelta 1|Lap 1/)
+    // La nota de «Ritmo» describe su leyenda (plana, con «hasta Vn»), no la del race trace (por grupos, de arriba abajo).
+    const note = $('[data-testid="pace-identify"]')!.textContent!
+    expect(note).toMatch(/hasta qué vuelta llega|which lap it reaches/)
+    expect(note).not.toMatch(/arriba abajo|top-to-bottom|junta aparte|groups them/)
     expect($('[data-testid="pace-no-time"]')!.textContent).toMatch(/2/)
   })
 
@@ -978,5 +1015,155 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     key.blur()
     await settle()
     expect(card.dataset.shown).toBe('false')
+  })
+
+  it('Esc con una capa de más prioridad encima (una pista de la guía): primero ella, y la ficha sigue a la vista', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    await withShortcuts()
+    await mountBoth()
+    await openSheet()
+    const card = $('[data-testid="analysis-card"]')!
+    $<HTMLButtonElement>('[data-group="stopped"] [data-car="23"]')!.focus()
+    await settle()
+    expect(card.dataset.shown).toBe('true')
+    let tipsOpen = true
+    offs.push(registerEscape(ESC_PRIORITY.tips, { active: () => tipsOpen, run: () => (tipsOpen = false) }))
+    const esc = () => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    esc()
+    await settle()
+    expect(tipsOpen).toBe(false)
+    expect(card.dataset.shown).toBe('true')
+    esc()
+    await settle()
+    expect(card.dataset.shown).toBe('false')
+    expect(sheetEl()).not.toBeNull()
+  })
+
+  it('con «Sin spoilers» y sin ver todos los pasos por meta, nadie «Sin vueltas en los datos»: van al final de «De arriba abajo»', async () => {
+    attach(groupsRace())
+    // A los 130 s: NOR y VER han cruzado la 2; los demás también (nadie se ha detenido aún).
+    rt.clock.seek(rt.clock.startMs + 130_000)
+    await mountBoth()
+    await openSheet()
+    expect(groups().map((g) => g.dataset.group)).toEqual(['running'])
+    expect($$('[data-testid="analysis-legend-nodata"]')).toHaveLength(0)
+    const running = keysOf('running')
+    expect(running.slice(0, 5).sort()).toEqual(['1', '11', '23', '3', '5'])
+    expect(running).toContain('18')
+    expect(running).toHaveLength(rt.drivers.length)
+    // Con el reloj al final (todos los pasos a la vista), el grupo aparte.
+    rt.clock.seek(rt.clock.endMs)
+    await settle()
+    expect(groups().map((g) => g.dataset.group)).toEqual(['running', 'stopped', 'noLaps'])
+    expect($('[data-testid="analysis-legend-nodata"][data-car="18"]')).not.toBeNull()
+  })
+
+  it('al final de la reproducción, con «Sin spoilers», se ve todo: también un paso por meta posterior al final (regla de fin de los datos)', async () => {
+    // VER cruza la 5 a los 301,2 s, después del final de la reproducción (300,5 s); ALB dejó de cruzar tras la 3.
+    const base = groupsRace()
+    const S = base.manifest.session.playback.startMs
+    const session = { ...base, manifest: { ...base.manifest, session: { ...base.manifest.session, playback: { ...base.manifest.session.playback, endMs: S + 300_500 } } } }
+    attach(session)
+    expect(useAnalysis().noSpoilers.value).toBe(true)
+    await mountBoth()
+    await openSheet()
+    rt.clock.seek(S + 300_000)
+    await settle()
+    expect(useAnalysis().cutoffMs.value).toBe(S + 300_000)
+    // NOR va solo dos vueltas por delante del último paso de ALB: aún no cuenta como detenido.
+    expect(keysOf('stopped')).not.toContain('23')
+    rt.clock.seek(rt.clock.endMs)
+    await settle()
+    expect(rt.clock.timeMs).toBe(S + 300_500)
+    expect(useAnalysis().cutoffMs.value).toBe(Infinity)
+    expect(keysOf('stopped')).toEqual(['23', '5', '11'])
+  })
+
+  it('mientras el puntero está sobre la leyenda, su orden no cambia; al salir, el nuevo', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec = (running: string[]): ChartSpec => ({
+      x: [1, 2],
+      series: running.map((k, i) => ({ group: k, mark: 'line' as const, values: [i, i] })),
+      groups: running.map((k) => ({ ...base, key: k, label: `C${k}`.padEnd(3, 'X') })),
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+      legend: { running, stopped: [], noLaps: [] },
+    })
+    const chart = await mountSuspended(TzAnalysisChart, { props: { spec: spec(['1', '2', '3']), cursorX: null, label: 'gráfica', legendLabel: 'pilotos' } })
+    unmounts.push(() => chart.unmount())
+    const order = () => chart.findAll('[data-testid="analysis-legend-item"]').map((b) => b.attributes('data-car'))
+    const caption = chart.find('figcaption').element
+    expect(order()).toEqual(['1', '2', '3'])
+    caption.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    await chart.setProps({ spec: spec(['3', '1', '2']) })
+    await settle()
+    expect(order()).toEqual(['1', '2', '3'])
+    caption.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+    await settle()
+    expect(order()).toEqual(['3', '1', '2'])
+  })
+
+  it('con el dedo: mantener pulsado un nombre de la leyenda fija su ficha (sin mostrar u ocultar); un toque corto lo muestra u oculta', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec: ChartSpec = {
+      x: [1, 2, 3],
+      series: [
+        { group: '1', mark: 'line', values: [0, 0, 0] },
+        { group: '18', mark: 'line', values: [3, null, null] },
+      ],
+      groups: [
+        { ...base, key: '1', label: 'AAA' },
+        { ...base, key: '18', label: 'BBB', stopped: true },
+      ],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    }
+    const chart = await mountSuspended(TzAnalysisChart, {
+      props: { spec, cursorX: null, label: 'gráfica', legendLabel: 'pilotos' },
+      attachTo: document.body,
+    })
+    unmounts.push(() => chart.unmount())
+    const card = () => chart.find('[data-testid="analysis-card"]').element as HTMLElement
+    const key = chart.find('[data-car="18"]').element as HTMLButtonElement
+    const touch = (type: string, x = 10) =>
+      key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: 10 }))
+
+    // Toque corto: muestra u oculta, sin ficha.
+    touch('pointerdown')
+    touch('pointerup')
+    key.click()
+    await settle()
+    expect(chart.emitted('toggle')).toEqual([['18']])
+    expect(card().dataset.shown).toBe('false')
+
+    // Pulsación larga: la ficha fija, en la vuelta de su último dato; el clic que la sigue no muestra ni oculta.
+    touch('pointerdown')
+    await new Promise((r) => setTimeout(r, 600))
+    await settle()
+    expect(card().dataset.shown).toBe('true')
+    expect(card().dataset.mode).toBe('pinned')
+    expect(card().textContent).toMatch(/BBB/)
+    touch('pointerup')
+    key.click()
+    await settle()
+    expect(chart.emitted('toggle')).toHaveLength(1)
+
+    // Si el dedo se mueve (desplaza la leyenda), no es una pulsación larga.
+    ;(chart.find('[data-testid="analysis-card-close"]').element as HTMLButtonElement).click()
+    await settle()
+    touch('pointerdown')
+    touch('pointermove', 40)
+    await new Promise((r) => setTimeout(r, 600))
+    await settle()
+    expect(card().dataset.shown).toBe('false')
   })
 })

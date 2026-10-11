@@ -23,7 +23,8 @@ describe('textos de los momentos: cifras del motor', () => {
     expect(text(m, 'pick')).toContain(`${JUMP_LEAD_MS / 1000} s`)
     expect(text(m, 'jump.filterHint')).toContain(`${JUMP_LEAD_MS / 1000} s`)
     // La lista de neutralizaciones y mensajes (D49): los de una misma clase a menos de RC_MERGE_MS cuentan como uno.
-    expect(text(m, 'others.basis')).toContain(`${RC_MERGE_MS / 1000} s`)
+    expect(text(m, 'others.basis.all')).toContain(`${RC_MERGE_MS / 1000} s`)
+    expect(text(m, 'others.basis.raceControl')).toContain(`${RC_MERGE_MS / 1000} s`)
     // Comandos de la paleta (ítem 14b).
     for (const key of ['cmd.duel.none', 'cmd.duel.noneCar', 'cmd.duel.nonePair']) {
       expect(text(m, key)).toContain(`${DUEL_MAX_GAP_MS / 1000} s`)

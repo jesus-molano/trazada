@@ -5,6 +5,7 @@ import TzLeaderboard from '~/components/TzLeaderboard.vue'
 import { LEADERBOARD_INTERVAL_MS, RANK_ANNOUNCE_INTERVAL_MS } from '~/composables/useLeaderboard'
 import { RANK_CHANGE_TTL_MS } from '~/engine/leaderboard/changes'
 import type { LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { leaderboardStats } from '~/replay/debug'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
@@ -260,6 +261,18 @@ describe('TzLeaderboard: clasificación animada (ítem 8)', () => {
     await live.frame()
     expect(w.findAll('[data-testid="rank-change"]')).toHaveLength(0)
     expect(w.find('[data-testid="rank-live"]').text()).toBe('')
+  })
+
+  it('cada cálculo se mide, pero su entrada de User Timing se borra (sin tope, una carrera a ×1 dejaría decenas de miles)', async () => {
+    const measure = vi.spyOn(performance, 'measure')
+    const live = liveRuntime(standings([A, B, C]))
+    usePlaybackStore().attach(live.rt)
+    await mountSuspended(TzLeaderboard)
+    const before = leaderboardStats.updates
+    for (let i = 0; i < 5; i++) await live.frame()
+    expect(leaderboardStats.updates - before).toBe(5)
+    expect(measure.mock.calls.filter(([name]) => name === 'tz:leaderboard').length).toBeGreaterThanOrEqual(5)
+    expect(performance.getEntriesByName('tz:leaderboard')).toHaveLength(0)
   })
 
   it('a ×16, flechas sí pero sin deslizar ni destello', async () => {

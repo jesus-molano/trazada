@@ -87,7 +87,23 @@ test('a 1440 px, solo el icono (la cabecera cabe en una fila); el nombre y el t�
   expect(layers.filter((n) => /weather|wind|viento|meteo/i.test(n))).toEqual([])
 })
 
-test('a 1680 px, el aire y la pista; a 1920 px, también la lluvia y el viento (siempre el principio del nombre)', async ({ page, baseURL }) => {
+/**
+ * La cabecera: su nivel de compactación (`data-fit`, useHeaderFit) y si el título se ve entero, tras un frame. Con la
+ * escena en pausa nada pide frames, y sin frames el navegador sin pantalla no entrega el ResizeObserver de un cambio de
+ * tamaño de la ventana (una ventana de verdad se repinta al cambiar de tamaño).
+ */
+function header(page: Page): Promise<{ level: string; titleWhole: boolean }> {
+  return page.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+    const title = document.querySelector<HTMLElement>('[data-testid="replay-title"]')!
+    return {
+      level: title.parentElement!.getAttribute('data-fit') ?? '',
+      titleWhole: title.scrollWidth <= title.clientWidth + 1,
+    }
+  })
+}
+
+test('a 1680 px, el aire y la pista; desde 1920 px, también la lluvia y el viento si caben (siempre el principio del nombre)', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 1680, height: 900 })
   await openReplay(page, baseURL)
   await expect(chip(page).locator('[data-piece="air"]')).toHaveText(/^Aire 23,7 °C$/)
@@ -101,7 +117,20 @@ test('a 1680 px, el aire y la pista; a 1920 px, también la lluvia y el viento (
   const [air, track] = visible.split(/ ?·? ?(?=Pista)/)
   expect(name.startsWith(`${air} · ${track}`)).toBe(true)
 
+  // A 1920 px, la lluvia y el viento solo si caben: el título manda (D44). Si no caben, la cabecera pasa a su nivel 1, el
+  // que los esconde, y el título se ve entero. useHeaderFit mide en el frame siguiente al cambio de tamaño: hasta
+  // entonces el título puede salir acortado.
   await page.setViewportSize({ width: 1920, height: 1080 })
+  await expect.poll(async () => (await header(page)).titleWhole).toBe(true)
+  const wideShown = !(await header(page)).level.split(' ').includes('1')
+  for (const piece of ['rain', 'wind']) {
+    const loc = chip(page).locator(`[data-piece="${piece}"]`)
+    await (wideShown ? expect(loc).toBeVisible() : expect(loc).toBeHidden())
+  }
+
+  // Con sitio de sobra, las cuatro.
+  await page.setViewportSize({ width: 2560, height: 1080 })
+  await expect.poll(() => header(page)).toEqual({ level: '', titleWhole: true })
   for (const piece of ['air', 'track', 'rain', 'wind']) await expect(chip(page).locator(`[data-piece="${piece}"]`)).toBeVisible()
   await expect(chip(page).locator('[data-piece="rain"]')).toHaveText('Sin lluvia')
   await expect(chip(page).locator('[data-piece="wind"]')).toHaveText(/^Viento \d+,\d m\/s$/)

@@ -10,10 +10,10 @@
  * con el color de B en la comparación (`--tz-compare-b`, no el del equipo: no se confunde con el coche de verdad) y la
  * opacidad de `--tz-ghost-opacity`. Dos mallas sueltas y solo una visible: 1 draw call (0 sin fantasma). Sin niebla,
  * sin escribir profundidad y después de los coches (renderOrder 12): un coche de verdad delante lo tapa. No recibe
- * clics (su raycast no hace nada): un clic sobre él llega al coche de debajo. Lee la comparación en cada render, sin
- * reactividad: el cálculo del frame lo comparte con el panel (`rt.ext(COMPARE_EXT)`, memoizado).
+ * clics (su raycast no hace nada): un clic sobre él llega al coche de debajo. Lee la comparación antes de cada render
+ * (`useSceneFrame`), sin reactividad: el cálculo del frame lo comparte con el panel (`rt.ext(COMPARE_EXT)`, memoizado).
  */
-import { useLoop, useTres } from '@tresjs/core'
+import { useTres } from '@tresjs/core'
 import {
   BufferAttribute,
   BufferGeometry,
@@ -28,6 +28,7 @@ import { buildCar, CAR_DIM, CAR_PARTS, type CarPart } from '~/engine/car/carGeom
 import { carSizeScale, nextDetail, screenLengthPx } from '~/engine/car/carLod'
 import { buildWedge } from '~/engine/car/wedgeGeometry'
 import { COMPARE_EXT, createCompare } from '~/engine/compare/session'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { carPose } from '~/engine/replay/carPose'
 import { newPlaceScratch, pitSpan, placeSample } from '~/engine/replay/place'
 import type { CircuitModel } from '~/engine/track/circuit'
@@ -151,8 +152,7 @@ function hide(state: string) {
 }
 
 const { sizes } = useTres()
-const { onBeforeRender } = useLoop()
-onBeforeRender(({ camera }) => {
+useSceneFrame(({ camera }) => {
   const a = playback.selectedCar
   const b = compare.compareCar
   if (!a || !b || !compare.comparing) return hide('off')
@@ -171,7 +171,7 @@ onBeforeRender(({ camera }) => {
   const yInv = 1 / Math.max(1e-3, props.yScale)
   const y = pose.y + LIFT_M * yInv
   // Tamaño visual y nivel de detalle como los coches (real de cerca; con un mínimo en pantalla de lejos).
-  const cam = camera.value as PerspectiveCamera | undefined
+  const cam = camera as PerspectiveCamera | undefined
   const dist = cam ? cam.position.distanceTo(world.set(pose.x, y * props.yScale, pose.z)) : Infinity
   const k = carSizeScale(dist)
   const projY = cam?.projectionMatrix.elements[5] ?? 1

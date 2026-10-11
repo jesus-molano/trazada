@@ -110,12 +110,12 @@
           "none": "Sin dato: ninguna bandera a cuadros en esta sesión"
         },
         "pit": {
-          "next": "Siguiente parada",
-          "prev": "Parada anterior",
-          "none": "Sin dato: ninguna parada en esta sesión",
-          "nextCar": "Siguiente parada de {driver}",
-          "prevCar": "Parada anterior de {driver}",
-          "noneCar": "Sin dato: ninguna parada de {driver} en esta sesión"
+          "next": "Siguiente entrada en boxes",
+          "prev": "Entrada en boxes anterior",
+          "none": "Sin dato: ninguna entrada en boxes en esta sesión",
+          "nextCar": "Siguiente entrada en boxes de {driver}",
+          "prevCar": "Entrada en boxes anterior de {driver}",
+          "noneCar": "Sin dato: ninguna entrada en boxes de {driver} en esta sesión"
         },
         "moment": {
           "next": "Siguiente momento",

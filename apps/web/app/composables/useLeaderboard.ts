@@ -55,7 +55,9 @@ const NO_CHANGES: ReadonlyMap<string, RankBadge> = new Map()
 
 /**
  * Filas del leaderboard: se recalculan a ~6,7 Hz con reproducción y al momento tras un seek o en pausa.
- * Cada cálculo se mide con `performance.measure('tz:leaderboard')`.
+ * Cada cálculo se mide con `performance.measure('tz:leaderboard')` (se ve en una grabación del panel Performance) y la
+ * entrada se borra al momento: el búfer de User Timing no tiene tope y una carrera a ×1 dejaría decenas de miles. Para
+ * los e2e y el bench están las últimas duraciones en `leaderboardStats`, con tope.
  *
  * Además (ítem 8), los cambios de puesto entre dos órdenes calculados seguidos (`RankChangeTracker`): flechas que
  * duran unos segundos de pared, un aviso aria-live como mucho cada RANK_ANNOUNCE_INTERVAL_MS y si la reordenación
@@ -172,6 +174,7 @@ export function useLeaderboard(): LeaderboardView {
     const next = rt.leaderboard.compute(t, rt.model.states)
     const end = performance.now()
     performance.measure('tz:leaderboard', { start, end })
+    performance.clearMeasures('tz:leaderboard')
     leaderboardStats.updates++
     leaderboardStats.durations.push(end - start)
     if (leaderboardStats.durations.length > STATS_WINDOW) leaderboardStats.durations.shift()
