@@ -219,6 +219,16 @@ for (const vp of [
       await expect(page.getByTestId('estimated-trackStatus-why-panel')).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(page.getByTestId('estimated-trackStatus-why-panel')).toBeHidden()
+
+      // Con la hoja de análisis abierta, la escena está tapada: sus etiquetas no flotan sobre la hoja (la del estado
+      // de pista, en la cabecera, sigue). Al cerrarla, vuelven.
+      await page.getByTestId('analysis-button').click()
+      await expect(page.getByTestId('analysis-sheet')).toBeVisible()
+      await expect(positions).toBeHidden()
+      await expect(track).toBeVisible()
+      await page.getByTestId('analysis-close').click()
+      await expect(page.getByTestId('analysis-sheet')).toBeHidden()
+      await expect(positions).toBeVisible()
     })
 
     test('el replay ocupa la ventana exacta: sin cabecera global, con el dock y el disclaimer a la vista', async ({ page }) => {

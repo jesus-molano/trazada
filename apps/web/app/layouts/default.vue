@@ -53,8 +53,9 @@ async function toggleLocale() {
 
 /*
  * Piano bajo la marca (D47): diez bloques rojo/blanco sobre el borde de la cabecera. Decorativo (sin texto ni
- * eventos) y en uno de sus dos únicos sitios; lo vigila tokens.test.ts. Con colores forzados desaparece, y no pasa
- * nada: no dice nada que no diga la marca.
+ * eventos) y en uno de sus únicos sitios (bajo la marca, aquí y en la del replay, y en la pestaña activa del
+ * análisis); lo vigila tokens.test.ts. Con colores forzados desaparece, y no pasa nada: no dice nada que no diga la
+ * marca.
  */
 .tz-header::after {
   content: '';

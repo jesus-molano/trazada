@@ -141,10 +141,22 @@ describe('tokens de diseño', () => {
   })
 
   it('el piano (kerb) solo bajo la marca y en la pestaña activa del análisis: no se extiende como disfraz (D47)', () => {
-    // La marca está en la cabecera de la portada (layouts/default.vue) y en la del replay (TzBrandBar, D44).
-    const allowed = ['components/TzBrandBar.vue', 'components/replay-overlays/TzAnalysis.vue', 'layouts/default.vue']
-    // Comprueba el uso: vale con cero usos (las piezas lo adoptan en su propio commit) y nunca fuera de esos dos.
-    expect(usersOf('--tz-kerb').filter((f) => !allowed.includes(f))).toEqual([])
+    // La marca está en la cabecera de la portada (layouts/default.vue) y en la del replay (TzBrandBar, D44). En cada
+    // fichero, una sola regla: la franja bajo la marca o el borde de la pestaña elegida. Ni más ficheros ni más reglas.
+    const KERB_RULES: Record<string, string[]> = {
+      'components/TzBrandBar.vue': ['.tz-brandbar__brand::after'],
+      'components/replay-overlays/TzAnalysis.vue': [".tz-analysis__tab[aria-selected='true']"],
+      'layouts/default.vue': ['.tz-header::after'],
+    }
+    expect(usersOf('--tz-kerb')).toEqual(Object.keys(KERB_RULES).sort())
+    for (const [file, selectors] of Object.entries(KERB_RULES)) {
+      const style = /<style[^>]*>([\s\S]*?)<\/style>/.exec(stripComments(readFileSync(join(APP, file), 'utf8')))?.[1] ?? ''
+      // Reglas sin anidar (las de dentro de un @media también salen, con su selector).
+      const rules = [...style.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter((m) => /var\(\s*--tz-kerb/.test(m[2]!))
+        .map((m) => m[1]!.trim())
+      expect(rules, file).toEqual(selectors)
+    }
   })
 
   it('el color de señal solo en tokens.css y base.css: foco, selección de texto y traza de velocidad (D47)', () => {

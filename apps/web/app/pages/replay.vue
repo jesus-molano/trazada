@@ -240,6 +240,15 @@ onBeforeUnmount(() => {
   --replay-over-top: calc(var(--tz-space-12) + var(--tz-space-2));
 }
 
+/*
+ * Con la hoja de análisis abierta, la escena está tapada entera (`rt.setSceneHidden`): sus etiquetas «Estimado» no
+ * describen nada que se vea y no flotan sobre la hoja (con la hoja, la cabecera pasa por encima de ella, por su
+ * botón desplegado). Al cerrarla vuelven; lo estimado de cada pestaña lleva su propia etiqueta.
+ */
+.tz-replay:has([data-testid='analysis-sheet']) {
+  --replay-over-display: none;
+}
+
 /* Base 0 y crece hasta su texto: cede sitio antes que nadie (con «…» y el texto entero en su título). */
 .tz-replay__title {
   flex: 1 1 0;

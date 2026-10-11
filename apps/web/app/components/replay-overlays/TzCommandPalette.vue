@@ -10,7 +10,8 @@
  * - Diálogo modal con un combobox y su lista (patrón de WAI-ARIA con `aria-activedescendant`): el foco se queda en el
  *   campo; ↑/↓ eligen, Enter ejecuta, Tab completa. Mientras está abierta, las teclas no llegan a los atajos del replay.
  * - Cada sugerencia dice qué hará antes de pulsar Enter; lo que no se puede, deshabilitado con su motivo («sin dato»).
- *   Si el detalle enseña una estimación (el instante GPS de un adelantamiento), lleva su etiqueta «Estimado».
+ *   Si el detalle enseña una estimación (el instante GPS de un adelantamiento), lleva su etiqueta «Estimado»
+ *   (`plain`: una opción del listbox no admite un botón dentro; la explicación va en el título y en el texto oculto).
  *   Si lleva a un instante, abajo se ve qué pasaba entonces (la vista previa del timeline, ítem 16).
  * - Nada irreversible: mover el reloj, elegir, seguir o comparar, la velocidad.
  * - Entrada con los tokens de movimiento (nada con movimiento reducido). DOM fuera del bucle de frames: la lista se
@@ -340,7 +341,7 @@ export const order = 15
               <span class="tz-palette__title">{{ tx(s.title) }}</span>
               <span v-if="s.disabled" class="tz-palette__reason" data-testid="palette-reason">{{ tx(s.disabled) }}</span>
               <span v-else-if="s.detail" class="tz-palette__detail">{{ tx(s.detail) }}</span>
-              <TzEstimated v-if="s.estimated && !s.disabled" class="tz-palette__estimated" :field="s.estimated" />
+              <TzEstimated v-if="s.estimated && !s.disabled" class="tz-palette__estimated" :field="s.estimated" plain />
             </span>
           </li>
         </ul>

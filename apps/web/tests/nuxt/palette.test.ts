@@ -313,6 +313,8 @@ describe('momentos (ítem 14b): adelantamientos y duelos', () => {
     expect(opt.textContent).toMatch(/sin spoilers|no spoilers/)
     expect(opt.textContent).not.toMatch(/VER|NOR/)
     expect(opt.querySelector('[data-testid="estimated"][data-field="overtakeTime"]')).not.toBeNull()
+    // Una opción del listbox no lleva controles dentro (el chip «Estimado» pulsable sería interactivo anidado).
+    expect(opt.querySelector('button, a, input, [tabindex]')).toBeNull()
     expect(opt.querySelector('.tz-palette__team')).toBeNull()
 
     await press('Enter')

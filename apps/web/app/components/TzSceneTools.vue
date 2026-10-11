@@ -14,7 +14,8 @@
  *
  * Las etiquetas «Estimado» de la escena no van en la fila de la cabecera (la partían en dos): flotan justo debajo de
  * ella, sobre el mapa (lo que describen), a la izquierda de la columna derecha y siempre a la vista; cada una se pulsa
- * para ver por qué es estimada. La página da su sitio con `--replay-over-right` (pages/replay.vue).
+ * para ver por qué es estimada. La página da su sitio con `--replay-over-right` (pages/replay.vue) y las quita
+ * mientras la hoja de análisis tapa la escena entera (no describen nada a la vista ni flotan sobre la hoja).
  */
 import type { IconName } from '~/design/icons'
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
@@ -291,7 +292,8 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   position: absolute;
   top: calc(100% + var(--replay-over-top, var(--tz-space-1)));
   right: var(--replay-over-right, 0);
-  display: flex;
+  /* La página las quita mientras la hoja de análisis tapa la escena (`--replay-over-display`). */
+  display: var(--replay-over-display, flex);
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--tz-space-1);
