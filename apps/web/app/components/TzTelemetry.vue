@@ -8,6 +8,9 @@
  * Dos vistas (ítem 1, D31): «En vivo» (lo anterior) y «Comparar» (TzCompare: este coche frente a otro, con la
  * diferencia por distancia, las trazas y el fantasma). El botón de la cabecera cambia de una a otra sin sumar alto
  * al panel; Mayús+clic en la clasificación abre la comparación con ese coche y Esc la cierra (prioridad 60).
+ *
+ * Jerarquía (D44): la cabecera lleva un tinte del color del equipo (nunca como color de texto: no llega a 4,5:1) y las
+ * cifras que se leen de un vistazo (velocidad y marcha) van grandes; su valor es la muestra cruda, nunca se anima.
  */
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
@@ -169,7 +172,7 @@ watch(comparing, (on) => {
     v-if="driver"
     class="tz-tel"
     :aria-label="t('telemetry.title', { tla: driver.tla })"
-    :style="{ '--team': driver.color }"
+    :style="{ '--team': driver.color || 'var(--tz-team-unknown)' }"
     data-testid="telemetry"
     :data-car="driver.number"
   >
@@ -196,10 +199,18 @@ watch(comparing, (on) => {
         data-testid="follow-toggle"
         @click="playback.setFollowing(!playback.following)"
       >
-        {{ playback.following ? t('telemetry.overview') : t('telemetry.follow') }}
+        <TzIcon :name="playback.following ? 'overview' : 'follow'" size="sm" />
+        <span>{{ playback.following ? t('telemetry.overview') : t('telemetry.follow') }}</span>
       </button>
-      <button type="button" class="tz-tel__close" :aria-label="t('telemetry.close')" @click="playback.selectCar(null)">
-        ×
+      <button
+        type="button"
+        class="tz-iconbtn tz-tel__close"
+        :aria-label="t('telemetry.close')"
+        :title="t('telemetry.close')"
+        data-testid="telemetry-close"
+        @click="playback.selectCar(null)"
+      >
+        <TzIcon name="close" size="sm" />
       </button>
     </header>
 
@@ -210,17 +221,17 @@ watch(comparing, (on) => {
       <p v-if="!hasSample" class="tz-tel__nodata" data-testid="telemetry-nodata">{{ t('telemetry.noData') }}</p>
 
       <dl class="tz-tel__grid" :class="{ 'is-stale': !hasSample }">
-        <div class="tz-tel__cell tz-tel__cell--big">
+        <div class="tz-tel__cell tz-tel__cell--big tz-tel__cell--wide">
           <dt>{{ t('telemetry.speed') }}</dt>
-          <dd><span ref="speedEl" class="tz-tabular" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
+          <dd><span ref="speedEl" class="tz-num tz-num--xl" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
         </div>
-        <div class="tz-tel__cell">
+        <div class="tz-tel__cell tz-tel__cell--big">
           <dt>{{ t('telemetry.gear') }}</dt>
-          <dd ref="gearEl" class="tz-tabular" data-testid="tel-gear">—</dd>
+          <dd><span ref="gearEl" class="tz-num tz-num--xl" data-testid="tel-gear">—</span></dd>
         </div>
         <div class="tz-tel__cell">
           <dt>{{ t('telemetry.rpm') }}</dt>
-          <dd ref="rpmEl" class="tz-tabular" data-testid="tel-rpm">—</dd>
+          <dd><span ref="rpmEl" class="tz-num tz-num--md" data-testid="tel-rpm">—</span></dd>
         </div>
         <div class="tz-tel__cell tz-tel__cell--wide">
           <dt>{{ t('telemetry.throttle') }}</dt>
@@ -233,13 +244,13 @@ watch(comparing, (on) => {
           <dt>{{ t('telemetry.brake') }}</dt>
           <dd ref="brakeEl" class="tz-tel__brake" data-on="none" :title="t('telemetry.brakeHint')" data-testid="tel-brake">—</dd>
         </div>
-        <div class="tz-tel__cell tz-tel__cell--full">
+        <div class="tz-tel__cell tz-tel__cell--wide">
           <dt>{{ t('telemetry.drsLabel') }}</dt>
           <dd v-if="drsChannel" ref="drsEl" class="tz-tel__drs" data-state="none" data-testid="tel-drs">—</dd>
           <dd v-else class="tz-tel__drs-na" data-testid="tel-drs-unavailable">
             {{ t('telemetry.drsUnavailable', { season }) }}
             <details class="tz-tel__why">
-              <summary>{{ t('telemetry.drsWhy') }}</summary>
+              <summary class="tz-link">{{ t('telemetry.drsWhy') }}</summary>
               <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
             </details>
           </dd>
@@ -271,35 +282,44 @@ watch(comparing, (on) => {
 .tz-tel {
   /* Prioridad sobre la dirección de carrera: la telemetría (con sus gráficas) no encoge; si no cabe, scroll. */
   flex: 0 0 auto;
-  max-height: calc(100% - var(--replay-rc-min, 150px) - var(--tz-space-3));
+  max-height: calc(100% - var(--replay-rc-min, 150px) - var(--tz-panel-gap));
   min-height: 0;
   overflow-y: auto;
-  padding: var(--tz-space-3);
+  padding: 0 var(--tz-panel-pad) var(--tz-space-3);
   border: 1px solid var(--tz-border);
-  border-top: 3px solid var(--team);
+  border-top: 4px solid var(--team);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
   box-shadow: var(--tz-shadow-panel);
+  accent-color: var(--tz-accent);
 }
 
 .tz-tel__estimated {
   margin: 0 0 var(--tz-space-2);
 }
 
+/* Cabecera con un tinte del color del equipo (≤ --tz-team-tint; sin color-mix, sin tinte). */
 .tz-tel__head {
   display: flex;
   align-items: center;
   gap: var(--tz-space-2);
-  margin-bottom: var(--tz-space-2);
+  margin: 0 calc(-1 * var(--tz-panel-pad)) var(--tz-space-3);
+  padding: var(--tz-space-2) var(--tz-panel-pad);
+  border-bottom: 1px solid var(--tz-border);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--team) var(--tz-team-tint), transparent), transparent 70%);
 }
 
 .tz-tel__tla {
   font-family: var(--tz-font-mono);
+  font-size: var(--tz-text-xl);
   font-weight: var(--tz-weight-bold);
+  letter-spacing: var(--tz-tracking-mono);
+  line-height: var(--tz-leading-none);
 }
 
 .tz-tel__name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   color: var(--tz-text-muted);
   font-size: var(--tz-text-xs);
@@ -308,28 +328,48 @@ watch(comparing, (on) => {
 }
 
 .tz-tel__compare,
-.tz-tel__follow,
-.tz-tel__close {
-  padding: 2px var(--tz-space-2);
+.tz-tel__follow {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--tz-space-1);
+  height: 28px;
+  padding: 0 var(--tz-space-2);
   border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-sm);
   background: transparent;
   font-size: var(--tz-text-xs);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-/* Solo icono (con nombre accesible y título): el mismo alto que «Seguir», sin sumar una fila al panel. */
-.tz-tel__compare {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  align-self: stretch;
+/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
+.tz-tel__compare::after,
+.tz-tel__follow::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
+/* Activado (comparando, siguiendo): placa maciza de pintura (D47). */
 .tz-tel__compare[aria-pressed='true'],
 .tz-tel__follow[aria-pressed='true'] {
   border-color: var(--tz-accent);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+}
+
+.tz-tel__close {
+  width: 28px;
+  height: 28px;
+}
+
+@media (hover: hover) {
+  .tz-tel__compare:hover:not([aria-pressed='true']),
+  .tz-tel__follow:hover:not([aria-pressed='true']) {
+    border-color: var(--tz-accent);
+  }
 }
 
 .tz-tel__nodata {
@@ -340,9 +380,9 @@ watch(comparing, (on) => {
 
 .tz-tel__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--tz-space-2);
-  margin: 0 0 var(--tz-space-2);
+  margin: 0 0 var(--tz-space-3);
 }
 
 .tz-tel__grid.is-stale {
@@ -360,23 +400,20 @@ watch(comparing, (on) => {
   font-size: var(--tz-text-md);
 }
 
+/* Velocidad y marcha: las cifras grandes (muestra cruda; «270 km/h» en una línea). */
 .tz-tel__cell--big dd {
-  font-size: var(--tz-text-xl);
-  /* «261 km/h» en una línea: el panel es estrecho y cada línea de más empuja las gráficas fuera. */
+  margin-top: var(--tz-space-0-5);
   white-space: nowrap;
 }
 
 .tz-tel__cell--big small {
+  font-family: var(--tz-font-sans);
   font-size: var(--tz-text-2xs);
   color: var(--tz-text-muted);
 }
 
 .tz-tel__cell--wide {
   grid-column: span 2;
-}
-
-.tz-tel__cell--full {
-  grid-column: 1 / -1;
 }
 
 .tz-tel__bar {
@@ -407,11 +444,13 @@ watch(comparing, (on) => {
   width: 14px;
   height: 14px;
   margin-top: 3px !important;
+  border: 1px solid var(--tz-border-strong);
   border-radius: 50%;
   background: var(--tz-surface-3);
 }
 
 .tz-tel__brake[data-on='true'] {
+  border-color: var(--tz-danger);
   background: var(--tz-danger);
 }
 
@@ -433,12 +472,19 @@ watch(comparing, (on) => {
   display: inline;
 }
 
+/* «¿Por qué?»: desplegable con aspecto de enlace (.tz-link, pintura subrayada), sin el triángulo nativo. */
 .tz-tel__why summary {
+  position: relative;
   display: inline;
   margin-left: var(--tz-space-1);
-  color: var(--tz-accent-strong);
-  cursor: pointer;
   list-style: none;
+}
+
+/* Zona táctil de --tz-hit-min de alto con puntero grueso, sin mover el layout. */
+.tz-tel__why summary::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
 .tz-tel__why summary::-webkit-details-marker {
@@ -447,7 +493,7 @@ watch(comparing, (on) => {
 
 .tz-tel__hint {
   display: block;
-  margin-top: 2px;
+  margin-top: var(--tz-space-0-5);
   font-size: var(--tz-text-2xs);
   color: var(--tz-text-faint);
 }

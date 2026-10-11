@@ -277,13 +277,15 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.stints')
   background: var(--tz-surface-2);
 }
 
+/* Con un halo del color del fondo: sobre el neumático duro (blanco), la pintura sola apenas se ve (D47). */
 .tz-stints.has-cursor .tz-stints__track::after {
   content: '';
   position: absolute;
   top: -2px;
   bottom: -2px;
   left: var(--cursor);
-  border-left: 2px solid var(--tz-accent);
+  border-left: 2px solid var(--tz-accent-strong);
+  box-shadow: 0 0 0 1px var(--tz-bg);
   pointer-events: none;
 }
 

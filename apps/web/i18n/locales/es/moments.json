@@ -61,6 +61,39 @@
       "titleSoFar": "Adelantamientos confirmados hasta ahora («Sin spoilers»): {n}. El instante de cada marca es aproximado (GPS).",
       "tick": "V{lap}: {passer} adelanta a {passed} (instante aproximado, GPS)",
       "tickNoData": "V{lap}: {passer} adelanta a {passed} (momento exacto: sin dato; marca al inicio de la vuelta)"
+    },
+    "cmd": {
+      "onlyRace": "Solo en carrera y sprint: en libres y clasificación no hay un orden en pista que comparar vuelta a vuelta",
+      "overtake": {
+        "next": "Siguiente adelantamiento",
+        "prev": "Adelantamiento anterior",
+        "nextCar": "Siguiente adelantamiento con {driver}",
+        "prevCar": "Adelantamiento anterior con {driver}",
+        "nextPair": "Siguiente adelantamiento entre {a} y {b}",
+        "prevPair": "Adelantamiento anterior entre {a} y {b}",
+        "none": "Sin dato: ningún adelantamiento confirmado en la línea de meta en esta sesión (la vuelta 1 no cuenta)",
+        "noneCar": "Sin dato: ningún adelantamiento confirmado en la línea de meta con {driver} en esta sesión (la vuelta 1 no cuenta)",
+        "nonePair": "Sin dato: ningún adelantamiento confirmado en la línea de meta entre {a} y {b} en esta sesión (la vuelta 1 no cuenta)",
+        "detail": "V{lap}: {passer} adelanta a {passed} (≈ reloj {clock}) · queda seleccionado {select}",
+        "detailNoTime": "V{lap}: {passer} adelanta a {passed} · momento exacto: sin dato, al inicio de la vuelta (reloj {clock}) · queda seleccionado {select}",
+        "hidden": "V{lap} (≈ reloj {clock}) · sin spoilers: quién, al llegar",
+        "hiddenNoTime": "V{lap} · momento exacto: sin dato, al inicio de la vuelta (reloj {clock}) · sin spoilers: quién, al llegar"
+      },
+      "duel": {
+        "next": "Siguiente duelo",
+        "prev": "Duelo anterior",
+        "nextCar": "Siguiente duelo con {driver}",
+        "prevCar": "Duelo anterior con {driver}",
+        "nextPair": "Siguiente duelo entre {a} y {b}",
+        "prevPair": "Duelo anterior entre {a} y {b}",
+        "none": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s en esta sesión",
+        "noneCar": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s con {driver} en esta sesión",
+        "nonePair": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s entre {a} y {b} en esta sesión",
+        "noTrackStatus": "Sin dato de estado de pista por vuelta: no se pueden descartar las vueltas con SC o VSC, así que no se buscan duelos",
+        "detail": "Desde la V{lap}: {chaser} tras {leader} a menos de 1 s (reloj {clock}) · compara a {select} con {rival}",
+        "detailNoCompare": "Desde la V{lap}: {chaser} tras {leader} a menos de 1 s (reloj {clock}) · queda seleccionado {select}",
+        "hidden": "Desde la V{lap} (reloj {clock}) · sin spoilers: quiénes, al llegar"
+      }
     }
   }
 }

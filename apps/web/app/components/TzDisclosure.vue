@@ -7,7 +7,8 @@
  * Si no cabe en la ventana (tablet, cabecera partida), se desplaza en horizontal hasta que quepa.
  * `name`: nombre accesible (y título) más largo que el texto visible, si hace falta ahorrar sitio; debe
  * empezar por el texto visible (WCAG 2.5.3).
- * `icon`: icono del registro en lugar de «ⓘ» (p. ej. `layers` para el menú «Capas» de las herramientas de escena).
+ * `icon`: icono del registro (por defecto, `info`: «ⓘ»; p. ej. `layers` para el menú «Capas» de las herramientas de
+ * escena).
  * Hueco `label` (opcional): el texto visible con marcado propio (p. ej. piezas que se ocultan en pantallas estrechas,
  * como el chip de meteorología); `name` sigue siendo el nombre accesible y debe empezar por lo que se vea.
  * `tools`: el panel lleva controles, no texto. Su contenido pone su propio rol y nombre (un `role="group"`), así que
@@ -84,12 +85,7 @@ onBeforeUnmount(() => {
       :data-testid="testid"
       @click="toggle"
     >
-      <TzIcon v-if="icon" :name="icon" size="sm" class="tz-disclosure__icon" />
-      <svg v-else class="tz-disclosure__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        <circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5" />
-        <rect x="7.25" y="7" width="1.5" height="4.5" rx="0.75" fill="currentColor" />
-        <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
-      </svg>
+      <TzIcon :name="icon ?? 'info'" size="sm" class="tz-disclosure__icon" />
       <slot name="label"><span>{{ label }}</span></slot>
     </button>
     <div
@@ -116,10 +112,11 @@ onBeforeUnmount(() => {
 }
 
 .tz-disclosure__btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
-  height: 26px;
+  height: 28px;
   padding: 0 var(--tz-space-2);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-sm);
@@ -129,6 +126,19 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
+.tz-disclosure__btn::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+@media (hover: hover) {
+  .tz-disclosure__btn:hover:not([aria-expanded='true']) {
+    border-color: var(--tz-border-strong);
+  }
 }
 
 .tz-disclosure__btn[aria-expanded='true'] {

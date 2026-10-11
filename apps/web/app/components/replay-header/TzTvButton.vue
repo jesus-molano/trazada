@@ -66,10 +66,11 @@ export const order = 20
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2));
 }
 
+/* Activado: placa maciza de pintura (D47); el texto y el icono, en --tz-accent-on. */
 .tz-tv-btn[aria-pressed='true'] {
   border-color: var(--tz-accent);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
 }
 
 .tz-tv-btn:active:not(:disabled) {

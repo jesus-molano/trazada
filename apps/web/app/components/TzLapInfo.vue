@@ -6,6 +6,8 @@
  * Debajo, los sectores de su última vuelta completada con sus colores (ítem 4, D34; los mismos que en la
  * clasificación): tiempo oficial, color y forma de la marca, estado en el título y para lectores de pantalla, y una
  * pista que explica cómo los calcula Trazada. Nunca una «mejor vuelta posible» (sería una estimación).
+ *
+ * Jerarquía (D44): la vuelta en curso y la última vuelta, en cifras medianas (`.tz-num`, sin animar su valor).
  */
 import { formatLapTime } from '~/engine/format/time'
 import { LapTimes } from '~/engine/timing/laps'
@@ -45,14 +47,14 @@ const sectorsTitle = computed(() => `${sectorText.lap(sectors.value)}\n${sectorT
   <dl class="tz-lap" data-testid="lap-info">
     <div class="tz-lap__cell">
       <dt>{{ t('telemetry.lap') }}</dt>
-      <dd class="tz-tabular" data-testid="lap-current">{{ info.lap ?? '—' }}</dd>
+      <dd><span class="tz-num tz-num--md" data-testid="lap-current">{{ info.lap ?? '—' }}</span></dd>
     </div>
     <div class="tz-lap__cell tz-lap__cell--wide">
       <dt>
         {{ t('telemetry.lastLap') }}<template v-if="info.lastLap"> ({{ info.lastLap }})</template>
       </dt>
       <dd>
-        <span class="tz-tabular" :class="{ 'is-deleted': info.deleted }" data-testid="lap-last">{{ lastText }}</span>
+        <span class="tz-num tz-num--md" :class="{ 'is-deleted': info.deleted }" data-testid="lap-last">{{ lastText }}</span>
         <span
           v-if="info.deleted"
           class="tz-lap__deleted"
@@ -215,8 +217,9 @@ const sectorsTitle = computed(() => `${sectorText.lap(sectors.value)}\n${sectorT
 }
 
 .tz-lap__toggle {
+  position: relative;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border);
+  border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-sm);
   background: transparent;
   font-family: var(--tz-font-sans);
@@ -224,8 +227,17 @@ const sectorsTitle = computed(() => `${sectorText.lap(sectors.value)}\n${sectorT
   cursor: pointer;
 }
 
+/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
+.tz-lap__toggle::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+/* Activado: placa maciza de pintura (D47). */
 .tz-lap__toggle[aria-pressed='true'] {
   border-color: var(--tz-accent);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
 }
 </style>

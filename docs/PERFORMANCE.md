@@ -144,6 +144,13 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 - **Por frame**: nada nuevo en la reactividad de Vue. Los momentos se precalculan una vez por sesión (`rt.ext`; ~6 ms en Japón en caliente, medido por el worker). La paleta solo trabaja al teclear, y el gesto del reloj hace como mucho un seek por frame.
 - **Escenario «todas las capas»** (`perf.spec.ts`, nuevo): cielo, estelas, calor y fantasma a la vez sobre Spa FP1, con el presupuesto de escena (< 30 draw calls, < 150.000 triángulos), sin niebla en las capas y sin renders en pausa. Anota el p50 y el p95 de los frames con la CPU ×4 («iPad aproximado», solo orientativo). **Pendiente tuyo** al cierre: el bench en el iPad con todas las capas y los gestos de dos dedos (`pnpm local --lan`).
 
+**Tanda 5 (H17: identidad «Asfalto y pintura», pulido de la portada y del replay y comandos de momentos). Pendiente de medir al cierre (Tanda 6).** Se integró con la verificación ligera, como la Tanda 4: el bench antes y después y los e2e van al cerrar la Tanda 6. Lo que se sabe sin medir:
+
+- **Escena**: las mismas capas, draw calls y triángulos (fuentes y CSS, más el layout propio del replay). Lo que cambia es el tamaño del lienzo: sin la cabecera global, la escena gana alto (a 1440×900 la cabecera del replay mide 48 px), así que el encuadre y la captura `@screenshot` cambian y hay más píxeles que rasterizar por frame. En SwiftShader eso puede subir un poco el p95; en una GPU de verdad, apenas.
+- **Página**: el grano del fondo son cuatro degradados estáticos que se pintan una vez (no se animan) y sin `backdrop-filter` en ningún sitio (el panel de carga lo perdió). Las microinteracciones de la portada solo mueven `transform` y opacidad con los tokens, y nada en el replay.
+- **Por frame**: nada nuevo en la reactividad de Vue. Los comandos de momentos usan el mismo precálculo que los botones del dock (`rt.ext`) y solo trabajan al teclear.
+- **Al cierre**: el bench en Spa FP1 y Japón a ×1 y ×16 contra la Tanda 4 (para separar el efecto del lienzo más alto) y, **pendiente tuyo**, en el iPad.
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.

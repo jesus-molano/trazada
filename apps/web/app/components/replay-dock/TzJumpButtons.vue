@@ -4,7 +4,9 @@
  * mensajes destacados de dirección de carrera (`stores/moments.ts`), o solo la clase elegida en la pestaña «Momentos».
  * Cada salto llega 5 s antes del momento. Teclas: coma (anterior) y punto (siguiente). Sin momento hacia ese lado, el
  * botón se deshabilita. El nombre accesible dice hacia dónde y entre cuáles; nunca qué pasa (sin spoilers).
- * Mientras están montados, la paleta de comandos (ítem 14) ofrece «siguiente/anterior momento» con los mismos destinos.
+ * Mientras están montados, la paleta de comandos (ítem 14) ofrece «siguiente/anterior momento» con los mismos destinos
+ * y, con el mismo precálculo, «siguiente adelantamiento», «duelo HAM»… (ítem 14b), sin spoilers si la hoja de análisis
+ * tiene «Sin spoilers».
  */
 import { registerCommandService } from '~/replay/commands'
 import { registerShortcut } from '~/replay/keys'
@@ -35,7 +37,11 @@ onMounted(() => {
   offKeys = [
     registerShortcut({ key: PREV_KEY }, () => moments.jump(-1)),
     registerShortcut({ key: NEXT_KEY }, () => moments.jump(1)),
-    registerCommandService('moments', { list: () => moments.targets() }),
+    registerCommandService(
+      'moments',
+      // «Sin spoilers» de la hoja de análisis, al leerlo (uno por runtime: `useAnalysis` lo crea si aún no existe).
+      moments.commandService(() => useAnalysis().noSpoilers.value),
+    ),
   ]
 })
 onBeforeUnmount(() => {

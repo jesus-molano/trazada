@@ -7,12 +7,16 @@
  * da el foco. Si el foco estaba en la pista, vuelve al botón. Un toque fuera también la cierra. Con la Popover
  * API (iPadOS/Safari 17+) el panel sube a la capa superior y ningún panel con scroll lo recorta; sin ella, es
  * un panel fijo. En ambos casos se coloca al abrir, dentro de la ventana, y sigue al botón si algo se desplaza.
+ *
+ * `plain` + hueco `button`: el botón es su contenido (p. ej. el chip «≈ Estimado: …» entero, que se pulsa para ver por
+ * qué), sin el aspecto de botón de icono; quien lo usa le da su forma. `label` sigue siendo el nombre accesible y
+ * tiene que empezar por el texto visible del botón (WCAG 2.5.3).
  */
 import type { IconName } from '~/design/icons'
 
 const props = withDefaults(
-  defineProps<{ label: string; text?: string; testid?: string; icon?: IconName; align?: 'start' | 'end' }>(),
-  { text: undefined, testid: 'hint', icon: 'info', align: 'start' },
+  defineProps<{ label: string; text?: string; testid?: string; icon?: IconName; align?: 'start' | 'end'; plain?: boolean }>(),
+  { text: undefined, testid: 'hint', icon: 'info', align: 'start', plain: false },
 )
 
 const open = ref(false)
@@ -111,14 +115,14 @@ onBeforeUnmount(() => {
     <button
       ref="button"
       type="button"
-      class="tz-iconbtn tz-hint__btn"
+      :class="plain ? 'tz-hint__trigger' : 'tz-iconbtn tz-hint__btn'"
       :aria-label="label"
       :aria-expanded="open"
       :aria-controls="panelId"
       :data-testid="testid"
       @click="setOpen(!open)"
     >
-      <TzIcon :name="icon" size="sm" />
+      <slot name="button"><TzIcon :name="icon" size="sm" /></slot>
     </button>
     <span
       v-show="open"
@@ -144,6 +148,30 @@ onBeforeUnmount(() => {
 .tz-hint__btn {
   width: var(--tz-space-6);
   height: var(--tz-space-6);
+}
+
+/* `plain`: el botón es su contenido, sin forma propia (la pone quien lo usa); con puntero grueso, zona táctil mínima. */
+.tz-hint__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  white-space: inherit;
+  cursor: pointer;
+}
+
+.tz-hint__trigger::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
 /* Fijo a la ventana. Como popover, anula el centrado del agente de usuario (inset y margin). */

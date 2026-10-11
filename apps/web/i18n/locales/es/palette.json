@@ -8,7 +8,7 @@
     "listLabel": "Sugerencias",
     "close": "Cerrar la paleta (Esc)",
     "empty": "Ningún comando encaja con «{q}».",
-    "examples": "Prueba con «seguir NOR», «vuelta 7 de VER», «1:02:30», «x4», «siguiente sc» o «parada de NOR».",
+    "examples": "Prueba con «seguir NOR», «vuelta 7 de VER», «1:02:30», «x4», «siguiente sc», «parada de NOR» o «siguiente adelantamiento».",
     "count": "Sin sugerencias | 1 sugerencia | {n} sugerencias",
     "rules": "Reglas fijas, sin IA: acepta español e inglés, sin tildes ni mayúsculas.",
     "previewLabel": "Ese instante",

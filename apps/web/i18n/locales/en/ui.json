@@ -1,0 +1,8 @@
+{
+  "ui": {
+    "brand": {
+      "name": "{app}: back to the session picker",
+      "back": "Back to the session picker"
+    }
+  }
+}

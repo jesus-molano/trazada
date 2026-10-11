@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SessionType } from '@trazada/schema'
 import type { ComponentPublicInstance } from 'vue'
+import type { IconName } from '~/design/icons'
 import { DATA_DELAY_MIN, type SessionView } from '~/manager/model'
 
 const props = defineProps<{ type: SessionType; view: SessionView }>()
@@ -18,6 +19,10 @@ const unavailableHint = computed(() =>
     ? t('selector.unavailableInvalidHint')
     : t('selector.unavailableHint'),
 )
+/** Sin posiciones: «sin señal»; entrada no válida: aviso. El icono acompaña al motivo, que va siempre en texto. */
+const unavailableIcon = computed<IconName>(() =>
+  props.view.kind === 'unavailable' && props.view.reason === 'invalid' ? 'alert' : 'noSignal',
+)
 /** La hora de una sesión futura es aproximada (inicio del calendario + duración típica + margen): se explica. */
 const futureHint = computed(() => t('manager.availableFromHint', { delay: DATA_DELAY_MIN }))
 const barStyle = computed(() => ({ transform: `scaleX(${pct.value / 100})` }))
@@ -32,9 +37,18 @@ const details = computed(() => {
 
 /**
  * Una sola acción por fila (Descargar, Cancelar o Reintentar) en el mismo <button>: al cambiar de estado se
- * actualiza en sitio y el foco del teclado no se pierde.
+ * actualiza en sitio y el foco del teclado no se pierde. El icono acompaña al texto; el nombre accesible es
+ * `label`, con la sesión.
  */
-const action = computed(() => {
+const action = computed<{
+  text: string
+  label: string
+  title: string | undefined
+  testid: string
+  icon: IconName
+  quiet: boolean
+  run: () => void
+} | null>(() => {
   const v = props.view
   if (v.kind === 'download') {
     return {
@@ -42,6 +56,7 @@ const action = computed(() => {
       label: t('manager.downloadSession', { session: name.value }),
       title: t('manager.downloadHint'),
       testid: `download-${props.type}`,
+      icon: 'download',
       quiet: false,
       run: () => emit('download'),
     }
@@ -52,6 +67,7 @@ const action = computed(() => {
       label: t('manager.retrySession', { session: name.value }),
       title: undefined,
       testid: `retry-${props.type}`,
+      icon: 'retry',
       quiet: false,
       run: () => emit('download'),
     }
@@ -63,6 +79,7 @@ const action = computed(() => {
       label: t('manager.cancelSession', { session: name.value }),
       title: undefined,
       testid: `cancel-${props.type}`,
+      icon: 'close',
       quiet: true,
       run: () => emit('cancel', id),
     }
@@ -87,6 +104,21 @@ watch(
   },
   { flush: 'pre' },
 )
+
+/**
+ * Destello único (tz-flash, --tz-dur-flash) cuando una descarga en curso termina y la fila pasa a ser el enlace al
+ * replay. Solo la interfaz (D42): ninguna cifra se anima. Con prefers-reduced-motion dura 0 y se va al momento.
+ */
+const fresh = ref(false)
+watch(
+  () => props.view.kind,
+  (kind, prev) => {
+    fresh.value = kind === 'link' && (prev === 'running' || prev === 'queued')
+  },
+)
+function onAnimationEnd(event: AnimationEvent) {
+  if (event.animationName === 'tz-flash') fresh.value = false
+}
 </script>
 
 <template>
@@ -94,13 +126,18 @@ watch(
     v-if="view.kind === 'link'"
     ref="root"
     :to="view.to"
-    class="tz-session"
+    class="tz-session is-link"
+    :class="{ 'is-fresh': fresh }"
     data-state="link"
+    :data-fresh="fresh ? '' : undefined"
     :data-testid="`session-${type}`"
+    @animationend="onAnimationEnd"
   >
     <span class="tz-session__name">{{ name }}</span>
     <span v-if="view.dev" class="tz-badge tz-badge--dev" :title="t('selector.devHint')">{{ t('selector.dev') }}</span>
     <span v-if="view.bytes" class="tz-session__size tz-tabular">{{ formatBytes(view.bytes, locale) }}</span>
+    <!-- Abre el replay: el icono es la señal visual; el nombre del enlace es el de la sesión. -->
+    <TzIcon name="play" size="sm" class="tz-session__go" />
   </NuxtLink>
 
   <div
@@ -116,7 +153,10 @@ watch(
   >
     <span class="tz-session__name">{{ name }}</span>
     <span class="tz-badge">{{ t('selector.unavailable') }}</span>
-    <span class="tz-visually-hidden">{{ unavailableHint }}</span>
+    <!-- El motivo, en texto visible (en iPad un title no se ve nunca). -->
+    <span class="tz-session__reason" data-testid="unavailable-reason">
+      <TzIcon :name="unavailableIcon" size="sm" />{{ unavailableHint }}
+    </span>
   </div>
 
   <div
@@ -164,7 +204,7 @@ watch(
       :data-testid="action.testid"
       @click="action.run()"
     >
-      {{ action.text }}
+      <TzIcon :name="action.icon" size="sm" />{{ action.text }}
     </button>
 
     <span
@@ -182,10 +222,12 @@ watch(
 
     <template v-if="view.kind === 'error'">
       <p class="tz-session__error" :data-testid="`error-${type}`">
-        {{ t(`manager.error.${view.job.error?.code ?? 'failed'}`) }}
+        <TzIcon name="error" size="sm" class="tz-session__error-icon" />{{ t(`manager.error.${view.job.error?.code ?? 'failed'}`) }}
       </p>
       <details v-if="details" class="tz-session__details">
-        <summary>{{ t('manager.details') }}</summary>
+        <summary class="tz-link">
+          <TzIcon name="chevron" size="sm" class="tz-session__chevron" />{{ t('manager.details') }}
+        </summary>
         <pre>{{ details }}</pre>
       </details>
     </template>
@@ -198,20 +240,37 @@ watch(
   flex-wrap: wrap;
   align-items: center;
   gap: var(--tz-space-2) var(--tz-space-3);
-  min-height: 48px;
+  min-height: var(--tz-space-12);
   padding: var(--tz-space-3) var(--tz-space-4);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-md);
   background: var(--tz-surface-1);
   color: var(--tz-text);
+  transition:
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-a.tz-session:hover {
-  border-color: var(--tz-accent);
-  text-decoration: none;
+/* Lista para ver: toda la fila es el enlace al replay, con el icono de abrir a la derecha. */
+.tz-session.is-link {
+  box-shadow: var(--tz-shadow-panel);
 }
 
+.tz-session.is-link:active {
+  transform: scale(var(--tz-press-scale));
+}
+
+/* Recién descargada: un destello de pintura, una sola vez (tz-flash, de base.css). */
+.tz-session.is-fresh {
+  animation: tz-flash var(--tz-dur-flash) var(--tz-ease-standard);
+}
+
+/* No se puede abrir (sin posiciones, entrada no válida o aún por celebrarse): texto tenue y contorno discontinuo. */
 .tz-session.is-disabled {
+  border-style: dashed;
+  border-color: var(--tz-border-strong);
+  background: transparent;
   color: var(--tz-text-faint);
   cursor: not-allowed;
 }
@@ -231,7 +290,10 @@ a.tz-session:hover {
 
 .tz-session__name {
   flex: 1;
-  font-weight: var(--tz-weight-medium);
+  font-family: var(--tz-font-display);
+  font-size: var(--tz-text-md);
+  font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-display);
 }
 
 .tz-session__size,
@@ -241,19 +303,53 @@ a.tz-session:hover {
   color: var(--tz-text-muted);
 }
 
+.tz-session.is-disabled .tz-session__note {
+  color: var(--tz-text-faint);
+}
+
+.tz-session__size,
+.tz-session__pct {
+  font-family: var(--tz-font-mono);
+  letter-spacing: var(--tz-tracking-mono);
+}
+
+.tz-session__go {
+  color: var(--tz-text-muted);
+  transition: color var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* Motivo de «No disponible»: segunda línea, con su icono delante. */
+.tz-session__reason {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: var(--tz-space-1);
+  font-size: var(--tz-text-xs);
+}
+
 .tz-session__action {
+  position: relative;
   padding: var(--tz-space-1) var(--tz-space-3);
   font-size: var(--tz-text-sm);
 }
 
+/* Zona táctil de la acción y de «Detalles»: crece hasta --tz-hit-min (44 px en iPad) sin mover la fila. */
+.tz-session__action::after,
+.tz-session__details summary::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
 .tz-session__progress {
   flex-basis: 100%;
-  height: 4px;
+  height: var(--tz-space-1);
   overflow: hidden;
   border-radius: var(--tz-radius-pill);
   background: var(--tz-surface-3);
 }
 
+/* Progreso de la descarga (interfaz, no un dato de carrera): sigue al porcentaje con la duración del token. */
 .tz-session__bar {
   display: block;
   height: 100%;
@@ -263,10 +359,18 @@ a.tz-session:hover {
 }
 
 .tz-session__error {
+  display: flex;
   flex-basis: 100%;
+  align-items: flex-start;
+  gap: var(--tz-space-1);
   margin: 0;
   font-size: var(--tz-text-sm);
   color: var(--tz-text-muted);
+}
+
+.tz-session__error-icon {
+  margin-top: var(--tz-space-0-5);
+  color: var(--tz-danger);
 }
 
 .tz-session__details {
@@ -275,8 +379,26 @@ a.tz-session:hover {
   color: var(--tz-text-muted);
 }
 
+/* «Detalles»: desplegable con aspecto de enlace (.tz-link) y chevron propio en vez del triángulo del navegador. */
 .tz-session__details summary {
-  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  list-style: none;
+}
+
+.tz-session__details summary::-webkit-details-marker {
+  display: none;
+}
+
+.tz-session__chevron {
+  transform: rotate(-90deg);
+  transition: transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-session__details[open] .tz-session__chevron {
+  transform: none;
 }
 
 .tz-session__details pre {
@@ -291,13 +413,15 @@ a.tz-session:hover {
   word-break: break-word;
 }
 
+/* Insignia de estado: siglas cortas en monoespaciada (DEV, EN COLA, ERROR…). */
 .tz-badge {
-  padding: 2px var(--tz-space-2);
+  padding: var(--tz-space-0-5) var(--tz-space-2);
   border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-pill);
+  font-family: var(--tz-font-mono);
   font-size: var(--tz-text-2xs);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tz-tracking-mono);
   text-transform: uppercase;
 }
 
@@ -311,9 +435,16 @@ a.tz-session:hover {
   color: var(--tz-danger);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tz-session__bar {
-    transition: none;
+/* Hover solo con un puntero que puede «flotar»: en táctil se quedaría pegado tras tocar. */
+@media (hover: hover) {
+  .tz-session.is-link:hover {
+    border-color: var(--tz-accent);
+    background: var(--tz-surface-2);
+    text-decoration: none;
+  }
+
+  .tz-session.is-link:hover .tz-session__go {
+    color: var(--tz-accent);
   }
 }
 </style>

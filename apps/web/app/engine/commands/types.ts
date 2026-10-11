@@ -12,6 +12,9 @@
 import type { DriverInfo, SessionType } from '@trazada/schema'
 import type { LapTable } from '../analysis/lapTable'
 import type { Rate } from '../clock/SessionClock'
+import type { EstimatedField } from '../estimated'
+import type { DuelsResult } from '../moments/duels'
+import type { Overtake } from '../moments/overtakes'
 import type { TimelineMarkers } from '../timeline/markers'
 import type { Query } from './parse'
 
@@ -64,6 +67,11 @@ export interface Suggestion {
   readonly car?: string
   /** Texto con el que Tab completa la consulta. */
   readonly complete?: string
+  /**
+   * El detalle enseña una estimación (`engine/estimated.ts`): la paleta le pone su etiqueta «Estimado»
+   * (`<TzEstimated>`). P. ej., el instante GPS de un adelantamiento (`overtakeTime`).
+   */
+  readonly estimated?: EstimatedField
 }
 
 /** Lo fijo de la sesión abierta (se construye una vez con `commandSessionInfo`). */
@@ -123,11 +131,24 @@ export interface ResumeService {
 }
 
 /**
- * Momentos de la sesión (ítem 5: adelantamientos y duelos), si esa función está: la lista, en orden de t, con el
- * instante al que saltar. Sin el servicio, los comandos de momentos no se ofrecen.
+ * Momentos de la sesión (ítem 5, D35), si esa función está (lo registran los botones de salto del dock con su
+ * precálculo, `stores/moments.ts`). Sin el servicio, los comandos de momentos no se ofrecen.
  */
 export interface MomentsService {
+  /** Adónde saltan ⏮ ⏭ (de la clase elegida en la pestaña «Momentos»), en orden de t: «siguiente momento». */
   list(): readonly { readonly t: number }[]
+  /**
+   * Adelantamientos de toda la sesión: cambios del orden oficial en la línea de meta, con su instante GPS aproximado
+   * (`atMs`) o sin él. Solo en carrera y sprint (si no, ninguno); la vuelta 1, nunca.
+   */
+  overtakes(): readonly Overtake[]
+  /** Duelos a menos de 1 s de toda la sesión, o por qué no se buscan (`status`). */
+  duels(): DuelsResult
+  /**
+   * «Sin spoilers» de la hoja de análisis (activo por defecto): los textos no dicen quién adelanta a quién ni quiénes
+   * pelean hasta que la línea de meta lo confirma.
+   */
+  readonly noSpoilers: boolean
 }
 
 /**

@@ -12,7 +12,9 @@
 import type { DecodedTrzb, DriverInfo, SessionEvents, SessionType } from '@trazada/schema'
 import { buildLapTable } from '../engine/analysis/lapTable'
 import type { Rate } from '../engine/clock/SessionClock'
-import type { CommandContext, CommandServices, CommandSessionInfo, CommandState } from '../engine/commands/types'
+import type { CommandContext, CommandServices, CommandSessionInfo, CommandState, MomentsService } from '../engine/commands/types'
+import type { DuelsResult } from '../engine/moments/duels'
+import type { Overtake } from '../engine/moments/overtakes'
 import { buildTimelineMarkers, clockOrigin } from '../engine/timeline/markers'
 import { rcMessage, sessionEvents, timingBuilder } from './laps'
 
@@ -105,8 +107,29 @@ export function paletteSession(o: PaletteContextOptions = {}): CommandSessionInf
   }
 }
 
+export interface MomentsServiceOptions {
+  /** Destinos de ⏮ ⏭ («siguiente momento»). */
+  list?: readonly { t: number }[]
+  overtakes?: readonly Overtake[]
+  duels?: DuelsResult
+  /** «Sin spoilers» de la hoja de análisis (por defecto, activo, como en la app). */
+  noSpoilers?: boolean
+}
+
+/** Un servicio de momentos (ítem 5) con los datos dados (por defecto, ninguno; «Sin spoilers» activo). */
+export function momentsService(o: MomentsServiceOptions = {}): MomentsService {
+  return {
+    list: () => o.list ?? [],
+    overtakes: () => o.overtakes ?? [],
+    duels: () => o.duels ?? { status: 'ok', duels: [] },
+    noSpoilers: o.noSpoilers ?? true,
+  }
+}
+
 /** Servicios que apuntan cada llamada en `calls` («seek:330000», «select:1», «follow:true»…). */
-export function recordingServices(over: { comparing?: string | null; resumedMs?: number | null } = {}) {
+export function recordingServices(
+  over: { comparing?: string | null; resumedMs?: number | null; moments?: MomentsServiceOptions } = {},
+) {
   const calls: string[] = []
   const services: CommandServices = {
     playback: {
@@ -123,7 +146,7 @@ export function recordingServices(over: { comparing?: string | null; resumedMs?:
       close: () => calls.push('compare:close'),
     },
     resume: { resumedMs: over.resumedMs ?? null },
-    moments: { list: () => [] },
+    moments: momentsService(over.moments),
   }
   return { calls, services }
 }

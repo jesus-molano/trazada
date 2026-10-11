@@ -46,11 +46,11 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Mapa de calor de la pista (menú «Capas»): la velocidad que midió el coche elegido en una vuelta completa, o, al comparar dos pilotos, quién gana cada uno de los 25 minisectores. Los minisectores salen del GPS y llevan «Estimado», con empate por debajo de 50 ms; donde no hay muestra, la pista queda sin color.
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
 - Meteorología de la sesión en la cabecera (aire, pista, humedad, presión, lluvia y viento, con una brújula junto al trazado) y una franja con la temperatura de pista y la lluvia en el timeline.
-- Paleta de comandos (Ctrl+K o «/»; en tablet, un botón en el reproductor): escribe en español o en inglés «seguir VER», «vuelta 30 de NOR», «x4», «siguiente momento» o una hora del reloj. Lo que no está en los datos sale deshabilitado con su motivo.
+- Paleta de comandos (Ctrl+K o «/»; en tablet, un botón en el reproductor): escribe en español o en inglés «seguir VER», «vuelta 30 de NOR», «x4», «siguiente momento», «siguiente adelantamiento», «adelantamientos de VER», «duelo HAM» o una hora del reloj. Lo que no está en los datos sale deshabilitado con su motivo.
 - Gestos en tablet: dos dedos en horizontal mueven el reloj (todo el ancho de la escena son 2 minutos), el pellizco hace zoom y un doble toque sobre un coche lo sigue (en escritorio, doble clic).
 - Ambiente de la escena (menú «Capas»): el cielo sigue la altura del sol sobre el circuito a esa hora (de día, al atardecer o de noche), con niebla en la parte lejana de la pista. Es decorativo: posición del sol, no el tiempo.
-- Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
-- En español e inglés, tema oscuro, escritorio y tablet.
+- Datos honestos: lo que se estima se marca como «Estimado» (la etiqueta se pulsa para ver por qué) y lo que falta se muestra como «sin dato».
+- En español e inglés, con un tema oscuro propio inspirado en la pista (asfalto, pintura y piano), en escritorio y tablet. El replay ocupa toda la ventana, con la marca y el cambio de idioma en su propia cabecera.
 
 ## Qué es dato y qué es modelo
 

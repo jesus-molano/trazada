@@ -49,6 +49,31 @@ function hue(hex: string): number | null {
 }
 const hueGap = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b))
 
+/** #rrggbb → OKLab (Björn Ottosson): distancia perceptual entre dos colores. */
+function oklab(hex: string): [number, number, number] {
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const [r, g, b] = rgb(hex).map(lin) as [number, number, number]
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ]
+}
+const deltaE = (a: string, b: string) => Math.hypot(...oklab(a).map((v, i) => v - oklab(b)[i]!))
+
+/** Ficheros de la app (sin tests ni tokens.css) cuyo código usa un token, y no solo lo nombra en un comentario. */
+function usersOf(token: string, exts = /\.(vue|ts|css)$/): string[] {
+  const use = new RegExp(`var\\(\\s*${token}(?:-[\\w-]+)?\\s*\\)|['"\`]${token}(?:-[\\w-]+)?['"\`]`)
+  return files(APP)
+    .filter((f) => exts.test(f) && !f.endsWith('.test.ts') && !f.endsWith('tokens.css'))
+    .filter((f) => use.test(stripComments(readFileSync(f, 'utf8'))))
+    .map((f) => relative(APP, f))
+    .sort()
+}
+
 describe('tokens de diseño', () => {
   it('un único fichero con color, espacio, tipografía, radios, capas y movimiento', () => {
     for (const prefix of ['--tz-bg', '--tz-space-', '--tz-text-', '--tz-font-', '--tz-radius-', '--tz-z-', '--tz-dur-', '--tz-ease-']) {
@@ -108,8 +133,61 @@ describe('tokens de diseño', () => {
       '--tz-accent-soft-hover',
       // movimiento
       '--tz-stagger', '--tz-shift', '--tz-press-scale',
+      // identidad «Asfalto y pintura» (D47)
+      '--tz-paint', '--tz-paint-strong', '--tz-accent-on', '--tz-link-line', '--tz-signal', '--tz-kerb', '--tz-grain',
+      '--tz-font-display', '--tz-tracking-display',
     ]
     for (const name of expected) expect(() => token(name as `--tz-${string}`), name).not.toThrow()
+  })
+
+  it('el piano (kerb) solo bajo la marca y en la pestaña activa del análisis: no se extiende como disfraz (D47)', () => {
+    // La marca está en la cabecera de la portada (layouts/default.vue) y en la del replay (TzBrandBar, D44). En cada
+    // fichero, una sola regla: la franja bajo la marca o el borde de la pestaña elegida. Ni más ficheros ni más reglas.
+    const KERB_RULES: Record<string, string[]> = {
+      'components/TzBrandBar.vue': ['.tz-brandbar__brand::after'],
+      'components/replay-overlays/TzAnalysis.vue': [".tz-analysis__tab[aria-selected='true']"],
+      'layouts/default.vue': ['.tz-header::after'],
+    }
+    expect(usersOf('--tz-kerb')).toEqual(Object.keys(KERB_RULES).sort())
+    for (const [file, selectors] of Object.entries(KERB_RULES)) {
+      const style = /<style[^>]*>([\s\S]*?)<\/style>/.exec(stripComments(readFileSync(join(APP, file), 'utf8')))?.[1] ?? ''
+      // Reglas sin anidar (las de dentro de un @media también salen, con su selector).
+      const rules = [...style.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter((m) => /var\(\s*--tz-kerb/.test(m[2]!))
+        .map((m) => m[1]!.trim())
+      expect(rules, file).toEqual(selectors)
+    }
+  })
+
+  it('el color de señal solo en tokens.css y base.css: foco, selección de texto y traza de velocidad (D47)', () => {
+    expect(usersOf('--tz-signal')).toEqual(['design/base.css'])
+    expect(declared(TOKENS_CSS, '--tz-focus')).toBe('var(--tz-signal)')
+    expect(declared(TOKENS_CSS, '--tz-chart-speed')).toBe('var(--tz-signal)')
+  })
+
+  it('«Estimado» se distingue del morado de mejor vuelta y del de boxes (ΔE OKLab ≥ 0,08)', () => {
+    const estimated = token('--tz-estimated')
+    for (const other of ['--tz-timing-best', '--tz-pit'] as const) {
+      expect(deltaE(estimated, token(other)), other).toBeGreaterThanOrEqual(0.08)
+    }
+  })
+
+  it('ningún backdrop-filter en .vue ni .css: desenfocar un lienzo animado cuesta en cada frame', () => {
+    const offenders = files(APP)
+      .filter((f) => /\.(vue|css)$/.test(f))
+      .filter((f) => /(?<![\w-])backdrop-filter\s*:/.test(stripComments(readFileSync(f, 'utf8'))))
+      .map((f) => relative(APP, f))
+    expect(offenders).toEqual([])
+  })
+
+  it('placa maciza = activado: el texto sobre la pintura usa --tz-accent-on y se lee (≥ 4,5:1)', () => {
+    const contrast = (a: string, b: string) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
+      return (hi + 0.05) / (lo + 0.05)
+    }
+    expect(token('--tz-accent')).toBe(token('--tz-paint'))
+    expect(contrast(token('--tz-accent-on'), token('--tz-accent'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(token('--tz-accent-on'), token('--tz-accent-strong'))).toBeGreaterThanOrEqual(4.5)
   })
 
   it('densidad: compacta en pantallas bajas y zonas táctiles de 44 px con puntero grueso', () => {
