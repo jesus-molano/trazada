@@ -1,7 +1,7 @@
 /**
  * Iconos coherentes (D30): todo icono sale del registro semántico (design/icons.ts) y se pinta con TzIcon.
- * Los símbolos sueltos que quedan de antes están en una lista permitida que solo puede encoger: se vacía al
- * migrar esos componentes (Tanda 5), y una entrada que ya no hace falta también hace fallar el test.
+ * La lista permitida de símbolos sueltos de antes quedó vacía en la Tanda 5 (play/pausa, «ⓘ» de los desplegables y
+ * «×» de la telemetría pasaron a TzIcon); una entrada nueva tendría que justificarse aquí.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -37,14 +37,9 @@ const inlineSvgs = (src: string) => (template(src).match(/<svg[\s>]/g) ?? []).le
 /** Componentes que dibujan datos, no iconos: pueden llevar su <svg> (trazado del circuito). */
 const SVG_DATA_MARKS = new Set(['components/TzTrackOutline.vue'])
 
-/** Infractores de antes de D30, con su número de casos. Solo puede encoger (Tanda 5: B1 y A la vacían). */
-const ALLOWED_INLINE_SVG: Record<string, number> = {
-  'components/TzControls.vue': 2, // play / pausa
-  'components/TzDisclosure.vue': 1, // «ⓘ» del botón de explicaciones
-}
-const ALLOWED_GLYPHS: Record<string, string[]> = {
-  'components/TzTelemetry.vue': ['×'], // cerrar la telemetría
-}
+/** Infractores de antes de D30: ninguno desde la Tanda 5 (B1 migró los últimos a TzIcon). */
+const ALLOWED_INLINE_SVG: Record<string, number> = {}
+const ALLOWED_GLYPHS: Record<string, string[]> = {}
 
 describe('iconos (D30)', () => {
   it('el registro solo tiene componentes de Lucide, con nombres de la app', () => {

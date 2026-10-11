@@ -176,7 +176,7 @@ defineExpose({ update })
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-2xs);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tz-tracking-mono);
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;

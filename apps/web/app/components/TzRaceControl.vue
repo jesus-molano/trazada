@@ -2,7 +2,8 @@
 /**
  * Mensajes de dirección de carrera hasta el instante del reloj, del más reciente al más antiguo: el texto
  * original tal cual (en inglés) y el tipo traducido. Se recalcula con el estado grueso (~10 Hz) y solo
- * cambia el DOM cuando aparece o desaparece un mensaje.
+ * cambia el DOM cuando aparece o desaparece un mensaje. El título es el común de los paneles (una línea, condensada) y
+ * el desplegable lleva el chevrón del registro de iconos (D30).
  */
 import type { RaceControlEvent } from '@trazada/schema'
 import { formatClock } from '~/engine/format/time'
@@ -53,9 +54,9 @@ function tone(kind: string): string {
         data-testid="race-control-toggle"
         @click="open = !open"
       >
-        <span class="tz-rc__title">{{ t('rc.title') }}</span>
+        <span class="tz-panel-title tz-rc__title">{{ t('rc.title') }}</span>
         <span class="tz-rc__count tz-tabular" data-testid="rc-count">{{ t('rc.count', count) }}</span>
-        <span class="tz-rc__chevron" aria-hidden="true" />
+        <TzIcon name="chevron" size="sm" class="tz-rc__chevron" />
       </button>
     </h2>
     <!-- Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. -->
@@ -109,39 +110,34 @@ function tone(kind: string): string {
   align-items: center;
   gap: var(--tz-space-2);
   width: 100%;
-  padding: var(--tz-space-2) var(--tz-space-3);
+  min-height: var(--tz-hit-min);
+  padding: var(--tz-space-2) var(--tz-panel-pad);
   border: 0;
   background: transparent;
   text-align: start;
   cursor: pointer;
 }
 
+/* Título de panel común (.tz-panel-title: condensada, mayúsculas, --tz-tracking-caps y una sola línea). */
 .tz-rc__title {
   flex: 1;
-  margin: 0;
-  font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--tz-text-muted);
 }
 
 .tz-rc__count {
+  flex: none;
   font-size: var(--tz-text-2xs);
   color: var(--tz-text-faint);
 }
 
+/* Cerrado, el chevrón apunta a la derecha; abierto, hacia abajo. */
 .tz-rc__chevron {
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid var(--tz-text-muted);
-  border-bottom: 2px solid var(--tz-text-muted);
-  transform: rotate(-45deg);
+  color: var(--tz-text-muted);
+  transform: rotate(-90deg);
   transition: transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
 .is-open .tz-rc__chevron {
-  transform: rotate(45deg);
+  transform: rotate(0deg);
 }
 
 .tz-rc__list {
@@ -181,8 +177,9 @@ function tone(kind: string): string {
   border-left-color: var(--tz-sc);
 }
 
+/* Comisarios: franja de pintura de pista (categoría), no el acento de los controles (D47). */
 .tz-rc__item.is-stewards {
-  border-left-color: var(--tz-accent);
+  border-left-color: var(--tz-paint);
 }
 
 .tz-rc__meta {

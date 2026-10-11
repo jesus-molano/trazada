@@ -351,13 +351,15 @@ onBeforeUnmount(() => {
 }
 
 /* Línea del instante actual (la mueve `placeCursor`, sin redibujar la gráfica). */
+/* Con un halo del color del fondo: la pintura fuerte se distingue también sobre trazos claros (D47). */
 .tz-achart__plot :deep(.tz-achart__cursor) {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
   width: 0;
-  border-left: 2px solid var(--tz-accent);
+  border-left: 2px solid var(--tz-accent-strong);
+  box-shadow: 0 0 0 1px var(--tz-bg);
   pointer-events: none;
 }
 

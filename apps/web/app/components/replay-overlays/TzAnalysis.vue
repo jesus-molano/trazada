@@ -252,11 +252,12 @@ export const order = 20
   width: 26px;
   height: 14px;
   border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
+  border-radius: var(--tz-radius-sm);
   background: var(--tz-surface-3);
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
+/* La bolita es un cuadrado (cantos casi vivos, D47). */
 .tz-analysis__knob::before {
   content: '';
   position: absolute;
@@ -264,7 +265,7 @@ export const order = 20
   left: 1px;
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--tz-radius-sm);
   background: var(--tz-text-muted);
   transition: transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
@@ -274,13 +275,14 @@ export const order = 20
   color: var(--tz-accent-strong);
 }
 
+/* Activado: el carril, placa maciza de pintura, y la bolita del color del texto sobre ella. */
 .tz-analysis__switch[aria-checked='true'] .tz-analysis__knob {
-  background: var(--tz-accent-soft);
+  background: var(--tz-accent);
   border-color: var(--tz-accent);
 }
 
 .tz-analysis__switch[aria-checked='true'] .tz-analysis__knob::before {
-  background: var(--tz-accent-strong);
+  background: var(--tz-accent-on);
   transform: translateX(12px);
 }
 
@@ -292,23 +294,32 @@ export const order = 20
   border-bottom: 1px solid var(--tz-border);
 }
 
+/* Pestañas: rótulo condensado en mayúsculas (D47). */
 .tz-analysis__tab {
   min-height: var(--tz-hit-min);
   padding: 0 var(--tz-space-4);
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   background: transparent;
   color: var(--tz-text-muted);
+  font-family: var(--tz-font-display);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-caps);
+  text-transform: uppercase;
   cursor: pointer;
   transition:
     color var(--tz-dur-fast) var(--tz-ease-standard),
     border-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
+/*
+ * Pestaña activa: el piano (kerb) como borde inferior (D47: solo aquí y bajo la marca). El color del borde queda de
+ * respaldo para los colores forzados, que no pintan imágenes de borde.
+ */
 .tz-analysis__tab[aria-selected='true'] {
   border-bottom-color: var(--tz-accent);
+  border-image: var(--tz-kerb) 0 0 1 0 / 0 0 3px 0;
   color: var(--tz-text);
 }
 
