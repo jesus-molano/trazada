@@ -280,6 +280,7 @@
     "drsWhy": "¿Por qué?",
     "chartSpeed": "Velocidad en los últimos {s} s",
     "chartPedals": "Pedales en los últimos {s} s",
+    "chartNoData": "sin dato",
     "lap": "Vuelta",
     "lastLap": "Última vuelta",
     "estimateLap1": "Estimar",
@@ -357,9 +358,9 @@
       "vsc-ending": "Fin del VSC"
     },
     "sector": {
-      "yellow": "Amarilla · sector {n}",
-      "doubleYellow": "Doble amarilla · sector {n}",
-      "red": "Roja · sector {n}"
+      "yellow": "Amarilla · sector {list} | Amarilla · sectores {list}",
+      "doubleYellow": "Doble amarilla · sector {list} | Doble amarilla · sectores {list}",
+      "red": "Roja · sector {list} | Roja · sectores {list}"
     },
     "yellow": "Amarilla en pista",
     "noGeometry": "Sin geometría de sectores de comisarios para este circuito: la bandera no se puede situar en el mapa.",

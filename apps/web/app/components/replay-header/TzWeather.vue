@@ -96,7 +96,14 @@ const pieces = computed(() => {
   ] as const
 })
 
+/**
+ * Una sesión de desarrollo (fuente secundaria, `trazada dev-ti`) no se vuelve a descargar desde el selector, y su fuente
+ * no trae meteorología: decirle que la descargue de nuevo sería un consejo imposible.
+ */
+const devSource = (rt.session.manifest.quality.notes ?? []).some((n) => typeof n !== 'string' && n.code === 'dev-source')
+
 const reason = computed(() => {
+  if (availability === 'outdated' && devSource) return t('weather.reason.dev')
   if (availability === 'outdated') return t('weather.reason.outdated')
   if (availability === 'absent') return t('weather.reason.absent')
   return t('weather.reason.stale', { s: staleS })

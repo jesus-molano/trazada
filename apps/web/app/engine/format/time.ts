@@ -1,9 +1,12 @@
 /** Formatos de tiempo del replay (sin dependencia del idioma: dígitos y separadores fijos). */
 
-/** 3723000 → "1:02:03"; 83000 → "1:23"; negativos con signo. */
+/**
+ * 3723000 → "1:02:03"; 83000 → "1:23"; negativos con signo (se trunca hacia el cero, como los positivos). Menos de un
+ * segundo antes del cero es "0:00", nunca "−0:00".
+ */
 export function formatClock(ms: number): string {
-  const sign = ms < 0 ? '−' : ''
   const total = Math.floor(Math.abs(ms) / 1000)
+  const sign = ms < 0 && total > 0 ? '−' : ''
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60

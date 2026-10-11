@@ -7,9 +7,11 @@
  * primero, así que siempre lleva la suya. Nada de lo que se dibuja aquí puede leerse como un dato: ni guías, ni trazos,
  * ni marcas con forma de punto.
  *
- * - Por vuelta (`ChartSpec.labelColumn`): en una columna justo a la derecha del último dato de todas las series (al
- *   final de la carrera, el margen derecho; con «Sin spoilers», el hueco de la vuelta en curso, donde aún no hay datos),
- *   con una marca del trazo de su serie (continua o discontinua).
+ * - Por vuelta (`ChartSpec.labelColumn`): en una columna a la derecha del último dato de todas las series, con una
+ *   marca del trazo de su serie (continua o discontinua). Justo tras el último dato solo si la columna entera cabe antes
+ *   del final del eje, donde va la línea del instante actual (con «Sin spoilers», el hueco de la vuelta en curso, que
+ *   aún no tiene datos); si no, en el margen derecho, pasada esa línea (al final de la carrera, siempre ahí). La línea
+ *   nunca cruza una sigla.
  * - Por hora: el texto junto al final de su serie, sin marca (su posición ya la une al punto).
  * - Último dato fuera de la escala del eje y: en el borde, con un triángulo hacia el dato (ningún marcador de datos es
  *   un triángulo).
@@ -32,7 +34,13 @@ export const LABEL_GAP = 11
 const LABEL_INSET = 5
 
 /** En la columna (px CSS desde su x): marca del trazo y sigla. */
-const COLUMN = { gap: 4, mark: 0, text: 9 } as const
+export const COLUMN = { gap: 4, mark: 0, text: 9 } as const
+/**
+ * Lo que ocupa la línea del instante actual pasado su x (px CSS; TzAnalysisChart: 2 px de borde y 1 px de halo): la
+ * columna que va al margen derecho empieza más allá. Antes de su x, el halo ocupa 1 px; la columna que va antes del final
+ * del eje deja 2 px.
+ */
+export const CURSOR_REACH = { after: 3, before: 2 } as const
 /** Junto a su final (px CSS desde el último dato): triángulo (fuera de escala) y sigla, después del marcador del dato. */
 const INLINE = { mark: 6, text: 7, offScaleText: 14 } as const
 /** Raya de fin de un coche detenido (px CSS): después del marcador del último dato (el más ancho, 4 px). */
@@ -91,15 +99,24 @@ export function drawEndLabels(ctx: CanvasRenderingContext2D, frame: LabelFrame, 
   const lo = bbox.top + LABEL_INSET * r
   const hi = bbox.top + bbox.height - LABEL_INSET * r
   const ends = endPoints(spec)
-  // La columna, justo después del último dato de todas las series visibles (como mucho, el borde del área de datos).
-  let dataRight = -Infinity
-  for (const e of ends) dataRight = Math.max(dataRight, frame.xPos(spec.x[e.index]!))
-  const colX = Math.min(bbox.left + bbox.width, dataRight) + COLUMN.gap * r
   ctx.save()
   // Explícitos: uPlot deja el estado de su último eje (el y, alineado a la derecha).
   ctx.font = style.font
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
+  // La columna: justo después del último dato de todas las series visibles si cabe entera antes del final del eje (donde
+  // va la línea del instante actual con «Sin spoilers»); si no, en el margen derecho, pasada esa línea.
+  let dataRight = -Infinity
+  let colW = 0
+  for (const e of ends) {
+    dataRight = Math.max(dataRight, frame.xPos(spec.x[e.index]!))
+    if (e.place === 'column') colW = Math.max(colW, ctx.measureText(e.group.label).width + r)
+  }
+  colW += COLUMN.text * r
+  const axisEnd = bbox.left + bbox.width
+  const afterData = dataRight + COLUMN.gap * r
+  const colX =
+    afterData + colW <= axisEnd - CURSOR_REACH.before * r ? afterData : axisEnd + (COLUMN.gap + CURSOR_REACH.after) * r
   const labels: Label[] = []
   for (const e of ends) {
     const x = frame.xPos(spec.x[e.index]!)

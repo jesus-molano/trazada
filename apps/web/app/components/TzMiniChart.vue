@@ -3,7 +3,9 @@
  * Mini gráfica (uPlot, Canvas 2D) de una ventana deslizante. Los datos llegan por `setData` desde el
  * panel (sin reactividad de Vue sobre los arrays). Alto de `--tz-chart-h` (más bajo con la densidad compacta) o, con
  * `tall` (diseño «Análisis», ítem 15), de `--tz-chart-h-tall`. Al cambiar el ancho del panel (también al arrastrar su
- * asa), un `setSize` como mucho por frame.
+ * asa), un `setSize` como mucho por frame. Unos píxeles de margen arriba y abajo: un 0 (acelerador suelto, sin freno)
+ * o un 100 % se ven enteros, no medio cortados por el borde. Sin muestras en la ventana (en boxes, por ejemplo), dice
+ * «sin dato» dentro de la gráfica: nunca un marco vacío ni un trazo suelto.
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
@@ -18,17 +20,29 @@ const props = defineProps<{
   windowS: number
   /** Más alta (diseño «Análisis»). */
   tall?: boolean
+  /** Texto dentro de la gráfica cuando la ventana no tiene muestras. */
+  noDataLabel?: string
 }>()
+
+/** Margen del trazado arriba y abajo (px): el grosor de la línea, para que el 0 y el máximo no queden medio cortados. */
+const PLOT_PAD_Y = 3
 
 const host = ref<HTMLElement | null>(null)
 let plot: uPlot | null = null
 let ro: ResizeObserver | null = null
 let raf = 0
+/** La ventana no tiene muestras (o solo una, que no dibuja nada): estado grueso, cambia pocas veces. */
+const empty = ref(true)
 
 /** Alto del trazado (px): el token de densidad, que cambia con el alto de la ventana. */
 const chartHeight = () => Number.parseFloat(token(props.tall ? '--tz-chart-h-tall' : '--tz-chart-h'))
 
 function setData(data: uPlot.AlignedData): void {
+  if (data[0].length < 2) {
+    clear()
+    return
+  }
+  if (empty.value) empty.value = false
   // Con las escalas fijas (rangos de props), «resetScales» las deja igual; lo importante es que uPlot rehaga
   // los trazos. Antes: setData(data, false) + redraw(false) pintaba los trazos en caché (vacíos).
   plot?.setData(data)
@@ -36,6 +50,7 @@ function setData(data: uPlot.AlignedData): void {
 
 /** Deja la gráfica vacía (sin dato: nada de trazos de otro coche u otro instante). */
 function clear(): void {
+  if (!empty.value) empty.value = true
   plot?.setData([new Float64Array(0), ...props.series.map(() => new Float64Array(0))])
 }
 
@@ -57,6 +72,7 @@ onMounted(() => {
     {
       width: el.clientWidth || 240,
       height: chartHeight(),
+      padding: [PLOT_PAD_Y, 0, PLOT_PAD_Y, 0],
       legend: { show: false },
       cursor: { show: false },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },
@@ -105,7 +121,11 @@ defineExpose({ setData, clear })
         <i :style="{ background: s.color }" aria-hidden="true" />{{ s.label }}
       </span>
     </figcaption>
-    <div ref="host" class="tz-chart__plot" />
+    <!-- uPlot va dentro de `host` (sus nodos no se mezclan con los de Vue); «sin dato», encima. -->
+    <div class="tz-chart__body">
+      <div ref="host" class="tz-chart__plot" />
+      <p v-if="empty && noDataLabel" class="tz-chart__nodata" data-testid="chart-nodata">{{ noDataLabel }}</p>
+    </div>
   </figure>
 </template>
 
@@ -130,7 +150,25 @@ defineExpose({ setData, clear })
   vertical-align: middle;
 }
 
+.tz-chart__body {
+  position: relative;
+}
+
 .tz-chart__plot {
   width: 100%;
+}
+
+/* «Sin dato» sobre el trazado vacío, centrado (uPlot va en el flujo; esto, encima). */
+.tz-chart__nodata {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: var(--tz-text-2xs);
+  font-style: italic;
+  color: var(--tz-text-muted);
+  pointer-events: none;
 }
 </style>

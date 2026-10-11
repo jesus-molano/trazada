@@ -54,8 +54,8 @@ const origin = computed(() => props.at.t - props.at.clockMs)
 function markerWhat(m: PreviewMarker): string {
   if (m.kind === 'pit') return t('preview.pit', { tla: drivers.get(m.car)?.tla ?? m.car })
   if (m.kind === 'window') return t('preview.windowStart', { what: t(`timeline.window.${m.window}`) })
-  if (m.sector !== null && m.flag === 'sector_yellow') return t('trackStatus.sector.yellow', { n: m.sector })
-  if (m.sector !== null && m.flag === 'sector_double_yellow') return t('trackStatus.sector.doubleYellow', { n: m.sector })
+  if (m.sector !== null && m.flag === 'sector_yellow') return t('trackStatus.sector.yellow', { list: String(m.sector) }, 1)
+  if (m.sector !== null && m.flag === 'sector_double_yellow') return t('trackStatus.sector.doubleYellow', { list: String(m.sector) }, 1)
   return t(`timeline.flag.${m.flag}`)
 }
 const markerText = (m: PreviewMarker) => t('preview.markerAt', { what: markerWhat(m), time: formatClock(m.t - origin.value) })

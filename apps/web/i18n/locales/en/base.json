@@ -280,6 +280,7 @@
     "drsWhy": "Why?",
     "chartSpeed": "Speed over the last {s} s",
     "chartPedals": "Pedals over the last {s} s",
+    "chartNoData": "no data",
     "lap": "Lap",
     "lastLap": "Last lap",
     "estimateLap1": "Estimate",
@@ -357,9 +358,9 @@
       "vsc-ending": "VSC ending"
     },
     "sector": {
-      "yellow": "Yellow · sector {n}",
-      "doubleYellow": "Double yellow · sector {n}",
-      "red": "Red · sector {n}"
+      "yellow": "Yellow · sector {list} | Yellow · sectors {list}",
+      "doubleYellow": "Double yellow · sector {list} | Double yellow · sectors {list}",
+      "red": "Red · sector {list} | Red · sectors {list}"
     },
     "yellow": "Yellow on track",
     "noGeometry": "No marshal sector geometry for this circuit: the flag cannot be placed on the map.",

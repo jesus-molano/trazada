@@ -175,7 +175,7 @@ export const raceOnly = true
                 <span class="tz-visually-hidden">{{ r.lapLong }}</span>
                 <span class="tz-moments__who">
                   <span class="tz-moments__team" :style="r.color ? { background: r.color } : undefined" aria-hidden="true" />
-                  {{ r.who }}
+                  <span class="tz-moments__who-text">{{ r.who }}</span>
                 </span>
                 <span class="tz-moments__when tz-tabular" :class="{ 'is-nodata': r.o.atMs === null }">{{ r.when }}</span>
                 <span class="tz-visually-hidden">, {{ r.whenLong }}</span>
@@ -200,7 +200,7 @@ export const raceOnly = true
               <button
                 type="button"
                 class="tz-moments__row"
-                :class="{ 'is-involved': r.involved }"
+                :class="{ 'is-involved': r.involved, 'has-state': !!r.state }"
                 data-testid="duel-row"
                 :data-leader="r.d.leader"
                 :data-chaser="r.d.chaser"
@@ -212,7 +212,7 @@ export const raceOnly = true
                 <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.laps }}</span>
                 <span class="tz-moments__who">
                   <span class="tz-moments__team" :style="r.color ? { background: r.color } : undefined" aria-hidden="true" />
-                  {{ r.who }}
+                  <span class="tz-moments__who-text">{{ r.who }}</span>
                 </span>
                 <span class="tz-visually-hidden">, {{ r.lapsLong }},</span>
                 <span class="tz-moments__when tz-tabular">{{ r.min }}</span>
@@ -282,11 +282,13 @@ export const raceOnly = true
   align-items: start;
 }
 
+/* Contenedor de sus filas: con la columna estrecha, el estado de un duelo pasa a su propia línea (más abajo). */
 .tz-moments__col {
   display: flex;
   flex-direction: column;
   gap: var(--tz-space-1);
   min-width: 0;
+  container-type: inline-size;
 }
 
 .tz-moments__title {
@@ -330,11 +332,14 @@ export const raceOnly = true
   list-style: none;
 }
 
-/* Fila pulsable: vuelta, quién y cuándo; 44 px con puntero grueso (--tz-hit-min). */
+/*
+ * Fila pulsable: vuelta, quién y cuándo; 44 px con puntero grueso (--tz-hit-min). Quién tiene un mínimo de verdad (las
+ * dos siglas): lo que va detrás no se lo come.
+ */
 .tz-moments__row {
   position: relative;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  grid-template-columns: 64px minmax(min(7.5em, 100%), 1fr) auto auto;
   align-items: center;
   gap: var(--tz-space-2);
   width: 100%;
@@ -373,6 +378,12 @@ export const raceOnly = true
   gap: var(--tz-space-2);
   min-width: 0;
   overflow: hidden;
+}
+
+/* El texto, en un bloque propio: así el «…» funciona (un texto suelto en un flex no se acorta). */
+.tz-moments__who-text {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -397,8 +408,31 @@ export const raceOnly = true
   color: var(--tz-text-faint);
 }
 
+/* Un bloque (no el inline-flex de .tz-chip, que no acorta su texto): si ni en su línea cabe, «…». */
 .tz-moments__state {
+  display: block;
   justify-self: end;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Columna estrecha (iPad en vertical): el estado del duelo («terminó en adelantamiento») baja a su propia línea, bajo
+ * quién; nunca se come los nombres ni se sale de la fila.
+ */
+@container (max-width: 26rem) {
+  .tz-moments__row.has-state {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    row-gap: var(--tz-space-1);
+    padding-block: var(--tz-space-1);
+  }
+
+  .tz-moments__row.has-state .tz-moments__state {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
 }
 
 @media (hover: hover) {

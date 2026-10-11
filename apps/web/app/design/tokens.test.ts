@@ -64,6 +64,18 @@ function oklab(hex: string): [number, number, number] {
 }
 const deltaE = (a: string, b: string) => Math.hypot(...oklab(a).map((v, i) => v - oklab(b)[i]!))
 
+/** OKLab → luminancia relativa (WCAG) de ese color en sRGB, recortado a la gama (como lo pinta el navegador). */
+function mixedLuminance([L, a, b]: [number, number, number]): number {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+  const clip = (c: number) => Math.min(1, Math.max(0, c))
+  const r = clip(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)
+  const g = clip(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)
+  const bl = clip(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+}
+
 /** Ficheros de la app (sin tests ni tokens.css) cuyo código usa un token, y no solo lo nombra en un comentario. */
 function usersOf(token: string, exts = /\.(vue|ts|css)$/): string[] {
   const use = new RegExp(`var\\(\\s*${token}(?:-[\\w-]+)?\\s*\\)|['"\`]${token}(?:-[\\w-]+)?['"\`]`)
@@ -188,6 +200,23 @@ describe('tokens de diseño', () => {
     expect(token('--tz-accent')).toBe(token('--tz-paint'))
     expect(contrast(token('--tz-accent-on'), token('--tz-accent'))).toBeGreaterThanOrEqual(4.5)
     expect(contrast(token('--tz-accent-on'), token('--tz-accent-strong'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('sobre el tinte de equipo de la fila elegida (el más claro, el de un equipo blanco), el texto y el atenuado se leen (≥ 4,5:1); el tenue, no', () => {
+    // color-mix(in oklab, <equipo> --tz-team-tint, --tz-surface-2), como `.is-selected .tz-lb__btn` (TzLeaderboard).
+    const tint = Number.parseFloat(token('--tz-team-tint')) / 100
+    const mixed = oklab('#ffffff').map((v, i) => tint * v + (1 - tint) * oklab(token('--tz-surface-2'))[i]!) as [number, number, number]
+    const lum = mixedLuminance(mixed)
+    const contrast = (hex: string) => {
+      const [hi, lo] = [luminance(hex), lum].sort((x, y) => y - x) as [number, number]
+      return (hi + 0.05) / (lo + 0.05)
+    }
+    expect(contrast(token('--tz-text'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(token('--tz-text-muted'))).toBeGreaterThanOrEqual(4.5)
+    // El tenue solo va sobre superficies lisas: en la fila elegida, «sin señal» y las celdas sin dato van atenuadas.
+    expect(contrast(token('--tz-text-faint'))).toBeLessThan(4.5)
+    const leaderboard = readFileSync(join(APP, 'components/TzLeaderboard.vue'), 'utf8')
+    expect(leaderboard).toMatch(/\.is-selected\.is-nosignal \.tz-lb__tla,[\s\S]*?\{\s*color: var\(--tz-text-muted\);/)
   })
 
   it('densidad: compacta en pantallas bajas y zonas táctiles de 44 px con puntero grueso', () => {

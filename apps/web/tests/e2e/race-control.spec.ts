@@ -102,7 +102,7 @@ test('banderas por sector en trackState: 1 s después del mensaje y 1 s después
 
   await seek(page, on.t + 1000)
   await expect.poll(() => handle(page, (h) => h.trackState.sectors[7])).toBe('DOUBLE YELLOW')
-  const chip = page.locator('[data-testid="track-sector"][data-sector="7"]')
+  const chip = page.locator('[data-testid="track-sector"][data-sectors~="7"]')
   await expect(chip).toHaveAttribute('data-flag', 'DOUBLE YELLOW')
   await expect(chip).toContainText('7')
   // Spa (fixture, sin MultiViewer) no tiene geometría de sectores: no hay capa en el mapa y el chip lo explica.

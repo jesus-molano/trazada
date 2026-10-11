@@ -21,6 +21,7 @@
     },
     "noData": "no data",
     "reason": {
+      "dev": "This session’s source (development data) has no weather.",
       "outdated": "This session was built before Trazada stored the weather: download it again to see it.",
       "absent": "The source has no weather for this session.",
       "stale": "No reading in the last {s} s (or the clock is before the first one): the station gives one per minute and it is missing here."
