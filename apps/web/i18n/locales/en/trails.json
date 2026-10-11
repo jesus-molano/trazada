@@ -11,6 +11,7 @@
     "noSample": "no data",
     "hintLabel": "What the trails show",
     "hint": "The last {s} s of each car, on the centre line, like the car: the source does not say where across the track it is. Where the position is missing, the trail stops: it is never filled in.",
-    "hintSpeed": "By speed: at each point, the last measured speed (at most {age} s old), not interpolated. If there is none, the point is grey (“no data”)."
+    "hintSpeed": "By speed: at each point, the last measured speed (at most {age} s old), not interpolated. If there is none, the point is grey (“no data”).",
+    "hintSpeedEstimated": "By speed: at each point, the last speed from this session’s reconstructed telemetry (Estimated: it does not come as is from the source), at most {age} s old and not interpolated. If there is none, the point is grey (“no data”)."
   }
 }

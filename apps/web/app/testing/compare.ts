@@ -82,9 +82,9 @@ export function compareTestRow(car: string, position: number): LeaderboardRow {
 
 /**
  * Runtime falso de la carrera sintética. `frame(t)` hace lo que el bucle del runtime: llama a los oyentes de frame
- * (paneles) con ese instante.
+ * (paneles) con ese instante. `estimated`: el `quality.estimated` del manifest (p. ej., telemetría reconstruida).
  */
-export function compareTestRuntime() {
+export function compareTestRuntime(estimated: readonly string[] = []) {
   const timing = timingBuilder()
     .run(1, 0, [60_000, 60_000, 60_000, 60_000])
     .run(2, 0, [75_000, 75_000, 75_000])
@@ -101,7 +101,7 @@ export function compareTestRuntime() {
       manifest: {
         session: { type: 'race', season: 2025, playback: { startMs: 0, endMs: 250_000, lightsOutMs: null } },
         channels: { drs: 'present' },
-        quality: { estimated: [] as string[] },
+        quality: { estimated: [...estimated] },
       },
       car: carTelemetry([1, 2], 250_000),
       timing,

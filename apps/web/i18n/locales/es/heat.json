@@ -29,6 +29,7 @@
     "hintLabel": "Qué muestra el mapa de calor",
     "hint": "Colorea la pista con una vuelta completa, la última o la más rápida, solo si es válida (sin entrada ni salida de boxes, sin coche de seguridad, VSC ni bandera roja, sin la vuelta 1 y sin anular) y cuando ya se ha visto entera. Sin coche seleccionado, la más rápida de la sesión hasta ese momento. Las banderas de los sectores siempre se ven encima.",
     "hintSpeed": "Velocidad: la que midió el coche (muestreo ~4 Hz, una muestra cada 10–25 m a fondo), colocada con su posición GPS; entre dos muestras seguidas el color se interpola. Sin muestra en {gap} s, ese tramo queda sin color: nunca se rellena. La escala va de la velocidad mínima a la máxima de la vuelta.",
+    "hintSpeedEstimated": "Velocidad: la de la telemetría reconstruida de esta sesión (Estimado: no viene tal cual de la fuente), colocada con su posición; entre dos muestras seguidas el color se interpola. Sin muestra en {gap} s, ese tramo queda sin color: nunca se rellena. La escala va de la velocidad mínima a la máxima de la vuelta.",
     "hintMinisectors": "Minisectores: la vuelta en {n} tramos iguales desde la línea de meta; en cada uno gana quien tarda menos según el GPS, comparando la vuelta de cada uno. Es una estimación con un margen de unas centésimas: con menos de {tie} ms de diferencia, «igual». Un tramo con un hueco de posición de alguno queda sin color."
   }
 }

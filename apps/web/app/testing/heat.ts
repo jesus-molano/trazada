@@ -103,8 +103,9 @@ const driver = (number: string, tla: string): DriverInfo => ({
 /**
  * Runtime falso con dos coches que no están en el fixture e2e (2 = BBB a 50 m/s, 7 = GGG a 48 m/s: BBB gana todos
  * los minisectores por ~105 ms), para los tests de componentes. `coarse(t)` hace lo que el reloj grueso del runtime.
+ * `estimated`: el `quality.estimated` del manifest (p. ej., telemetría reconstruida).
  */
-export function heatTestRuntime(type: SessionType = 'race') {
+export function heatTestRuntime(type: SessionType = 'race', estimated: readonly string[] = []) {
   const cars: HeatTestCar[] = [
     { car: 2, mps: 50 },
     { car: 7, mps: 48 },
@@ -116,7 +117,7 @@ export function heatTestRuntime(type: SessionType = 'race') {
     session: {
       manifest: {
         session: { type, season: 2025, playback: { startMs: 0, endMs: 400_000, lightsOutMs: null } },
-        quality: { estimated: [] as string[] },
+        quality: { estimated: [...estimated] },
       },
       car: src.session.car,
       timing: src.timing,
