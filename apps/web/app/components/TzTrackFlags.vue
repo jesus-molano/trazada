@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /**
  * Banderas sobre la pista: tinte de toda la cinta con SC, VSC o roja, y los sectores de comisarios con
- * bandera amarilla, doble amarilla o roja. Lee el estado de pista del runtime en cada render (sin
+ * bandera amarilla, doble amarilla o roja. Lee el estado de pista del runtime antes de cada render (`useSceneFrame`, sin
  * reactividad) y solo toca la escena cuando cambia. Va dentro de TresCanvas, en el grupo de la pista.
  */
-import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial } from 'three'
 import type { NeutralKind, SectorFlagKind } from '~/engine/trackstate/TrackState'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { useMapWidth } from '~/composables/useMapWidth'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { buildRibbon, rangeIndices, TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { token } from '~/design/tokens'
@@ -81,8 +81,7 @@ for (const ms of props.model.marshalSectors) {
 sceneStats.marshalSectors = sectors.size
 
 let seen = -1
-const { onBeforeRender } = useLoop()
-onBeforeRender(() => {
+useSceneFrame(() => {
   const ts = rt.trackState
   if (ts.version === seen) return
   seen = ts.version

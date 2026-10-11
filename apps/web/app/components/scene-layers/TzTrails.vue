@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * Estelas (ítem 7): los últimos segundos de cada coche visible, como una cinta fina que se desvanece hacia la cola.
- * Los puntos salen de `engine/replay/trail.ts` en cada render (sin historial, sin reactividad): el mismo modelo de
- * movimiento y la misma pose que el coche (`carPose`, con su separación visual si está activa), así que la punta
- * es el coche y la estela va sobre la línea central como él. Se corta en los huecos de posición.
+ * Los puntos salen de `engine/replay/trail.ts` antes de cada render (`useSceneFrame`; sin historial, sin reactividad): el
+ * mismo modelo de movimiento y la misma pose que el coche (`carPose`, con su separación visual si está activa), así que
+ * la punta es el coche y la estela va sobre la línea central como él. Se corta en los huecos de posición. Solo se
+ * recalcula y se sube a la GPU si cambió lo que dibuja (frame del runtime, modo, coche elegido o escala de altura): la
+ * cámara no cuenta (la anchura de mapa va en el shader), así que girar o acercar el mapa en pausa no sube nada.
  *
  * Color del equipo (manifest) o de la última muestra de velocidad de hace ≤ 2 s en cada punto (sin interpolar; gris sin
  * muestra), con los tokens `--tz-trail-*`. La velocidad es la de la telemetría de la sesión: medida, o reconstruida si
@@ -13,7 +15,6 @@
  * cerca y un mínimo en pantalla de lejos), sin niebla y sin escribir profundidad. Apagada, no se dibuja (0 draw
  * calls) ni calcula nada.
  */
-import { useLoop } from '@tresjs/core'
 import {
   BufferAttribute,
   BufferGeometry,
@@ -25,6 +26,7 @@ import {
   SRGBColorSpace,
 } from 'three'
 import { useMapWidth } from '~/composables/useMapWidth'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { token } from '~/design/tokens'
 import { carPose } from '~/engine/replay/carPose'
 import { pitSpan } from '~/engine/replay/place'
@@ -81,6 +83,7 @@ const attrs = {
   mapNormal: dynamic(mapNormal, 3),
   color: dynamic(color, 4),
 }
+const attrList = Object.values(attrs)
 const geometry = new BufferGeometry()
 for (const [name, attr] of Object.entries(attrs)) geometry.setAttribute(name, attr)
 const indexAttr = dynamic(index, 1)
@@ -147,8 +150,8 @@ const pose = { x: 0, y: 0, z: 0 }
 const heads = new Float64Array(N * 2)
 const headShown = new Uint8Array(N)
 
-/** Lo que pintó el último render (sceneStats.trails). */
-const stats = { mode: 'off' as TrailMode, cars: 0, points: 0, noSample: 0, triangles: 0, drawCalls: 0 }
+/** Lo que pintó el último render (sceneStats.trails); `computes`: veces que se recalculó y subió la malla. */
+const stats = { mode: 'off' as TrailMode, cars: 0, points: 0, noSample: 0, triangles: 0, drawCalls: 0, computes: 0 }
 const offStat = registerSceneStat('trails', () => ({
   ...stats,
   fogged: material.fog,
@@ -180,7 +183,18 @@ function report(cars: number, points: number, noSample: number, indices: number)
   stats.drawCalls = indices > 0 ? 1 : 0
 }
 
+/**
+ * Lo que determina la malla dibujada: el frame del runtime (instante, posiciones, visibilidad y separación de los coches
+ * solo cambian con uno nuevo), el modo, el coche elegido (su punta es más opaca) y la escala de altura (la elevación).
+ * `drawnFrame` −1: nada dibujado.
+ */
+let drawnFrame = -1
+let drawnMode: TrailMode = 'off'
+let drawnSelected: string | null = null
+let drawnScale = 0
+
 function clear() {
+  drawnFrame = -1
   mesh.visible = false
   geometry.setDrawRange(0, 0)
   headShown.fill(0)
@@ -188,7 +202,7 @@ function clear() {
 }
 
 function upload(vertices: number, indices: number) {
-  for (const attr of Object.values(attrs)) {
+  for (const attr of attrList) {
     attr.clearUpdateRanges()
     attr.addUpdateRange(0, vertices * attr.itemSize)
     attr.needsUpdate = true
@@ -198,15 +212,20 @@ function upload(vertices: number, indices: number) {
   indexAttr.needsUpdate = true
 }
 
-const { onBeforeRender } = useLoop()
-onBeforeRender(() => {
+useSceneFrame(() => {
   if (mode === 'off') {
     if (mesh.visible || stats.mode !== 'off') clear()
     return
   }
+  const selected = playback.selectedCar
+  if (rt.frames === drawnFrame && mode === drawnMode && selected === drawnSelected && props.yScale === drawnScale) return
+  drawnFrame = rt.frames
+  drawnMode = mode
+  drawnSelected = selected
+  drawnScale = props.yScale
+  stats.computes++
   const t = frameMs
   const lift = LIFT_M / Math.max(1e-3, props.yScale)
-  const selected = playback.selectedCar
   let v = 0
   let ix = 0
   let cars = 0

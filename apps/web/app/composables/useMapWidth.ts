@@ -1,5 +1,6 @@
-import { useLoop, useTres } from '@tresjs/core'
+import { useTres } from '@tresjs/core'
 import { BufferAttribute, type BufferGeometry, type Material, Vector2 } from 'three'
+import { useSceneFrame } from './useSceneFrame'
 
 /**
  * Anchura «de mapa» de una cinta (pista, pit lane, capas de banderas, bordes, línea de meta), calculada en
@@ -49,14 +50,14 @@ export function setMapAttributes(g: BufferGeometry, center: Float32Array, normal
 }
 
 /**
- * Va dentro de TresCanvas. Devuelve `mapWidth(material, realHalf, minPx)`, que prepara el material
- * (MeshBasicMaterial o LineBasicMaterial) para dibujar con anchura de mapa.
+ * Va dentro de TresCanvas, bajo TzScene. Devuelve `mapWidth(material, realHalf, minPx)`, que prepara el material
+ * (MeshBasicMaterial o LineBasicMaterial) para dibujar con anchura de mapa. El tamaño del lienzo se copia en el uniform
+ * antes de cada render (`useSceneFrame`).
  */
 export function useMapWidth() {
   const { sizes } = useTres()
-  const { onBeforeRender } = useLoop()
   const viewport = { value: new Vector2(1, 1) }
-  onBeforeRender(() => viewport.value.set(Math.max(1, sizes.width.value), Math.max(1, sizes.height.value)))
+  useSceneFrame(() => viewport.value.set(Math.max(1, sizes.width.value), Math.max(1, sizes.height.value)))
 
   return function mapWidth<M extends Material>(material: M, realHalf: number, minPx: number, along = false): M {
     if (along) material.defines = { ...material.defines, MAP_ALONG: '' }

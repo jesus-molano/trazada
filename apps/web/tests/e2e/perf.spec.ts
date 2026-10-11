@@ -114,10 +114,32 @@ test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; fr
   expect(all.triangles).toBeLessThan(150_000)
   for (const l of all.layers) expect(l.fogged, l.name).toBe(false)
 
-  // En pausa, con todo encendido, no se renderiza en bucle.
+  // En pausa, con todo encendido, no se renderiza ni se prepara nada en bucle (`useSceneFrame`): ni las estelas ni la
+  // niebla se recalculan. Tampoco con la hoja de análisis tapando la escena.
+  const idle = () =>
+    page.evaluate(() => {
+      const s = window.__trazada!.scene
+      return {
+        renders: window.__trazada!.renders,
+        prepared: (s.loop as { prepared: number }).prepared,
+        trails: (s.trails as { computes: number }).computes,
+        fog: (s.ambience as { computes: number }).computes,
+      }
+    })
+  // Sin el mensajero de las devtools de TresJS, su muestreo no recorre la escena en cada frame (build de producción).
+  expect(await page.evaluate(() => '__TRES__DEVTOOLS__' in window)).toBe(false)
   const before = await settledRenders(page)
-  await page.waitForTimeout(500)
-  expect(await page.evaluate(() => window.__trazada!.renders)).toBe(before)
+  const paused = await idle()
+  await page.waitForTimeout(1000)
+  expect(await idle()).toEqual(paused)
+  await page.getByTestId('analysis-button').click()
+  await expect(page.getByTestId('analysis-sheet')).toBeVisible()
+  const covered = await idle()
+  await page.waitForTimeout(1000)
+  expect(await idle()).toEqual(covered)
+  await page.getByTestId('replay-title').click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('analysis-sheet')).toHaveCount(0)
 
   // «iPad aproximado»: CPU ×4 y reproducción a ×1 durante 3 s; intervalos entre frames, solo anotados.
   const cdp = await page.context().newCDPSession(page)

@@ -22,6 +22,8 @@ interface TrailStats {
   pointsPerCar: number
   spanMs: number
   heads: { car: string; x: number; y: number }[]
+  /** Veces que se recalculó y subió la malla (solo con otro frame del runtime, modo, coche elegido o escala). */
+  computes: number
 }
 
 const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
@@ -141,16 +143,47 @@ test('la punta de cada estela es su coche, también tras un seek en pausa', asyn
   }
 })
 
-test('con estelas, en pausa no se renderiza en bucle; un seek vuelve a renderizar', async ({ page }) => {
+test('con estelas, en pausa no se renderiza ni se calcula en bucle (tampoco con la escena tapada); un seek sí', async ({ page }) => {
   await openScene(page)
   await openLayers(page)
   await page.getByTestId('trails-speed').click()
   await expect.poll(async () => (await trails(page)).points).toBeGreaterThan(0)
+  /** Renders, mallas de estelas recalculadas y preparaciones de la escena (`useSceneFrame`). */
+  const counters = () =>
+    page.evaluate(() => {
+      const s = window.__trazada!.scene
+      return { renders: window.__trazada!.renders, computes: (s.trails as TrailStats).computes, prepared: (s.loop as { prepared: number }).prepared }
+    })
   const before = await settledRenders(page)
-  await page.waitForTimeout(500)
-  expect(await page.evaluate(() => window.__trazada!.renders)).toBe(before)
+  const idle = await counters()
+  expect(idle.renders).toBe(before)
+  await page.waitForTimeout(1000)
+  expect(await counters()).toEqual(idle)
+
+  // Con la hoja de análisis abierta la escena está tapada: nada se prepara ni se dibuja, aunque el bucle siga.
+  await page.getByTestId('analysis-button').click()
+  await expect(page.getByTestId('analysis-sheet')).toBeVisible()
+  expect(await page.evaluate(() => window.__trazada!.sceneHidden)).toBe(true)
+  const hidden = await counters()
+  await page.waitForTimeout(1000)
+  expect(await counters()).toEqual(hidden)
+  await page.getByTestId('replay-title').click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('analysis-sheet')).toHaveCount(0)
+  await settledRenders(page)
+
+  // Acercar el mapa en pausa vuelve a dibujar, pero no recalcula las estelas: la cámara no las cambia (anchura en el shader).
+  const still = await counters()
+  const box = (await page.locator('[data-testid="scene"] canvas').boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -120)
+  await expect.poll(async () => (await counters()).renders).toBeGreaterThan(still.renders)
+  expect((await counters()).computes).toBe(still.computes)
+
+  // Un seek en pausa sí: otro frame del runtime.
   await page.evaluate(() => window.__trazada!.seek(window.__trazada!.timeMs + 5000))
-  await expect.poll(() => page.evaluate(() => window.__trazada!.renders)).toBeGreaterThan(before)
+  await expect.poll(async () => (await counters()).computes).toBeGreaterThan(still.computes)
+  expect((await counters()).renders).toBeGreaterThan(still.renders)
 })
 
 test('la herramienta y su leyenda son accesibles; la pista explica qué es dato', async ({ page }) => {
