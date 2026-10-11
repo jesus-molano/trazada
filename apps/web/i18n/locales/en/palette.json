@@ -110,12 +110,12 @@
           "none": "No data: no chequered flag in this session"
         },
         "pit": {
-          "next": "Next pit stop",
-          "prev": "Previous pit stop",
-          "none": "No data: no pit stop in this session",
-          "nextCar": "Next pit stop of {driver}",
-          "prevCar": "Previous pit stop of {driver}",
-          "noneCar": "No data: no pit stop of {driver} in this session"
+          "next": "Next pit lane entry",
+          "prev": "Previous pit lane entry",
+          "none": "No data: no pit lane entry in this session",
+          "nextCar": "Next pit lane entry of {driver}",
+          "prevCar": "Previous pit lane entry of {driver}",
+          "noneCar": "No data: no pit lane entry of {driver} in this session"
         },
         "moment": {
           "next": "Next moment",

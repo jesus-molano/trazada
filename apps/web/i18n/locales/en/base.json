@@ -182,7 +182,7 @@
     "label": "Session timeline",
     "atLap": "Lap {lap} · {time}",
     "lapStart": "Start of lap {lap}",
-    "pit": "Pit stop: {tla}",
+    "pit": "Pit lane entry: {tla}",
     "window": {
       "sc": "Safety car",
       "vsc": "Virtual safety car",

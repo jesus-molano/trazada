@@ -57,6 +57,8 @@ describe('tabla de entradas → sugerencia (es y en a la vez)', () => {
     ['próximo coche de seguridad', 'goto.sc.next'],
     ['parada de nor', 'goto.pit.next.1'],
     ['pit NOR', 'goto.pit.next.1'],
+    ['entrada en boxes de nor', 'goto.pit.next.1'],
+    ['pit lane NOR', 'goto.pit.next.1'],
     ['siguiente amarilla', 'goto.yellow.next'],
     ['bandera a cuadros', 'goto.chequered.next'],
     ['siguiente vuelta', 'goto.lap.next'],
