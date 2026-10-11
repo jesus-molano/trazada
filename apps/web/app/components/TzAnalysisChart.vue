@@ -537,6 +537,16 @@ function listen(p: ChartPreview | null) {
 }
 
 const CARD_GAP = 12
+
+/** El antepasado que recorta la figura (la hoja de análisis se desplaza): la ficha no pasa de lo que se ve de él. */
+let clipEl: HTMLElement | null | undefined
+function clipParent(fig: HTMLElement): HTMLElement | null {
+  if (clipEl === null || clipEl?.isConnected) return clipEl
+  let el = fig.parentElement
+  while (el && el !== document.body && !/(auto|scroll|hidden)/.test(getComputedStyle(el).overflowY)) el = el.parentElement
+  clipEl = el && el !== document.body ? el : null
+  return clipEl
+}
 /** Lo que se agranda alrededor de lo que la ficha no debe tapar (px CSS): el dato señalado, el final y la sigla. */
 const KEEP_PAD = 10
 
@@ -546,10 +556,11 @@ const around = (x: number, y: number, pad: number): Rect => ({ x0: x - pad, y0: 
 /**
  * Coloca la ficha (estilo escrito en el elemento, sin reactividad; coordenadas de la figura) donde menos tape de su
  * serie (`chooseCardSpot`). Candidatos, en orden: junto al dato (a la derecha y a la izquierda; debajo si el dato está
- * en la mitad de arriba del área de datos, si no encima), arriba o abajo del área de datos a esos dos lados, y en las
- * esquinas (el margen derecho de las siglas y el principio del eje); desde la leyenda, antes, encima o debajo de su
- * nombre. Nunca tapa el dato señalado, el final de la serie, su raya ni su sigla (ni el nombre de la leyenda). Más alta
- * que el área de datos, pasa antes a su forma corta (`compact`) y se vuelve a medir.
+ * en la mitad de arriba del área de datos, si no encima), arriba o abajo del área de datos a esos dos lados y en las
+ * esquinas (el margen derecho de las siglas y el principio del eje), y debajo del eje x (sobre la leyenda); desde la
+ * leyenda, antes, encima o debajo de su nombre. Nunca tapa el dato señalado, el final de la serie, su raya ni su sigla
+ * (ni el nombre de la leyenda que la muestra); los demás nombres de la leyenda pesan poco (`soft`), menos que un trozo
+ * de su serie. Más alta que el área de datos, pasa antes a su forma corta (`compact`) y se vuelve a medir.
  */
 function placeCard() {
   const card = cardEl.value
@@ -558,18 +569,28 @@ function placeCard() {
   if (!card || !fig || !p) return
   const fr = fig.getBoundingClientRect()
   const W = fig.clientWidth
-  const H = fig.clientHeight
+  // Hacia abajo puede salirse de la figura (sobre las notas), sin pasar de lo que se ve de la hoja.
+  const clip = clipParent(fig)?.getBoundingClientRect()
+  const H = Math.max(fig.clientHeight, Math.min(clip?.bottom ?? fr.bottom, window.innerHeight) - fr.top)
   const cw = card.offsetWidth
   const ch = card.offsetHeight
   const candidates: { left: number; top: number }[] = []
   const keep: Rect[] = []
+  /** Los nombres de la leyenda: mejor no taparlos (pesan menos que la serie). */
+  const soft: Rect[] = []
   let samples: { x: number; y: number }[] = []
+  const rel = (r: DOMRect): Rect => ({ x0: r.left - fr.left, y0: r.top - fr.top, x1: r.right - fr.left, y1: r.bottom - fr.top })
+  let legendKey: Rect | null = null
+  for (const el of fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"], [data-testid="analysis-legend-nodata"]')) {
+    const r = rel(el.getBoundingClientRect())
+    if (el.dataset.car === p.key && el.dataset.testid === 'analysis-legend-item') legendKey = r
+    else soft.push(r)
+  }
+  // Su nombre en la leyenda, a la vista (con el recuadro de resaltado).
+  if (legendKey) keep.push(legendKey)
   if (p.mode === 'legend') {
-    const el = [...fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"]')].find((e) => e.dataset.car === p.key)
-    const kr = el?.getBoundingClientRect()
-    if (!kr) return
-    const key: Rect = { x0: kr.left - fr.left, y0: kr.top - fr.top, x1: kr.right - fr.left, y1: kr.bottom - fr.top }
-    keep.push(key)
+    if (!legendKey) return
+    const key = legendKey
     for (const top of [key.y0 - ch - CARD_GAP / 2, key.y1 + CARD_GAP / 2]) candidates.push({ left: key.x0, top }, { left: key.x1 - cw, top })
   }
   if (plot) {
@@ -595,7 +616,8 @@ function placeCard() {
     for (const r of labelRects) if (r.key === p.key) keep.push({ x0: ox + r.x0 - 4, y0: oy + r.y0 - 4, x1: ox + r.x1 + 4, y1: oy + r.y1 + 4 })
     samples = seriesSamples(spec, frame, p.key).map((q) => ({ x: ox + q.x, y: oy + q.y }))
     const sides: number[] = []
-    let tops: number[] = [oy + bt, oy + bt + bh - ch]
+    // Arriba y abajo del área de datos y, fuera de ella, debajo del eje x (sobre la leyenda).
+    let tops: number[] = [oy + bt, oy + bt + bh - ch, oy + cr.height]
     if (p.mode !== 'legend') {
       const v = p.index < spec.x.length ? valueAt(spec, p.key, p.index) : null
       const ax = ox + (v !== null ? frame.xPos(spec.x[p.index]!) : pointerAt.x)
@@ -607,7 +629,7 @@ function placeCard() {
     for (const top of tops) for (const left of [...sides, W - cw, ox + bl + bw - cw, ox + bl]) candidates.push({ left, top })
   }
   if (!candidates.length) return
-  const at = chooseCardSpot({ w: cw, h: ch, W, H, candidates, samples, keep })
+  const at = chooseCardSpot({ w: cw, h: ch, W, H, candidates, samples, keep, soft })
   card.style.left = `${at.left}px`
   card.style.top = `${at.top}px`
 }
@@ -827,7 +849,7 @@ onBeforeUnmount(() => {
       :id="cardId"
       ref="cardEl"
       class="tz-achart__card"
-      :class="{ 'is-visible': !!preview, 'is-pinned': preview?.mode === 'pinned' }"
+      :class="{ 'is-visible': !!preview, 'is-pinned': preview?.mode === 'pinned', 'is-compact': compact }"
       :role="preview?.mode === 'pinned' ? 'group' : 'tooltip'"
       :aria-labelledby="preview?.mode === 'pinned' ? cardHeadId : undefined"
       data-testid="analysis-card"
@@ -835,6 +857,7 @@ onBeforeUnmount(() => {
       :data-car="preview?.key"
       :data-index="preview?.index"
       :data-mode="preview?.mode"
+      :data-compact="compact"
     >
       <template v-if="shown && shownGroup">
         <div class="tz-achart__card-top">
@@ -1063,6 +1086,11 @@ onBeforeUnmount(() => {
   transition:
     opacity var(--tz-dur-fast) var(--tz-ease-standard),
     visibility var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* Forma corta (más alta que el área de datos): más ancha, para que ocupe menos alto. */
+.tz-achart__card.is-compact {
+  max-width: min(420px, 100%);
 }
 
 .tz-achart__card.is-visible {

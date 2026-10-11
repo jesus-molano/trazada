@@ -209,7 +209,7 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
       <p v-if="lap1NoTime" class="tz-atab__note" data-testid="pace-lap1">{{ t('analysis.pace.lap1') }}</p>
       <p v-if="!table.trackStatusKnown" class="tz-atab__note" data-testid="pace-no-track-status">{{ t('analysis.pace.noTrackStatus') }}</p>
       <p class="tz-atab__note">{{ t('analysis.pace.basis') }}</p>
-      <p class="tz-atab__note">{{ axis === 'lap' ? t('analysis.identifyLap') : t('analysis.identify') }}</p>
+      <p class="tz-atab__note" data-testid="pace-identify">{{ axis === 'lap' ? t('analysis.identifyPaceLap') : t('analysis.identify') }}</p>
     </template>
   </div>
 </template>

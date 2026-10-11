@@ -8,7 +8,7 @@ import { LOCAL_DATA_ROOT, loadLocal } from '../../testing/fixture'
 import { buildLapTable } from './lapTable'
 import { pace, paceChart } from './pace'
 import { carStory } from './carStory'
-import { lastCrossings, leaderLapAt, legendOrder, raceTrace, stoppedCars } from './raceTrace'
+import { crossingTimes, lastCrossings, leaderLapAt, legendOrder, raceTrace, stoppedCars } from './raceTrace'
 import { stints } from './stints'
 
 const JAPAN = '2026/03-suzuka/race'
@@ -78,7 +78,8 @@ describe.skipIf(!hasSingapore)('sprint de Singapur 2026 (local, D49)', () => {
     const table = buildLapTable(s.manifest.session.type, s.timing, s.events.raceControl)
     const tla = new Map(s.manifest.drivers.map((d) => [d.number, d.tla]))
     const stopped = stoppedCars(table)
-    const order = legendOrder(raceTrace(table), stopped, lastCrossings(table), s.manifest.drivers.map((d) => d.number))
+    // La sesión entera (todos los pasos por meta a la vista): los que no tienen ninguno, aparte.
+    const order = legendOrder(raceTrace(table), stopped, lastCrossings(table), s.manifest.drivers.map((d) => d.number), true)
     expect(order.running).toHaveLength(13)
     expect(order.stopped.map((c) => `${tla.get(c)} V${stopped.get(c)}`)).toEqual([
       'PIA V19',
@@ -90,9 +91,13 @@ describe.skipIf(!hasSingapore)('sprint de Singapur 2026 (local, D49)', () => {
       'RUS V1',
       'PER V1',
     ])
-    const noLaps = s.manifest.drivers.filter((d) => !table.cars.has(d.number)).map((d) => d.tla)
-    expect(noLaps).toEqual(['STR'])
-    expect(order.running.length + order.stopped.length + noLaps.length).toBe(s.manifest.drivers.length)
+    expect(order.none.map((c) => tla.get(c))).toEqual(['STR'])
+    expect(order.running.length + order.stopped.length + order.none.length).toBe(s.manifest.drivers.length)
+    // Con un corte (a mitad de carrera), nadie «sin vueltas»: STR, al final de los que siguen, como uno que aún no ha cruzado.
+    const mid = crossingTimes(table)[Math.floor(crossingTimes(table).length / 2)]!
+    const cut = legendOrder(raceTrace(table, mid), stoppedCars(table, mid), lastCrossings(table, mid), s.manifest.drivers.map((d) => d.number), false)
+    expect(cut.none).toEqual([])
+    expect(cut.running.at(-1)).toBe('18')
   })
 
   it('ficha de ALB: P15 a +74,2 s en la V10; último paso en la V14 con entrada al pit lane; dos incidentes y uno más', async () => {

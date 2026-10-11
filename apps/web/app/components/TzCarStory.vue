@@ -7,7 +7,8 @@
  *   después no hay más pasos en los datos, sin decir por qué (la fuente no lo dice).
  * - Hasta dos mensajes de dirección de carrera que lo nombran (incidente, coche detenido, trompo, sanción, banderas
  *   negras), con su texto original en inglés y su clase, del más reciente al más antiguo, y cuántos más hay. En la
- *   forma corta de la ficha (`compact`: no cabe en el alto de la gráfica), solo el más reciente.
+ *   forma corta de la ficha (`compact`: no cabe en el alto de la gráfica), solo el más reciente, en una línea, y lo del
+ *   detenido seguido, en un solo párrafo.
  *
  * Va dentro de la ficha (un `role="tooltip"` con el ratón): sin controles.
  */
@@ -32,11 +33,11 @@ function kindLabel(e: RaceControlEvent): string {
 
 <template>
   <div class="tz-story" data-testid="analysis-card-story">
-    <template v-if="stopped && story.lastLap !== null">
+    <div v-if="stopped && story.lastLap !== null" class="tz-story__stop" :class="{ 'is-inline': compact }">
       <p data-testid="analysis-card-last">{{ t('analysis.card.lastCrossing', { x: lapText(story.lastLap) }) }}</p>
       <p v-if="story.pitInOnLastLap" data-testid="analysis-card-pit">{{ t('analysis.card.pitIn') }}</p>
       <p class="tz-story__muted" data-testid="analysis-card-after">{{ t('analysis.card.nothingAfter') }}</p>
-    </template>
+    </div>
     <template v-if="story.rc.length">
       <p class="tz-story__title">{{ t('rc.title') }}</p>
       <ul class="tz-story__rc">
@@ -45,7 +46,7 @@ function kindLabel(e: RaceControlEvent): string {
             <span v-if="e.lap" class="tz-story__lap tz-tabular">{{ lapText(e.lap) }}</span>
             <span class="tz-story__kind">{{ kindLabel(e) }}</span>
           </span>
-          <span class="tz-story__text" lang="en" :title="e.text">{{ e.text }}</span>
+          <span class="tz-story__text" :class="{ 'is-short': compact }" lang="en" :title="e.text">{{ e.text }}</span>
         </li>
       </ul>
       <p v-if="story.rcMore > 0" class="tz-story__muted" data-testid="analysis-card-rc-more">
@@ -127,7 +128,22 @@ function kindLabel(e: RaceControlEvent): string {
   font-weight: var(--tz-weight-semibold);
 }
 
-/* El texto tal cual, en dos líneas como mucho (el entero en su título). */
+/* Lo de un detenido: en párrafos; en la forma corta, seguido (ocupa menos alto). */
+.tz-story__stop {
+  display: grid;
+  gap: var(--tz-space-1);
+}
+
+.tz-story__stop.is-inline {
+  display: block;
+}
+
+.tz-story__stop.is-inline p {
+  display: inline;
+  margin-inline-end: 0.3em;
+}
+
+/* El texto tal cual, en dos líneas como mucho (en la forma corta, una; el entero en su título). */
 .tz-story__text {
   display: -webkit-box;
   overflow: hidden;
@@ -137,5 +153,10 @@ function kindLabel(e: RaceControlEvent): string {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+}
+
+.tz-story__text.is-short {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 </style>

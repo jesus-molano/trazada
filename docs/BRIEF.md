@@ -444,28 +444,39 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
     - Chip «Elegido ALO» (con «· la cámara lo sigue») en la cabecera de la hoja, en todas las pestañas (`TzAnalysisSelection`). Coche elegido = borde de pintura de 1 px, como la entrada destacada de la leyenda; nunca la placa maciza (D47).
     - Su × quita la selección y el seguimiento; el foco pasa a «Sin spoilers».
     - Esc sigue cerrando primero la hoja.
-    - En «Ritmo», sin elección del usuario, se congelan los visibles: el coche quitado sigue dibujado, sin destacar. Lo hace el estado de la hoja (`useAnalysis`), así que vale aunque se quite desde otra pestaña; con la hoja cerrada, nada cambia.
+    - En «Ritmo», el coche quitado sigue dibujado, sin destacar: se queda entre los de por defecto (`paceKept` de `useAnalysis`), aparte de lo que el usuario elija en la leyenda, así que el coche que se elija después también sale, destacado. Vale aunque se quite desde otra pestaña; al cerrar la hoja se olvida, y con la hoja cerrada nada cambia.
   - **Cada línea, a demanda**:
     - Pasar el ratón por una línea, por su sigla o por su nombre en la leyenda la resalta (encima, el resto atenuado) y dibuja su sigla a la altura exacta de su último dato. La regla de D33 no cambia: ni guías ni siglas movidas.
     - Abre una ficha: piloto; en esa vuelta, posición en la línea y diferencia con el primero; si dejó de pasar por meta, su último paso, la entrada al pit lane si la hubo y «la fuente no dice por qué»; hasta dos mensajes de dirección de carrera que lo nombran (incidente, coche detenido, trompo, sanción, banderas negras), con su texto original. Nunca dice por qué se detuvo.
-    - En táctil, un toque abre la ficha fija con «Ir al inicio de la Vn» y ya no salta (con «Sin spoilers» cortaba la gráfica que se miraba). Con ratón, el clic sigue saltando.
-    - Con teclado, el foco en la leyenda hace lo mismo; Esc oculta la ficha sin cerrar la hoja.
+    - En táctil, un toque en una línea, o mantener pulsado su nombre en la leyenda (½ s; el toque corto la sigue mostrando u ocultando), abre la ficha fija con «Ir al inicio de la Vn» y ya no salta (con «Sin spoilers» cortaba la gráfica que se miraba). Con ratón, el clic sigue saltando.
+    - Con teclado, el foco en la leyenda hace lo mismo; Esc oculta la ficha sin cerrar la hoja (en el registro de Esc, por debajo de la paleta y de las pistas de la guía).
+    - La ficha va donde menos tapa de su serie (`chooseCardSpot`): nunca el dato señalado, el final, su raya, su sigla ni su nombre en la leyenda; si no cabe en el área de datos, sobre la leyenda. Más alta que el área de datos, pasa a su forma corta: más ancha, un solo mensaje de dirección de carrera en una línea («y N más») y lo del detenido seguido.
     - Sin el foco de series de uPlot, que al soltar pone todas las opacidades a 1.
     - Cifras: el gap de `raceTrace` (pasos por meta oficiales), la posición por el orden de paso de esa vuelta (`posAtLine`), el último paso (`lastCrossings`), la entrada al pit lane (`pitInMs` de esa vuelta), el texto tal cual de dirección de carrera y el nombre del manifest; todo hasta el corte de la pestaña. Nada estimado.
   - **Leyenda del race trace por grupos**:
     - «De arriba abajo», en el orden en que acaban las líneas, así que nombra las siglas que no caben.
     - «Dejaron de pasar por meta», por última vuelta, como la clasificación.
-    - «Sin vueltas en los datos»: antes, un coche sin vueltas desaparecía sin decirlo.
+    - «Sin vueltas en los datos»: antes, un coche sin vueltas desaparecía sin decirlo. Solo con todos los pasos por meta a la vista; con un corte, va al final de «De arriba abajo», como uno que aún no ha cruzado (decirlo antes adelantaría que no va a completar ninguna).
     - El orden no cambia con el puntero encima.
   - **Detenido al final de los datos**:
-    - Además de «el primero ha dado tres vueltas», cuenta como detenido el coche cuyo último paso es anterior al último del primero cuando ya se ven todos los pasos.
+    - Además de «el primero ha dado tres vueltas», cuenta como detenido el coche cuyo último paso es anterior al último del primero cuando ya se ven todos los pasos. Con el reloj al final de la reproducción ya no hay nada que esconder: sin corte aunque «Sin spoilers» esté activo (en Japón el último paso por meta llega 0,1 s después del final de la reproducción y, si no, la regla no se aplicaba nunca con «Sin spoilers»).
     - En Singapur, PIA: su sigla salía en la columna final como si hubiera terminado.
     - Comprobado en Japón: ningún doblado sale como detenido.
   - **Momentos**:
     - «Ver y saltar entre» elige qué se ve en la pestaña y entre qué saltan ⏮ ⏭. Antes solo lo segundo, y parecía roto.
     - Tercera lista «Neutralizaciones y dirección de carrera» con lo que recorren los botones (con «Estimado» si el estado de pista es deducido).
-    - Con una clase elegida, el dock lo dice («Solo duelos ×»).
+    - Con una clase elegida, el dock lo dice («Solo duelos ×»; por debajo de 900 px, solo la clase, cortada con «…» si no cabe).
+    - Las explicaciones siguen al filtro: la de la lista de abajo, la de su clase, y «Pulsa uno para ir 5 s antes» solo dice a quién elige en las listas que se ven.
   - **Filas de duelo**: el cuerpo se parte en líneas en vez de cortar con «…». Entre 932 y 995 px el chip «terminó en adelantamiento» salía cortado.
+  - **Revisión** (verificadores independientes; arreglado, cada arreglo con un test que falla sin él):
+    - **La ficha tapaba su propia línea a 1280 y 1440 px**: iba a la derecha del dato y, más alta que el área de datos (160-270 px de alto), tapaba el resto de la línea de ALB, su raya en la V14 y su sigla (y parte de la leyenda). Ahora se elige el sitio por lo que tapa, con su forma corta si no cabe (arriba). Comprobado con capturas del sprint de Singapur a 1280, 1440 y 1920 y fijada con el dedo a 1024 y 768; e2e local a 1440, 1280 y 1024 táctil.
+    - **Tras la ×, «Ritmo» dejaba de mostrar el coche elegido el resto de la sesión**: el congelado se guardaba como si fuera la elección del usuario en la leyenda, así que el coche elegido después (desde una fila de «Momentos», por ejemplo) salía oculto. Ahora va aparte (`paceKept`).
+    - **«Ritmo» por vuelta llevaba la nota del race trace** (una leyenda por grupos y de arriba abajo que no tiene): su propia nota.
+    - **Con el dedo, un toque en un nombre de la leyenda solo mostraba u ocultaba**, y los coches que acaban en la V1-V2 (RUS, PER, HAD, COL) eran casi imposibles de tocar en su línea: mantener pulsado el nombre fija su ficha; la nota lo dice.
+    - **A 768 px en español, «Solo dirección de carrera ×» pasaba el dock a dos filas**: la forma corta del chip.
+    - **Las explicaciones de «Momentos» no seguían al filtro**, **«Sin vueltas en los datos» no respetaba «Sin spoilers»**, **la regla de fin de los datos no se aplicaba al final de la reproducción con «Sin spoilers»** y **Esc de la ficha iba por delante de las capas de más prioridad** (una pista de la guía se quedaba abierta y la ficha se cerraba): arriba.
+    - **Dos comportamientos sin test**: la raya de un detenido como zona de toque más allá de los 12 px del dato y el orden de la leyenda congelado con el puntero encima.
+    - **e2e**: `shortcuts-focus` sacaba el ratón del timeline 200 px hacia arriba, que con la hoja abierta cae en un nombre de la leyenda (su ficha se quedaba el primer Esc): ahora lo saca hacia abajo, al pie.
   - **Descartado**:
     - Reencuadrar el eje sin los detenidos: escondería la caída de ALB.
     - Una tabla de la vuelta junto a la gráfica: otra leyenda que roba ancho.

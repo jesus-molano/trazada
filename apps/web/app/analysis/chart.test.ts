@@ -309,6 +309,12 @@ describe('qué serie toca el puntero (D49)', () => {
     const onLine = { left: 300, top: 0 }
     const many = Array.from({ length: 200 }, (_, i) => ({ x: 310 + (i % 40), y: 10 + Math.floor(i / 40) }))
     expect(chooseCardSpot({ ...box, candidates: [onEnd, onLine], samples: many, keep: [keep[1]!] })).toEqual({ left: 300, top: 0 })
+    // Un nombre de la leyenda (`soft`) pesa como dos muestras: tapar uno, mejor que 3 muestras de la serie; tres, peor.
+    const legendKeys = [0, 1, 2].map((i) => ({ x0: i * 50, y0: 125, x1: i * 50 + 45, y1: 140 }))
+    const three = Array.from({ length: 3 }, (_, i) => ({ x: 400 + i, y: 10 }))
+    const spots = [{ left: 400, top: 0 }, { left: 0, top: 20 }]
+    expect(chooseCardSpot({ ...box, candidates: spots, samples: three, keep: [], soft: legendKeys.slice(0, 1) })).toEqual({ left: 0, top: 20 })
+    expect(chooseCardSpot({ ...box, candidates: spots, samples: three, keep: [], soft: legendKeys })).toEqual({ left: 400, top: 0 })
   })
 
   it('gráficas de puntos: el punto más cercano; el índice, el suyo si en el x más cercano no tiene valor', () => {

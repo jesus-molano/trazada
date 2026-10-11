@@ -386,14 +386,20 @@ export function seriesSamples(spec: ChartSpec, frame: HitFrame, key: string, ste
 
 /** Lo que pesa tapar algo que debe verse (el dato señalado, el final de la serie y su sigla) frente a una muestra. */
 const KEEP_WEIGHT = 1000
+/**
+ * Lo que pesa tapar un nombre de la leyenda (`soft`): como dos muestras de la línea (12 px). Con la ficha a la vista,
+ * la serie que describe importa más que la leyenda: si no cabe en ningún hueco del área de datos, va sobre la leyenda
+ * antes que sobre un trozo largo de su serie.
+ */
+const SOFT_WEIGHT = 2
 
 /**
  * Dónde va la ficha de una serie (D49): de los sitios candidatos (en orden de preferencia), el que menos tapa de esa
  * serie. Cada candidato se ajusta antes al contenedor ([0, W − w] × [0, H − h]). Coste: cada rectángulo de `keep` que
- * pisa (el dato señalado, el final de la serie, su sigla, el nombre de la leyenda) pesa `KEEP_WEIGHT`; cada muestra de
- * la línea (`seriesSamples`) que queda debajo, 1. A igual coste, el primero. Así, si la serie sigue a la derecha del
- * dato, la ficha va a la izquierda o a una esquina libre, y una ficha más alta que el área de datos no tapa el final
- * de la serie ni su sigla.
+ * pisa (el dato señalado, el final de la serie, su sigla, el nombre de la leyenda que la muestra) pesa `KEEP_WEIGHT`;
+ * cada uno de `soft` (los demás nombres de la leyenda), `SOFT_WEIGHT`; cada muestra de la línea (`seriesSamples`) que
+ * queda debajo, 1. A igual coste, el primero. Así, si la serie sigue a la derecha del dato, la ficha va a la izquierda
+ * o a una esquina libre, y una ficha más alta que el área de datos no tapa el final de la serie ni su sigla.
  */
 export function chooseCardSpot(o: {
   w: number
@@ -403,6 +409,7 @@ export function chooseCardSpot(o: {
   candidates: readonly { left: number; top: number }[]
   samples: readonly { x: number; y: number }[]
   keep: readonly Rect[]
+  soft?: readonly Rect[]
 }): { left: number; top: number } {
   const fit = (c: { left: number; top: number }) => ({
     left: Math.min(Math.max(0, c.left), Math.max(0, o.W - o.w)),
@@ -415,7 +422,9 @@ export function chooseCardSpot(o: {
     const x1 = at.left + o.w
     const y1 = at.top + o.h
     let cost = 0
-    for (const r of o.keep) if (r.x0 < x1 && at.left < r.x1 && r.y0 < y1 && at.top < r.y1) cost += KEEP_WEIGHT
+    const hits = (r: Rect) => r.x0 < x1 && at.left < r.x1 && r.y0 < y1 && at.top < r.y1
+    for (const r of o.keep) if (hits(r)) cost += KEEP_WEIGHT
+    for (const r of o.soft ?? []) if (hits(r)) cost += SOFT_WEIGHT
     for (const p of o.samples) if (p.x >= at.left && p.x <= x1 && p.y >= at.top && p.y <= y1) cost++
     if (cost < bestCost) {
       best = at

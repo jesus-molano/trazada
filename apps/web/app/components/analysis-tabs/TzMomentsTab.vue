@@ -58,10 +58,11 @@ const showOthers = computed(() => moments.filter === 'all' || moments.filter ===
 const raceLists = computed(() => model.race && table.cars.size > 0)
 const sections = computed(() => (raceLists.value ? Number(showOvertakes.value) + Number(showDuels.value) : 0) + Number(showOthers.value))
 /** Qué se elige al pulsar, solo de las listas que se ven (sin adelantamientos ni duelos, solo «Pulsa uno…»). */
-const pickWho = computed(() => {
+const pickText = computed(() => {
   const o = raceLists.value && showOvertakes.value
   const d = raceLists.value && showDuels.value
-  return o && d ? t('moments.pickWho.both') : o ? t('moments.pickWho.overtake') : d ? t('moments.pickWho.duel') : null
+  const who = o && d ? t('moments.pickWho.both') : o ? t('moments.pickWho.overtake') : d ? t('moments.pickWho.duel') : null
+  return who ? `${t('moments.pick')} ${who}` : t('moments.pick')
 })
 
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
@@ -248,9 +249,7 @@ export const raceOnly = true
       <p v-else-if="table.cars.size === 0" class="tz-atab__empty" data-testid="moments-no-laps">{{ t('moments.noLaps') }}</p>
       <p v-else-if="showOvertakes" class="tz-atab__note">{{ t('moments.basis') }} {{ t('moments.lap1') }}</p>
     </template>
-    <p class="tz-atab__note" data-testid="moments-pick">
-      {{ t('moments.pick') }}<template v-if="pickWho"> {{ pickWho }}</template>
-    </p>
+    <p class="tz-atab__note" data-testid="moments-pick">{{ pickText }}</p>
 
     <div class="tz-moments__cols" :class="{ 'is-single': sections === 1 }" data-testid="moments-cols">
       <section v-if="raceLists && showOvertakes" class="tz-moments__col" :aria-labelledby="overtakesId" data-testid="moments-overtakes">
