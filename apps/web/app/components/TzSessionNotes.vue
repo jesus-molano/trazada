@@ -4,7 +4,7 @@
  * despliega la lista. Se traducen por su código; uno desconocido se muestra con su texto original (en
  * español, como lo escribe el pipeline), nunca se esconde. Sin avisos, no se pinta nada.
  *
- * La cabecera del replay tiene que caber en una fila: por debajo de 1600 px, el botón muestra el icono y la cifra
+ * La cabecera del replay tiene que caber en una fila: por debajo de 1920 px, el botón muestra el icono y la cifra
  * («⚠ 5»); la palabra («avisos») sigue en el texto y en el nombre accesible, que empieza por la cifra (WCAG 2.5.3).
  */
 import type { QualityNote } from '@trazada/schema'
@@ -47,8 +47,8 @@ const params = (p: Record<string, number | string>) =>
 </template>
 
 <style scoped>
-/* Por debajo de 1600 px, solo el icono y la cifra (la palabra sigue en el nombre accesible y en el título). */
-@media (width < 1600px) {
+/* Por debajo de 1920 px, solo el icono y la cifra (la palabra sigue en el nombre accesible y en el título). */
+@media (width < 1920px) {
   .tz-notes__word {
     display: none;
   }

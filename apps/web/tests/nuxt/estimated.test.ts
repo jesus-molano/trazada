@@ -299,7 +299,7 @@ describe('etiqueta Estimado: se pulsa para ver por qué', () => {
     expect(chip.classes()).toContain('is-compact')
     expect(chip.find('.tz-estimated__short').text()).toBe(t('estimated.tagShort'))
     expect(t('estimated.tag')).toContain(t('estimated.tagShort'))
-    // Lo que se oculta por debajo de 1600 px se recorta (sigue en el DOM), nunca se quita.
+    // Lo que se oculta por debajo de 1920 px se recorta (sigue en el DOM), nunca se quita.
     expect(chip.find('.tz-estimated__label').text()).toBe(t('estimated.fields.trackStatus'))
     expect(chip.find('button').attributes('aria-label')).toBe(`${t('estimated.tag')} ${t('estimated.fields.trackStatus')}`)
     expect(chip.attributes('title')).toBe(t('estimated.hints.trackStatus'))

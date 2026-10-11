@@ -4,7 +4,7 @@
  * chip que se pulsa para ver por qué es estimado (una pista, como TzHint: en iPad un `title` no se ve nunca); con
  * ratón, la explicación también está en el título. Un campo desconocido (datos más nuevos) se muestra con su nombre.
  *
- * - `compact`: en la cabecera del replay, por debajo de 1600 px, el chip dice solo «≈ Estimado» (la cabecera tiene que
+ * - `compact`: en la cabecera del replay, por debajo de 1920 px, el chip dice solo «≈ Estimado» (la cabecera tiene que
  *   caber en una fila). El campo sigue en el nombre accesible, en el título y en la explicación; la palabra «Estimado»
  *   no se esconde nunca.
  * - `plain`: sin botón, para cuando va dentro de algo que no admite controles (la tarjeta de la vista previa del
@@ -101,10 +101,10 @@ const name = computed(() => `${t('estimated.tag')} ${label.value}`)
 }
 
 /*
- * Compacto (cabecera del replay, < 1600 px): se ve «≈ Estimado»; «Estimado: <campo>» sigue en el nombre accesible,
+ * Compacto (cabecera del replay, < 1920 px): se ve «≈ Estimado»; «Estimado: <campo>» sigue en el nombre accesible,
  * en el título y en la explicación que se abre al pulsar.
  */
-@media (width < 1600px) {
+@media (width < 1920px) {
   .tz-estimated.is-compact .tz-estimated__tag,
   .tz-estimated.is-compact .tz-estimated__label {
     position: absolute;

@@ -8,8 +8,9 @@
  *
  * Cada grupo del hueco es un menú (un botón que despliega sus controles): así la cabecera ocupa lo mismo por muchas
  * herramientas que tenga el grupo y sigue cabiendo en una fila a 1280 px (con una cabecera partida, la escena y la
- * telemetría pierden alto). Con la meteorología y el grupo «Cámara» (Tanda 3), por debajo de 1600 px esos menús y
- * «Cómo se dibuja» van solo con su icono y, por debajo de 1360 px, «Altura» y «Separar coches» también (ver los estilos).
+ * telemetría pierden alto). Con la meteorología y el grupo «Cámara» (Tanda 3), por debajo de 1600 px esos menús van
+ * solo con su icono («Cómo se dibuja», por debajo de 1920 px) y, por debajo de 1360 px, «Altura» y «Separar coches»
+ * también (ver los estilos).
  *
  * Las etiquetas «Estimado» de la escena no van en la fila de la cabecera (la partían en dos): flotan justo debajo de
  * ella, sobre el mapa (lo que describen), a la izquierda de la columna derecha y siempre a la vista; cada una se pulsa
@@ -101,7 +102,7 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
     </TzDisclosure>
     <TzDisclosure :label="t('howDrawn.button')" :name="t('howDrawn.button')" testid="how-drawn">
       <template #label>
-        <span class="tz-tools__menu-text">{{ t('howDrawn.button') }}</span>
+        <span class="tz-tools__how-text">{{ t('howDrawn.button') }}</span>
       </template>
       <p class="tz-how__title">{{ t('howDrawn.title') }}</p>
       <p id="tz-how-data" class="tz-how__heading">{{ t('howDrawn.dataTitle') }}</p>
@@ -175,6 +176,13 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
  */
 @media (width < 1600px) {
   .tz-tools__menu-text {
+    display: none;
+  }
+}
+
+/* «Cómo se dibuja», el texto más largo: solo el icono por debajo de 1920 px (la cabecera cabe en una fila). */
+@media (width < 1920px) {
+  .tz-tools__how-text {
     display: none;
   }
 }

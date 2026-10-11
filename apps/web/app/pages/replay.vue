@@ -136,8 +136,9 @@ onBeforeUnmount(() => {
 
     <!--
       Cabecera en una sola fila (D44): marca, título (se acorta con «…» antes que nada), estado, avisos, estado de pista,
-      botones del hueco y herramientas de la escena. Por debajo de 1600 px, lo secundario va solo con su icono; las
-      etiquetas «Estimado» nunca se esconden (las de la escena flotan justo debajo, sobre el mapa).
+      botones del hueco y herramientas de la escena. Por debajo de 1600 px, lo secundario va solo con su icono (el estado,
+      los avisos y «Cómo se dibuja», por debajo de 1920 px); las etiquetas «Estimado» nunca se esconden (las de la escena
+      flotan justo debajo, sobre el mapa).
     -->
     <header class="tz-replay__bar">
       <TzBrandBar />
@@ -149,7 +150,7 @@ onBeforeUnmount(() => {
         data-testid="replay-status"
         data-state="ready"
       >
-        <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1600 px, también «Listo» y el detalle. -->
+        <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1920 px, también «Listo» y el detalle. -->
         <TzHint plain :label="readyName" :text="readyName" testid="replay-status-detail" :title="readyName">
           <template #button>
             <span class="tz-replay__dot" aria-hidden="true" />
@@ -208,9 +209,10 @@ onBeforeUnmount(() => {
 }
 
 /*
- * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Desde 1180 px no se parte: el título se
- * acorta con «…» y, si aun así no cabe, el estado de pista reparte sus chips en dos líneas (nunca se esconde una
- * bandera). Por debajo (tablet), puede partirse.
+ * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Para decidir si cabe, el título cuenta
+ * solo con su mínimo (6 em) y el estado de pista con su chip más ancho: después crecen hasta su contenido (primero el
+ * estado de pista) y el título se acorta con «…» si no llega. Solo si ni así cabe (tablet), la fila se parte; nunca se
+ * esconde una bandera ni una etiqueta «Estimado».
  */
 .tz-replay__bar {
   position: relative;
@@ -238,9 +240,11 @@ onBeforeUnmount(() => {
   --replay-over-top: calc(var(--tz-space-12) + var(--tz-space-2));
 }
 
+/* Base 0 y crece hasta su texto: cede sitio antes que nadie (con «…» y el texto entero en su título). */
 .tz-replay__title {
-  min-width: 0;
-  max-width: 100%;
+  flex: 1 1 0;
+  min-width: min(6em, 100%);
+  max-width: max-content;
   margin: 0;
   overflow: hidden;
   font-size: var(--tz-text-xl);
@@ -250,21 +254,11 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-@media (width >= 1180px) {
-  .tz-replay__bar {
-    flex-wrap: nowrap;
-  }
-
-  /* El título cede sitio antes que nadie (factor alto), hasta 6 em; después, el estado de pista. */
-  .tz-replay__title {
-    flex: 0 100 auto;
-    min-width: 6em;
-  }
-
-  .tz-replay__bar > [data-testid='track-status'] {
-    flex: 0 1 auto;
-    min-width: min-content;
-  }
+/* Estado de pista: cuenta con su chip más ancho y crece (antes que el título) hasta que caben todos sus chips. */
+.tz-replay__bar > [data-testid='track-status'] {
+  flex: 100 1 0;
+  min-width: min-content;
+  max-width: max-content;
 }
 
 /* Portátiles (< 1360 px): huecos más justos entre los elementos de la cabecera. */
@@ -274,7 +268,7 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Estado: un punto (el texto «Listo» sigue en el DOM, accesible); desde 1600 px, también «Listo» y el detalle. */
+/* Estado: un punto (el texto «Listo» sigue en el DOM, accesible); desde 1920 px, también «Listo» y el detalle. */
 .tz-replay__status {
   margin: 0;
 }
@@ -304,7 +298,7 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
 }
 
-@media (width < 1600px) {
+@media (width < 1920px) {
   .tz-replay__ready {
     position: absolute;
     width: 1px;

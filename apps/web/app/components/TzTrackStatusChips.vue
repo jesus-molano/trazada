@@ -8,7 +8,7 @@
  * `interactive` (la cabecera): la etiqueta «Estimado» se pulsa para ver por qué y, si hay banderas de sector sin
  * geometría para situarlas en el mapa, una pista ⓘ lo explica (en iPad un título no se ve). Sin él (la vista previa es
  * un `role="tooltip"`, que no admite controles), todo va en títulos y texto. `compactEstimated`: la etiqueta se acorta
- * por debajo de 1600 px (la cabecera tiene que caber en una fila).
+ * por debajo de 1920 px (la cabecera tiene que caber en una fila).
  */
 import type { TrackStateSnapshot } from '~/engine/trackstate/TrackState'
 
@@ -25,7 +25,7 @@ const props = withDefaults(
     emptyLabel?: string
     /** Con controles: «Estimado» pulsable y la pista de «sin geometría» (la cabecera). */
     interactive?: boolean
-    /** «Estimado» corto por debajo de 1600 px (la cabecera). */
+    /** «Estimado» corto por debajo de 1920 px (la cabecera). */
     compactEstimated?: boolean
   }>(),
   { testid: 'track', emptyLabel: '', interactive: false, compactEstimated: false },
