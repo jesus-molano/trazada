@@ -22,6 +22,10 @@ Es una app para usar en tu PC (no hay web pública), así que aquí van unas cap
 
 ![Cámara siguiendo a un coche, con su telemetría](docs/img/coche.webp)
 
+**Diseño «Análisis»** (en la cabecera o con la tecla L): la clasificación con la mejor vuelta, la última y las entradas en boxes de cada piloto, la telemetría más grande del coche elegido y, en el mapa, el calor por velocidad de su última vuelta entera (menú «Capas»).
+
+![Diseño «Análisis» con la telemetría grande y el mapa de calor](docs/img/analisis.webp)
+
 **Tablet**: con `pnpm local --lan`, también en el iPad (paneles abajo en vertical).
 
 <img src="docs/img/tablet.webp" alt="Replay en una tablet en vertical" width="384">

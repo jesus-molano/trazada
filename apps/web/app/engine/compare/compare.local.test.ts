@@ -17,7 +17,10 @@ const SESSIONS = ['2026/10-spa-francorchamps/fp1', '2026/03-suzuka/race'].filter
 )
 
 describe.skipIf(SESSIONS.length === 0)('motor compartido con datos completos (local)', () => {
-  it.each(SESSIONS)('%s', async (id) => {
+  // Carga la sesión entera (gunzip y TRZB) y la recorre coche a coche cada 5 s: 2–3 s en solitario, y más del límite
+  // de 5 s con la CPU compartida de la suite completa (falló así dos veces en el cierre de las 21 funciones, con los
+  // cálculos ya hechos y dentro de sus presupuestos). Lo que se mide son los presupuestos de abajo, no esta espera.
+  it.each(SESSIONS)('%s', { timeout: 30_000 }, async (id) => {
     const s = await loadLocal(id)
     const L = circuitModel(s.circuit).centerline.length
     const tracks = carTracks(s.motion, s.tangents)
