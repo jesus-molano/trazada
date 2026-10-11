@@ -414,5 +414,20 @@ describe('honestidad', () => {
     expect(chart.find('[data-car="18"]').text()).toMatch(/^BBB\s+(hasta|to) V2$/)
     expect(chart.find('[data-car="1"]').text()).toBe('AAA')
   })
+
+  it('ritmo por hora (solo puntos): la muestra de la leyenda es un punto, y un cuadrado para el segundo piloto de su equipo', async () => {
+    attach()
+    const { sheet } = await mountBoth()
+    await openSheet()
+    expect($('[data-testid="pace"]')!.dataset.axis).toBe('time')
+    const spec = sheet.findComponent(TzAnalysisChart).props('spec') as ChartSpec
+    const second = spec.groups.find((g) => g.dash)!
+    const first = spec.groups.find((g) => !g.dash)!
+    const swatch = (car: string) => $(`[data-testid="pace-chart"] [data-car="${car}"] .tz-achart__swatch`)!.classList
+    expect(swatch(first.key).contains('is-point')).toBe(true)
+    expect(swatch(first.key).contains('is-dash')).toBe(false)
+    expect(swatch(second.key).contains('is-point')).toBe(true)
+    expect(swatch(second.key).contains('is-dash')).toBe(true)
+  })
 })
 

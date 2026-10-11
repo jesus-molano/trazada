@@ -16,7 +16,7 @@
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { type ChartSpec, DIM_ALPHA, nearestIndex, seriesEnd } from '~/analysis/chart'
-import { COLUMN_PADDING, drawEndLabels, INLINE_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
+import { drawEndLabels, LABEL_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
 import { token } from '~/design/tokens'
 
 const props = defineProps<{
@@ -84,23 +84,52 @@ const crossPoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) 
 }
 
 /**
- * Cuadrados para el segundo piloto de cada equipo en las gráficas solo de puntos (ritmo por hora), donde no hay línea
- * discontinua que los distinga: sin esto, dos compañeros de equipo serían el mismo punto del mismo color.
+ * Marcadores a medida para el segundo piloto de cada equipo, que en las gráficas de puntos no tiene línea discontinua que
+ * lo distinga de su compañero: cuadrado (lleno o hueco) en lugar de círculo y «+» en lugar de «×». Del mismo tamaño que
+ * los de uPlot (diámetro `size` con el trazo incluido).
  */
-const squarePoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) => {
-  const s = u.series[seriesIdx]!
-  const xs = u.data[0]
-  const ys = u.data[seriesIdx]!
-  const h = ((s.points?.size ?? 6) / 2) * uPlot.pxRatio
-  const fill = new Path2D()
-  for (let i = idx0; i <= idx1; i++) {
-    const y = ys[i]
-    if (y === null || y === undefined) continue
-    fill.rect(u.valToPos(xs[i]!, 'x', true) - h, u.valToPos(y, s.scale ?? 'y', true) - h, 2 * h, 2 * h)
+function shapePoints(shape: 'square' | 'plus'): uPlot.Series.Points.PathBuilder {
+  return (u, seriesIdx, idx0, idx1) => {
+    const s = u.series[seriesIdx]!
+    const xs = u.data[0]
+    const ys = u.data[seriesIdx]!
+    const size = s.points?.size ?? 6
+    const width = s.points?.width ?? 1
+    const h = ((shape === 'square' ? size - width : size) / 2) * uPlot.pxRatio
+    const path = new Path2D()
+    for (let i = idx0; i <= idx1; i++) {
+      const y = ys[i]
+      if (y === null || y === undefined) continue
+      const cx = u.valToPos(xs[i]!, 'x', true)
+      const cy = u.valToPos(y, s.scale ?? 'y', true)
+      if (shape === 'square') path.rect(cx - h, cy - h, 2 * h, 2 * h)
+      else {
+        path.moveTo(cx - h, cy)
+        path.lineTo(cx + h, cy)
+        path.moveTo(cx, cy - h)
+        path.lineTo(cx, cy + h)
+      }
+    }
+    const clip = new Path2D()
+    clip.rect(u.bbox.left - 2 * h, u.bbox.top - 2 * h, u.bbox.width + 4 * h, u.bbox.height + 4 * h)
+    return { stroke: path, fill: shape === 'square' ? path : null, clip }
   }
-  const clip = new Path2D()
-  clip.rect(u.bbox.left - h, u.bbox.top - h, u.bbox.width + 2 * h, u.bbox.height + 2 * h)
-  return { stroke: fill, fill, clip }
+}
+const squarePoints = shapePoints('square')
+const plusPoints = shapePoints('plus')
+
+/**
+ * Puntos sueltos de una serie de línea (un dato con huecos a los dos lados, p. ej. la primera vuelta del race trace):
+ * una línea no dibuja nada con un solo punto, y su sigla quedaría junto a un dato invisible.
+ */
+const isolatedPoints: uPlot.Series.Points.Filter = (u, seriesIdx) => {
+  const ys = u.data[seriesIdx]!
+  const out: number[] = []
+  for (let i = 0; i < ys.length; i++) {
+    if (ys[i] === null || ys[i] === undefined) continue
+    if ((i === 0 || ys[i - 1] === null || ys[i - 1] === undefined) && (i === ys.length - 1 || ys[i + 1] === null || ys[i + 1] === undefined)) out.push(i)
+  }
+  return out.length ? out : null
 }
 
 const noPath: uPlot.Series.PathBuilder = () => null
@@ -124,9 +153,17 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
       }
       switch (s.mark) {
         case 'line':
-          return { ...base, ...(g.dash ? { dash: DASH } : {}), points: { show: false } }
+          return {
+            ...base,
+            ...(g.dash ? { dash: DASH } : {}),
+            points: { show: false, filter: isolatedPoints, size: 5, width: 1, fill: g.color, stroke: g.color },
+          }
         case 'lineDot':
-          return { ...base, ...(g.dash ? { dash: DASH } : {}), points: { show: true, size: 5, width: 1, fill: g.color, stroke: g.color } }
+          return {
+            ...base,
+            ...(g.dash ? { dash: DASH } : {}),
+            points: { show: true, size: 5, width: 1, fill: g.color, stroke: g.color, ...(g.dash ? { paths: squarePoints } : {}) },
+          }
         case 'dot':
           return {
             ...base,
@@ -134,9 +171,13 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
             points: { show: true, size: 6, width: 1, fill: g.color, stroke: g.color, ...(g.dash ? { paths: squarePoints } : {}) },
           }
         case 'hollow':
-          return { ...base, paths: noPath, points: { show: true, size: 7, width: 1.5, fill: surface, stroke: g.color } }
+          return {
+            ...base,
+            paths: noPath,
+            points: { show: true, size: 7, width: 1.5, fill: surface, stroke: g.color, ...(g.dash ? { paths: squarePoints } : {}) },
+          }
         case 'cross':
-          return { ...base, paths: noPath, points: { show: true, size: 8, width: 1.5, stroke: g.color, paths: crossPoints } }
+          return { ...base, paths: noPath, points: { show: true, size: 8, width: 1.5, stroke: g.color, paths: g.dash ? plusPoints : crossPoints } }
       }
     }),
   ]
@@ -148,7 +189,7 @@ function drawLabels(u: uPlot, spec: ChartSpec) {
     u.ctx,
     { r, bbox: u.bbox, xPos: (v) => u.valToPos(v, 'x', true), yPos: (v) => u.valToPos(v, 'y', true) },
     spec,
-    { font: `${10 * r}px ${token('--tz-font-sans')}`, text: token('--tz-text'), connector: token('--tz-border-strong') },
+    { font: `${10 * r}px ${token('--tz-font-sans')}`, text: token('--tz-text') },
   )
 }
 
@@ -204,8 +245,8 @@ function build() {
     {
       width: Math.max(1, el.clientWidth),
       height: Math.max(1, el.clientHeight),
-      // Hueco a la derecha para las siglas (en el margen o junto al final de las series).
-      padding: [PLOT_PAD_TOP, spec.labelColumn ? COLUMN_PADDING : INLINE_PADDING, 0, 0],
+      // Hueco a la derecha para las siglas (en la columna o junto al final de las series).
+      padding: [PLOT_PAD_TOP, LABEL_PADDING, 0, 0],
       legend: { show: false },
       cursor: { x: true, y: false, points: { show: false }, drag: { x: false, y: false, setScale: false }, focus: { prox: -1 } },
       select: { show: false, left: 0, top: 0, width: 0, height: 0 },

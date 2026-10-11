@@ -55,9 +55,8 @@ export interface ChartSpec {
   formatX: (v: number) => string
   formatY: (v: number) => string
   /**
-   * Siglas en el margen derecho, fuera del área de datos (ejes por vuelta: las series avanzan juntas), cada una a la
-   * altura del último dato de su serie o justo al lado (`placeLabels`). Sin margen (eje por hora), junto al final de su
-   * serie.
+   * Siglas en columna, justo a la derecha del último dato (ejes por vuelta: las series avanzan juntas), cada una a la
+   * altura del último dato de su serie (`placeLabels`). Sin columna (eje por hora), junto al final de su serie.
    */
   labelColumn?: boolean
 }
@@ -163,7 +162,7 @@ export function endPoints(spec: ChartSpec): EndPoint[] {
 }
 
 export interface LabelSpot {
-  /** Donde empieza el rótulo (px): el borde del margen o el final de la serie. */
+  /** Donde empieza el rótulo (px). */
   x: number
   /** Altura de su dato (px): la del último dato de la serie, o el borde si se sale de la escala. */
   y: number
@@ -173,37 +172,24 @@ export interface LabelSpot {
   first: boolean
 }
 
-export interface PlacedLabel {
-  /** Altura del rótulo. */
-  y: number
-  /** Una separación más arriba o más abajo de su dato (en el margen, un trazo corto lo une con él). */
-  moved: boolean
-}
-
 /**
- * Sitio de cada sigla (en el orden de entrada; null si no cabe), siempre dentro de [lo, hi]. Se colocan de una en una,
- * primero la del coche destacado y luego de arriba abajo: cada una a la altura de su dato; si ahí pisa a otra ya
- * colocada (a menos de `gap` en vertical y solapadas en horizontal), una separación más abajo o más arriba; y si
- * tampoco cabe, sin sigla (la leyenda la nombra). Ninguna queda lejos de su dato, que es lo que se lee al mirarla.
+ * Altura de cada sigla (en el orden de entrada), o null si no lleva: cada una va exactamente a la altura de su dato (dentro
+ * de [lo, hi]) o no va, porque una sigla movida acaba a la altura de otra serie y se lee como suya. Se colocan de una en
+ * una, primero la del coche destacado (siempre lleva) y luego de arriba abajo; una que pisaría a otra ya colocada (a
+ * menos de `gap` en vertical y solapadas en horizontal) se queda sin sigla: la leyenda la nombra.
  */
-export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number }): (PlacedLabel | null)[] {
+export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number }): (number | null)[] {
   const order = spots
     .map((_, i) => i)
     .sort((a, b) => Number(spots[b]!.first) - Number(spots[a]!.first) || spots[a]!.y - spots[b]!.y)
   const taken: { x0: number; x1: number; y: number }[] = []
-  const out = new Array<PlacedLabel | null>(spots.length).fill(null)
-  const eps = 1e-6
+  const out = new Array<number | null>(spots.length).fill(null)
   for (const i of order) {
     const s = spots[i]!
-    const home = Math.min(Math.max(s.y, o.lo), o.hi)
-    for (const dy of [0, o.gap, -o.gap]) {
-      const y = home + dy
-      if (y < o.lo - eps || y > o.hi + eps) continue
-      if (taken.some((t) => t.x0 < s.x + s.w && s.x < t.x1 && Math.abs(t.y - y) < o.gap - eps)) continue
-      taken.push({ x0: s.x, x1: s.x + s.w, y })
-      out[i] = { y, moved: dy !== 0 }
-      break
-    }
+    const y = Math.min(Math.max(s.y, o.lo), o.hi)
+    if (taken.some((t) => t.x0 < s.x + s.w && s.x < t.x1 && Math.abs(t.y - y) < o.gap - 1e-6)) continue
+    taken.push({ x0: s.x, x1: s.x + s.w, y })
+    out[i] = y
   }
   return out
 }
