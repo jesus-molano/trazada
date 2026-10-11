@@ -18,8 +18,9 @@ export type ShownNote =
 
 /** Códigos con variantes de texto según `params.reason`. */
 const BY_REASON: Partial<Record<QualityNoteCode, readonly string[]>> = {
-  'circuit-rebuilt': ['outdated', 'gains-corners'],
+  'circuit-rebuilt': ['outdated', 'gains-corners', 'gains-pit'],
   'circuit-outdated-kept': ['no-corners', 'build-failed', 'would-lose'],
+  'pitlane-missing': ['no-stops', 'none-valid', 'dropped'],
 }
 
 /** Parámetros tal y como se muestran (la cobertura, en %). */

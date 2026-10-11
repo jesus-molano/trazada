@@ -19,14 +19,29 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from synthetic import PIT, PIT_LEN, PIT_SPAN, CarSim, synthetic_session, track_point
+from synthetic import (
+    PIT,
+    PIT_LEN,
+    PIT_SPAN,
+    START_MS,
+    TRACK_SPEED,
+    CarSim,
+    add_car,
+    synthetic_session,
+    track_point,
+)
 
 from trazada_pipeline.build import BuildReport, build_session
 from trazada_pipeline.circuit.build import (
     GEOMETRY_VERSION,
+    PIT_MERGE_MAX_M,
     Circuit,
+    PitLane,
+    build_centerline,
     build_circuit,
+    build_pitlane,
     clean_pit_path,
+    gaps_follow_the_cars,
     pit_core,
 )
 from trazada_pipeline.circuit.geometry import PolylineIndex, resample
@@ -139,6 +154,26 @@ def _notes(report: BuildReport) -> list[dict]:
     return json.loads(report.manifest_path.read_text())["quality"]["notes"]
 
 
+def _more_stops(data: SessionData, sims: dict[str, CarSim], n: int = 5) -> None:
+    """Cinco coches más con una parada de 3 a 7 s en el box (más larga que el drive-through del 2 y la
+    parada del 1): con 5 paradas o más con que comparar se comprueba también la cobertura."""
+    for k in range(n):
+        num = str(7 + k)
+        c = (
+            CarSim(num, START_MS + 9000 + 1500 * k, 1.0)
+            .laps(1 + k % 2)
+            .to_pit_entry()
+            .pit(stop_at_v=150.0 + 10 * k, stop_s=3.0 + k)
+            .laps(1)
+        )
+        add_car(data, c, seed=100 + k)
+        sims[num] = c
+
+
+def _pit_lane_of(data: SessionData) -> PitLane | None:
+    return build_pitlane(data, build_centerline(data)[0])
+
+
 # --- el pit lane: sin cuerdas, sin gancho, validado con los coches ---
 
 
@@ -166,6 +201,97 @@ def test_pit_lane_never_bridges_a_gap_in_a_straight_line(how: str) -> None:
     sampled, joins = _lane_offset(c)
     assert sampled < 1.0 and joins < 3.0, (sampled, joins)
     assert c.quality["pitFitP90M"] < 1.0
+
+
+@pytest.mark.parametrize(
+    ("more_stops", "v0", "v1", "from_the_gap"),
+    [
+        (True, 150.0, 205.0, True),  # en la recta, por donde van las otras 7 paradas
+        (True, 20.0, 90.0, False),  # cruza la curva de la entrada: la recta va 6,6 m por dentro
+        (False, 150.0, 205.0, False),  # en la recta, pero solo 2 paradas más: no se puede comprobar
+    ],
+)
+def test_a_gap_is_bridged_only_where_the_other_cars_go(
+    more_stops: bool, v0: float, v1: float, from_the_gap: bool
+) -> None:
+    """La parada más corta va a menos de 30 km/h unos 60 m (la cola de la clasificación: esas muestras no
+    se usan). En la clasificación de Singapur 2026, paradas con huecos así de 45-71 m en la recta del pit
+    lane, que siguen todas las demás, se descartaban: un hueco solo vale si la recta que lo cruza va por
+    donde van las otras paradas."""
+    data, sims = synthetic_session()
+    if more_stops:
+        _more_stops(data, sims)
+    _gap_in_the_lane(data, sims, "2", "slow", v0, v1)
+    pit = _pit_lane_of(data)
+    assert pit is not None
+    assert (pit.car == "2") is from_the_gap, pit.car
+
+
+def test_gaps_follow_the_cars_checks_every_metre_of_the_bridge() -> None:
+    """Recorrido en L (40 m en diagonal y luego recto, como la entrada del sintético) y muestras de otras
+    paradas por él: un hueco en la recta vale; uno que cruza la esquina (la recta va 6,6 m por dentro), no; y
+    con menos de 5 paradas con que comprobarlo, ninguno."""
+    corner = np.array([[0.0, 0.0, 0.0], [50.0, -20.0, 0.0], [350.0, -20.0, 0.0]])
+    truth = resample(corner, 1.0, closed=False)
+    v = np.hypot(*np.diff(truth[:, :2], axis=0).T).cumsum()
+    v = np.r_[0.0, v]
+    runs = [truth[k::5] for k in range(5)]  # cinco paradas, cada una con una muestra cada 5 m
+
+    def with_gap(v0: float, v1: float) -> np.ndarray:
+        return truth[(v <= v0) | (v >= v1)][::4]
+
+    assert gaps_follow_the_cars(with_gap(150.0, 210.0), runs)
+    assert not gaps_follow_the_cars(with_gap(20.0, 90.0), runs)
+    assert not gaps_follow_the_cars(with_gap(150.0, 210.0), runs[:4])
+
+
+def test_pit_lane_through_where_no_other_car_goes_is_not_used() -> None:
+    """La parada más corta va 6 m fuera de la pista 80 m antes de la entrada (las demás siguen en la pista,
+    pegadas a la línea, hasta el pit lane): sus muestras de pit lane siguen bien ese pit lane, pero ese tramo
+    no lo cubre ninguna de las otras 7 paradas. Se usa el de otra parada."""
+    data, sims = synthetic_session()
+    _more_stops(data, sims)
+    sim, pos = sims["2"], data.pos["2"]
+    t = pos["t_ms"].to_numpy(dtype=np.float64)
+    t_in = sim.pit_in[0]
+    rows = np.flatnonzero((t > t_in - 80.0 / TRACK_SPEED * 1000) & (t < t_in))
+    assert len(rows) >= 5
+    pos.loc[pos.index[rows], "y"] -= 60  # 6 m hacia fuera (hacia el pit lane)
+    pit = _pit_lane_of(data)
+    assert pit is not None and pit.car != "2", pit.car if pit else None
+    assert pit.fit.uncovered_share <= 0.10
+
+
+def test_a_later_stop_that_follows_the_cars_better_wins() -> None:
+    """La parada más corta va 6 m por fuera durante ~30 m: su pit lane vale (lo siguen las otras paradas,
+    p90 ≤ 3 m), pero deja más muestras lejos que el de la siguiente, que es el que se usa."""
+    data, sims = synthetic_session()
+    pos = data.pos["2"]
+    v = _pit_v(sims["2"], pos["t_ms"].to_numpy(dtype=np.float64))
+    shift = np.nan_to_num(np.clip(np.minimum(v - 200.0, 231.0 - v) / 8.0, 0.0, 1.0)) * 6.0
+    pos["y"] = pos["y"] - np.rint(shift * 10).astype(np.int64)
+    c = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    assert c.pitlane is not None
+    sampled, joins = _lane_offset(c)
+    assert sampled < 1.0 and joins < 3.0, (sampled, joins)
+
+
+def test_pit_lane_exit_stops_where_the_car_runs_along_the_track() -> None:
+    """Tras salir, la parada más corta sigue 90 m a 3 m de la línea, por el borde de la pista (en la
+    carrera de Suzuka, hasta 210 m): el pit lane sigue la salida que se junta con la pista, no más de
+    `PIT_MERGE_MAX_M`."""
+    data, sims = synthetic_session()
+    sim, pos = sims["2"], data.pos["2"]
+    t = pos["t_ms"].to_numpy(dtype=np.float64)
+    t_out = sim.pit_out[0]
+    rows = np.flatnonzero((t > t_out) & (t < t_out + 90.0 / TRACK_SPEED * 1000))
+    pos.loc[pos.index[rows], "y"] -= 30  # 3 m hacia fuera, en la recta de después de la salida
+    c = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    assert c.pit_entry_s is not None and c.pit_exit_s is not None
+    span = np.mod(c.pit_exit_s - c.pit_entry_s, c.length)
+    # La salida sintética se junta con la pista en PIT_SPAN; más allá, como mucho los 60 m y la unión (sin
+    # tope, ~95 m).
+    assert span < PIT_SPAN + 70.0, span
 
 
 def _shift_out(data: SessionData, sims: dict[str, CarSim], car: str) -> None:
@@ -230,6 +356,27 @@ def test_no_pit_lane_rather_than_a_wrong_one() -> None:
     assert np.all(m.path[in_lane] == PATH_NODATA)
 
 
+def test_no_pit_lane_hides_the_exit_queue_after_pit_out() -> None:
+    """Sin pit lane, el cronometraje da la salida 20 s antes de que el coche deje la cola del semáforo (en
+    Singapur 2026, hasta 24 s): esa cola, fuera de la pista, queda sin dato; con un margen de 3 s se dibujaba
+    en la pista."""
+    data, sims = synthetic_session()
+    _gap_in_every_stop(data, sims, 30.0, PIT_LEN - 30.0)
+    laps = data.laps
+    out = (laps["car"] == "4") & (laps["pit_out_ms"] >= 0)
+    assert out.sum() == 1
+    laps.loc[out, "pit_out_ms"] -= 20_000
+    c = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    assert c.pitlane is None
+    m = project_session(data, c)["4"]
+    xyz, _, _ = sims["4"].truth(m.t_ms.astype(np.float64))
+    track = PolylineIndex(_flat(c.centerline), closed=True)
+    far = track.project(_flat(c.to_canonical(xyz * 10.0)))[1] > 8.0
+    queue = far & (m.t_ms > sims["4"].pit_out[0] - 20_000 + 3000)
+    assert queue.sum() > 20
+    assert np.all(m.path[queue] == PATH_NODATA)
+
+
 def test_pit_lane_starts_where_it_leaves_the_track_without_a_hook() -> None:
     """El feed deja el coche en la pista 8 m por delante en los primeros 10 m del pit lane: el pit lane no
     puede empezar en esa muestra de pista y volver hacia atrás."""
@@ -244,6 +391,33 @@ def test_pit_lane_starts_where_it_leaves_the_track_without_a_hook() -> None:
     assert du.min() > -0.05, du.min()
     sampled, joins = _lane_offset(c)
     assert sampled < 1.0 and joins < 3.0, (sampled, joins)
+
+
+def test_clean_pit_path_drops_a_last_point_that_goes_back() -> None:
+    """El último punto solo se conserva si avanza: un fallo ahí dejaría un gancho al final."""
+    path = np.column_stack([np.r_[np.arange(20) * 5.0, 80.0], np.zeros(21), np.zeros(21)])
+    out = clean_pit_path(path, None, heading=np.array([1.0, 0.0]))
+    assert np.all(np.diff(out[:, 0]) > 0)
+    assert out[-1, 0] == 95.0
+
+
+def test_pit_core_merge_has_a_length_limit() -> None:
+    """Tras el pit lane, 150 m a 3 m de la línea (un coche por el borde de la pista): el recorrido sigue la
+    salida lenta como mucho `PIT_MERGE_MAX_M` (unos 12 m de ellos, el salto de 15 a 3 m)."""
+    track = PolylineIndex(_ring(500.0, 0.0, 2 * np.pi, 1.0), closed=True, z_weight=0.0)
+    pts = np.vstack(
+        [
+            _ring(500.0, -0.10, 0.00),
+            _ring(515.0, 0.00, 0.50),
+            _ring(503.0, 0.50, 0.80),
+            _ring(500.0, 0.80, 0.90),
+        ]
+    )
+    core = pit_core(pts, None, track)
+    assert core is not None
+    angle = np.arctan2(core[:, 1], core[:, 0])
+    assert 0.5 + 30.0 / 503 < angle.max() < 0.5 + 60.0 / 503, angle.max()
+    assert PIT_MERGE_MAX_M == 60.0
 
 
 def test_clean_pit_path_uses_the_track_heading_at_the_start() -> None:
@@ -337,6 +511,16 @@ def test_switch_overshoot_marks_only_the_old_path_ahead_of_the_new() -> None:
     assert np.flatnonzero(switch_overshoot(t, path, s)).tolist() == [2, 3]
 
 
+def test_switch_overshoot_at_the_exit_and_only_in_the_last_2_s() -> None:
+    """Igual en la salida (muestras del pit lane por delante de la primera de pista) y solo en los 2 s
+    antes del cambio: una de antes, aunque quede por delante, ya no es el feed pegado al camino viejo."""
+    T, P = PATH_TRACK, PATH_PIT
+    t = np.array([0, 500, 1500, 2600, 2800, 3000])
+    path = np.array([P, P, P, P, P, T], dtype=np.uint8)
+    s = np.array([30.0, 31.0, 32.0, 33.0, 34.0, 20.0])
+    assert np.flatnonzero(switch_overshoot(t, path, s)).tolist() == [2, 3, 4]
+
+
 # --- un circuito guardado con el pit lane mal ---
 
 
@@ -355,9 +539,57 @@ def test_outdated_pit_lane_the_cars_do_not_follow_is_dropped(tmp_path: Path) -> 
     _gap_in_every_stop(data, sims, 150.0, 250.0)  # 100 m sin muestras: ninguna parada da el pit lane
     notes = _notes(build_session(data, tmp_path))
     assert any(n["code"] == "circuit-rebuilt" and "queda sin pit lane" in n["text"] for n in notes), notes
+    # La app lo dice (por código): sin pit lane porque el guardado no seguía a los coches.
+    missing = [n for n in notes if n["code"] == "pitlane-missing"]
+    assert [n["params"]["reason"] for n in missing] == ["dropped"], notes
+    assert 0 <= missing[0]["params"]["stopShare"] < 50
     rebuilt = load_circuit(CIRCUIT_ID, v1)
     assert rebuilt is not None and rebuilt.pitlane is None
     assert rebuilt.geometry_version == GEOMETRY_VERSION
+
+    # Se recupera solo: la siguiente sesión con paradas que lo dé se lo añade, sin tocar lo demás.
+    notes = _notes(build_session(synthetic_session(seed=11)[0], tmp_path))
+    assert any(n["code"] == "circuit-rebuilt" and n["params"]["reason"] == "gains-pit" for n in notes), notes
+    assert not any(n["code"] == "pitlane-missing" for n in notes), notes
+    grown = load_circuit(CIRCUIT_ID, v1)
+    assert grown is not None and grown.pitlane is not None
+    assert np.array_equal(grown.centerline, rebuilt.centerline)
+    assert "pitDroppedStopShare" not in grown.quality and grown.quality["pitFitStopShare"] == 1.0
+    sampled, joins = _lane_offset(grown)
+    assert sampled < 1.0 and joins < 3.0, (sampled, joins)
+
+
+def test_a_circuit_without_pit_lane_says_why_and_gains_one(tmp_path: Path) -> None:
+    """Un circuito al día sin pit lane (ninguna parada de la sesión que lo construyó lo daba) lo dice en cada
+    sesión que lo usa, y lo gana con la primera que lo dé; una sesión sin paradas no lo toca."""
+    v1 = tmp_path / "v1"
+    data, sims = synthetic_session()
+    _gap_in_every_stop(data, sims, 150.0, 250.0)
+    notes = _notes(build_session(data, tmp_path))
+    missing = [n for n in notes if n["code"] == "pitlane-missing"]
+    assert [(n["params"]["reason"], n["params"]["stops"]) for n in missing] == [("none-valid", 3)], notes
+    bare = load_circuit(CIRCUIT_ID, v1)
+    assert bare is not None and bare.pitlane is None
+
+    no_stops = synthetic_session(seed=5)[0]
+    no_stops.laps[["pit_in_ms", "pit_out_ms"]] = -1
+    notes = _notes(build_session(no_stops, tmp_path))
+    assert not any(n["code"] == "circuit-rebuilt" for n in notes), notes
+    assert [n["params"]["reason"] for n in notes if n["code"] == "pitlane-missing"] == ["none-valid"]
+
+    notes = _notes(build_session(synthetic_session(seed=11)[0], tmp_path))
+    assert any(n["code"] == "circuit-rebuilt" and n["params"]["reason"] == "gains-pit" for n in notes), notes
+    grown = load_circuit(CIRCUIT_ID, v1)
+    assert grown is not None and grown.pitlane is not None
+    assert np.array_equal(grown.centerline, bare.centerline)
+    assert "pitStops" not in grown.quality
+
+
+def test_a_circuit_built_without_stops_says_so(tmp_path: Path) -> None:
+    data = synthetic_session()[0]
+    data.laps[["pit_in_ms", "pit_out_ms"]] = -1
+    notes = _notes(build_session(data, tmp_path))
+    assert [n["params"] for n in notes if n["code"] == "pitlane-missing"] == [{"reason": "no-stops"}]
 
 
 def test_outdated_pit_lane_that_fits_is_kept_when_the_session_gives_none(tmp_path: Path) -> None:

@@ -156,7 +156,8 @@
             "circuit-layout-changed",
             "circuit-rebuilt",
             "circuit-outdated-kept",
-            "position-glitches"
+            "position-glitches",
+            "pitlane-missing"
           ],
           "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
         },

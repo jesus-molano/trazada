@@ -26,8 +26,9 @@ Por coche:
    Singapur, menos de 2 s). Igual en la salida (las del pit lane por delante de la primera de pista). Se
    hace antes de la monotonía, que si no las promediaría con las buenas (las movería hasta 5 m) o se
    quedaría con ellas y quitaría las buenas. Así el coche nunca va hacia atrás al entrar o salir.
-8. Sin pit lane en el circuito (ninguna parada lo daba bien), las muestras de la ventana de boxes fuera de
-   la pista (a más de 6 m) quedan `nodata`.
+8. Sin pit lane en el circuito (ninguna parada lo daba bien), las muestras fuera de la pista (a más de 6 m)
+   en la ventana de boxes y en el minuto de antes y de después quedan `nodata`: las horas del cronometraje
+   no son las de la bifurcación (la cola del semáforo de salida sigue tras `PitOutTime`).
 """
 
 from __future__ import annotations
@@ -59,6 +60,12 @@ NEAR_PIT_OFF_TRACK_M = 12.0
 #: Bélgica FP1 2026: PAVA mueve el 99,5 % de las muestras menos de 0,13 m. Con 20 m, un salto de 40 m hacia
 #: atrás a 180 km/h pasaba: PAVA lo reparte entre tres muestras (13 m cada una) y el coche se para.
 MAX_MONOTONE_SHIFT_M = 5.0
+#: Sin pit lane en el circuito, margen alrededor de la ventana de boxes en el que una muestra fuera de la
+#: pista queda sin dato. Con el de 3 s, la cola del semáforo de salida (tras `PitOutTime`) se dibujaba en la
+#: pista: en la clasificación de Singapur 2026 sin pit lane, 900 s de coche a más de 8 m, todos sobre el pit
+#: lane real. Lo más lejos de la ventana que hay muestras sobre el pit lane: 24 s en Singapur, 12 s en Spa y
+#: 7 s en Suzuka.
+NO_PIT_MARGIN_MS = 60_000
 #: Retroceso admitido (m) al anclar por continuidad un tramo sin nº de vuelta.
 ANCHOR_BACK_TOL_M = 50.0
 #: Al cambiar entre pista y pit lane, lo que una muestra del camino de antes puede quedar por delante de la
@@ -358,9 +365,10 @@ def project_car(
         near_pit = ~in_pit & ~use_pit & (pd_ < d) & (d > NEAR_PIT_OFF_TRACK_M)
         path[garage | near_pit] = PATH_NODATA
     else:
-        # Sin pit lane (ninguna parada lo daba sin huecos y por donde van los coches): en la ventana de boxes,
-        # fuera de la pista, sin dato; nunca pegado a la trazada.
-        path[in_pit & (d > OFF_TRACK_M)] = PATH_NODATA
+        # Sin pit lane (ninguna parada lo daba sin huecos y por donde van los coches): cerca de la ventana de
+        # boxes, fuera de la pista, sin dato; nunca pegado a la trazada.
+        near_pit_window = _in_windows(t, windows, margin_ms=NO_PIT_MARGIN_MS)
+        path[near_pit_window & (d > OFF_TRACK_M)] = PATH_NODATA
     far_track = (path == PATH_TRACK) & (d > TRACK_MAX_DIST_M)
     path[far_track] = PATH_NODATA
 

@@ -157,6 +157,7 @@
       "circuit-rebuilt": {
         "outdated": "El circuito {circuit} se ha reconstruido con esta sesión (estaba hecho con una versión anterior).",
         "gains-corners": "El circuito {circuit} se ha reconstruido con esta sesión, que trae las curvas y la rotación oficiales.",
+        "gains-pit": "El circuito {circuit} no tenía pit lane: se le ha añadido el de esta sesión (lo demás no cambia).",
         "other": "El circuito {circuit} se ha reconstruido con esta sesión."
       },
       "circuit-outdated-kept": {
@@ -165,7 +166,13 @@
         "would-lose": "El circuito {circuit} es de una versión anterior, pero reconstruirlo con esta sesión le quitaría el pit lane o los sectores: se usa tal cual.",
         "other": "El circuito {circuit} es de una versión anterior y se usa tal cual."
       },
-      "position-glitches": "Más del 1 % de las posiciones de algunos coches ({cars}) son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha)."
+      "position-glitches": "Más del 1 % de las posiciones de algunos coches ({cars}) son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha).",
+      "pitlane-missing": {
+        "no-stops": "El circuito no tiene pit lane: la sesión con que se construyó no tenía paradas. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas.",
+        "none-valid": "El circuito no tiene pit lane: ninguna de las {stops} paradas de la sesión con que se construyó lo daba sin huecos y por donde van los coches. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
+        "dropped": "El circuito no tiene pit lane: el que tenía no seguía a los coches (lo seguía el {stopShare} % de las paradas) y ninguna parada daba uno bueno. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
+        "other": "El circuito no tiene pit lane: los coches en el pit lane no se dibujan."
+      }
     }
   },
   "controls": {

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
@@ -75,7 +75,9 @@ PIT_STOP_MARGIN_MS = 15000
 #: Hueco máximo (m) entre dos muestras seguidas del recorrido limpio de una parada. Más es un tramo sin
 #: muestras (un hueco del feed o la cola a menos de 30 km/h, que no se usa) que el remuestreo cruzaría en
 #: línea recta: en la clasificación de Singapur 2026, una cuerda de ~600 m a 35 m del pit lane real. En las
-#: paradas buenas de Singapur, Japón y Bélgica, el p99,9 de los pasos es de 27 a 39 m.
+#: paradas buenas de Singapur, Japón y Bélgica, el p99,9 de los pasos es de 27 a 39 m. Un hueco mayor solo
+#: vale si la recta que lo cruza va por donde van las otras paradas (`gaps_follow_the_cars`): en Singapur,
+#: paradas con huecos de 45-71 m en la recta del pit lane que siguen todas las demás.
 PIT_MAX_GAP_M = 40.0
 #: La bifurcación no tiene muestras (el feed pega el coche a la línea de la pista hasta que ya va por el pit
 #: lane): el pit lane sale de la pista con este ángulo hacia su primera muestra, y vuelve igual tras la
@@ -83,8 +85,13 @@ PIT_MAX_GAP_M = 40.0
 PIT_FORK_DEG = 30.0
 #: En la salida el pit lane se junta poco a poco con la pista (en Suzuka, 40 m a 3,5-4 m de la línea) y ahí el
 #: feed no pega el coche a la pista (las posiciones de pista quedan a p90 0,13 m de la línea): el recorrido de
-#: la parada sigue mientras sus muestras están a más de esto de la línea.
+#: la parada sigue mientras sus muestras están a más de esto de la línea, como mucho `PIT_MERGE_MAX_M` más
+#: (medido desde la última a más de `PIT_DIVERGENCE_M`). Sin tope, un coche que tras salir sigue por el borde
+#: de la pista alargaba el pit lane por encima de ella: en la carrera de Suzuka, paradas con 130-210 m de más
+#: (a 3-5 m de la línea, hasta la curva 1) que la validación no ve, porque solo mira lo que está a más de 4 m.
+#: En las 29 paradas de esa carrera, la mediana es de 30 m.
 PIT_MERGE_M = 2.0
+PIT_MERGE_MAX_M = 60.0
 #: Validación del pit lane con las muestras de pit lane de las otras paradas (`LaneFit`). Una parada lo
 #: sigue si el p90 de la distancia de sus muestras es ≤ `PIT_FIT_MAX_P90_M` (con el bueno, en Singapur, Japón
 #: y Bélgica, 0,07-0,13 m en conjunto: el feed las pega a una línea; con la cuerda de Singapur, 14,6 m). Vale
@@ -362,6 +369,26 @@ def max_gap_m(path: np.ndarray) -> float:
     return float(np.hypot(*np.diff(path[:, :2], axis=0).T).max())
 
 
+def gaps_follow_the_cars(path: np.ndarray, runs: list[np.ndarray]) -> bool:
+    """¿Las rectas con que el remuestreo cruzaría los huecos de más de `PIT_MAX_GAP_M` de `path` van por donde
+    van las otras paradas (`runs`, sus muestras de pit lane)?
+
+    Cada metro de esas rectas tiene que tener una muestra a ≤ `PIT_FIT_MAX_P90_M` (en planta), y hacen falta
+    las de al menos `PIT_FIT_MIN_STOPS_COVERAGE` paradas: con menos, un hueco de las pocas que hay no se
+    distingue de una curva que nadie vio, y el hueco no vale.
+    """
+    if len(runs) < PIT_FIT_MIN_STOPS_COVERAGE:
+        return False
+    steps = np.hypot(*np.diff(path[:, :2], axis=0).T)
+    tree = cKDTree(np.vstack(runs)[:, :2])
+    for i in np.flatnonzero(steps > PIT_MAX_GAP_M):
+        f = np.linspace(0.0, 1.0, int(np.ceil(steps[i] / STEP_M)) + 1)[:, None]
+        bridge = path[i, :2] + f * (path[i + 1, :2] - path[i, :2])
+        if float(tree.query(bridge)[0].max()) > PIT_FIT_MAX_P90_M:
+            return False
+    return True
+
+
 def pit_z_from_track(line: np.ndarray, lane: np.ndarray, entry_u: float, exit_u: float) -> np.ndarray:
     """Altura del pit lane: la del punto más cercano (en planta) del tramo de pista que lo acompaña.
 
@@ -433,7 +460,8 @@ def pit_core(pts: np.ndarray, speed_kmh: np.ndarray | None, index: PolylineIndex
     Las muestras a más de `PIT_DIVERGENCE_M` de la línea central (`index`, en planta), en tramos separados por
     más de `PIT_MAX_GAP_M` de recorrido por la pista o sin muestras; se queda el tramo más largo (el pit lane;
     otro sería una salida de pista en la vuelta de salida) y, tras él, las muestras que siguen a más de
-    `PIT_MERGE_M` (la salida se junta poco a poco con la pista). Las de pista junto a la entrada no sirven: el
+    `PIT_MERGE_M` (la salida se junta poco a poco con la pista), como mucho `PIT_MERGE_MAX_M` de recorrido
+    (después ya va por el borde de la pista). Las de pista junto a la entrada no sirven: el
     feed pega el coche a la línea de la pista hasta que ya va por el pit lane (en Singapur 2026 lo deja 10 m
     más allá de la bifurcación; en Spa, hasta que está a 20 m).
     """
@@ -446,7 +474,11 @@ def pit_core(pts: np.ndarray, speed_kmh: np.ndarray | None, index: PolylineIndex
     groups = np.split(off, cuts)
     group = max(groups, key=len)
     a, b = int(group[0]), int(group[-1])
-    while b + 1 < len(pts) and dist[b + 1] > PIT_MERGE_M:
+    while (
+        b + 1 < len(pts)
+        and dist[b + 1] > PIT_MERGE_M
+        and travel[b + 1] - travel[group[-1]] <= PIT_MERGE_MAX_M
+    ):
         b += 1
     u0, _ = index.project(pts[a : a + 1])
     speed = None if speed_kmh is None else speed_kmh[a : b + 1]
@@ -568,43 +600,48 @@ class PitLane:
     car: str
 
 
-def build_pitlane(data: SessionData, line: np.ndarray) -> PitLane | None:
-    """Pit lane (m, sistema del feed) de la parada que mejor sigue a las demás; None si ninguna vale.
+def build_pitlane(
+    data: SessionData,
+    line: np.ndarray,
+    to_m: Callable[[np.ndarray], np.ndarray] = lambda xyz_dm: xyz_dm / 10.0,
+) -> PitLane | None:
+    """Pit lane (m, en el sistema de `line`) de la parada que mejor sigue a las demás; None si ninguna vale.
 
     Candidatas: las `PIT_CANDIDATES` paradas más cortas. Se descarta una parada con un hueco de más de
-    `PIT_MAX_GAP_M` en su recorrido limpio (el remuestreo lo cruzaría en línea recta), con un giro brusco o
-    cuyo pit lane no siguen la mayoría de las otras paradas (`LaneFit.ok`). De las que valen, la que deja
-    menos muestras lejos; a igualdad, la más corta. Sin ninguna, no hay pit lane: mejor sin dato que un pit
-    lane por donde no van los coches.
+    `PIT_MAX_GAP_M` en su recorrido limpio que no va por donde van las otras (`gaps_follow_the_cars`: el
+    remuestreo lo cruzaría en línea recta), con un giro brusco o cuyo pit lane no siguen la mayoría de las
+    otras paradas (`LaneFit.ok`). De las que valen, la que deja menos muestras lejos; a igualdad, la más
+    corta. Sin ninguna, no hay pit lane: mejor sin dato que un pit lane por donde no van los coches. `to_m`
+    lleva las posiciones del feed (dm) al sistema de `line` (por defecto, el del feed en m).
     """
     # En planta: el feed da una altura fija a todo el pit lane, que no es la de la pista.
     index = PolylineIndex(line, closed=True, z_weight=0.0)
     stops = pit_stops(data)
-    fit_samples = pit_fit_samples(data, index, stops)
+    fit_samples = pit_fit_samples(data, index, stops, to_m=to_m)
     best: PitLane | None = None
     for stop in stops[:PIT_CANDIDATES]:
         sel = _stop_window(data, stop)
         if sel is None or len(sel) < 20:
             continue
-        pts = sel[["x", "y", "z"]].to_numpy(dtype=np.float64) / 10.0
+        pts = to_m(sel[["x", "y", "z"]].to_numpy(dtype=np.float64))
         core = pit_core(pts, _speed_kmh(data, stop.car, sel["t_ms"].to_numpy(dtype=np.float64)), index)
         if core is None or len(core) < 10:
             continue
+        others = [p for s, p in fit_samples.items() if s != stop]
         gap = max_gap_m(core)
-        if gap > PIT_MAX_GAP_M:
+        if gap > PIT_MAX_GAP_M and not gaps_follow_the_cars(core, others):
             log.info("pit lane del coche %s descartado: hueco de %.0f m sin muestras", stop.car, gap)
             continue
         lane, raw, smooth = pit_lane_from_core(core, index)
         if max_turn_deg(lane) > PIT_MAX_TURN_DEG:
             log.info("pit lane del coche %s descartado: giro brusco (desvío o fallo de posición)", stop.car)
             continue
-        runs = [p for s, p in fit_samples.items() if s != stop]
-        others = len(runs)
+        runs = list(others)
         if sum(len(r) for r in runs) < PIT_FIT_MIN_SAMPLES and stop in fit_samples:
             runs.append(fit_samples[stop])
         if not runs:
             continue
-        if others >= PIT_FIT_MIN_STOPS_COVERAGE:
+        if len(others) >= PIT_FIT_MIN_STOPS_COVERAGE:
             _, d_smooth = index.project(smooth)
             covered = smooth[d_smooth > PIT_DIVERGENCE_M]
         else:
@@ -631,6 +668,56 @@ def build_pitlane(data: SessionData, line: np.ndarray) -> PitLane | None:
             "no se pudo extraer el pit lane: ninguna parada lo da sin huecos y por donde van los coches"
         )
     return best
+
+
+#: Claves de `Circuit.quality` que describen el pit lane (o su falta): cambian enteras con él.
+PIT_QUALITY_KEYS = (
+    "pitSamplesLengthM",
+    "pitFitStopShare",
+    "pitFitP50M",
+    "pitFitP90M",
+    "pitFitFarShare",
+    "pitFitUncoveredShare",
+    "pitFitSamples",
+    "pitFitStops",
+    "pitStops",
+    "pitDroppedStopShare",
+)
+
+
+def pit_quality(pit: PitLane | None, stops: int) -> dict[str, float]:
+    """Calidad del pit lane para `Circuit.quality`: cómo sigue a las muestras de pit lane de las otras paradas
+    (`LaneFit`) o, sin pit lane, cuántas paradas tenía la sesión (`pitStops`: el aviso `pitlane-missing`
+    distingue así una sesión sin paradas de una en la que ninguna lo daba bien)."""
+    if pit is None:
+        return {"pitStops": float(stops)}
+    return {
+        "pitSamplesLengthM": pit.samples_length_m,
+        "pitFitStopShare": pit.fit.stop_share,
+        "pitFitP50M": pit.fit.p50_m,
+        "pitFitP90M": pit.fit.p90_m,
+        "pitFitFarShare": pit.fit.far_share,
+        "pitFitUncoveredShare": pit.fit.uncovered_share,
+        "pitFitSamples": float(pit.fit.samples),
+        "pitFitStops": float(pit.fit.stops),
+    }
+
+
+def add_pitlane(data: SessionData, circuit: Circuit) -> Circuit | None:
+    """El circuito (sin pit lane) con el que da esta sesión (`build_pitlane`, en el sistema canónico del
+    circuito); lo demás (línea central, meta, curvas, rotación, sectores) no cambia. None si no da ninguno."""
+    pit = build_pitlane(data, circuit.centerline, to_m=circuit.to_canonical)
+    if pit is None:
+        return None
+    quality = {k: v for k, v in circuit.quality.items() if k not in PIT_QUALITY_KEYS}
+    return replace(
+        circuit,
+        pitlane=pit.lane,
+        pit_entry_s=pit.entry_s,
+        pit_exit_s=pit.exit_s,
+        quality={**quality, **pit_quality(pit, 0)},
+        dev=circuit.dev or data.dev,
+    )
 
 
 def circuit_pit_fit(data: SessionData, circuit: Circuit) -> LaneFit | None:
@@ -725,16 +812,7 @@ def build_circuit(data: SessionData, circuit_id: str, name: str) -> Circuit:
             "elevationRangeM": float(line[:, 2].max() - line[:, 2].min()),
         }
     )
-    if pit_built is not None:
-        quality["pitSamplesLengthM"] = pit_built.samples_length_m
-        # Cómo sigue el pit lane a las muestras de pit lane de las otras paradas (validación, `LaneFit`).
-        quality["pitFitStopShare"] = pit_built.fit.stop_share
-        quality["pitFitP50M"] = pit_built.fit.p50_m
-        quality["pitFitP90M"] = pit_built.fit.p90_m
-        quality["pitFitFarShare"] = pit_built.fit.far_share
-        quality["pitFitUncoveredShare"] = pit_built.fit.uncovered_share
-        quality["pitFitSamples"] = float(pit_built.fit.samples)
-        quality["pitFitStops"] = float(pit_built.fit.stops)
+    quality.update(pit_quality(pit_built, 0 if pit_built is not None else len(pit_stops(data))))
     return Circuit(
         circuit_id=circuit_id,
         name=name,
