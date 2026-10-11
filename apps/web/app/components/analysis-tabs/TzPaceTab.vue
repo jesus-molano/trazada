@@ -4,11 +4,12 @@
  * combustible ni suavizado. Las vueltas que no sirven para comparar ritmo se marcan y no se quitan: entrada o salida
  * de boxes, SC/VSC/roja y vuelta 1 con punto hueco; anuladas con aspa (desde su mensaje); sin tiempo oficial, contadas
  * debajo. En carrera y sprint, por vuelta; en libres y clasificación, por el momento de la sesión en que acaba cada
- * vuelta. Por defecto, el coche elegido y los cinco primeros de la clasificación al abrir la pestaña (y el que se quitó
- * de la selección con la hoja abierta, D49); la leyenda muestra u oculta cada piloto.
+ * vuelta. Por defecto, el coche elegido y los cinco primeros de la clasificación al abrir la pestaña (y los que dejaron
+ * de ser el elegido con la hoja abierta, al quitarlos o al elegir a otro, D49); la leyenda muestra u oculta cada piloto.
  *
  * La escala del eje y encuadra las vueltas representativas; las que quedan fuera se cuentan y «Ver todas» las
- * enseña (nada desaparece en silencio). Un clic en una vuelta salta a su inicio.
+ * enseña (nada desaparece en silencio). Un clic en un punto elige a su piloto (D49; en los del elegido, o fuera de los
+ * puntos, salta al inicio de esa vuelta).
  *
  * Ficha de cada serie al pasar el ratón o tocarla (D49): la vuelta y su tiempo, qué marca lleva y lo que cuentan los
  * datos del coche (`TzCarStory`).
@@ -41,8 +42,8 @@ const names = new Map(rt.drivers.map((d) => [d.number, `${d.first} ${d.last}`.tr
 /** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
 const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
 /**
- * Por defecto: el coche elegido, los cinco primeros de la clasificación al abrir la pestaña y los que se quitaron de la
- * selección con la hoja abierta (`paceKept`, D49).
+ * Por defecto: el coche elegido, los cinco primeros de la clasificación al abrir la pestaña y los que dejaron de ser el
+ * elegido con la hoja abierta (`paceKept`, D49).
  */
 const top5 = playback.order.filter((c) => table.cars.has(c)).slice(0, 5)
 
@@ -178,8 +179,10 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
         :legend-label="t('analysis.legend')"
         testid="pace-chart"
         :pick-label="pickLabel"
+        selectable
         @pick="pick"
         @toggle="toggle"
+        @select="playback.selectCar($event)"
       >
         <template #card="{ hit, compact }">
           <template v-for="(line, k) in [cardLine(hit.key, hit.index)]" :key="k">

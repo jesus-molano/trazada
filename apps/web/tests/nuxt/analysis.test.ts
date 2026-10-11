@@ -186,13 +186,38 @@ describe('abrir y cerrar', () => {
 describe('coche elegido en la hoja (D49)', () => {
   const chip = () => $('[data-testid="analysis-selection"]')
   const clear = () => $<HTMLButtonElement>('[data-testid="analysis-selection-clear"]')!
+  const picker = () => $<HTMLButtonElement>('[data-testid="analysis-selection-picker"]')!
+  const list = () => $('[data-testid="analysis-selection-list"]')
+  const option = (car: string) => $<HTMLElement>(`[data-testid="analysis-selection-option"][data-car="${car}"]`)!
+  const options = () => $$('[data-testid="analysis-selection-option"]')
+  /** Una tecla en el elemento con el foco (como el teclado), con los atajos del replay escuchando en la ventana. */
+  const press = (key: string) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+    document.activeElement!.dispatchEvent(event)
+    return event
+  }
+  async function withShortcuts() {
+    const Shortcuts = defineComponent({
+      setup() {
+        useReplayShortcuts()
+        return () => null
+      },
+    })
+    const w = await mountSuspended(Shortcuts, { attachTo: document.body })
+    unmounts.push(() => w.unmount())
+  }
 
-  it('el chip dice qué coche está elegido y si la cámara lo sigue; su × lo quita sin cerrar la hoja y lleva el foco a «Sin spoilers»', async () => {
+  it('el chip dice qué coche está elegido y si la cámara lo sigue; su × lo quita sin cerrar la hoja y el foco va al selector', async () => {
     attach()
     const playback = usePlaybackStore()
     await mountBoth()
     await openSheet()
-    expect(chip()).toBeNull()
+    // Sin coche elegido, el mismo control deja elegir uno: «Elegir piloto ▾», sin ×.
+    expect(chip()!.dataset.car).toBeUndefined()
+    expect(picker().textContent!.trim()).toMatch(/^(Elegir piloto|Choose a driver)$/)
+    expect(picker().getAttribute('aria-haspopup')).toBe('listbox')
+    expect(picker().getAttribute('aria-expanded')).toBe('false')
+    expect($('[data-testid="analysis-selection-clear"]')).toBeNull()
 
     playback.selectCar('16')
     await settle()
@@ -202,12 +227,15 @@ describe('coche elegido en la hoja (D49)', () => {
     expect(chip()!.querySelector('.tz-aselect__tla')!.textContent).toBe('LEC')
     expect(chip()!.querySelector('.tz-aselect__follow')).toBeNull()
     expect(chip()!.dataset.following).toBe('false')
+    // El nombre del selector empieza por lo que se ve (WCAG 2.5.3) y dice qué hace.
+    expect(picker().getAttribute('aria-label')).toMatch(/^(Elegido LEC: elegir otro piloto o ninguno|Selected LEC: choose another driver or none)$/)
     expect(clear().getAttribute('aria-label')).toMatch(/^(Quitar la selección de LEC|Clear the selection of LEC)$/)
 
     playback.setFollowing(true)
     await settle()
     expect(chip()!.dataset.following).toBe('true')
     expect(chip()!.textContent).toMatch(/la cámara lo sigue|camera following/)
+    expect(picker().getAttribute('aria-label')).toMatch(/^(Elegido LEC · la cámara lo sigue|Selected LEC · camera following)/)
     expect(clear().getAttribute('aria-label')).toMatch(/y dejar de seguirlo|and stop following it/)
 
     clear().click()
@@ -215,8 +243,182 @@ describe('coche elegido en la hoja (D49)', () => {
     expect(playback.selectedCar).toBeNull()
     expect(playback.following).toBe(false)
     expect(sheetEl()).not.toBeNull()
-    expect(chip()).toBeNull()
-    expect(document.activeElement).toBe($('[data-testid="analysis-spoilers"]'))
+    expect(chip()!.dataset.car).toBeUndefined()
+    expect($('[data-testid="analysis-selection-clear"]')).toBeNull()
+    expect(document.activeElement).toBe(picker())
+    expect(picker().textContent!.trim()).toMatch(/^(Elegir piloto|Choose a driver)$/)
+  })
+
+  it('el selector: «Ninguno» y cada piloto con su puesto y su muestra; elegir a otro lo destaca y la cámara pasa a seguirlo', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    rt.clock.seek(rt.clock.endMs)
+    playback.selectCar('16')
+    playback.setFollowing(true)
+    await mountBoth()
+    await openSheet()
+    picker().click()
+    await settle()
+    // Lista desplegada (listbox con el foco y la opción activa por aria-activedescendant), con el elegido marcado.
+    expect(picker().getAttribute('aria-expanded')).toBe('true')
+    expect(picker().getAttribute('aria-controls')).toBe(list()!.id)
+    expect(list()!.getAttribute('role')).toBe('listbox')
+    expect(document.activeElement).toBe(list())
+    expect(options()).toHaveLength(rt.drivers.length + 1)
+    expect(options()[0]!.dataset.car).toBe('')
+    expect(options()[0]!.textContent).toMatch(/Ninguno|None/)
+    expect(options()[0]!.textContent).toMatch(/quita la selección y el seguimiento|clears the selection and stops following/)
+    expect(options().filter((o) => o.getAttribute('aria-selected') === 'true').map((o) => o.dataset.car)).toEqual(['16'])
+    expect(list()!.getAttribute('aria-activedescendant')).toBe(option('16').id)
+    // En el orden de la clasificación del instante, con su puesto («P1»…) si se conoce; la sigla y la muestra de equipo.
+    const rows = rt.leaderboard.compute(rt.clock.timeMs, rt.model.states)
+    expect(options().slice(1).map((o) => o.dataset.car)).toEqual(rows.map((r) => r.car))
+    const known = rows.find((r) => r.positionKnown)!
+    expect(option(known.car).querySelector('.tz-aselect__pos')!.textContent!.trim()).toBe(`P${known.position}`)
+    const unknown = rows.find((r) => !r.positionKnown)
+    if (unknown) expect(option(unknown.car).querySelector('.tz-aselect__pos')!.textContent).toMatch(/—\s*(posición sin dato|position: no data)/)
+    const ham = rt.drivers.find((d) => d.tla === 'HAM')!
+    expect(option(ham.number).querySelector('.tz-aselect__tla')!.textContent).toBe('HAM')
+    expect(option(ham.number).querySelector('.tz-aselect__swatch')).not.toBeNull()
+
+    // Otro piloto: elegido, la cámara lo sigue, la lista se cierra y el foco vuelve al selector (sin cerrar la hoja).
+    option(ham.number).click()
+    await settle()
+    expect(playback.selectedCar).toBe(ham.number)
+    expect(playback.following).toBe(true)
+    expect(list()).toBeNull()
+    expect(picker().getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(picker())
+    expect(chip()!.dataset.car).toBe(ham.number)
+    expect(chip()!.querySelector('.tz-aselect__tla')!.textContent).toBe('HAM')
+    expect(sheetEl()).not.toBeNull()
+    // Destacado en la gráfica abierta.
+    expect($(`[data-testid="pace-chart"] [data-testid="analysis-legend-item"][data-car="${ham.number}"]`)!.classList).toContain('is-emphasis')
+    expect($('[data-testid="pace-chart"] [data-testid="analysis-legend-item"][data-car="16"]')!.classList).not.toContain('is-emphasis')
+
+    // Otro clic en el elegido no lo quita.
+    picker().click()
+    await settle()
+    option(ham.number).click()
+    await settle()
+    expect(playback.selectedCar).toBe(ham.number)
+    expect(playback.following).toBe(true)
+
+    // «Ninguno»: como el ×, quita la selección y el seguimiento.
+    picker().click()
+    await settle()
+    option('').click()
+    await settle()
+    expect(playback.selectedCar).toBeNull()
+    expect(playback.following).toBe(false)
+    expect(document.activeElement).toBe(picker())
+    expect(picker().textContent!.trim()).toMatch(/^(Elegir piloto|Choose a driver)$/)
+
+    // Sin coche elegido, se elige uno desde la hoja.
+    picker().click()
+    await settle()
+    expect(options()[0]!.getAttribute('aria-selected')).toBe('true')
+    option('16').click()
+    await settle()
+    expect(playback.selectedCar).toBe('16')
+    expect(playback.following).toBe(false)
+  })
+
+  it('el selector con el teclado: ↓ lo abre, ↑/↓, Inicio, Fin y la sigla mueven, Intro elige; Esc lo cierra sin cerrar la hoja; ninguna tecla llega a los atajos', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    playback.selectCar('16')
+    playback.setFollowing(true)
+    await withShortcuts()
+    await mountBoth()
+    await openSheet()
+    picker().focus()
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    await settle()
+    // La flecha abrió la lista (no eligió el coche siguiente).
+    expect(playback.selectedCar).toBe('16')
+    expect(document.activeElement).toBe(list())
+    const ids = options().map((o) => o.id)
+    const activeIndex = () => ids.indexOf(list()!.getAttribute('aria-activedescendant')!)
+    const start = activeIndex()
+    expect(options()[start]!.dataset.car).toBe('16')
+
+    press('ArrowDown')
+    await settle()
+    expect(activeIndex()).toBe(Math.min(start + 1, ids.length - 1))
+    press('Home')
+    await settle()
+    expect(activeIndex()).toBe(0)
+    press('End')
+    await settle()
+    expect(activeIndex()).toBe(ids.length - 1)
+    const lastCar = options()[ids.length - 1]!.dataset.car!
+    press('ArrowDown')
+    await settle()
+    expect(activeIndex()).toBe(ids.length - 1)
+
+    // Ni el tiempo, ni la velocidad, ni el play: ninguna tecla sale de la lista.
+    const t0 = rt.clock.timeMs
+    const rate = rt.clock.rate
+    expect(press('ArrowLeft').defaultPrevented).toBe(false)
+    press('3')
+    // El espacio elige la opción activa (la última) y cierra la lista.
+    press(' ')
+    await settle()
+    expect(rt.clock.timeMs).toBe(t0)
+    expect(rt.clock.rate).toBe(rate)
+    expect(rt.clock.playing).toBe(false)
+    expect(list()).toBeNull()
+    expect(playback.selectedCar).toBe(lastCar)
+    expect(playback.following).toBe(true)
+    expect(document.activeElement).toBe(picker())
+
+    // Teclear la sigla: la siguiente que empieza por esa letra (otra vez la misma letra, la siguiente).
+    const ver = rt.drivers.find((d) => d.tla === 'VER')!
+    press('ArrowUp')
+    await settle()
+    expect(document.activeElement).toBe(list())
+    press('v')
+    await settle()
+    const active = document.getElementById(list()!.getAttribute('aria-activedescendant')!)!
+    expect(active.querySelector('.tz-aselect__tla')!.textContent!.startsWith('V')).toBe(true)
+    // Otra «v» pasa a la siguiente que empieza por V (si hay más de una) hasta llegar a VER.
+    for (let k = 0; k < rt.drivers.length && document.getElementById(list()!.getAttribute('aria-activedescendant')!)!.dataset.car !== ver.number; k++) {
+      press('v')
+      await settle()
+    }
+    press('Enter')
+    await settle()
+    expect(playback.selectedCar).toBe(ver.number)
+
+    // Esc cierra la lista sin elegir, el foco vuelve al selector y la hoja sigue abierta; otro Esc ya cierra la hoja.
+    press('ArrowUp')
+    await settle()
+    expect(document.activeElement).toBe(list())
+    expect(press('Escape').defaultPrevented).toBe(true)
+    await settle()
+    expect(list()).toBeNull()
+    expect(document.activeElement).toBe(picker())
+    expect(sheetEl()).not.toBeNull()
+    expect(playback.selectedCar).toBe(ver.number)
+    expect(playback.following).toBe(true)
+    press('Escape')
+    await settle()
+    expect(sheetEl()).toBeNull()
+    expect(playback.following).toBe(true)
+  })
+
+  it('un clic fuera de la lista la cierra sin elegir', async () => {
+    attach()
+    await mountBoth()
+    await openSheet()
+    picker().click()
+    await settle()
+    expect(list()).not.toBeNull()
+    $('.tz-analysis__title')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    await settle()
+    expect(list()).toBeNull()
+    expect(usePlaybackStore().selectedCar).toBeNull()
   })
 
   it('en todas las pestañas', async () => {
@@ -295,6 +497,7 @@ describe('coche elegido en la hoja (D49)', () => {
     expect(pressed().has(a)).toBe(true)
     expect($(`[data-testid="pace-chart"] [data-car="${a}"]`)!.classList).not.toContain('is-emphasis')
   })
+
   it('tras la ×, el coche que se elija después también sale en «Ritmo» (destacado) y el quitado sigue sin destacar; al cerrar la hoja, se olvida', async () => {
     attach()
     const playback = usePlaybackStore()
@@ -326,6 +529,51 @@ describe('coche elegido en la hoja (D49)', () => {
     useAnalysis().close()
     await settle()
     expect(useAnalysis().paceKept.value).toEqual([])
+  })
+
+  it('al elegir a otro con la hoja abierta, en «Ritmo» el anterior sigue dibujado y el nuevo se ve destacado', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    const withLaps = playback.order.filter((c) => rt.leaderboard.lapTable.cars.has(c))
+    const [a, b] = [withLaps[10]!, withLaps[12]!]
+    const pressed = () =>
+      new Set($$('[data-testid="pace-chart"] [data-testid="analysis-legend-item"][aria-pressed="true"]').map((x) => x.dataset.car))
+    playback.selectCar(a)
+    await mountBoth()
+    await openSheet()
+    await selectTab('pace')
+    expect(pressed().has(a)).toBe(true)
+    expect(pressed().has(b)).toBe(false)
+    picker().click()
+    await settle()
+    option(b).click()
+    await settle()
+    expect(pressed().has(a)).toBe(true)
+    expect(pressed().has(b)).toBe(true)
+    expect($(`[data-testid="pace-chart"] [data-car="${b}"]`)!.classList).toContain('is-emphasis')
+    expect($(`[data-testid="pace-chart"] [data-car="${a}"]`)!.classList).not.toContain('is-emphasis')
+  })
+
+  it('un piloto que el usuario ocultó en la leyenda vuelve a verse al elegirlo (si no, se destacaría oculto)', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    const withLaps = playback.order.filter((c) => rt.leaderboard.lapTable.cars.has(c))
+    const top = withLaps[0]!
+    await mountBoth()
+    await openSheet()
+    await selectTab('pace')
+    const key = () => $<HTMLButtonElement>(`[data-testid="pace-chart"] [data-testid="analysis-legend-item"][data-car="${top}"]`)!
+    expect(key().getAttribute('aria-pressed')).toBe('true')
+    key().click()
+    await settle()
+    expect(key().getAttribute('aria-pressed')).toBe('false')
+    picker().click()
+    await settle()
+    option(top).click()
+    await settle()
+    expect(playback.selectedCar).toBe(top)
+    expect(key().getAttribute('aria-pressed')).toBe('true')
+    expect(key().classList).toContain('is-emphasis')
   })
 })
 
@@ -690,6 +938,92 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     expect(sheetEl()).toBeNull()
   })
 
+  it('el círculo de cada nombre elige a su piloto (la cámara pasa a seguirlo); otro clic en el del elegido no lo quita', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    const playback = usePlaybackStore()
+    playback.selectCar('3')
+    playback.setFollowing(true)
+    await mountBoth()
+    await openSheet()
+    const ring = (car: string) => $<HTMLButtonElement>(`[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"][data-pick="${car}"]`)!
+    const key = (car: string) => $<HTMLButtonElement>(`[data-testid="race-trace-chart"] [data-testid="analysis-legend-item"][data-car="${car}"]`)!
+    // Uno por piloto con serie (los que no tienen vueltas no tienen nada que destacar), fuera del orden de tabulación.
+    expect($$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"]').map((b) => b.dataset.pick).sort()).toEqual(
+      ['1', '3', '23', '5', '11'].sort(),
+    )
+    expect(ring('23').tabIndex).toBe(-1)
+    expect(ring('23').getAttribute('aria-label')).toMatch(/^(Elegir ALB|Choose ALB)$/)
+    expect(ring('23').getAttribute('aria-pressed')).toBe('false')
+    expect(ring('3').getAttribute('aria-pressed')).toBe('true')
+    ring('23').click()
+    await settle()
+    expect(playback.selectedCar).toBe('23')
+    expect(playback.following).toBe(true)
+    expect(ring('23').getAttribute('aria-pressed')).toBe('true')
+    expect(ring('3').getAttribute('aria-pressed')).toBe('false')
+    expect(key('23').classList).toContain('is-emphasis')
+    // Mostrar u ocultar sigue siendo cosa del nombre: elegir no lo cambia.
+    expect(key('23').getAttribute('aria-pressed')).toBe('true')
+    ring('23').click()
+    await settle()
+    expect(playback.selectedCar).toBe('23')
+    expect($('[data-testid="analysis-selection"]')!.dataset.car).toBe('23')
+  })
+
+  it('elegir a uno que el usuario ocultó lo vuelve a mostrar y conserva el resto de su elección, también los pilotos sin vueltas', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    const playback = usePlaybackStore()
+    await mountBoth()
+    await openSheet()
+    const all = rt.drivers.map((d) => d.number)
+    // Hay pilotos del manifest sin vueltas (su grupo de la leyenda).
+    expect($$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-nodata"]').length).toBeGreaterThan(0)
+    const key = () => $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-item"][data-car="23"]')!
+    key().click()
+    await settle()
+    expect(key().getAttribute('aria-pressed')).toBe('false')
+    expect(useAnalysis().shown.value.raceTrace).toEqual(all.filter((c) => c !== '23'))
+    $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"][data-pick="23"]')!.click()
+    await settle()
+    expect(playback.selectedCar).toBe('23')
+    expect(key().getAttribute('aria-pressed')).toBe('true')
+    expect(key().classList).toContain('is-emphasis')
+    expect(useAnalysis().shown.value.raceTrace).toEqual(all)
+  })
+
+  it('con el teclado: Intro en un nombre lo elige y espacio lo sigue mostrando u ocultando; la ficha del foco lo dice', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    const playback = usePlaybackStore()
+    await withShortcuts()
+    await mountBoth()
+    await openSheet()
+    const key = $<HTMLButtonElement>('[data-group="stopped"] [data-car="23"]')!
+    key.focus()
+    await settle()
+    const keys = () => $('[data-testid="analysis-card-keys"]')
+    expect(keys()!.textContent).toMatch(/^(Intro: elegir ALB · Espacio: mostrar u ocultar|Enter: choose ALB · Space: show or hide)$/)
+    expect($('[data-testid="analysis-card-chosen"]')).toBeNull()
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    key.dispatchEvent(enter)
+    await settle()
+    // Intro no llega al clic del botón (que lo ocultaría): elige.
+    expect(enter.defaultPrevented).toBe(true)
+    expect(playback.selectedCar).toBe('23')
+    expect(key.getAttribute('aria-pressed')).toBe('true')
+    expect(document.activeElement).toBe(key)
+    expect($('[data-testid="analysis-card"]')!.dataset.car).toBe('23')
+    expect($('[data-testid="analysis-card-chosen"]')!.textContent).toMatch(/^(Elegido|Selected)$/)
+    expect(keys()!.textContent).toMatch(/^(Espacio: mostrar u ocultar|Space: show or hide)$/)
+    // El clic (lo que hace el espacio en un botón) sigue mostrando u ocultando la serie.
+    key.click()
+    await settle()
+    expect(key.getAttribute('aria-pressed')).toBe('false')
+    expect(playback.selectedCar).toBe('23')
+  })
+
   it('al perder el foco, la ficha se va', async () => {
     attach(groupsRace())
     useAnalysis().noSpoilers.value = false
@@ -853,5 +1187,105 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     await new Promise((r) => setTimeout(r, 600))
     await settle()
     expect(card().dataset.shown).toBe('false')
+  })
+
+  it('elegir desde la gráfica (D49): la ficha fijada con el dedo lleva «Elegir» en la fila del piloto; el círculo de la leyenda elige y no muestra ni oculta', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec = (chosen: string | null): ChartSpec => ({
+      x: [1, 2, 3],
+      series: [
+        { group: '1', mark: 'line', values: [0, 0, 0] },
+        { group: '18', mark: 'line', values: [3, 4, 5] },
+      ],
+      groups: [
+        { ...base, key: '1', label: 'AAA', emphasis: chosen === '1' },
+        { ...base, key: '18', label: 'BBB', emphasis: chosen === '18' },
+      ],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    })
+    const chart = await mountSuspended(TzAnalysisChart, {
+      props: { spec: spec('1'), cursorX: null, label: 'gráfica', legendLabel: 'pilotos', selectable: true },
+      attachTo: document.body,
+    })
+    unmounts.push(() => chart.unmount())
+    const card = () => chart.find('[data-testid="analysis-card"]').element as HTMLElement
+    const key = chart.find('[data-testid="analysis-legend-item"][data-car="18"]').element as HTMLButtonElement
+    const touch = (type: string) =>
+      key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 }))
+    // Pulsación larga en BBB: su ficha fijada, con «Elegir» en la fila de su nombre (antes del ×).
+    touch('pointerdown')
+    await new Promise((r) => setTimeout(r, 600))
+    touch('pointerup')
+    key.click()
+    await settle()
+    expect(card().dataset.mode).toBe('pinned')
+    const top = chart.find('.tz-achart__card-top')
+    const choose = top.find('[data-testid="analysis-card-choose"]')
+    expect(choose.exists()).toBe(true)
+    expect(choose.text()).toMatch(/^(Elegir|Choose)$/)
+    expect(choose.attributes('aria-label')).toMatch(/^(Elegir BBB|Choose BBB)$/)
+    expect(top.findAll('button').map((b) => b.attributes('data-testid'))).toEqual(['analysis-card-choose', 'analysis-card-close'])
+    expect(chart.find('[data-testid="analysis-card-chosen"]').exists()).toBe(false)
+    ;(choose.element as HTMLButtonElement).click()
+    await settle()
+    expect(chart.emitted('select')).toEqual([['18']])
+    expect(chart.emitted('toggle')).toBeUndefined()
+    // Ya elegido (la pestaña lo destaca): «Elegido», sin botón; la ficha sigue fijada.
+    await chart.setProps({ spec: spec('18') })
+    await settle()
+    expect(card().dataset.mode).toBe('pinned')
+    expect(chart.find('[data-testid="analysis-card-choose"]').exists()).toBe(false)
+    expect(chart.find('[data-testid="analysis-card-chosen"]').text()).toMatch(/^(Elegido|Selected)$/)
+
+    // El círculo: elige (fuera del orden de tabulación), sin mostrar u ocultar; en el elegido, nada.
+    const ring = (car: string) => chart.find(`[data-testid="analysis-legend-pick"][data-pick="${car}"]`).element as HTMLButtonElement
+    expect(ring('1').tabIndex).toBe(-1)
+    ring('18').click()
+    ring('1').click()
+    await settle()
+    expect(chart.emitted('select')).toEqual([['18'], ['1']])
+    expect(chart.emitted('toggle')).toBeUndefined()
+  })
+
+  it('una gráfica que no deja elegir: sin círculos ni «Elegir», e Intro en un nombre lo muestra u oculta como siempre', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec: ChartSpec = {
+      x: [1, 2],
+      series: [{ group: '1', mark: 'line', values: [0, 1] }],
+      groups: [{ ...base, key: '1', label: 'AAA' }],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    }
+    const chart = await mountSuspended(TzAnalysisChart, {
+      props: { spec, cursorX: null, label: 'gráfica', legendLabel: 'pilotos' },
+      attachTo: document.body,
+    })
+    unmounts.push(() => chart.unmount())
+    expect(chart.find('[data-testid="analysis-legend-pick"]').exists()).toBe(false)
+    const key = chart.find('[data-testid="analysis-legend-item"]').element as HTMLButtonElement
+    key.focus()
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    key.dispatchEvent(enter)
+    expect(enter.defaultPrevented).toBe(false)
+    await settle()
+    expect(chart.find('[data-testid="analysis-card-keys"]').exists()).toBe(false)
+    const touch = (type: string) =>
+      key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 }))
+    touch('pointerdown')
+    await new Promise((r) => setTimeout(r, 600))
+    touch('pointerup')
+    await settle()
+    expect((chart.find('[data-testid="analysis-card"]').element as HTMLElement).dataset.mode).toBe('pinned')
+    expect(chart.find('[data-testid="analysis-card-choose"]').exists()).toBe(false)
+    expect(chart.emitted('select')).toBeUndefined()
   })
 })

@@ -39,10 +39,19 @@ test('race trace hasta el reloj, con la línea de la vuelta en curso; sin «Sin 
   await page.getByTestId('analysis-spoilers').click()
   await expect.poll(async () => Number(await chart.getAttribute('data-points'))).toBeGreaterThan(upToNow)
 
-  // Un clic en la gráfica salta al inicio de una vuelta.
+  // Un clic en la gráfica fuera de las líneas salta al inicio de una vuelta (en una línea, elegiría a su piloto, D49).
   const before = await page.evaluate(() => window.__trazada!.timeMs)
-  await chart.locator('.u-over').click({ position: { x: 20, y: 20 } })
+  const over = (await chart.locator('.u-over').boundingBox())!
+  let spot: { x: number; y: number } | null = null
+  for (let y = over.y + over.height - 4; y > over.y && !spot; y -= 8) {
+    await page.mouse.move(over.x + 20, y)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    if ((await chart.getAttribute('data-preview')) === null) spot = { x: over.x + 20, y }
+  }
+  expect(spot).not.toBeNull()
+  await page.mouse.click(spot!.x, spot!.y)
   await expect.poll(() => page.evaluate(() => window.__trazada!.timeMs)).toBeLessThan(before)
+  expect(await page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
 
   await page.getByTestId('analysis-tab-pace').click()
   await expect(page.getByTestId('pace')).toHaveAttribute('data-axis', 'lap')
@@ -172,7 +181,9 @@ test.describe('sprint de Singapur 2026 (D49)', () => {
     expect(13 + stopped.length + 1).toBe(drivers)
   })
 
-  test('al pasar por la línea de ALB en la V10: resaltada y su ficha (P15, +74,2 s, V14, pit lane, dirección de carrera)', async ({ page }) => {
+  test('al pasar por la línea de ALB en la V10: resaltada y su ficha (P15, +74,2 s, V14, pit lane, dirección de carrera); un clic la elige', async ({
+    page,
+  }) => {
     // Barre en vertical con el ratón (un paso por frame de pantalla): con la suite entera, más de 30 s.
     test.setTimeout(90_000)
     await openSingapore(page)
@@ -181,11 +192,13 @@ test.describe('sprint de Singapur 2026 (D49)', () => {
     // El eje va de la V1 a la V20: la V10, a 9/19 del ancho.
     const x = over.x + (9 / 19) * over.width
     let found = false
+    let foundY = 0
     // Una línea se toca a 12 px en vertical: con pasos de 4 px no se salta ninguna.
     for (let y = over.y + 2; y < over.y + over.height && !found; y += 4) {
       await page.mouse.move(x, y)
       await twoFrames(page)
       found = (await chart.getAttribute('data-preview')) === '23'
+      foundY = y
     }
     expect(found).toBe(true)
     const card = page.getByTestId('analysis-card')
@@ -195,14 +208,24 @@ test.describe('sprint de Singapur 2026 (D49)', () => {
     await expect(page.getByTestId('analysis-card-last')).toHaveText('Último paso por meta: V14.')
     await expect(page.getByTestId('analysis-card-pit')).toHaveText('Entró en el pit lane en esa vuelta.')
     await expect(page.getByTestId('analysis-card-after')).toHaveText('Después, ningún paso por meta más en los datos; la fuente no dice por qué.')
+    // A 1440×900 la ficha es más alta que el área de datos: su forma corta, con un solo mensaje (y cuántos más).
+    await expect(card).toHaveAttribute('data-compact', 'true')
     const rc = page.getByTestId('analysis-card-rc')
-    await expect(rc).toHaveCount(2)
+    await expect(rc).toHaveCount(1)
     await expect(rc.first()).toContainText('V14')
     await expect(rc.first()).toContainText('Incidente')
     await expect(rc.first()).toContainText('23 (ALB) AND 5 (BOR)')
-    await expect(page.getByTestId('analysis-card-rc-more')).toHaveText('y 1 más en dirección de carrera')
-    await expect(page.getByTestId('analysis-card-click')).toHaveText('Clic: ir al inicio de la V10')
+    await expect(page.getByTestId('analysis-card-rc-more')).toHaveText('y 2 más en dirección de carrera')
+    await expect(page.getByTestId('analysis-card-click')).toHaveText('Clic: elegir ALB')
     await expect(card).not.toContainText(/retir|abandon|estrell|accident|crash/i)
+    // Un clic en su línea elige a ALB (D49) sin saltar en el tiempo; otro clic ya iría al inicio de la V10.
+    const t0 = await page.evaluate(() => window.__trazada!.timeMs)
+    await page.mouse.click(x, foundY)
+    await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe('23')
+    expect(await page.evaluate(() => window.__trazada!.timeMs)).toBe(t0)
+    await expect(page.getByTestId('analysis-selection')).toHaveAttribute('data-car', '23')
+    await expect(page.getByTestId('analysis-card-chosen')).toHaveText('Elegido')
+    await expect(page.getByTestId('analysis-card-click')).toHaveText('Clic: ir al inicio de la V10')
   })
 
   test('al pasar por una sigla de la columna final, se resalta la serie de ese piloto', async ({ page }) => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type ChartGroup,
   type ChartSpec,
+  chosenKey,
   chooseCardSpot,
   driverStyles,
   endPoints,
@@ -10,6 +11,7 @@ import {
   type HitFrame,
   hitTest,
   lastValueIndex,
+  lineClick,
   nearestIndex,
   placeLabels,
   SAMPLE_STEP_PX,
@@ -339,5 +341,18 @@ describe('qué serie toca el puntero (D49)', () => {
     // Un punto fuera del área de datos (recortado) no se toca.
     const off = { ...dots, series: [{ group: 'A', mark: 'dot' as const, values: [200, null, null, null, null, null, null, null, null, null] }] }
     expect(hitTest(off, frame, 64, 108, HIT_PX.coarse)).toBeNull()
+  })
+
+  it('clic del ratón en una serie (D49): elige a su piloto; en la del elegido (o sin poder elegir), va a esa vuelta', () => {
+    expect(chosenKey(spec)).toBeNull()
+    expect(lineClick(spec, 'ALB', true)).toBe('select')
+    const chosen = { ...spec, groups: spec.groups.map((g) => (g.key === 'ALB' ? { ...g, emphasis: true } : g)) }
+    expect(chosenKey(chosen)).toBe('ALB')
+    // Otro clic en el elegido no lo deselecciona: salta a esa vuelta.
+    expect(lineClick(chosen, 'ALB', true)).toBe('pick')
+    // Otro piloto con uno elegido: se elige el nuevo.
+    expect(lineClick(chosen, 'NOR', true)).toBe('select')
+    // Una gráfica que no deja elegir: el clic salta siempre, como antes.
+    expect(lineClick(spec, 'NOR', false)).toBe('pick')
   })
 })

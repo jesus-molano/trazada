@@ -27,6 +27,15 @@
  * Leyenda: en el orden de `groups` o, con `spec.legend` (race trace), por grupos con su rótulo. Mientras el puntero
  * está encima, su orden no cambia (se aplica el último al salir, como el timeline del dock, D44).
  *
+ * Elegir a un piloto desde la gráfica (`selectable`, D49): el coche elegido es el grupo destacado (`emphasis`). Un clic
+ * del ratón en una serie elige a su piloto (`select`); en la del elegido, salta a esa vuelta (`lineClick`: nunca quita
+ * la selección); fuera de las series, a la vuelta más cercana, como siempre. El puntero es una mano sobre una serie y
+ * una cruz fuera. La ficha lo dice: «Clic: elegir ALO» o, en el elegido, «Elegido» y «Clic: ir al inicio de la V12»;
+ * fijada con el dedo, la fila del piloto lleva «Elegir» y tocarla entera lo elige. En la leyenda, cada nombre sigue
+ * mostrando u ocultando su serie (con el dedo, mantenerlo pulsado fija su ficha) y el círculo de su izquierda (fuera del
+ * orden de tabulación) elige a su piloto; con el teclado, Intro en el nombre lo elige y espacio lo muestra u oculta (la
+ * ficha del foco lo dice).
+ *
  * Sin Canvas 2D (entorno de tests), no pinta la gráfica; la leyenda y la ficha (desde la leyenda) sí.
  */
 import uPlot from 'uplot'
@@ -43,6 +52,7 @@ import {
   type HitFrame,
   hitTest,
   type LabelRect,
+  lineClick,
   nearestIndex,
   type Rect,
   seriesEnd,
@@ -64,9 +74,11 @@ const props = defineProps<{
   testid?: string
   /** Textos del pie de la ficha para la vuelta del índice: con el ratón («Clic: …») y el botón de la ficha fijada. */
   pickLabel?: (index: number) => { click: string; button: string }
+  /** Se puede elegir a un piloto desde la gráfica (clic en su serie, su ficha o su círculo de la leyenda): `select`. */
+  selectable?: boolean
 }>()
 
-const emit = defineEmits<{ pick: [index: number]; toggle: [key: string] }>()
+const emit = defineEmits<{ pick: [index: number]; toggle: [key: string]; select: [key: string] }>()
 /** `compact`: la ficha no cabe en el alto del área de datos; el hueco enseña su forma corta (un solo mensaje). */
 defineSlots<{ card?(props: { hit: ChartPreview; compact: boolean }): unknown }>()
 
@@ -315,6 +327,26 @@ const pickText = computed(() => {
   return p && props.pickLabel && p.index < props.spec.x.length ? props.pickLabel(p.index) : null
 })
 
+/**
+ * Pie de la ficha: con el ratón, qué hace un clic ahí («Clic: elegir ALO» o, en el elegido, «Clic: ir al inicio de la
+ * V12»); desde la leyenda con el teclado, sus teclas (Intro elige, espacio muestra u oculta).
+ */
+const foot = computed<{ testid: string; text: string } | null>(() => {
+  const p = shown.value
+  const g = shownGroup.value
+  if (!p || !g) return null
+  if (p.mode === 'hover') {
+    if (lineClick(props.spec, g.key, !!props.selectable) === 'select') {
+      return { testid: 'analysis-card-click', text: t('analysis.card.clickChoose', { driver: g.label }) }
+    }
+    return pickText.value ? { testid: 'analysis-card-click', text: pickText.value.click } : null
+  }
+  if (p.mode === 'legend' && p.keyboard && props.selectable) {
+    return { testid: 'analysis-card-keys', text: g.emphasis ? t('analysis.card.keysChosen') : t('analysis.card.keys', { driver: g.label }) }
+  }
+  return null
+})
+
 function hitFrame(u: uPlot): HitFrame {
   const r = uPlot.pxRatio
   return {
@@ -341,7 +373,7 @@ function applyAlphas() {
 
 function setPreview(next: ChartPreview | null) {
   const cur = preview.value
-  if (cur?.key === next?.key && cur?.index === next?.index && cur?.mode === next?.mode) return
+  if (cur?.key === next?.key && cur?.index === next?.index && cur?.mode === next?.mode && !!cur?.keyboard === !!next?.keyboard) return
   if (next && next.key !== shown.value?.key) compact.value = false
   preview.value = next
   if (next) shown.value = next
@@ -413,14 +445,40 @@ function onClick(event: MouseEvent) {
   moveRaf = 0
   hoverAt(event.clientX, event.clientY)
   const p = preview.value
-  if (p?.mode === 'hover') emit('pick', p.index)
-  else onPick(event)
+  if (p?.mode !== 'hover') onPick(event)
+  else if (lineClick(props.spec, p.key, !!props.selectable) === 'select') emit('select', p.key)
+  else emit('pick', p.index)
+}
+
+/** Elige al piloto de un grupo (si no lo es ya: otro clic en el elegido no lo quita). */
+function choose(key: string) {
+  if (!props.selectable || props.spec.groups.some((g) => g.key === key && g.emphasis)) return
+  emit('select', key)
+}
+
+/** «Elegir» de la ficha fijada: el botón da paso a «Elegido»; el foco, al siguiente botón de la ficha. */
+function chooseFromCard(event: MouseEvent) {
+  const p = preview.value
+  if (!p) return
+  const focused = document.activeElement === event.currentTarget
+  choose(p.key)
+  if (focused)
+    void nextTick(() =>
+      cardEl.value?.querySelector<HTMLElement>('[data-testid="analysis-card-go"], [data-testid="analysis-card-close"]')?.focus(),
+    )
+}
+
+/** Intro en un nombre de la leyenda elige a su piloto (espacio lo sigue mostrando u ocultando). */
+function onKeyEnterDown(event: KeyboardEvent, key: string) {
+  if (!props.selectable) return
+  event.preventDefault()
+  choose(key)
 }
 
 /** Ficha desde la leyenda (ratón o foco del teclado): la vuelta del último dato de su serie. */
-function showFromLegend(key: string) {
+function showFromLegend(key: string, keyboard = false) {
   const end = seriesEnd(props.spec, key)
-  setPreview({ key, index: end?.index ?? Math.max(0, props.spec.x.length - 1), mode: 'legend' })
+  setPreview({ key, index: end?.index ?? Math.max(0, props.spec.x.length - 1), mode: 'legend', keyboard })
 }
 
 function onKeyEnter(event: PointerEvent, key: string) {
@@ -488,7 +546,7 @@ function onKeyFocus(event: FocusEvent, key: string) {
   } catch {
     // Sin `:focus-visible`: el foco vale.
   }
-  if (visible) showFromLegend(key)
+  if (visible) showFromLegend(key, true)
 }
 
 function hideLegend(key: string) {
@@ -582,7 +640,8 @@ function placeCard() {
   const rel = (r: DOMRect): Rect => ({ x0: r.left - fr.left, y0: r.top - fr.top, x1: r.right - fr.left, y1: r.bottom - fr.top })
   let legendKey: Rect | null = null
   for (const el of fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"], [data-testid="analysis-legend-nodata"]')) {
-    const r = rel(el.getBoundingClientRect())
+    // La entrada entera (con su círculo para elegir, si lo hay).
+    const r = rel((el.closest('.tz-achart__entry') ?? el).getBoundingClientRect())
     if (el.dataset.car === p.key && el.dataset.testid === 'analysis-legend-item') legendKey = r
     else soft.push(r)
   }
@@ -786,6 +845,7 @@ onBeforeUnmount(() => {
     :data-testid="testid ?? 'analysis-chart'"
     :data-points="spec.x.length"
     :data-preview="preview?.key"
+    :data-hit="preview?.mode === 'hover' ? 'true' : undefined"
   >
     <div
       ref="host"
@@ -808,36 +868,57 @@ onBeforeUnmount(() => {
         :data-group="block.label ? block.id : undefined"
       >
         <span v-if="block.label" :id="`${ids}-legend-${block.id}`" class="tz-achart__group-label">{{ block.label }}</span>
-        <button
+        <span
           v-for="g in block.groups"
           :key="g.key"
-          type="button"
-          class="tz-achart__key"
-          :class="{ 'is-emphasis': g.emphasis }"
-          :aria-pressed="g.visible"
-          :aria-describedby="preview?.key === g.key ? cardId : undefined"
-          :data-car="g.key"
-          data-testid="analysis-legend-item"
-          @click="onKeyClick(g.key)"
+          class="tz-achart__entry"
+          :class="{ 'is-on': g.visible, 'is-emphasis': g.emphasis }"
           @pointerenter="onKeyEnter($event, g.key)"
           @pointerleave="onKeyLeave($event, g.key)"
-          @pointerdown="onKeyDown($event, g.key)"
-          @pointermove="onKeyMove"
-          @pointerup="cancelPress"
-          @pointercancel="cancelPress"
-          @contextmenu="onKeyContext"
-          @focus="onKeyFocus($event, g.key)"
-          @blur="hideLegend(g.key)"
         >
-          <span
-            class="tz-achart__swatch"
-            :class="{ 'is-dash': g.dash, 'is-point': pointsOnly }"
-            :style="{ '--swatch': g.color }"
-            aria-hidden="true"
-          />
-          {{ g.label }}
-          <span v-if="until.has(g.key)" class="tz-achart__until" data-testid="analysis-legend-until">{{ until.get(g.key) }}</span>
-        </button>
+          <!-- Elegir a su piloto con el ratón o el dedo (con el teclado, Intro en su nombre). -->
+          <button
+            v-if="selectable"
+            type="button"
+            tabindex="-1"
+            class="tz-achart__pick"
+            :aria-pressed="g.emphasis"
+            :aria-label="t('analysis.legendPick', { driver: g.label })"
+            :title="t('analysis.legendPick', { driver: g.label })"
+            :data-pick="g.key"
+            data-testid="analysis-legend-pick"
+            @click="choose(g.key)"
+          >
+            <span class="tz-achart__ring" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="tz-achart__key"
+            :class="{ 'is-emphasis': g.emphasis }"
+            :aria-pressed="g.visible"
+            :aria-describedby="preview?.key === g.key ? cardId : undefined"
+            :data-car="g.key"
+            data-testid="analysis-legend-item"
+            @click="onKeyClick(g.key)"
+            @keydown.enter="onKeyEnterDown($event, g.key)"
+            @pointerdown="onKeyDown($event, g.key)"
+            @pointermove="onKeyMove"
+            @pointerup="cancelPress"
+            @pointercancel="cancelPress"
+            @contextmenu="onKeyContext"
+            @focus="onKeyFocus($event, g.key)"
+            @blur="hideLegend(g.key)"
+          >
+            <span
+              class="tz-achart__swatch"
+              :class="{ 'is-dash': g.dash, 'is-point': pointsOnly }"
+              :style="{ '--swatch': g.color }"
+              aria-hidden="true"
+            />
+            {{ g.label }}
+            <span v-if="until.has(g.key)" class="tz-achart__until" data-testid="analysis-legend-until">{{ until.get(g.key) }}</span>
+          </button>
+        </span>
         <span v-for="n in block.noLaps" :key="n.key" class="tz-achart__key is-nodata" :data-car="n.key" data-testid="analysis-legend-nodata">
           <span class="tz-achart__swatch" :class="{ 'is-dash': n.dash }" aria-hidden="true" />
           {{ n.label }}
@@ -866,6 +947,17 @@ onBeforeUnmount(() => {
             <span class="tz-achart__card-tla">{{ shownGroup.label }}</span>
             <span v-if="shownGroup.name" class="tz-achart__card-name">· {{ shownGroup.name }}</span>
           </p>
+          <span v-if="shownGroup.emphasis" class="tz-achart__card-chosen" data-testid="analysis-card-chosen">{{ t('analysis.card.chosen') }}</span>
+          <button
+            v-else-if="selectable && preview?.mode === 'pinned'"
+            type="button"
+            class="tz-achart__card-choose"
+            :aria-label="t('analysis.card.chooseLabel', { driver: shownGroup.label })"
+            data-testid="analysis-card-choose"
+            @click="chooseFromCard($event)"
+          >
+            {{ t('analysis.card.choose') }}
+          </button>
           <button
             v-if="preview?.mode === 'pinned'"
             type="button"
@@ -882,7 +974,7 @@ onBeforeUnmount(() => {
             <p>{{ defaultBody }}</p>
           </slot>
         </div>
-        <p v-if="shown.mode === 'hover' && pickText" class="tz-achart__card-foot" data-testid="analysis-card-click">{{ pickText.click }}</p>
+        <p v-if="foot" class="tz-achart__card-foot" :data-testid="foot.testid">{{ foot.text }}</p>
         <button
           v-if="preview?.mode === 'pinned' && pickText"
           type="button"
@@ -933,7 +1025,12 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+/* Un clic fuera de las series elige la vuelta más cercana (cruz); sobre una serie, a su piloto o esa vuelta (mano). */
 .tz-achart__plot :deep(.u-over) {
+  cursor: crosshair;
+}
+
+.tz-achart[data-hit] .tz-achart__plot :deep(.u-over) {
   cursor: pointer;
 }
 
@@ -963,13 +1060,72 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
 }
 
+/*
+ * Entrada de un piloto: una pieza con borde con su círculo para elegirlo (si la gráfica deja) y su nombre, que muestra u
+ * oculta su serie. Visible: borde fuerte y relleno; del coche elegido, borde de pintura (D47: nunca la placa maciza).
+ */
+.tz-achart__entry {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--tz-border);
+  border-radius: var(--tz-radius-pill);
+  transition: border-color var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-achart__entry.is-on {
+  border-color: var(--tz-border-strong);
+  background: var(--tz-surface-2);
+}
+
+.tz-achart__entry.is-on.is-emphasis {
+  border-color: var(--tz-accent);
+}
+
+/* Círculo para elegir al piloto: 24 px de ancho (WCAG 2.5.8) y, con puntero grueso, --tz-hit-min de alto. */
+.tz-achart__pick {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--tz-space-6);
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--tz-border);
+  border-radius: var(--tz-radius-pill) 0 0 var(--tz-radius-pill);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tz-achart__pick::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+.tz-achart__ring {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--tz-text-faint);
+  border-radius: 50%;
+  transition:
+    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    background-color var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* El elegido: el círculo lleno de pintura (como una opción de radio), con el mismo borde que su entrada. */
+.tz-achart__pick[aria-pressed='true'] .tz-achart__ring {
+  border-color: var(--tz-accent);
+  background: var(--tz-accent);
+  box-shadow: inset 0 0 0 2px var(--tz-surface-2);
+}
+
 .tz-achart__key {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
   padding: var(--tz-space-0-5) var(--tz-space-2);
-  border: 1px solid var(--tz-border);
+  border: 0;
   border-radius: var(--tz-radius-pill);
   background: transparent;
   color: var(--tz-text-faint);
@@ -980,9 +1136,7 @@ onBeforeUnmount(() => {
   /* Mantener pulsado (con el dedo) fija la ficha: sin el menú ni la selección de texto del navegador. */
   -webkit-touch-callout: none;
   user-select: none;
-  transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
-    color var(--tz-dur-fast) var(--tz-ease-standard);
+  transition: color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
 /* Zona táctil: crece en vertical hasta --tz-hit-min sin mover el layout. */
@@ -993,13 +1147,7 @@ onBeforeUnmount(() => {
 }
 
 .tz-achart__key[aria-pressed='true'] {
-  border-color: var(--tz-border-strong);
-  background: var(--tz-surface-2);
   color: var(--tz-text);
-}
-
-.tz-achart__key.is-emphasis[aria-pressed='true'] {
-  border-color: var(--tz-accent);
 }
 
 /* Piloto del manifest sin vueltas en los datos: no hay serie que mostrar u ocultar; contorno de «no disponible» (D44). */
@@ -1054,7 +1202,11 @@ onBeforeUnmount(() => {
 }
 
 @media (hover: hover) {
-  .tz-achart__key:not(.is-nodata):hover {
+  .tz-achart__entry:hover {
+    border-color: var(--tz-accent);
+  }
+
+  .tz-achart__pick:hover .tz-achart__ring {
     border-color: var(--tz-accent);
   }
 }
@@ -1136,6 +1288,52 @@ onBeforeUnmount(() => {
   width: var(--tz-space-6);
   height: var(--tz-space-6);
   margin-left: auto;
+}
+
+/* «Elegido»: el borde de pintura del coche elegido (como el chip de la cabecera y su entrada de la leyenda). */
+.tz-achart__card-chosen {
+  flex: none;
+  margin-left: auto;
+  padding: 0 var(--tz-space-2);
+  border: 1px solid var(--tz-accent);
+  border-radius: var(--tz-radius-pill);
+  color: var(--tz-text);
+  font-size: var(--tz-text-2xs);
+  font-weight: var(--tz-weight-semibold);
+}
+
+/*
+ * «Elegir» (ficha fijada con el dedo): contorno. Su zona táctil es toda la fila del piloto (su ::after la cubre, con
+ * --tz-hit-min de alto): tocar el nombre también lo elige. El × va después en el DOM y queda encima.
+ */
+.tz-achart__card-top:has(.tz-achart__card-choose) {
+  position: relative;
+}
+
+.tz-achart__card-choose {
+  position: static;
+  flex: none;
+  margin-left: auto;
+  padding: var(--tz-space-0-5) var(--tz-space-2);
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-pill);
+  background: transparent;
+  color: var(--tz-text);
+  font-size: var(--tz-text-xs);
+  font-weight: var(--tz-weight-semibold);
+  cursor: pointer;
+}
+
+.tz-achart__card-choose::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+/* Con «Elegido» o «Elegir» delante, el × va pegado a ellos. */
+.tz-achart__card-chosen + .tz-achart__card-close,
+.tz-achart__card-choose + .tz-achart__card-close {
+  margin-left: 0;
 }
 
 .tz-achart__card-body {

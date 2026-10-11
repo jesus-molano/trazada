@@ -9,8 +9,8 @@
  * - Diálogo no modal: al abrirla, el foco va a la pestaña activa; al cerrarla, vuelve a donde estaba. Pestañas con
  *   flechas, Inicio y Fin (patrón de pestañas de WAI-ARIA; las flechas no llegan al atajo de saltar en el tiempo).
  * - Se cierra con ×, con el botón de la cabecera o con Esc (registro de Esc, `ESC_PRIORITY.analysis`).
- * - Con un coche elegido, la cabecera lo dice y deja quitarlo (`TzAnalysisSelection`, D49): la hoja tapa el panel de
- *   telemetría, donde está «Vista general».
+ * - La cabecera dice qué coche está elegido y deja elegir otro o ninguno (`TzAnalysisSelection`, D49): la hoja tapa el
+ *   panel de telemetría, donde está «Vista general».
  * - Entrada con los tokens de movimiento (fundido y desplazamiento corto; nada con movimiento reducido).
  */
 import { ESC_PRIORITY, registerEscape } from '~/replay/keys'

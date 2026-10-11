@@ -3,7 +3,8 @@
  * Race trace (ítem 3, D33): diferencia con el primero en cada paso por meta, vuelta a vuelta
  * (`engine/analysis/raceTrace.ts`), con los tiempos oficiales de paso por la línea; sin corrección de combustible ni
  * suavizado. Solo en carrera y sprint (en libres y clasificación, su estado vacío lo explica). Todos los pilotos
- * visibles por defecto; el coche elegido, destacado. Un clic en una vuelta salta a su inicio.
+ * visibles por defecto; el coche elegido, destacado. Un clic en una línea elige a su piloto (D49; en la del elegido, o
+ * fuera de las líneas, salta al inicio de esa vuelta).
  *
  * De quién es cada línea (D49): la leyenda va por grupos (los que siguen, en el orden en que acaban las líneas de arriba
  * abajo; los que dejaron de pasar por meta, como la clasificación; y, con todos los pasos por meta a la vista, los
@@ -146,8 +147,10 @@ export const raceOnly = true
         :legend-label="t('analysis.legend')"
         testid="race-trace-chart"
         :pick-label="pickLabel"
+        selectable
         @pick="pick"
         @toggle="toggle"
+        @select="playback.selectCar($event)"
       >
         <template #card="{ hit, compact }">
           <TzRaceTraceCard

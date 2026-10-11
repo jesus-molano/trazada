@@ -12,11 +12,13 @@
  *   no se vería nunca y la regla de fin de los datos de `stoppedCars` no se aplicaría).
  * - Coches visibles de cada gráfica: lo que elija el usuario en la leyenda (por pestaña); si no ha elegido, los de
  *   cada pestaña por defecto.
- * - Al quitar la selección con la hoja abierta (su × en la cabecera, D49), el coche que estaba elegido se queda entre
- *   los de por defecto de «Ritmo» (`paceKept`): sigue dibujado, sin destacar, en vez de desaparecer. Vale también
- *   desde otra pestaña (la hoja solo monta la activa). Es aparte de la elección del usuario en la leyenda: el coche
- *   que se elija después también sale (y destacado). Al cerrar la hoja se olvida; con la hoja cerrada, nada: «Ritmo»
- *   muestra por defecto el coche elegido de cada momento y los cinco primeros.
+ * - Al quitar la selección o elegir a otro con la hoja abierta (su selector en la cabecera, las gráficas o la leyenda,
+ *   D49), el coche que estaba elegido se queda entre los de por defecto de «Ritmo» (`paceKept`): sigue dibujado, sin
+ *   destacar, en vez de desaparecer. Vale también desde otra pestaña (la hoja solo monta la activa). Es aparte de la
+ *   elección del usuario en la leyenda. Al cerrar la hoja se olvida; con la hoja cerrada, nada: «Ritmo» muestra por
+ *   defecto el coche elegido de cada momento y los cinco primeros.
+ * - Si en una pestaña el usuario eligió en la leyenda qué se ve y el nuevo elegido estaba oculto, pasa a verse: se
+ *   elige para destacarlo, no para destacarlo oculto.
  */
 import { computed, type ComputedRef, effectScope, readonly, type Ref, ref, shallowRef, watch } from 'vue'
 import type { LapTable } from '~/engine/analysis/lapTable'
@@ -43,8 +45,9 @@ export interface AnalysisState {
   readonly shown: Readonly<Ref<Readonly<Record<string, readonly string[]>>>>
   setShown(tab: string, cars: readonly string[]): void
   /**
-   * Coches que se quitaron de la selección con la hoja abierta (D49): «Ritmo» los sigue mostrando por defecto, sin
-   * destacar, junto al coche elegido y los cinco primeros. Se vacía al cerrar la hoja.
+   * Coches que dejaron de ser el elegido con la hoja abierta (al quitar la selección o al elegir a otro, D49): «Ritmo»
+   * los sigue mostrando por defecto, sin destacar, junto al coche elegido y los cinco primeros. Se vacía al cerrar la
+   * hoja.
    */
   readonly paceKept: Readonly<Ref<readonly string[]>>
   show(): void
@@ -67,12 +70,28 @@ export function createAnalysisState(rt: ReplayRuntime): AnalysisState {
   const setShown = (key: string, cars: readonly string[]) => {
     shown.value = { ...shown.value, [key]: [...cars] }
   }
+  /**
+   * Coches de las gráficas en su orden (el del manifest; los que solo están en la tabla de vueltas, después). Con los del
+   * manifest sin vueltas: la leyenda del race trace también los lista, y su elección no se pierde.
+   */
+  const chartCars = () => {
+    const known = new Set(rt.drivers.map((d) => d.number))
+    return [...known, ...[...table.cars.keys()].filter((c) => !known.has(c))]
+  }
   scope.run(() =>
     watch(
       () => playback.selectedCar,
       (now, before) => {
-        if (now || !before || !open.value || paceKept.value.includes(before)) return
-        paceKept.value = [...paceKept.value, before]
+        if (!open.value || now === before) return
+        // El que estaba elegido sigue dibujado en «Ritmo» (ya sin destacar), al quitar la selección o al elegir a otro.
+        if (before && !paceKept.value.includes(before)) paceKept.value = [...paceKept.value, before]
+        // El elegido nuevo, a la vista en las pestañas donde el usuario eligió qué se ve (si no, se destacaría oculto).
+        if (!now || !table.cars.has(now)) return
+        for (const [key, cars] of Object.entries(shown.value)) {
+          if (cars.includes(now)) continue
+          const next = new Set([...cars, now])
+          setShown(key, chartCars().filter((c) => next.has(c)))
+        }
       },
       { flush: 'sync' },
     ),
