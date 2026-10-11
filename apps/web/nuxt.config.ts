@@ -13,9 +13,21 @@ export default defineNuxtConfig({
   // Componentes por nombre de fichero (prefijo Tz), sin prefijo de carpeta.
   components: [{ path: '~/components', pathPrefix: false }],
 
+  // Fuentes autoalojadas (OFL-1.1, D47), solo los pesos que usan los tokens (--tz-weight-*): Barlow para leer,
+  // Barlow Condensed para rótulos y cifras grandes, IBM Plex Mono para siglas y datos. Cada hoja declara sus
+  // subconjuntos con unicode-range, así que el navegador solo descarga el latino.
   css: [
-    '@fontsource-variable/inter/index.css',
-    '@fontsource-variable/jetbrains-mono/index.css',
+    '@fontsource/barlow/400.css',
+    '@fontsource/barlow/500.css',
+    '@fontsource/barlow/600.css',
+    '@fontsource/barlow/700.css',
+    '@fontsource/barlow-condensed/500.css',
+    '@fontsource/barlow-condensed/600.css',
+    '@fontsource/barlow-condensed/700.css',
+    '@fontsource/ibm-plex-mono/400.css',
+    '@fontsource/ibm-plex-mono/500.css',
+    '@fontsource/ibm-plex-mono/600.css',
+    '@fontsource/ibm-plex-mono/700.css',
     '~/design/tokens.css',
     '~/design/base.css',
   ],

@@ -11,29 +11,80 @@ body {
   height: 100%;
 }
 
+/*
+ * Identidad «Asfalto y pintura» (D47). Los controles nativos (casillas, radios, rangos) se pintan con el acento,
+ * y las barras de desplazamiento con el color del asfalto (sin cambiar su ancho: no mueve el layout).
+ */
+html {
+  accent-color: var(--tz-accent);
+  scrollbar-color: var(--tz-border-strong) transparent;
+}
+
 body {
-  background: var(--tz-bg);
+  /* Asfalto: el color de fondo con un grano estático (solo gradientes; se pinta una vez, no se anima). */
+  background: var(--tz-grain), var(--tz-bg);
   color: var(--tz-text);
   font-family: var(--tz-font-sans);
   font-size: var(--tz-text-md);
   line-height: var(--tz-leading-normal);
+  /* Cifras tabulares en toda la app: los datos (diferencias, relojes, siglas) no bailan al cambiar. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selección de texto: el color de señal (uno de sus tres únicos usos, con el foco y la traza de velocidad). */
+::selection {
+  background: var(--tz-signal);
+  color: var(--tz-text-inverse);
 }
 
 #__nuxt {
   min-height: 100%;
 }
 
+/* Rótulos: condensada en mayúsculas, como la rotulación pintada de un muro de boxes o un programa de carrera. */
+h1,
+h2,
+h3 {
+  font-family: var(--tz-font-display);
+  letter-spacing: var(--tz-tracking-display);
+  text-transform: uppercase;
+}
+
+/* Etiquetas de los pares dato/valor (telemetría, vuelta, meteorología, bench): rótulo condensado en mayúsculas. */
+dt {
+  font-family: var(--tz-font-display);
+  font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-caps);
+  text-transform: uppercase;
+}
+
 a {
   color: var(--tz-accent);
   text-decoration: none;
+  text-underline-offset: 0.2em;
+}
+
+/*
+ * Enlace o desplegable con aspecto de enlace (p. ej. un <summary> de «¿Por qué?»): pintura subrayada. Los <a> de
+ * la app son tarjetas, botones o la marca, así que no hay enlaces sueltos dentro del texto.
+ */
+.tz-link {
+  color: var(--tz-accent-strong);
+  text-decoration: underline 1px var(--tz-link-line);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
 }
 
 /* Los estados de hover solo con un puntero que puede «flotar»: en táctil se quedarían pegados tras tocar. */
 @media (hover: hover) {
   a:hover {
     text-decoration: underline;
+  }
+
+  .tz-link:hover {
+    text-decoration-color: var(--tz-accent);
   }
 }
 
@@ -63,7 +114,7 @@ button {
   border: 0;
 }
 
-/* Botón de acción común (reintentar, recuperar…) */
+/* Botón de acción común (reintentar, recuperar…): una placa maciza de pintura con el rótulo en condensada. */
 .tz-button {
   display: inline-flex;
   align-items: center;
@@ -71,24 +122,33 @@ button {
   padding: var(--tz-space-2) var(--tz-space-4);
   border: 1px solid var(--tz-accent);
   border-radius: var(--tz-radius-md);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+  font-family: var(--tz-font-display);
   font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-display);
+  text-transform: uppercase;
   cursor: pointer;
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-@media (hover: hover) {
-  .tz-button:hover {
-    background: var(--tz-accent-soft-hover);
-    text-decoration: none;
-  }
-}
-
+/* Botón secundario: solo el contorno (la placa maciza queda para la acción principal). */
 .tz-button--quiet {
   border-color: var(--tz-border-strong);
   background: transparent;
   color: var(--tz-text);
+}
+
+@media (hover: hover) {
+  .tz-button:hover {
+    background: var(--tz-accent-strong);
+    text-decoration: none;
+  }
+
+  /* El secundario no se vuelve placa al pasar por encima: el texto claro no se leería sobre la pintura. */
+  .tz-button--quiet:hover {
+    background: var(--tz-accent-soft-hover);
+  }
 }
 
 /*
@@ -120,11 +180,12 @@ button {
   border-bottom: 1px solid var(--tz-border);
 }
 
-/* Título de panel: una sola línea con elipsis (no se parte en dos en tablet). */
+/* Título de panel: una sola línea con elipsis (no se parte en dos en tablet), en condensada. */
 .tz-panel-title {
   min-width: 0;
   margin: 0;
   overflow: hidden;
+  font-family: var(--tz-font-display);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
   line-height: var(--tz-leading-tight);
@@ -135,7 +196,10 @@ button {
   color: var(--tz-text-muted);
 }
 
-/* Cifra destacada: muestra cruda vigente (H8). Su valor nunca se anima. */
+/*
+ * Cifra destacada: muestra cruda vigente (H8). Su valor nunca se anima. Sigue en la familia de texto (no en la
+ * condensada): también se usa dentro de frases, en las leyendas del calor y de las estelas.
+ */
 .tz-num {
   font-family: var(--tz-font-sans);
   font-variant-numeric: tabular-nums;
@@ -207,11 +271,12 @@ button {
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
+/* Opción elegida: placa maciza de pintura (placa = activado; el estado lo dicen también aria-pressed/checked). */
 .tz-segmented > button[aria-pressed='true'],
 .tz-segmented > button[aria-checked='true'] {
   border-color: var(--tz-accent);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
 }
 
 .tz-segmented > button:active {
@@ -264,11 +329,18 @@ button {
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2));
 }
 
-.tz-iconbtn[aria-expanded='true'],
-.tz-iconbtn[aria-pressed='true'] {
+/* Desplegado (abre algo) no es lo mismo que activado: relleno suave con borde de pintura. */
+.tz-iconbtn[aria-expanded='true'] {
   border-color: var(--tz-accent);
   background: var(--tz-accent-soft);
   color: var(--tz-accent-strong);
+}
+
+/* Activado: placa maciza de pintura, como la opción elegida de un control segmentado. */
+.tz-iconbtn[aria-pressed='true'] {
+  border-color: var(--tz-accent);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
 }
 
 .tz-iconbtn:active {

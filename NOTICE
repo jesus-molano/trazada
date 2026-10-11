@@ -6,8 +6,11 @@ software and data sources with their own terms:
 
 - GSAP (GreenSock) — "Standard 'no charge' license" (https://gsap.com/standard-license).
   Proprietary, free of charge; not an OSI open-source license. Used for UI/camera transitions.
-- Inter (Rasmus Andersson) and JetBrains Mono (JetBrains) — SIL Open Font License 1.1,
-  self-hosted via the @fontsource packages. License texts ship with the font packages.
+- Barlow and Barlow Condensed (Copyright 2017 The Barlow Project Authors, https://github.com/jpt/barlow)
+  and IBM Plex Mono (Copyright 2017 IBM Corp., Reserved Font Name "Plex") — SIL Open Font License 1.1,
+  self-hosted via the @fontsource packages (@fontsource/barlow, @fontsource/barlow-condensed,
+  @fontsource/ibm-plex-mono 5.3.0), used unmodified and never renamed. License texts ship with the font
+  packages (node_modules/@fontsource/*/LICENSE).
 - three.js, TresJS, Vue, Nuxt, Pinia, vue-i18n, uPlot, troika-three-text — MIT.
 - Lucide (@lucide/vue 1.48.0) — ISC, Copyright (c) 2026 Lucide Icons and Contributors. The icons that
   Lucide derives from the Feather project are MIT, Copyright (c) 2013-present Cole Bemis. Icon SVGs are
