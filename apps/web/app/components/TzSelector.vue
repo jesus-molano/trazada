@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SessionType } from '@trazada/schema'
+import { STAGGER_MAX_STEPS } from '~/design/motion'
 import {
   type BrowseEvent,
   type BrowseSession,
@@ -60,10 +61,18 @@ const selectedEvent = computed<BrowseEvent | null>(() => {
   return events.value.find((e) => e.key === q) ?? null
 })
 
+/**
+ * Las listas (tarjetas y sesiones) solo entran animadas tras un cambio que pide el usuario (otra temporada u otro
+ * Gran Premio), nunca al cargar: la portada aparece quieta, y ningún texto se lee (ni se mide) a medio fundir.
+ */
+const animateLists = ref(false)
+
 function selectSeason(s: number) {
+  animateLists.value = true
   void router.replace({ query: { season: String(s) } })
 }
 function selectEvent(e: BrowseEvent) {
+  animateLists.value = true
   void router.replace({ query: { season: String(season.value), event: eventKey(e) } })
 }
 
@@ -72,7 +81,10 @@ function viewOf(e: BrowseEvent, s: BrowseSession) {
   return sessionView(s, job, now.value, manager.available)
 }
 
-/** País (en el idioma de la interfaz) y fecha del primer día; sin país (sesiones dev), solo la fecha. */
+/**
+ * País (en el idioma de la interfaz) y fecha del primer día; sin país (sesiones dev), solo la fecha. Sin ninguno de
+ * los dos, cadena vacía: la tarjeta dice «sin dato».
+ */
 function eventMeta(e: BrowseEvent): string {
   return [e.country ? countryLabel(e.country, locale.value) : '', e.dateStart ? formatDate(e.dateStart, locale.value) : '']
     .filter(Boolean)
@@ -83,6 +95,12 @@ function eventMeta(e: BrowseEvent): string {
 function builtCount(e: BrowseEvent): number {
   return readyCount(e.sessions.map((s) => viewOf(e, s)))
 }
+
+/**
+ * Paso de la entrada escalonada (tz-enter) de la tarjeta `index`, con el tope de motion.ts: la duración del paso
+ * es --tz-stagger, que vale 0 con prefers-reduced-motion. Solo se anima la aparición, nunca una cifra (D42).
+ */
+const enterStep = (index: number) => ({ '--i': Math.min(index, STAGGER_MAX_STEPS) })
 
 const eventMissing = computed(() =>
   selectedEvent.value && manager.available
@@ -141,9 +159,11 @@ const queueText = computed(() => {
 
 <template>
   <div class="tz-selector">
-    <div v-if="catalog.status === 'error'" class="tz-selector__state" role="alert" data-testid="catalog-error">
-      <p>{{ t('selector.error') }}</p>
-      <button type="button" class="tz-button" @click="catalog.load(true)">{{ t('selector.retry') }}</button>
+    <div v-if="catalog.status === 'error'" class="tz-selector__state is-error" role="alert" data-testid="catalog-error">
+      <p class="tz-selector__message"><TzIcon name="error" class="tz-selector__icon" />{{ t('selector.error') }}</p>
+      <button type="button" class="tz-button" @click="catalog.load(true)">
+        <TzIcon name="retry" size="sm" />{{ t('selector.retry') }}
+      </button>
     </div>
     <div
       v-else-if="catalog.status !== 'ready'"
@@ -174,6 +194,7 @@ const queueText = computed(() => {
 
       <div v-if="manager.available" class="tz-manager" data-testid="manager">
         <div v-if="queue.active > 0" class="tz-manager__queue" data-testid="download-queue">
+          <TzIcon name="download" class="tz-manager__icon" />
           <span class="tz-manager__text">{{ queueText }}</span>
           <button
             ref="cancelAllButton"
@@ -182,11 +203,12 @@ const queueText = computed(() => {
             data-testid="cancel-all"
             @click="cancelAll()"
           >
-            {{ t('manager.cancelAll') }}
+            <TzIcon name="close" size="sm" />{{ t('manager.cancelAll') }}
           </button>
         </div>
         <p v-if="manager.actionError" class="tz-manager__alert" role="alert" data-testid="manager-error">
-          {{ t('manager.actionError') }}
+          <TzIcon name="error" class="tz-manager__icon" />
+          <span class="tz-manager__text">{{ t('manager.actionError') }}</span>
         </p>
         <p
           v-if="scheduleState?.status === 'loading'"
@@ -197,14 +219,15 @@ const queueText = computed(() => {
           {{ t('manager.scheduleLoading', { season }) }}
         </p>
         <div v-else-if="scheduleState?.status === 'error'" class="tz-manager__alert" role="alert" data-testid="schedule-error">
-          <span>{{ t('manager.scheduleError', { season }) }} {{ t(`manager.error.${scheduleState.error ?? 'failed'}`) }}</span>
+          <TzIcon name="error" class="tz-manager__icon" />
+          <span class="tz-manager__text">{{ t('manager.scheduleError', { season }) }} {{ t(`manager.error.${scheduleState.error ?? 'failed'}`) }}</span>
           <button type="button" class="tz-button tz-manager__action" @click="manager.loadSchedule(season, true)">
-            {{ t('selector.retry') }}
+            <TzIcon name="retry" size="sm" />{{ t('selector.retry') }}
           </button>
         </div>
       </div>
 
-      <p v-if="events.length === 0 && scheduleState?.status !== 'loading'" class="tz-selector__state" data-testid="season-empty">
+      <p v-if="events.length === 0 && scheduleState?.status !== 'loading'" class="tz-selector__state is-empty" data-testid="season-empty">
         {{ t('selector.emptySeason', { season }) }}
       </p>
 
@@ -220,11 +243,12 @@ const queueText = computed(() => {
               data-testid="download-season-races"
               @click="enqueueBulk(seasonRacesMissing)"
             >
-              {{ t('manager.downloadSeasonRaces', seasonRacesMissing.length) }}
+              <TzIcon name="download" size="sm" />{{ t('manager.downloadSeasonRaces', seasonRacesMissing.length) }}
             </button>
           </div>
-          <ul role="list" class="tz-event-list">
-            <li v-for="e in events" :key="e.key">
+          <!-- Una lista por temporada: al cambiar de temporada, las tarjetas entran escalonadas (tz-enter). -->
+          <ul :key="season" role="list" class="tz-event-list" :class="{ 'is-entering': animateLists }">
+            <li v-for="(e, i) in events" :key="e.key" :style="enterStep(i)">
               <button
                 type="button"
                 class="tz-event"
@@ -244,6 +268,7 @@ const queueText = computed(() => {
                       :title="t('manager.builtLabel', { built: builtCount(e), total: e.sessions.length })"
                       :data-testid="`built-${e.slug}`"
                     >
+                      <TzIcon v-if="builtCount(e) === e.sessions.length" name="check" size="sm" />
                       <span aria-hidden="true">{{
                         t('manager.built', { built: builtCount(e), total: e.sessions.length })
                       }}</span>
@@ -253,7 +278,9 @@ const queueText = computed(() => {
                     </span>
                   </span>
                   <span class="tz-event__name"><TzFlag :country="e.country" />{{ e.event }}</span>
-                  <span class="tz-event__meta">{{ eventMeta(e) }}</span>
+                  <span v-if="eventMeta(e)" class="tz-event__meta">{{ eventMeta(e) }}</span>
+                  <!-- Ni país ni fecha: se dice, sin inventar ninguno. -->
+                  <span v-else class="tz-event__meta is-missing">{{ t('portada.noData') }}</span>
                 </span>
               </button>
             </li>
@@ -273,12 +300,13 @@ const queueText = computed(() => {
               data-testid="download-event"
               @click="enqueueBulk(eventMissing)"
             >
-              {{ t('manager.downloadEvent', eventMissing.length) }}
+              <TzIcon name="download" size="sm" />{{ t('manager.downloadEvent', eventMissing.length) }}
             </button>
           </div>
-          <p v-if="!selectedEvent" class="tz-muted">{{ t('selector.pickEvent') }}</p>
-          <ul v-else role="list" class="tz-session-list">
-            <li v-for="s in selectedEvent.sessions" :key="s.session">
+          <p v-if="!selectedEvent" class="tz-selector__state is-empty">{{ t('selector.pickEvent') }}</p>
+          <!-- Una lista por Gran Premio: al elegir otro, sus sesiones entran con un fundido escalonado. -->
+          <ul v-else :key="selectedEvent.key" role="list" class="tz-session-list" :class="{ 'is-entering': animateLists }">
+            <li v-for="(s, i) in selectedEvent.sessions" :key="s.session" :style="enterStep(i)">
               <TzSessionRow
                 :type="s.session"
                 :view="viewOf(selectedEvent, s)"
@@ -299,9 +327,43 @@ const queueText = computed(() => {
   gap: var(--tz-space-6);
 }
 
+/* Estados de carga, vacío y error: el texto lo dice todo; el icono solo lo acompaña. */
 .tz-selector__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-3) var(--tz-space-4);
   margin: 0;
   color: var(--tz-text-muted);
+}
+
+/* Vacío («elige un Gran Premio», temporada sin sesiones): hueco con contorno discontinuo, nunca contenido inventado. */
+.tz-selector__state.is-empty {
+  padding: var(--tz-space-4);
+  border: 1px dashed var(--tz-border-strong);
+  border-radius: var(--tz-radius-md);
+}
+
+.tz-selector__state.is-error {
+  padding: var(--tz-space-3) var(--tz-space-4);
+  border: 1px solid var(--tz-danger);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-1);
+  color: var(--tz-text);
+  animation: rise var(--tz-dur-base) var(--tz-ease-enter) backwards;
+}
+
+.tz-selector__message {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--tz-space-2);
+  margin: 0;
+}
+
+.tz-selector__icon,
+.tz-manager__alert .tz-manager__icon {
+  color: var(--tz-danger);
 }
 
 .tz-seasons ul,
@@ -318,27 +380,41 @@ const queueText = computed(() => {
   gap: var(--tz-space-2);
 }
 
+/* Temporada: placa de rótulo; la elegida, placa maciza de pintura (placa = activado, D47). */
 .tz-season {
-  padding: var(--tz-space-2) var(--tz-space-4);
+  position: relative;
+  padding: var(--tz-space-1) var(--tz-space-4);
   border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
+  border-radius: var(--tz-radius-md);
   background: transparent;
+  font-family: var(--tz-font-display);
+  font-size: var(--tz-text-lg);
   font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-display);
   cursor: pointer;
   transition:
     background-color var(--tz-dur-fast) var(--tz-ease-standard),
-    border-color var(--tz-dur-fast) var(--tz-ease-standard);
+    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-.tz-season:hover,
-.tz-event:hover {
-  border-color: var(--tz-accent);
+/* Zona táctil: crece hasta --tz-hit-min (44 px con puntero grueso) sin mover el layout. */
+.tz-season::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
 .tz-season.is-active {
   border-color: var(--tz-accent);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+}
+
+.tz-season:active,
+.tz-event:active {
+  transform: scale(var(--tz-press-scale));
 }
 
 .tz-browse {
@@ -354,11 +430,12 @@ const queueText = computed(() => {
   }
 }
 
+/* Rótulo de columna (h2: condensada en mayúsculas desde base.css). */
 .tz-heading {
   margin: 0 0 var(--tz-space-3);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tz-tracking-caps);
   text-transform: uppercase;
   color: var(--tz-text-muted);
 }
@@ -369,6 +446,18 @@ const queueText = computed(() => {
   gap: var(--tz-space-3);
 }
 
+/*
+ * Entrada escalonada de tarjetas y sesiones (D42), tras un cambio del usuario: opacidad y un desplazamiento corto,
+ * con duración, curva y paso de los tokens (todo 0 con prefers-reduced-motion). Va en el <li>, así no pisa la escala
+ * al pulsar del botón; solo rellena hacia atrás, nunca deja un transform puesto al terminar.
+ */
+.tz-event-list.is-entering > li,
+.tz-session-list.is-entering > li {
+  animation: tz-enter var(--tz-dur-base) var(--tz-ease-enter) backwards;
+  animation-delay: calc(var(--i, 0) * var(--tz-stagger));
+}
+
+/* Tarjeta de Gran Premio: trazado, ronda, bandera y nombre en condensada, y país y fecha. */
 .tz-event {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -381,18 +470,28 @@ const queueText = computed(() => {
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-md);
   background: var(--tz-surface-1);
+  box-shadow: var(--tz-shadow-panel);
   text-align: start;
   cursor: pointer;
-  transition: border-color var(--tz-dur-fast) var(--tz-ease-standard);
+  transition:
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
+/* La elegida: borde y franja de pintura a la izquierda (el estado lo dice también aria-pressed). */
 .tz-event.is-active {
   border-color: var(--tz-accent);
   background: var(--tz-surface-2);
+  box-shadow:
+    inset 3px 0 0 var(--tz-accent),
+    var(--tz-shadow-panel);
 }
 
 .tz-event__round {
+  font-family: var(--tz-font-mono);
   font-size: var(--tz-text-xs);
+  letter-spacing: var(--tz-tracking-mono);
   color: var(--tz-text-faint);
 }
 
@@ -407,17 +506,29 @@ const queueText = computed(() => {
   /* La bandera, en la primera línea si el nombre ocupa dos. */
   align-items: first baseline;
   gap: var(--tz-space-2);
+  font-family: var(--tz-font-display);
+  font-size: var(--tz-text-lg);
   font-weight: var(--tz-weight-semibold);
+  line-height: var(--tz-leading-tight);
 }
 
-.tz-event.is-active .tz-outline,
-.tz-event:hover .tz-outline {
+.tz-event :deep(.tz-outline) {
+  transition: color var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-event.is-active :deep(.tz-outline) {
   color: var(--tz-accent);
 }
 
 .tz-event__meta {
   font-size: var(--tz-text-sm);
   color: var(--tz-text-muted);
+}
+
+/* «sin dato»: con su estilo propio (tenue y en cursiva), para no confundirlo con un dato. */
+.is-missing {
+  font-style: italic;
+  color: var(--tz-text-faint);
 }
 
 .tz-session-list {
@@ -453,8 +564,14 @@ const queueText = computed(() => {
   gap: var(--tz-space-2);
 }
 
+/* Sesiones listas para ver (n/total): una etiqueta pequeña; completo, con el icono y el color de éxito. */
 .tz-event__built {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  font-family: var(--tz-font-mono);
   font-size: var(--tz-text-xs);
+  letter-spacing: var(--tz-tracking-mono);
   color: var(--tz-text-faint);
 }
 
@@ -476,12 +593,13 @@ const queueText = computed(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--tz-space-2) var(--tz-space-4);
+  gap: var(--tz-space-2) var(--tz-space-3);
   margin: 0;
   padding: var(--tz-space-3) var(--tz-space-4);
   border: 1px solid var(--tz-accent);
   border-radius: var(--tz-radius-md);
   background: var(--tz-surface-1);
+  animation: rise var(--tz-dur-base) var(--tz-ease-enter) backwards;
 }
 
 .tz-manager__alert {
@@ -493,7 +611,37 @@ const queueText = computed(() => {
 }
 
 .tz-manager__action {
+  position: relative;
   padding: var(--tz-space-1) var(--tz-space-3);
   font-size: var(--tz-text-sm);
+}
+
+/* Zona táctil: crece hasta --tz-hit-min (44 px con puntero grueso) sin mover el layout. */
+.tz-manager__action::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
+/*
+ * Aviso o cola que aparece: sube un poco (--tz-shift, 0 con movimiento reducido), sin fundido: su texto se lee (y
+ * axe lo mide) entero desde el primer frame.
+ */
+@keyframes rise {
+  from {
+    transform: translateY(var(--tz-shift));
+  }
+}
+
+/* Hover solo con un puntero que puede «flotar»: en táctil se quedaría pegado tras tocar. */
+@media (hover: hover) {
+  .tz-season:hover:not(.is-active),
+  .tz-event:hover {
+    border-color: var(--tz-accent);
+  }
+
+  .tz-event:hover :deep(.tz-outline) {
+    color: var(--tz-accent);
+  }
 }
 </style>
