@@ -21,6 +21,7 @@ from trazada_pipeline.circuit.build import (
     Circuit,
     CircuitBuildError,
     build_circuit,
+    circuit_pit_fit,
 )
 from trazada_pipeline.circuit.fit import circuit_fit
 from trazada_pipeline.circuit.store import circuit_variants, load_circuit, next_variant_id, save_circuit
@@ -227,7 +228,9 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
     anterior de la construcción (p. ej. con el desvío al garaje en el pit lane) o sin curvas ni rotación
     oficial que esta sesión sí trae. Nunca si con ello perdería las curvas y la rotación, el pit lane o los
     sectores de comisarios que ya tiene (una sprint sin paradas no trae pit lane), ni si esta sesión no
-    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa."""
+    basta para construirlo: entonces se reutiliza tal cual, como antes, y se avisa. Un pit lane guardado que
+    no sigue a los coches de esta sesión (`circuit_pit_fit`; la cuerda de Singapur 2026, de la versión 2) no
+    se conserva: mejor sin pit lane que uno por donde no van los coches."""
     outdated = stored.geometry_version < GEOMETRY_VERSION
     gains_info = stored.corners.empty and data.circuit_info is not None
     if not (outdated or gains_info):
@@ -253,8 +256,13 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
             )
         ]
     lost = []
+    dropped_pit = None
     if stored.pitlane is not None and fresh.pitlane is None:
-        lost.append("el pit lane")
+        stored_fit = circuit_pit_fit(data, stored)
+        if stored_fit is None or stored_fit.ok:
+            lost.append("el pit lane")
+        else:
+            dropped_pit = stored_fit
     if stored.marshal_sectors is not None and fresh.marshal_sectors is None:
         lost.append("los sectores de comisarios")
     if lost:
@@ -267,18 +275,26 @@ def _refresh_circuit(data: SessionData, stored: Circuit, cid: str, name: str, v1
             )
         ]
     save_circuit(fresh, v1)
+    dropped = (
+        ""
+        if dropped_pit is None
+        else f" Su pit lane no seguía a los coches de esta sesión (p90 de {dropped_pit.p90_m:.1f} m) y "
+        "ninguna parada da uno bueno: queda sin pit lane."
+    )
     if outdated:
         return [
             QualityNote(
                 "circuit-rebuilt",
-                f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye.",
+                f"El circuito {cid} se construyó con una versión anterior de la geometría: se reconstruye."
+                + dropped,
                 {"circuit": cid, "reason": "outdated"},
             )
         ]
     return [
         QualityNote(
             "circuit-rebuilt",
-            f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión.",
+            f"El circuito {cid} no tenía curvas ni rotación oficial: se reconstruye con las de esta sesión."
+            + dropped,
             {"circuit": cid, "reason": "gains-corners"},
         )
     ]

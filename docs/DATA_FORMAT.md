@@ -90,9 +90,10 @@ Cabecera:
 - 0 en `position` cuando no aplica.
 
 **Circuito y movimiento**:
-- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m y las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h). Su `s` vale 0 y no se usa.
+- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m, las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h) y, al cambiar entre pista y pit lane, las del camino de antes que quedan más de 1 m por delante (en `s`) de la primera del nuevo (el feed deja el coche en la pista hasta 10 m más allá de la bifurcación). Su `s` vale 0 y no se usa. Sin pit lane en el circuito, también las de las ventanas de boxes a más de 6 m de la pista.
 - `circuit.pitlane.z` es la altura de la pista más cercana, no la del feed (que da la misma a todo el pit lane).
 - El `meta` del circuito lleva `geometryVersion`, la versión de su construcción. Un circuito sin el campo es de la versión 1.
+- Desde `geometryVersion` 3, el pit lane se valida con las muestras de pit lane (a más de 4 m de la pista y a 30 km/h o más) de las otras paradas de la sesión que construyó el circuito, y `meta.quality` lo dice: `pitFitStopShare` (fracción de esas paradas cuyas muestras lo siguen, con p90 de distancia ≤ 3 m; hace falta la mitad), `pitFitP50M` y `pitFitP90M` (distancia en planta de las muestras de las paradas que lo siguen, en m), `pitFitFarShare` (fracción de todas las muestras a más de 5 m), `pitFitUncoveredShare` (fracción del tramo con muestras del pit lane a más de 5 m de toda muestra; 0 si había menos de 5 paradas con que comprobarlo), `pitFitSamples` y `pitFitStops`. Las uniones con la pista (la bifurcación no tiene muestras) son curvas que salen de ella y vuelven con su dirección. Si ninguna parada da un pit lane sin huecos y que sigan los coches, el circuito no lo trae (`meta.pit` es `null` y la tabla `pitlane`, vacía).
 - Un trazado puede tener variantes `{circuitKey}-{layoutId}-v2`, `-v3`…: se crean cuando una sesión no encaja en el circuito guardado (D21).
 
 ## Eventos (JSON, `events.schema.json`)

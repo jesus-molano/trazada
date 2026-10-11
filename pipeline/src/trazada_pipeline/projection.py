@@ -17,6 +17,17 @@ Por coche:
    posición: queda `nodata` en vez de congelar el coche y hacerlo saltar después.
 6. Una parada que la telemetría desmiente (posición congelada o corregida hacia atrás en el feed mientras
    el coche va a más de 30 km/h) también queda `nodata`.
+7. Al cambiar de camino, el feed deja el coche un poco más en la línea del camino de antes: en la entrada
+   del pit lane, en la pista más allá de la bifurcación cuando ya va por el pit lane (clasificación de
+   Singapur 2026: hasta 10 m; la primera muestra del pit lane queda por detrás). Las muestras del camino de
+   antes que quedan más de 1 m por delante de la primera del nuevo (en s, la equivalente en el pit lane), en
+   los 2 s previos al cambio, son una posición que se sabe mal: `nodata` (no se mueven), como los retrocesos
+   del punto 5; el coche se oculta lo que tarda en llegar a la primera muestra del nuevo camino (en
+   Singapur, menos de 2 s). Igual en la salida (las del pit lane por delante de la primera de pista). Se
+   hace antes de la monotonía, que si no las promediaría con las buenas (las movería hasta 5 m) o se
+   quedaría con ellas y quitaría las buenas. Así el coche nunca va hacia atrás al entrar o salir.
+8. Sin pit lane en el circuito (ninguna parada lo daba bien), las muestras de la ventana de boxes fuera de
+   la pista (a más de 6 m) quedan `nodata`.
 """
 
 from __future__ import annotations
@@ -50,6 +61,10 @@ NEAR_PIT_OFF_TRACK_M = 12.0
 MAX_MONOTONE_SHIFT_M = 5.0
 #: Retroceso admitido (m) al anclar por continuidad un tramo sin nº de vuelta.
 ANCHOR_BACK_TOL_M = 50.0
+#: Al cambiar entre pista y pit lane, lo que una muestra del camino de antes puede quedar por delante de la
+#: primera del nuevo (m de s) sin ser un fallo: el ruido del feed es de décimas (pegado a una línea) y la s
+#: equivalente del pit lane avanza más deprisa que la de la pista junto a la bifurcación.
+SWITCH_BACK_TOL_M = 1.0
 #: Parada desmentida por la telemetría: menos de 1 m de avance en más de 1 s a más de 30 km/h.
 FAKE_STOP_MIN_MS = 1000
 FAKE_STOP_MAX_M = 1.0
@@ -63,7 +78,8 @@ class CarMotion:
     path: np.ndarray  # uint8
     s_m: np.ndarray  # float64, distancia acumulada (equivalente en pista para el pit)
     proj_err_m: np.ndarray  # float64
-    # Muestras sin dato por fallos del feed: retrocesos de más de MAX_MONOTONE_SHIFT_M y paradas falsas.
+    # Muestras sin dato por fallos del feed: retrocesos de más de MAX_MONOTONE_SHIFT_M, paradas falsas y el
+    # camino de antes por delante del nuevo al entrar o salir del pit lane.
     rejected: int = 0
 
 
@@ -267,6 +283,32 @@ def _unwrap_and_anchor(
     return s_lin
 
 
+def switch_overshoot(t: np.ndarray, path: np.ndarray, s: np.ndarray) -> np.ndarray:
+    """Muestras que el feed dejó en el camino de antes tras pasar al otro (pista ↔ pit lane).
+
+    En cada cambio de camino entre dos muestras con dato seguidas (aunque haya muestras sin dato entre ellas)
+    a menos de `SEGMENT_GAP_MS`, las del camino de antes de los `SEGMENT_GAP_MS` previos que quedan por
+    delante de la primera del camino nuevo (más de `SWITCH_BACK_TOL_M` en `s`): el coche ya había cambiado de
+    camino y el feed lo seguía pegando a la otra línea. No se mueven: quedan sin dato.
+    """
+    out = np.zeros(len(t), dtype=bool)
+    idx = np.flatnonzero(path != PATH_NODATA)
+    for k in np.flatnonzero(path[idx[:-1]] != path[idx[1:]]):
+        nxt = idx[k + 1]
+        if t[nxt] - t[idx[k]] > SEGMENT_GAP_MS:
+            continue
+        j = k
+        while (
+            j >= 0
+            and path[idx[j]] == path[idx[k]]
+            and t[nxt] - t[idx[j]] <= SEGMENT_GAP_MS
+            and s[idx[j]] > s[nxt] + SWITCH_BACK_TOL_M
+        ):
+            out[idx[j]] = True
+            j -= 1
+    return out
+
+
 def project_car(
     pos: pd.DataFrame,
     laps: pd.DataFrame,
@@ -315,17 +357,26 @@ def project_car(
         garage = in_pit & ~use_pit & (d > OFF_TRACK_M)
         near_pit = ~in_pit & ~use_pit & (pd_ < d) & (d > NEAR_PIT_OFF_TRACK_M)
         path[garage | near_pit] = PATH_NODATA
+    else:
+        # Sin pit lane (ninguna parada lo daba sin huecos y por donde van los coches): en la ventana de boxes,
+        # fuera de la pista, sin dato; nunca pegado a la trazada.
+        path[in_pit & (d > OFF_TRACK_M)] = PATH_NODATA
     far_track = (path == PATH_TRACK) & (d > TRACK_MAX_DIST_M)
     path[far_track] = PATH_NODATA
 
     valid = path != PATH_NODATA
     s_lin = _unwrap_and_anchor(t, s_raw, valid, _lap_of(t, laps), L)
 
+    # El feed sigue un poco en el camino de antes al entrar o salir del pit lane: posición que se sabe mal.
+    overshoot = switch_overshoot(t, path, s_lin)
+    path[overshoot] = PATH_NODATA
+    rejected = int(overshoot.sum())
+    valid = path != PATH_NODATA
+
     # Monotonía, primero por tramo de un mismo camino: PAVA no mezcla la pista con el pit lane (su s es un
     # equivalente) ni promedia un fallo de posición con las muestras buenas.
     run_id = np.cumsum(np.r_[True, (np.diff(t) > SEGMENT_GAP_MS) | (path[1:] != path[:-1])])
     s_cum = np.full(n, np.nan)
-    rejected = 0
     for rid in np.unique(run_id[valid]):
         idx = np.flatnonzero((run_id == rid) & valid)
         fit, keep = monotone_fit(s_lin[idx], MAX_MONOTONE_SHIFT_M)
