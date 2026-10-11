@@ -2,7 +2,7 @@
  * Reglas de movimiento (D42) sobre todo el CSS de la app (.vue y .css) y los helpers de motion.ts.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick } from 'vue'
@@ -18,6 +18,8 @@ import {
 import { token } from './tokens'
 
 const APP = fileURLToPath(new URL('..', import.meta.url))
+/** Ruta relativa con «/» (en Windows, `relative` usa «\»). */
+const posix = (path: string) => path.split(sep).join('/')
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -32,7 +34,7 @@ const STYLES: { file: string; css: string }[] = files(APP)
   .map((f) => {
     const src = readFileSync(f, 'utf8')
     const css = f.endsWith('.css') ? src : [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n')
-    return { file: relative(APP, f), css: css.replace(/\/\*[\s\S]*?\*\//g, '') }
+    return { file: posix(relative(APP, f)), css: css.replace(/\/\*[\s\S]*?\*\//g, '') }
   })
 
 /** Reglas hoja (selector + cuerpo), también las que están dentro de @media; sin las de @keyframes. */

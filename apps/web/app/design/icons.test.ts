@@ -4,12 +4,14 @@
  * «×» de la telemetría pasaron a TzIcon); una entrada nueva tendría que justificarse aquí.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ICON_NAMES, ICONS, isIconName } from './icons'
 
 const APP = fileURLToPath(new URL('..', import.meta.url))
+/** Ruta relativa con «/» (en Windows, `relative` usa «\»). */
+const posix = (path: string) => path.split(sep).join('/')
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -20,7 +22,7 @@ function files(dir: string): string[] {
 
 const VUE = files(APP)
   .filter((f) => f.endsWith('.vue'))
-  .map((f) => ({ file: relative(APP, f), src: readFileSync(f, 'utf8') }))
+  .map((f) => ({ file: posix(relative(APP, f)), src: readFileSync(f, 'utf8') }))
 
 /** Plantilla de un SFC, sin comentarios HTML. */
 const template = (src: string) => (/<template>([\s\S]*)<\/template>/.exec(src)?.[1] ?? '').replace(/<!--[\s\S]*?-->/g, '')
@@ -63,9 +65,9 @@ describe('iconos (D30)', () => {
 
   it('solo design/icons.ts importa @lucide/vue', () => {
     const offenders = files(APP)
-      .filter((f) => /\.(vue|ts)$/.test(f) && !f.endsWith('.test.ts') && !f.endsWith('design/icons.ts'))
+      .filter((f) => /\.(vue|ts)$/.test(f) && !f.endsWith('.test.ts') && !posix(f).endsWith('design/icons.ts'))
       .filter((f) => /from\s+['"]@lucide\//.test(readFileSync(f, 'utf8')))
-      .map((f) => relative(APP, f))
+      .map((f) => posix(relative(APP, f)))
     expect(offenders).toEqual([])
   })
 

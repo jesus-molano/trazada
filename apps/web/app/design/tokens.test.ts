@@ -1,11 +1,13 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { duration, parseCssTime } from './motion'
 import { token } from './tokens'
 
 const APP = fileURLToPath(new URL('..', import.meta.url))
+/** Ruta relativa con «/» (en Windows, `relative` usa «\»). */
+const posix = (path: string) => path.split(sep).join('/')
 const TOKENS_CSS = readFileSync(join(APP, 'design/tokens.css'), 'utf8')
 
 function files(dir: string): string[] {
@@ -82,7 +84,7 @@ function usersOf(token: string, exts = /\.(vue|ts|css)$/): string[] {
   return files(APP)
     .filter((f) => exts.test(f) && !f.endsWith('.test.ts') && !f.endsWith('tokens.css'))
     .filter((f) => use.test(stripComments(readFileSync(f, 'utf8'))))
-    .map((f) => relative(APP, f))
+    .map((f) => posix(relative(APP, f)))
     .sort()
 }
 
@@ -102,7 +104,7 @@ describe('tokens de diseño', () => {
     for (const f of files(APP)) {
       if (!/\.(vue|ts|css)$/.test(f) || f.endsWith('.test.ts') || f.endsWith('tokens.css')) continue
       const src = readFileSync(f, 'utf8')
-      for (const m of src.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|(?:rgba?|hsla?)\(\s*\d/g)) offenders.push(`${relative(APP, f)}: ${m[0]}`)
+      for (const m of src.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|(?:rgba?|hsla?)\(\s*\d/g)) offenders.push(`${posix(relative(APP, f))}: ${m[0]}`)
     }
     expect(offenders).toEqual([])
   })
@@ -112,7 +114,7 @@ describe('tokens de diseño', () => {
     for (const f of files(APP)) {
       if (!/\.(vue|css)$/.test(f)) continue
       const src = stripComments(readFileSync(f, 'utf8'))
-      for (const m of src.matchAll(/(?<![\w-])color\s*:[^;}{]*var\(\s*--team\b/g)) offenders.push(`${relative(APP, f)}: ${m[0]}`)
+      for (const m of src.matchAll(/(?<![\w-])color\s*:[^;}{]*var\(\s*--team\b/g)) offenders.push(`${posix(relative(APP, f))}: ${m[0]}`)
     }
     expect(offenders).toEqual([])
   })
@@ -188,7 +190,7 @@ describe('tokens de diseño', () => {
     const offenders = files(APP)
       .filter((f) => /\.(vue|css)$/.test(f))
       .filter((f) => /(?<![\w-])backdrop-filter\s*:/.test(stripComments(readFileSync(f, 'utf8'))))
-      .map((f) => relative(APP, f))
+      .map((f) => posix(relative(APP, f)))
     expect(offenders).toEqual([])
   })
 
