@@ -368,6 +368,21 @@ onBeforeUnmount(() => {
   border-radius: var(--tz-radius-pill);
   background: var(--tz-surface-3);
   overflow: hidden;
+  transition: transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/*
+ * Microinteracción (21b): el riel engorda un poco al pasar por encima o al arrastrar, y el cabezal se ensancha mientras
+ * se arrastra (su `span`, hijo del transform que se escribe en cada frame, que nunca lleva transición).
+ */
+.tz-timeline__track.is-dragging .tz-timeline__rail {
+  transform: scaleY(1.25);
+}
+
+@media (hover: hover) {
+  .tz-timeline__track:hover .tz-timeline__rail {
+    transform: scaleY(1.25);
+  }
 }
 
 .tz-timeline__fill {
@@ -516,6 +531,11 @@ onBeforeUnmount(() => {
   border-radius: 1px;
   background: var(--tz-text);
   box-shadow: 0 0 0 1px var(--tz-bg);
+  transition: transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-timeline__track.is-dragging .tz-timeline__head span {
+  transform: scaleX(2);
 }
 
 </style>

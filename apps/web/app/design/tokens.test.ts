@@ -196,12 +196,20 @@ describe('tokens de diseño', () => {
     expect(declared(low, '--tz-row-h')).toBe('24px')
     expect(declared(low, '--tz-text-num-xl')).toBe('30px')
     expect(declared(low, '--tz-chart-h')).toBe('54px')
+    expect(declared(low, '--tz-chart-h-tall')).toBe('80px')
     expect(declared(mediaRoot('pointer: coarse'), '--tz-hit-min')).toBe('44px')
     // Fuera de las media queries, los valores cómodos.
     expect(token('--tz-panel-pad')).toBe('16px')
     expect(token('--tz-row-h')).toBe('28px')
     expect(token('--tz-chart-h')).toBe('64px')
     expect(token('--tz-hit-min')).toBe('32px')
+  })
+
+  it('diseños del replay (ítem 15): columna ancha y gráficas altas de «Análisis», y la zona de agarre de las asas', () => {
+    const px = (name: `--tz-${string}`) => Number.parseFloat(token(name))
+    expect(px('--tz-panel-w-wide')).toBeGreaterThan(px('--tz-panel-w'))
+    expect(px('--tz-chart-h-tall')).toBeGreaterThan(px('--tz-chart-h'))
+    expect(px('--tz-resize-hit')).toBeGreaterThanOrEqual(24)
   })
 
   it('mapa de calor seguro para daltónicos: luminosidad estrictamente creciente', () => {

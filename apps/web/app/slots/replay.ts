@@ -3,7 +3,9 @@
  * sesión (cambian de clave con la sesión), así que pueden usar `getRuntime()!` en su `setup`. Sin props.
  *
  * - `components/replay-header/*.vue`: botones y chips de la cabecera (Análisis, realización automática, ayuda,
- *   meteorología…), entre el estado de pista y las herramientas de la escena.
+ *   meteorología, diseño…), entre el estado de pista y las herramientas de la escena. La cabecera va en una fila y el
+ *   título tiene prioridad (D44): un texto largo que pase a su forma corta por debajo de un ancho lleva además
+ *   `data-fit-hide="N"` (y su forma corta, `data-fit-show="N"`) para acortarse antes que el título (pages/replay.vue).
  * - `components/replay-overlays/*.vue`: lo que va por encima del escenario (hojas, tarjetas, avisos, paleta). Se
  *   posicionan solos; Esc, con `registerEscape` (replay/keys.ts) y su prioridad de `ESC_PRIORITY`.
  *

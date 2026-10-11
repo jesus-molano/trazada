@@ -146,6 +146,39 @@ test.describe('timeline', () => {
     const normal = await page.getByTestId('rate-2').evaluate((el) => getComputedStyle(el).transitionDuration)
     expect(normal).not.toBe('0s')
   })
+
+  /**
+   * Microinteracciones (21b, D42): con reduced motion, ninguna transición ni animación dura nada en todo el documento,
+   * también tras elegir coche, plegar y desplegar la dirección de carrera, cambiar de diseño y hacer un seek.
+   */
+  test('con prefers-reduced-motion, transition-duration y animation-duration valen 0 s en todo el documento', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await openReplay(page)
+    await page.locator('[data-testid="leaderboard"] [data-car]').nth(2).getByRole('button').click()
+    await expect(page.getByTestId('telemetry')).toBeVisible()
+    await page.getByTestId('race-control-toggle').click()
+    await page.getByTestId('race-control-toggle').click()
+    await page.getByTestId('layout-analysis').click()
+    await page.getByTestId('play-toggle').click()
+    await page.waitForTimeout(300)
+    await page.getByTestId('play-toggle').click()
+    await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 60_000))
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    const moving = await page.evaluate(() => {
+      const out: string[] = []
+      // `auto` es el valor inicial de animation-duration en los navegadores recientes (sin animación: nada que mover).
+      const nonZero = (v: string) => v.split(',').some((d) => !['0s', 'auto', ''].includes(d.trim()))
+      for (const el of document.querySelectorAll('*')) {
+        const cs = getComputedStyle(el)
+        if (nonZero(cs.transitionDuration) || nonZero(cs.animationDuration)) {
+          out.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')}: ${cs.transitionDuration} / ${cs.animationDuration}`)
+        }
+      }
+      return out.slice(0, 10)
+    })
+    expect(moving).toEqual([])
+    await page.getByTestId('layout-spectator').click()
+  })
 })
 
 test.describe('táctil', () => {

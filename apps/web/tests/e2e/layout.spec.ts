@@ -5,6 +5,7 @@
  */
 import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
 import { gotoApp, resetStorage } from './helpers'
 
@@ -130,9 +131,10 @@ for (const vp of VIEWPORTS) {
 /**
  * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
  * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
- * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado).
+ * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado). Con `event`, otro nombre de
+ * Gran Premio en el título (p. ej. el de Japón, más largo).
  */
-async function serveLikeDevRace(page: Page): Promise<void> {
+async function serveLikeDevRace(page: Page, options: { event?: string } = {}): Promise<void> {
   let patched: Promise<Buffer> | null = null
   const events = (url: string) =>
     (patched ??= page.request.get(url).then(async (r) => {
@@ -145,6 +147,7 @@ async function serveLikeDevRace(page: Page): Promise<void> {
     const manifest = await res.json()
     const body = await events(new URL(manifest.files.events.path, route.request().url()).href)
     manifest.channels.weather = 'absent'
+    if (options.event) manifest.session.event = options.event
     manifest.quality.estimated = ['positions', 'telemetry', 'trackStatus']
     manifest.quality.notes = [
       ...manifest.quality.notes,
@@ -156,6 +159,15 @@ async function serveLikeDevRace(page: Page): Promise<void> {
   })
   await page.route(`**/sessions/${SESSION}/events.*.json.gz`, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/gzip', body: await events(route.request().url()) })
+  })
+}
+
+/** ¿El título de la cabecera se acorta con «…»? Y los niveles de compactación de la cabecera (`data-fit`). */
+function titleFit(page: Page) {
+  return page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('[data-testid="replay-title"]')!
+    const bar = document.querySelector<HTMLElement>('.tz-replay__bar')!
+    return { truncated: title.scrollWidth > title.clientWidth + 1, levels: (bar.dataset.fit ?? '').split(' ').filter(Boolean) }
   })
 }
 
@@ -196,6 +208,10 @@ for (const vp of [
       expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
       expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(56)
       expect(await overflowing(page)).toEqual([])
+      // El título tiene prioridad (D44): si aun así se acorta con «…», es que todo lo secundario ya está en su forma
+      // más corta (por la media query de < 1360 px o por `data-fit` con el nivel 3).
+      const fit = await titleFit(page)
+      if (fit.truncated) expect(vp.width < 1360 || fit.levels.includes('3')).toBe(true)
 
       // Ninguna etiqueta «Estimado» se esconde: la del estado de pista, en la cabecera (corta, pulsable); la de las
       // posiciones, flotando justo debajo, sobre el mapa, sin tapar la clasificación ni la columna derecha.
@@ -320,5 +336,196 @@ test.describe('girar la tablet', () => {
     await page.waitForTimeout(500)
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
     expect(close(await camera(page), moved)).toBe(true)
+  })
+})
+
+/*
+ * Prioridad del título (regresión de la Tanda 5): a 1920 px, con lo de una carrera dev y el nombre largo de Japón,
+ * las piezas secundarias pasaban a su forma larga y el título se cortaba («JAPANESE GRAND P…»). Ahora lo secundario se
+ * acorta antes (data-fit) y el título se ve entero, sin esconder «Estimado».
+ */
+test.describe('escritorio 1920×1080: el título de la cabecera tiene prioridad (D44)', () => {
+  test.use({ viewport: { width: 1920, height: 1080 } })
+
+  test('con una carrera dev y un Gran Premio de nombre largo, el título se ve entero y la cabecera va en una fila', async ({ page }) => {
+    await resetStorage(page)
+    await serveLikeDevRace(page, { event: 'Japanese Grand Prix' })
+    await open(page)
+    await expect(page.getByTestId('replay-title')).toContainText('Japanese Grand Prix')
+    await expect.poll(async () => (await titleFit(page)).truncated).toBe(false)
+    const middles = await barRowMiddles(page)
+    expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+    expect(await overflowing(page)).toEqual([])
+    // «Estimado» sigue a la vista (en su forma corta si hace falta) y lo acortado sigue en su nombre accesible.
+    const track = page.getByTestId('track-status').locator('[data-testid="estimated"][data-field="trackStatus"]')
+    await expect(track).toBeVisible()
+    await expect(track).toContainText(/Estimad[oa]|Estimated/, { useInnerText: true })
+    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+    await expect(page.getByTestId('analysis-button')).toHaveAccessibleName(/^(Análisis|Analysis)$/)
+  })
+
+  test('con los datos del fixture (meteorología completa a 1920 px), el título también se ve entero, en una fila', async ({ page }) => {
+    await resetStorage(page)
+    await open(page)
+    await expect.poll(async () => (await titleFit(page)).truncated).toBe(false)
+    const middles = await barRowMiddles(page)
+    expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+    // Lo que se acortara sigue en su nombre accesible: la meteorología lo dice todo.
+    await expect(page.getByTestId('weather')).toHaveAccessibleName(/.+/)
+  })
+})
+
+/** Ancho que deja la página al mapa entre la clasificación y la columna derecha (px). */
+async function sceneGap(page: Page): Promise<number> {
+  const lb = (await page.getByTestId('leaderboard').boundingBox())!
+  const side = (await page.locator('.tz-replay__side').boundingBox())!
+  return side.x - (lb.x + lb.width)
+}
+
+test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
+  for (const vp of VIEWPORTS) {
+    test.describe(vp.name, () => {
+      test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch })
+
+      test('«Análisis»: sus columnas y la telemetría más alta, sin scroll horizontal y con sitio para el mapa', async ({ page }) => {
+        await resetStorage(page)
+        await open(page)
+        await expect(page.getByTestId('lb-columns')).toHaveCount(0)
+        await page.getByTestId('layout-analysis').click()
+        await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+        await expect(page.getByTestId('layout-analysis')).toHaveAttribute('aria-pressed', 'true')
+        await expect(page.getByTestId('lb-columns')).toBeVisible()
+        const first = page.locator('[data-testid="leaderboard"] [data-car]').first()
+        await expect(first.getByTestId('lb-best')).toBeVisible()
+        await expect(first.getByTestId('lb-last')).toBeVisible()
+        await expect(first.getByTestId('lb-pits')).toBeVisible()
+        await page.locator('[data-testid="leaderboard"] [data-car]').nth(3).getByRole('button').click()
+        await expect(page.getByTestId('telemetry')).toBeVisible()
+        await expect(page.locator('[data-testid="telemetry"] .tz-chart[data-tall]')).toHaveCount(2)
+        await expect(page.locator('[data-testid="telemetry"] .tz-chart[data-window-s="40"]')).toHaveCount(2)
+        expect(await overflowing(page)).toEqual([])
+        // Fuera de la tablet en vertical, el mapa conserva su sitio entre los dos paneles (engine/layout/clamp.ts: en
+        // tablet, con los dos paneles en su mínimo, algo menos que su mínimo de 320 px).
+        if (!(vp.width <= 900 && vp.height > vp.width)) expect(await sceneGap(page)).toBeGreaterThanOrEqual(300)
+
+        // De vuelta a «Espectador»: la clasificación de siempre.
+        await page.getByTestId('layout-spectator').click()
+        await expect(page.getByTestId('lb-columns')).toHaveCount(0)
+        await expect(page.locator('[data-testid="telemetry"] .tz-chart[data-tall]')).toHaveCount(0)
+        expect(await overflowing(page)).toEqual([])
+      })
+    })
+  }
+
+  test.describe('escritorio 1440×900', () => {
+    test.use({ viewport: { width: 1440, height: 900 } })
+
+    test('el diseño se recuerda al recargar (por navegador) y la tecla L lo cambia', async ({ page }) => {
+      // Sin resetStorage: este test recarga y lo guardado tiene que seguir ahí (cada test empieza con el suyo vacío).
+      await open(page)
+      await page.getByTestId('replay-title').click()
+      await page.keyboard.press('l')
+      await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))
+      expect(saved).toMatchObject({ _v: 1, preset: 'analysis' })
+      await page.reload()
+      await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
+      await expect(page.getByTestId('leaderboard')).toBeVisible({ timeout: 15_000 })
+      await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+      await expect(page.getByTestId('lb-columns')).toBeVisible()
+    })
+
+    test('accesible (axe) en «Análisis», con las asas', async ({ page }) => {
+      await resetStorage(page)
+      await open(page)
+      await page.getByTestId('layout-analysis').click()
+      await expect(page.getByTestId('lb-columns')).toBeVisible()
+      await expect(page.getByTestId('resize-lb')).toHaveAttribute('role', 'separator')
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .exclude('[data-testid="scene"] canvas')
+        .analyze()
+      const serious = results.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`)
+      expect(serious).toEqual([])
+    })
+  })
+})
+
+test.describe('asas de los paneles (ítem 15)', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  const framing = (page: Page) => page.evaluate(() => window.__trazada!.scene.framing)
+  const lbWidth = async (page: Page) => (await page.getByTestId('leaderboard').boundingBox())!.width
+
+  test('arrastrar el asa cambia el ancho; la escena reencuadra al soltar (no en cada movimiento) y se recuerda al recargar', async ({ page }) => {
+    await open(page)
+    await page.waitForTimeout(600)
+    const before = await lbWidth(page)
+    const framed = await framing(page)
+    const handle = page.getByTestId('resize-lb')
+    await expect(handle).toHaveAttribute('aria-valuenow', '300')
+    const hb = (await handle.boundingBox())!
+    const x = hb.x + hb.width / 2
+    const y = hb.y + hb.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + 60, y, { steps: 6 })
+    // Durante el arrastre: el panel sigue al puntero, la escena aún no reencuadra.
+    await expect(page.locator('.tz-replay')).toHaveAttribute('data-resizing', '')
+    await expect.poll(() => lbWidth(page)).toBeCloseTo(before + 60, -1)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+    expect(await framing(page)).toEqual(framed)
+    await page.mouse.up()
+    await expect(page.locator('.tz-replay')).not.toHaveAttribute('data-resizing')
+    await expect(handle).toHaveAttribute('aria-valuenow', '360')
+    // Al soltar, un encuadre nuevo: el hueco libre empieza más a la derecha.
+    await expect.poll(async () => (await framing(page))!.free.x0).toBeGreaterThan(framed!.free.x0)
+    expect(await overflowing(page)).toEqual([])
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))
+    expect(saved.presets.spectator.lb).toBe(360)
+
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
+    await expect(page.getByTestId('leaderboard')).toBeVisible({ timeout: 15_000 })
+    await expect.poll(() => lbWidth(page)).toBeCloseTo(before + 60, -1)
+    await expect(page.getByTestId('resize-lb')).toHaveAttribute('aria-valuenow', '360')
+  })
+
+  test('con el teclado: → y ← cambian el ancho sin mover el reloj; Intro y doble clic lo restablecen', async ({ page }) => {
+    await resetStorage(page)
+    await open(page)
+    const t0 = await page.evaluate(() => window.__trazada!.timeMs)
+    const handle = page.getByTestId('resize-side')
+    await handle.focus()
+    await page.keyboard.press('ArrowLeft')
+    await expect(handle).toHaveAttribute('aria-valuenow', '316')
+    await page.keyboard.press('Shift+ArrowLeft')
+    await expect(handle).toHaveAttribute('aria-valuenow', '380')
+    await page.keyboard.press('ArrowRight')
+    await expect(handle).toHaveAttribute('aria-valuenow', '364')
+    expect(await page.evaluate(() => window.__trazada!.timeMs)).toBe(t0)
+    expect(Math.round((await page.locator('.tz-replay__side').boundingBox())!.width)).toBe(364)
+    await page.keyboard.press('Enter')
+    await expect(handle).toHaveAttribute('aria-valuenow', '300')
+    await page.keyboard.press('End')
+    const max = Number(await handle.getAttribute('aria-valuemax'))
+    await expect(handle).toHaveAttribute('aria-valuenow', String(max))
+    // El máximo deja al mapa su mínimo (engine/layout/clamp.ts).
+    expect(await sceneGap(page)).toBeGreaterThanOrEqual(1440 * 0.3)
+    await handle.dblclick()
+    await expect(handle).toHaveAttribute('aria-valuenow', '300')
+  })
+
+  test.describe('iPad vertical 768×1024', () => {
+    test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true })
+
+    test('en vertical no hay asas: los paneles van en la franja de abajo', async ({ page }) => {
+      await resetStorage(page)
+      await open(page)
+      await expect(page.getByTestId('resize-lb')).toHaveCount(0)
+      await expect(page.getByTestId('resize-side')).toHaveCount(0)
+    })
   })
 })

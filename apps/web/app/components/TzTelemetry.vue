@@ -11,16 +11,24 @@
  *
  * Jerarquía (D44): la cabecera lleva un tinte del color del equipo (nunca como color de texto: no llega a 4,5:1) y las
  * cifras que se leen de un vistazo (velocidad y marcha) van grandes; su valor es la muestra cruda, nunca se anima.
+ *
+ * Diseño «Análisis» (ítem 15): gráficas más altas (`--tz-chart-h-tall`) y con una ventana de 40 s. Al elegir otro coche
+ * (o abrir el panel), la cabecera destella una vez (21b): solo su fondo, nunca las cifras ni el texto.
  */
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
+import type { LayoutPreset } from '~/engine/layout/presets'
 import { drsState, Telemetry, type TelemetrySample } from '~/engine/telemetry/telemetry'
 import { ESC_PRIORITY, registerEscape } from '~/replay/keys'
 import { useCompareStore } from '~/stores/compare'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
-const CHART_WINDOW_S = 20
+const props = withDefaults(defineProps<{ preset?: LayoutPreset }>(), { preset: 'spectator' })
+/** Ventana de las mini gráficas (s): 20 s; en «Análisis», 40 s. */
+const CHART_WINDOW_S = { spectator: 20, analysis: 40 } as const satisfies Record<LayoutPreset, number>
 const CHART_INTERVAL_MS = 66 // ~15 Hz
+const windowS = computed(() => CHART_WINDOW_S[props.preset])
+const tall = computed(() => props.preset === 'analysis')
 
 const { t, locale } = useI18n()
 const playback = usePlaybackStore()
@@ -123,7 +131,7 @@ function drawCharts(car: string, timeMs: number) {
     return
   }
   chartsCleared = false
-  const [from, to] = telemetry.windowOf(car, timeMs - CHART_WINDOW_S * 1000, timeMs)
+  const [from, to] = telemetry.windowOf(car, timeMs - windowS.value * 1000, timeMs)
   const n = to - from
   const x = new Float64Array(n)
   for (let i = 0; i < n; i++) x[i] = (series.t[from + i]! - timeMs) / 1000
@@ -165,6 +173,15 @@ watch(comparing, (on) => {
   chartsCleared = true
   rt.requestFrame()
 })
+// Otro diseño: las mini gráficas se vuelven a montar (otro alto y otra ventana) y se pintan en el frame siguiente.
+watch(
+  () => props.preset,
+  () => {
+    lastChart = -Infinity
+    chartsCleared = true
+    rt.requestFrame()
+  },
+)
 </script>
 
 <template>
@@ -177,6 +194,8 @@ watch(comparing, (on) => {
     :data-car="driver.number"
   >
     <header class="tz-tel__head">
+      <!-- Destello único del fondo al cambiar de coche (decorativo; por debajo del texto). -->
+      <span :key="driver.number" class="tz-tel__flash" aria-hidden="true" />
       <span class="tz-tel__tla">{{ driver.tla }}</span>
       <span class="tz-tel__name">{{ driver.first }} {{ driver.last }}</span>
       <!-- «En vivo» / «Comparar»: un conmutador en la cabecera (una fila más no cabría a 1280×800). -->
@@ -257,22 +276,27 @@ watch(comparing, (on) => {
         </div>
       </dl>
 
+      <!-- Con otro diseño, otra clave: se vuelven a montar con su alto y su ventana. -->
       <TzMiniChart
+        :key="`speed-${preset}`"
         ref="speedChart"
-        :label="t('telemetry.chartSpeed')"
+        :label="t('telemetry.chartSpeed', { s: windowS })"
         :series="[{ label: t('telemetry.speed'), color: token('--tz-chart-speed'), scale: 'speed' }]"
         :ranges="{ speed: [0, 360] }"
-        :window-s="CHART_WINDOW_S"
+        :window-s="windowS"
+        :tall="tall"
       />
       <TzMiniChart
+        :key="`pedals-${preset}`"
         ref="pedalChart"
-        :label="t('telemetry.chartPedals')"
+        :label="t('telemetry.chartPedals', { s: windowS })"
         :series="[
           { label: t('telemetry.throttle'), color: token('--tz-chart-throttle'), scale: 'pct' },
           { label: t('telemetry.brakeOnOff'), color: token('--tz-chart-brake'), scale: 'onoff', stepped: true },
         ]"
         :ranges="{ pct: [0, 105], onoff: [0, 4] }"
-        :window-s="CHART_WINDOW_S"
+        :window-s="windowS"
+        :tall="tall"
       />
     </template>
   </section>
@@ -300,6 +324,8 @@ watch(comparing, (on) => {
 
 /* Cabecera con un tinte del color del equipo (≤ --tz-team-tint; sin color-mix, sin tinte). */
 .tz-tel__head {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: var(--tz-space-2);
@@ -307,6 +333,15 @@ watch(comparing, (on) => {
   padding: var(--tz-space-2) var(--tz-panel-pad);
   border-bottom: 1px solid var(--tz-border);
   background: linear-gradient(90deg, color-mix(in oklab, var(--team) var(--tz-team-tint), transparent), transparent 70%);
+}
+
+/* Destello único al cambiar de coche: el fondo, del acento suave a nada (con reduce, 0 ms); por debajo del texto. */
+.tz-tel__flash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  animation: tz-flash var(--tz-dur-slow) var(--tz-ease-exit);
 }
 
 .tz-tel__tla {

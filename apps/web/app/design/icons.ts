@@ -21,12 +21,15 @@ import {
   CircleQuestionMark,
   Clapperboard,
   CloudRain,
+  Columns3,
   Command,
   Copy,
   Download,
   EqualApproximately,
+  Eye,
   Flag,
   Ghost,
+  GripVertical,
   History,
   Info,
   Languages,
@@ -75,6 +78,8 @@ export const ICONS = {
   language: Languages,
   resume: History,
   layout: PanelsTopLeft,
+  /** Asa para cambiar el ancho de un panel. */
+  grip: GripVertical,
   // Información y estados (siempre junto a su texto)
   info: Info,
   help: CircleQuestionMark,
@@ -101,6 +106,9 @@ export const ICONS = {
   ghost: Ghost,
   analysis: ChartLine,
   summary: ListOrdered,
+  // Diseños del replay (ítem 15): «Espectador» (el mapa primero) y «Análisis» (más columnas)
+  spectator: Eye,
+  columns: Columns3,
   // Meteorología
   rain: CloudRain,
   temperature: Thermometer,

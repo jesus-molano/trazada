@@ -1,0 +1,59 @@
+{
+  "layout": {
+    "switch": {
+      "label": "Panel layout",
+      "spectator": "Spectator",
+      "analysis": "Analysis",
+      "spectatorHint": "Spectator layout: the map first, with compact panels (L key)",
+      "analysisHint": "Analysis layout: classification with best and last lap and pit lane entries, and bigger telemetry (L key)"
+    },
+    "resize": {
+      "lb": "Classification width",
+      "side": "Right column width",
+      "hint": "Drag or use ← and → to change the width (Shift: faster); double-click or Enter resets it",
+      "value": "{px} px"
+    },
+    "cells": {
+      "estimatedNote": "Estimated in the «Last» column: lap 1, from the start to the line",
+      "best": {
+        "head": "Best",
+        "title": "Best valid lap so far: {time}",
+        "titleQuali": "Best valid lap of the current segment: {time}",
+        "none": "Best lap: no data"
+      },
+      "last": {
+        "head": "Last",
+        "title": "Last lap ({lap}): {time}",
+        "deleted": "Last lap ({lap}): {time}, deleted by race control",
+        "noTime": "Last lap ({lap}): no official time",
+        "estimated": "Estimated: last lap (1), {time}, from the start to the line; not an official time",
+        "none": "Last lap: no data"
+      },
+      "pits": {
+        "head": "Pit",
+        "title": "Pit lane entries so far: {n} (stops, drive-throughs and returns to the garage, as the timing gives them)",
+        "none": "Pit lane entries: no data"
+      }
+    },
+    "cmd": {
+      "spectator": {
+        "title": "Spectator layout",
+        "detail": "The map first, with compact panels"
+      },
+      "analysis": {
+        "title": "Analysis layout",
+        "detail": "Classification with best and last lap and pit lane entries, and bigger telemetry"
+      },
+      "already": "You are already in this layout",
+      "reset": {
+        "title": "Reset the panel widths",
+        "detail": {
+          "spectator": "Back to the default widths of the Spectator layout",
+          "analysis": "Back to the default widths of the Analysis layout"
+        },
+        "none": "The panels already have their default width",
+        "portrait": "In portrait, the panels sit in the bottom strip and have no width"
+      }
+    }
+  }
+}
