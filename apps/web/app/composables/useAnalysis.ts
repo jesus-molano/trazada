@@ -10,10 +10,12 @@
  *   muestra (`useEffectiveCutoff` sobre sus instantes de cambio), nunca en cada frame.
  * - Coches visibles de cada gráfica: lo que elija el usuario en la leyenda (por pestaña); si no ha elegido, los de
  *   cada pestaña por defecto.
- * - Al quitar la selección con la hoja abierta (su × en la cabecera, D49) sin que el usuario haya elegido en la leyenda
- *   de «Ritmo», se congelan sus visibles: el coche que estaba elegido sigue dibujado, sin destacar, en vez de
- *   desaparecer. Vale también desde otra pestaña (la hoja solo monta la activa). Con la hoja cerrada, nada: «Ritmo»
- *   sigue mostrando por defecto el coche elegido de cada momento.
+ * - Al quitar la selección o elegir a otro con la hoja abierta (su selector en la cabecera o las gráficas, D49) sin que
+ *   el usuario haya elegido en la leyenda de «Ritmo», se congelan sus visibles: el coche que estaba elegido sigue
+ *   dibujado, sin destacar, en vez de desaparecer (y el nuevo se ve). Vale también desde otra pestaña (la hoja solo
+ *   monta la activa). Si en una pestaña el usuario eligió qué se ve y el nuevo elegido estaba oculto, pasa a verse: se
+ *   elige para destacarlo. Con la hoja cerrada, nada: «Ritmo» sigue mostrando por defecto el coche elegido de cada
+ *   momento.
  */
 import { computed, type ComputedRef, effectScope, readonly, type Ref, ref, shallowRef, watch } from 'vue'
 import type { LapTable } from '~/engine/analysis/lapTable'
@@ -60,16 +62,28 @@ export function createAnalysisState(rt: ReplayRuntime): AnalysisState {
   const setShown = (key: string, cars: readonly string[]) => {
     shown.value = { ...shown.value, [key]: [...cars] }
   }
+  /** Coches de las gráficas en su orden (el del manifest; los que solo están en la tabla de vueltas, después). */
+  const chartCars = () => {
+    const known = new Set(rt.drivers.map((d) => d.number))
+    return [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !known.has(c))]
+  }
   scope.run(() =>
     watch(
       () => playback.selectedCar,
       (now, before) => {
-        if (now || !before || !open.value || shown.value.pace) return
-        // Coches de «Ritmo» en su orden (el del manifest; los que solo están en la tabla de vueltas, después).
-        const known = new Set(rt.drivers.map((d) => d.number))
-        const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !known.has(c))]
-        const top = paceTop ?? playback.order.filter((c) => table.cars.has(c)).slice(0, 5)
-        setShown('pace', cars.filter((c) => c === before || top.includes(c)))
+        if (!open.value || now === before) return
+        // «Ritmo» sin elección del usuario en su leyenda: el que estaba elegido sigue dibujado (ya sin destacar).
+        if (before && !shown.value.pace) {
+          const top = paceTop ?? playback.order.filter((c) => table.cars.has(c)).slice(0, 5)
+          setShown('pace', chartCars().filter((c) => c === before || c === now || top.includes(c)))
+        }
+        // El elegido nuevo, a la vista en las pestañas donde el usuario eligió qué se ve (si no, se destacaría oculto).
+        if (!now || !table.cars.has(now)) return
+        for (const [key, cars] of Object.entries(shown.value)) {
+          if (cars.includes(now)) continue
+          const next = new Set([...cars, now])
+          setShown(key, chartCars().filter((c) => next.has(c)))
+        }
       },
       { flush: 'sync' },
     ),

@@ -261,6 +261,8 @@ export interface ChartHit {
  */
 export interface ChartPreview extends ChartHit {
   mode: 'hover' | 'legend' | 'pinned'
+  /** Desde la leyenda con el foco del teclado (la ficha dice sus teclas: Intro elige, espacio muestra u oculta). */
+  keyboard?: boolean
 }
 
 const LINE_MARKS = new Set<ChartMark>(['line', 'lineDot'])
@@ -341,6 +343,20 @@ export function hitTest(
   const near = nearestIndex(spec.x, frame.xVal(px))
   const hasValue = near >= 0 && spec.series.some((s) => s.group === hit.key && s.values[near] !== null && s.values[near] !== undefined)
   return { key: hit.key, index: hasValue ? near : hit.point }
+}
+
+/** Coche elegido en la gráfica: el grupo destacado (`emphasis`), o null. */
+export function chosenKey(spec: ChartSpec): string | null {
+  return spec.groups.find((g) => g.emphasis)?.key ?? null
+}
+
+/**
+ * Qué hace un clic del ratón en una serie (D49): elegir a su piloto (lo destaca y, si la cámara seguía a otro, pasa a
+ * seguirlo) o, si ya es el elegido (o la gráfica no deja elegir), ir al inicio de esa vuelta. Nunca quita la selección:
+ * otro clic en el elegido no lo deselecciona.
+ */
+export function lineClick(spec: ChartSpec, key: string, selectable: boolean): 'select' | 'pick' {
+  return selectable && chosenKey(spec) !== key ? 'select' : 'pick'
 }
 
 /** Último índice con valor en alguna de las listas (−1 si ninguno). */

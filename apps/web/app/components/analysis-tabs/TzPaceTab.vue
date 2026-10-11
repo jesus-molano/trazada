@@ -8,7 +8,8 @@
  * muestra u oculta cada piloto.
  *
  * La escala del eje y encuadra las vueltas representativas; las que quedan fuera se cuentan y «Ver todas» las
- * enseña (nada desaparece en silencio). Un clic en una vuelta salta a su inicio.
+ * enseña (nada desaparece en silencio). Un clic en un punto elige a su piloto (D49; en los del elegido, o fuera de los
+ * puntos, salta al inicio de esa vuelta).
  *
  * Ficha de cada serie al pasar el ratón o tocarla (D49): la vuelta y su tiempo, qué marca lleva y lo que cuentan los
  * datos del coche (`TzCarStory`).
@@ -174,8 +175,10 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
         :legend-label="t('analysis.legend')"
         testid="pace-chart"
         :pick-label="pickLabel"
+        selectable
         @pick="pick"
         @toggle="toggle"
+        @select="playback.selectCar($event)"
       >
         <template #card="{ hit }">
           <template v-for="(line, k) in [cardLine(hit.key, hit.index)]" :key="k">
