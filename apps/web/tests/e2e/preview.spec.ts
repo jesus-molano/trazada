@@ -122,22 +122,28 @@ test('con la hoja de análisis abierta, la tarjeta sale por encima de la hoja (n
   const c = (await card(page).boundingBox())!
   // La tarjeta sube por encima del dock, sobre la hoja (si no, este test no probaría nada).
   expect(c.y).toBeLessThan(sheetBox.y + sheetBox.height)
-  // Lo que se ve en cada esquina de la tarjeta es la tarjeta (sin `pointer-events: none` solo para preguntarlo).
-  const topmost = await card(page).evaluate((el) => {
+  // Lo que se ve en cada esquina de la tarjeta es la tarjeta (sin `pointer-events: none` solo para preguntarlo). Las
+  // esquinas, dentro de la curva del borde redondeado; si algo la tapa, el mensaje dice qué.
+  const hits = await card(page).evaluate((el) => {
     const e = el as HTMLElement
     e.style.pointerEvents = 'auto'
     const r = e.getBoundingClientRect()
+    const k = Math.max(2, Number.parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0)
     const corners = [
-      [r.left + 2, r.top + 2],
-      [r.right - 2, r.top + 2],
-      [r.left + 2, r.bottom - 2],
-      [r.right - 2, r.bottom - 2],
+      [r.left + k, r.top + k],
+      [r.right - k, r.top + k],
+      [r.left + k, r.bottom - k],
+      [r.right - k, r.bottom - k],
     ]
-    const ok = corners.every(([x, y]) => e.contains(document.elementFromPoint(x!, y!)))
+    const out = corners.map(([x, y]) => {
+      const hit = document.elementFromPoint(x!, y!)
+      const name = hit ? `${hit.tagName.toLowerCase()}.${[...hit.classList].join('.')}[${hit.getAttribute('data-testid') ?? ''}]` : 'nada'
+      return { x, y, ok: e.contains(hit), hit: name }
+    })
     e.style.pointerEvents = ''
-    return ok
+    return out
   })
-  expect(topmost).toBe(true)
+  expect(hits.every((h) => h.ok), JSON.stringify(hits)).toBe(true)
 })
 
 test('mirar el timeline en pausa no pide renders a la escena', async ({ page }) => {
