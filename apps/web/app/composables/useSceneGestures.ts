@@ -9,6 +9,7 @@
  *   distancia de la cámara (`follow`).
  * - **Lo demás con dos dedos** (inclinar, girar) sigue siendo de los controles del mapa.
  * - **Doble toque** (o doble clic) sobre un coche o su sigla: lo elige y la cámara lo sigue (`engine/gestures/doubleTap.ts`).
+ *   En una zona vacía del mapa, «Centrar» (D53): vuelve a la vista general por defecto.
  *   El lienzo y las siglas avisan del coche tocado con `useCarTap`; aquí se ve cada toque sobre la escena.
  *
  * Arbitraje con los controles del mapa (MapControls, que escuchan `pointermove` en el documento): los punteros que
@@ -27,6 +28,7 @@ import { createTimelinePreview, PREVIEW_EXT, type PreviewAt } from '~/engine/tim
 import { registerSceneStat } from '~/replay/debug'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
+import { useViewStore } from '~/stores/view'
 
 /** Extensión del runtime (`rt.ext`) con el detector de doble toque, compartido por la escena, el lienzo y las siglas. */
 export const DOUBLE_TAP_EXT = 'gestures:doubleTap'
@@ -64,6 +66,11 @@ const TAP_SLOP_PX = 10
 const TAP_MAX_MS = 500
 /** Marcadores de la tarjeta: los que el timeline enseñaría a esta distancia (px) del instante, como su vista previa. */
 const PREVIEW_MARKER_PX = 8
+/**
+ * Un doble toque en el vacío se confirma esto después del segundo toque (ms): para entonces ya habrían llegado los avisos
+ * de un coche tocado (el lienzo, un frame después; la sigla, con su clic).
+ */
+const EMPTY_CONFIRM_MS = 120
 
 type Phase = 'idle' | 'pending' | TwoFingerKind
 
@@ -95,6 +102,7 @@ export function useSceneGestures(opts: SceneGestureOptions): { hud: ShallowRef<S
   const clock = rt.clock
   const playback = usePlaybackStore()
   const taps = doubleTap(rt)
+  const view = useViewStore()
   const hud = shallowRef<ScrubHud | null>(null)
 
   // --- Toques (doble toque) ---
@@ -267,8 +275,10 @@ export function useSceneGestures(opts: SceneGestureOptions): { hud: ShallowRef<S
       Math.hypot(e.clientX - d.x, e.clientY - d.y) <= TAP_SLOP_PX
     if (downs.size === 0) multi = false
     if (tap) {
-      const car = taps.tap(e.clientX, e.clientY, e.timeStamp)
+      const at = e.timeStamp
+      const car = taps.tap(e.clientX, e.clientY, at)
       if (car) followCar(playback, car)
+      else window.setTimeout(() => taps.confirmEmpty(at) && view.recenter(), EMPTY_CONFIRM_MS)
     }
 
     const p = touches.get(e.pointerId)

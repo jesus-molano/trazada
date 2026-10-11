@@ -1,0 +1,13 @@
+{
+  "view": {
+    "center": "Center",
+    "centerHint": "Back to the overview of the circuit (C key; on touch, double tap an empty area of the map)",
+    "key": "C",
+    "keyHint": "C key",
+    "cmd": {
+      "title": "Center the map",
+      "detail": "Back to the overview of the circuit",
+      "already": "The map is already on the overview"
+    }
+  }
+}

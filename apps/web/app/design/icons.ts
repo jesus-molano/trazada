@@ -46,6 +46,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Scan,
   Search,
   SignalZero,
   SkipBack,
@@ -91,6 +92,7 @@ export const ICONS = {
   // Escena y cámara
   follow: LocateFixed,
   overview: MapIcon,
+  recenter: Scan,
   layers: Layers,
   camera: Video,
   director: Clapperboard,

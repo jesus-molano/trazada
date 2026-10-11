@@ -1,0 +1,13 @@
+{
+  "view": {
+    "center": "Centrar",
+    "centerHint": "Vuelve a la vista general del circuito (tecla C; en táctil, doble toque en una zona vacía del mapa)",
+    "key": "C",
+    "keyHint": "Tecla C",
+    "cmd": {
+      "title": "Centrar el mapa",
+      "detail": "Vuelve a la vista general del circuito",
+      "already": "El mapa ya está en la vista general"
+    }
+  }
+}

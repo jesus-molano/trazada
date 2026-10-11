@@ -41,6 +41,7 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Cada sesión se retoma donde la dejaste, con el coche y la velocidad que tenías, y la portada ofrece «Seguir viendo» (se guarda en el navegador de cada dispositivo).
 - Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
 - Comparar dos pilotos (Mayús+clic en la clasificación): la diferencia en vivo a la misma distancia de la vuelta, las trazas de velocidad, acelerador y freno por distancia y un coche fantasma con la vuelta de referencia del otro (la misma, su mejor o su última vuelta). Al cerrar la vuelta, la diferencia oficial del cronometraje.
+- Centrar el mapa (botón sobre el mapa cuando lo has movido, menú «Cámara», tecla C, paleta o doble toque en una zona vacía): vuelve a la vista general; el mapa no se puede arrastrar más allá del circuito y un margen.
 - Realización automática (menú «Cámara» o tecla T): la cámara elige sola el duelo más cerrado, con persecución y cámaras fijas en las curvas, y se apaga en cuanto tocas algo.
 - Colores de sector (morado, verde y amarillo) en la clasificación y en el panel del coche, calculados con los tiempos de sector oficiales.
 - Hoja «Análisis» con el race trace, el ritmo vuelta a vuelta y los stints de neumáticos, todo con los tiempos oficiales. Las vueltas con boxes, coche de seguridad o anuladas se marcan, no se quitan, y «Sin spoilers» enseña solo lo que ha pasado hasta el momento del replay.

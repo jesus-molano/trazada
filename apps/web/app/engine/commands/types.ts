@@ -34,8 +34,8 @@ export function t(key: string, params?: Readonly<Record<string, string | number>
   return plural === undefined ? (params ? { key, params } : { key }) : { key, params, plural }
 }
 
-/** Grupos de la lista, en este orden a igual puntuación. `layout` y `help` los usan otras funciones (ítems 15 y 18). */
-export const COMMAND_GROUPS = ['drivers', 'goto', 'playback', 'compare', 'layout', 'help'] as const
+/** Grupos de la lista, en este orden a igual puntuación. `camera`, `layout` y `help` los usan otras funciones (D53 e ítems 15 y 18). */
+export const COMMAND_GROUPS = ['drivers', 'goto', 'playback', 'compare', 'camera', 'layout', 'help'] as const
 export type CommandGroup = (typeof COMMAND_GROUPS)[number]
 
 export const GROUP_LABELS: Readonly<Record<CommandGroup, Text>> = {
@@ -43,6 +43,7 @@ export const GROUP_LABELS: Readonly<Record<CommandGroup, Text>> = {
   goto: t('palette.group.goto'),
   playback: t('palette.group.playback'),
   compare: t('palette.group.compare'),
+  camera: t('palette.group.camera'),
   layout: t('palette.group.layout'),
   help: t('palette.group.help'),
 }

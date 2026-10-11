@@ -2,30 +2,45 @@
 /**
  * Lienzo WebGL único de la app (TresJS): circuito 3D, cámara de mapa y etiquetas. Gestiona además la
  * disponibilidad de WebGL 2 y la pérdida/recuperación del contexto.
+ *
+ * Vista del mapa (D53): el desplazamiento no saca el centro de la vista de la extensión del circuito más un margen
+ * (`engine/camera/panBounds.ts`), y «Centrar» vuelve a la vista general por defecto, en vuelo con los tokens de
+ * movimiento (al instante con movimiento reducido); siguiendo a un coche o con la realización, vuelve a la vista
+ * general. Lo lanzan el botón del mapa (solo con la vista movida), el menú «Cámara», la tecla C, la paleta y el doble
+ * toque en el vacío (`stores/view.ts`).
  */
 import type { TresContext } from '@tresjs/core'
+import gsap from 'gsap'
 import { type PerspectiveCamera, Vector3, type WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { provideSceneFrames } from '~/composables/useSceneFrame'
 import { useSceneGestures } from '~/composables/useSceneGestures'
+import { duration, GSAP_EASE } from '~/design/motion'
 import { token } from '~/design/tokens'
+import { clampPan, panBox } from '~/engine/camera/panBounds'
 import { QualityGovernor } from '~/engine/perf/QualityGovernor'
 import { cornerAnchor } from '~/engine/track/circuit'
 import { type Fit, fitCircuit, frameCircuit, type Insets } from '~/engine/track/framing'
 import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { registerCommandService } from '~/replay/commands'
 import { registerSceneStat, sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
+import { registerShortcut } from '~/replay/keys'
 import { SCENE_LAYERS } from '~/slots/scene-layers'
 import { LAYOUT_SETTLED_EVENT, RESIZING_ATTR } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
+import { useTvStore } from '~/stores/tv'
+import { useViewStore } from '~/stores/view'
 import type { SceneLabel } from './TzSceneLabels.vue'
 
 const { t } = useI18n()
 const session = useSessionStore()
 const settings = useSettingsStore()
 const playback = usePlaybackStore()
+const tv = useTvStore()
+const view = useViewStore()
 
 const supported = ref<boolean | null>(null)
 const lost = ref(false)
@@ -133,6 +148,10 @@ const footprint = (() => {
   return new Float32Array(out)
 })()
 
+/** Dónde puede estar el centro de la vista (el target de los controles) al desplazar el mapa (D53). */
+const panLimits = panBox(footprint)
+const panDelta = { dx: 0, dz: 0 }
+
 const TRACK_HALF_WIDTH = 7
 const LABEL_OFFSET = TRACK_HALF_WIDTH + 16
 const cornerLabels: SceneLabel[] = model.corners.map((c) => {
@@ -200,6 +219,7 @@ function fitOverview(cam: PerspectiveCamera, el: HTMLCanvasElement): Fit {
     insets: insets(el),
   })
   sceneStats.framing = { box: f.box, free: f.free }
+  freeArea.value = f.free
   // Si no, controls.update() recortaría la distancia (y el circuito se saldría del hueco) o lo cortaría el far.
   if (controls) controls.maxDistance = Math.max(controls.maxDistance, f.distance * 1.5)
   if (cam.far < f.distance * 3) {
@@ -268,6 +288,80 @@ function onResize() {
   frameOverview(cam, canvasEl)
   invalidate()
 }
+
+/**
+ * Límite del desplazamiento (D53): si un gesto (ratón, rueda o dedos) saca el centro de la vista de su caja, target y
+ * cámara vuelven con el mismo delta. Siguiendo a un coche no (los controles están apagados: manda el rig).
+ */
+function keepInBounds() {
+  const cam = camera.value
+  if (!controls?.enabled || !cam) return
+  const { dx, dz } = clampPan(controls.target.x, controls.target.z, panLimits, panDelta)
+  if (dx === 0 && dz === 0) return
+  controls.target.x += dx
+  controls.target.z += dz
+  cam.position.x += dx
+  cam.position.z += dz
+}
+
+/** Vuelo de «Centrar» en curso (null si no hay). */
+let flight: gsap.core.Tween | null = null
+const flightFrom = { position: new Vector3(), target: new Vector3() }
+const flightTo = { position: new Vector3(), target: new Vector3() }
+
+/**
+ * «Centrar» (D53): la vista general por defecto para el tamaño de ahora. Siguiendo a un coche o con la realización,
+ * las apaga y el rig vuelve a la vista general recalculada (no a la que el usuario hubiera movido antes).
+ */
+function recenter() {
+  const cam = camera.value
+  if (!cam || !canvasEl || !controls) return
+  userMoved = false
+  view.moved = false
+  if (playback.following || tv.active) {
+    staleOverview = true
+    if (tv.active) tv.stop('camera')
+    if (playback.following) playback.setFollowing(false)
+    return
+  }
+  flight?.kill()
+  flight = null
+  const f = fitOverview(cam, canvasEl)
+  const d = duration('camera')
+  if (d === 0) {
+    frameOverview(cam, canvasEl)
+    invalidate()
+    return
+  }
+  flightFrom.position.copy(cam.position)
+  flightFrom.target.copy(controls.target)
+  flightTo.position.set(...f.position)
+  flightTo.target.set(...f.target)
+  const k = { v: 0 }
+  const c = controls
+  flight = gsap.to(k, {
+    v: 1,
+    duration: d,
+    ease: GSAP_EASE.standard,
+    onUpdate: () => {
+      cam.position.lerpVectors(flightFrom.position, flightTo.position, k.v)
+      c.target.lerpVectors(flightFrom.target, flightTo.target, k.v)
+      c.update()
+      invalidate()
+    },
+    onComplete: () => (flight = null),
+  })
+}
+
+/** Hueco libre del lienzo (coordenadas −1…1, del último encuadre): ahí va el botón «Centrar», en su esquina de abajo a la derecha. */
+const freeArea = shallowRef<{ x0: number; x1: number; y0: number; y1: number } | null>(null)
+const centerStyle = computed(() => {
+  const f = freeArea.value
+  if (!f) return undefined
+  return { right: `${((1 - f.x1) / 2) * 100}%`, bottom: `${((f.y0 + 1) / 2) * 100}%` }
+})
+/** La vista no es la general por defecto: movida a mano, siguiendo a un coche o con la realización. */
+const viewMoved = computed(() => view.moved || playback.following || tv.active)
 
 /** Sonda para los e2e: el eje de la pista en pantalla y la anchura con la que debería dibujarse ahí. */
 const pitPoints = (() => {
@@ -389,10 +483,18 @@ function onReady(context: TresContext) {
     controls.screenSpacePanning = false
     frameOverview(cam, canvasEl)
     // Solo cuenta como «movida a mano» si la cámara cambia durante un gesto (un clic para elegir coche, no).
-    controls.addEventListener('start', () => (interacting = true))
+    controls.addEventListener('start', () => {
+      interacting = true
+      flight?.kill() // el usuario toma el mapa a mitad del vuelo de «Centrar»: se queda donde esté
+      flight = null
+    })
     controls.addEventListener('end', () => (interacting = false))
     controls.addEventListener('change', () => {
-      if (interacting) userMoved = true
+      if (interacting) {
+        userMoved = true
+        if (!view.moved) view.moved = true
+      }
+      keepInBounds()
       invalidate()
     })
     controlsRef.value = controls
@@ -454,6 +556,8 @@ watch(yScale, (k) => {
 let offFrames: (() => void) | null = null
 let lastFrameAt = 0
 
+/** Bajas de «Centrar»: el registro en la vista, la tecla, el servicio de la paleta y la estadística. */
+const offView: (() => void)[] = []
 onMounted(() => {
   offFrames = rt.onFrame(() => {
     const now = performance.now()
@@ -470,12 +574,32 @@ onMounted(() => {
     lastFrameAt = measuring ? now : 0
   })
   settings.hydrate()
+  view.moved = false
+  offView.push(
+    view.register(recenter),
+    registerShortcut({ key: 'c' }, () => view.recenter(), { when: () => !!controls }),
+    registerCommandService('view', {
+      get moved() {
+        return viewMoved.value
+      },
+      recenter: () => view.recenter(),
+    }),
+    registerSceneStat('view', () => ({
+      target: controls ? [controls.target.x, controls.target.z] : null,
+      box: panLimits,
+      moved: viewMoved.value,
+      flying: flight !== null,
+    })),
+  )
   sceneEl.value?.addEventListener('wheel', onWheel, { passive: false })
   sceneStats.elevationScale = yScale.value
   sceneStats.ready = false
   supported.value = hasWebGL2()
 })
 onBeforeUnmount(() => {
+  for (const off of offView.splice(0)) off()
+  flight?.kill()
+  flight = null
   offFrames?.()
   offLoopStat()
   sceneEl.value?.removeEventListener('wheel', onWheel)
@@ -527,6 +651,18 @@ onBeforeUnmount(() => {
     <TzSceneLabels v-if="supported" ref="labels" :labels="cornerLabels" kind="corner" />
     <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" :offsets="rt.offsets" />
     <TzGestureHud v-if="supported && scrubHud" :hud="scrubHud" />
+    <!-- «Centrar» (D53): solo con la vista movida, en la esquina de abajo a la derecha del hueco libre del mapa. -->
+    <button
+      v-if="supported && viewMoved"
+      type="button"
+      class="tz-scene__center"
+      data-testid="scene-center"
+      :style="centerStyle"
+      :title="t('view.centerHint')"
+      @click="view.recenter()"
+    >
+      <TzIcon name="recenter" />{{ t('view.center') }}
+    </button>
 
     <Teleport defer to="#tz-scene-tools">
       <TzSceneTools v-if="supported" :flat="flat" :estimated="data.manifest.quality.estimated" />
@@ -572,6 +708,29 @@ onBeforeUnmount(() => {
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
   box-shadow: var(--tz-shadow-panel);
+}
+
+/* «Centrar»: pequeño, sobre el mapa y dentro del hueco libre (la posición la da el encuadre). */
+.tz-scene__center {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin: var(--tz-space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  min-height: var(--tz-hit-min);
+  padding: 0 var(--tz-space-3);
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-pill);
+  background: var(--tz-overlay);
+  color: var(--tz-text);
+  font-size: var(--tz-text-sm);
+  cursor: pointer;
+}
+
+.tz-scene__center:hover {
+  background: var(--tz-surface-2);
 }
 
 /* El icono acompaña al texto del aviso, nunca lo sustituye (D30). */

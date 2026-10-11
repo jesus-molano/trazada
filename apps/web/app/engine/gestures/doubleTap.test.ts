@@ -94,3 +94,54 @@ describe('DoubleTap', () => {
     expect(d.tap(100, 100, 100)).toBeNull()
   })
 })
+
+describe('DoubleTap: doble toque en el vacío («Centrar», D53)', () => {
+  it('dos toques cerca y pronto sin ningún coche: pendiente y, sin avisos de coches, se confirma una vez', () => {
+    const d = new DoubleTap()
+    expect(d.tap(200, 200, 1000)).toBeNull()
+    expect(d.tap(205, 196, 1220)).toBeNull()
+    expect(d.confirmEmpty(1000)).toBe(false) // el del primer toque, no
+    expect(d.confirmEmpty(1220)).toBe(true)
+    expect(d.confirmEmpty(1220)).toBe(false) // consumido
+  })
+
+  it('si el primero cayó en un coche, es el doble toque de siempre (seguirlo), nunca «Centrar»', () => {
+    const d = new DoubleTap()
+    d.tap(100, 100, 1000)
+    d.car('44', 100, 100, 1000)
+    expect(d.tap(102, 101, 1200)).toBe('44')
+    expect(d.confirmEmpty(1200)).toBe(false)
+  })
+
+  it('el aviso del coche del primer toque llega tarde (después del segundo): ya no vale', () => {
+    const d = new DoubleTap()
+    d.tap(100, 100, 1000)
+    d.tap(100, 100, 1012)
+    expect(d.car('44', 100, 100, 1000).kind).toBe('single')
+    expect(d.confirmEmpty(1012)).toBe(false)
+  })
+
+  it('el segundo toque cae en un coche: no es en el vacío', () => {
+    const d = new DoubleTap()
+    d.tap(100, 100, 0)
+    d.tap(104, 100, 250)
+    d.car('16', 104, 100, 250)
+    expect(d.confirmEmpty(250)).toBe(false)
+  })
+
+  it('lejos, tarde o tras un gesto de dos dedos, nada', () => {
+    const far = new DoubleTap()
+    far.tap(100, 100, 0)
+    far.tap(100 + DOUBLE_TAP.maxPx + 1, 100, 200)
+    expect(far.confirmEmpty(200)).toBe(false)
+    const slow = new DoubleTap()
+    slow.tap(100, 100, 0)
+    slow.tap(100, 100, DOUBLE_TAP.maxMs + 1)
+    expect(slow.confirmEmpty(DOUBLE_TAP.maxMs + 1)).toBe(false)
+    const reset = new DoubleTap()
+    reset.tap(100, 100, 0)
+    reset.tap(100, 100, 200)
+    reset.reset()
+    expect(reset.confirmEmpty(200)).toBe(false)
+  })
+})
