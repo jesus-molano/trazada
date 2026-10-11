@@ -156,7 +156,8 @@ function onKeydown(event: KeyboardEvent) {
   const modK = event.key.toLowerCase() === 'k' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
   if (modK) {
     event.preventDefault()
-    palette.close()
+    // Mantener Ctrl+K pulsado (repetición automática) no la cierra justo después de abrirla.
+    if (!event.repeat) palette.close()
     return
   }
   if (event.key === 'Tab' && !event.defaultPrevented) trapTab(event)

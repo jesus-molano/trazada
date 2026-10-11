@@ -41,6 +41,7 @@ function pointerControl(target: EventTarget | null): Element | null {
  * `replay/keys.ts` (D29). Esc cierra lo más prioritario que esté abierto (`ESC_PRIORITY`): de lo que registran las
  * funciones y, al final, el seguimiento y después la selección. Esc vale con el foco en cualquier sitio (también en el
  * timeline o en un desplegable); las demás teclas, salvo los atajos que lo piden, no con el foco en un campo de texto.
+ * Mantener pulsada una tecla (repetición automática) no alterna sin parar: el espacio y Esc cuentan una vez.
  */
 export function useReplayShortcuts(): void {
   const playback = usePlaybackStore()
@@ -58,7 +59,7 @@ export function useReplayShortcuts(): void {
     if (event.defaultPrevented || event.isComposing || !playback.attached) return
     // Esc, antes que el corte por el foco: cierra lo de encima también desde el timeline o un desplegable.
     if (event.key === 'Escape' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-      if (handleEscape()) event.preventDefault()
+      if (!event.repeat && handleEscape()) event.preventDefault()
       return
     }
     const editable = isEditableTarget(event.target)
@@ -73,7 +74,7 @@ export function useReplayShortcuts(): void {
         const control = target?.closest(SPACE_CONTROLS)
         if (control && control !== pointerFocused) return
         event.preventDefault()
-        playback.toggle()
+        if (!event.repeat) playback.toggle()
         return
       }
       case 'ArrowLeft':

@@ -2,12 +2,13 @@
  * Atajos del replay con el registro de teclas (D29): `useReplayShortcuts` consulta los atajos registrados antes de
  * cortar por Ctrl/⌘/Alt (Ctrl+K), respeta el foco en un campo de texto o un desplegable y cierra con Esc lo más
  * prioritario de `ESC_PRIORITY`, también el seguimiento y la selección del propio replay. Esc vale con el foco en
- * cualquier control; el timeline (slider) y las casillas no se quedan con las teclas que no usan.
+ * cualquier control; el timeline (slider) y las casillas no se quedan con las teclas que no usan; una tecla mantenida
+ * no alterna sin parar.
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { isEditableTarget, useReplayShortcuts } from '~/composables/useReplayShortcuts'
+import { isEditableTarget, SEEK_STEP_MS, useReplayShortcuts } from '~/composables/useReplayShortcuts'
 import { createReplayRuntime } from '~/replay/runtime'
 import { ESC_PRIORITY, handleEscape, registerEscape, registerShortcut } from '~/replay/keys'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
@@ -36,12 +37,17 @@ const Host = defineComponent({
 const el = <T extends HTMLElement = HTMLElement>(testid: string) => document.querySelector<T>(`[data-testid="${testid}"]`)!
 
 /** Pulsa una tecla sobre `target` (por defecto, el cuerpo de la página) y devuelve el evento. */
-function press(key: string, mods: { ctrl?: boolean; meta?: boolean; shift?: boolean } = {}, target: EventTarget = document.body) {
+function press(
+  key: string,
+  mods: { ctrl?: boolean; meta?: boolean; shift?: boolean; repeat?: boolean } = {},
+  target: EventTarget = document.body,
+) {
   const event = new KeyboardEvent('keydown', {
     key,
     ctrlKey: !!mods.ctrl,
     metaKey: !!mods.meta,
     shiftKey: !!mods.shift,
+    repeat: !!mods.repeat,
     bubbles: true,
     cancelable: true,
   })
@@ -283,5 +289,42 @@ describe('qué controles se quedan con las teclas', () => {
     expect(press('ArrowDown', {}, radio).defaultPrevented).toBe(false)
     expect(clock.timeMs).toBe(t0)
     expect(usePlaybackStore().selectedCar).toBeNull()
+  })
+})
+
+describe('tecla mantenida (repetición automática)', () => {
+  it('el espacio alterna una vez; Esc cierra una sola cosa; las flechas siguen moviendo el tiempo', () => {
+    const playback = usePlaybackStore()
+    const clock = getRuntime()!.clock
+    press(' ')
+    for (let i = 0; i < 4; i++) expect(press(' ', { repeat: true }).defaultPrevented).toBe(true)
+    expect(clock.playing).toBe(true)
+    clock.pause()
+
+    playback.selectCar('1')
+    playback.setFollowing(true)
+    press('Escape')
+    for (let i = 0; i < 4; i++) press('Escape', { repeat: true })
+    expect(playback.following).toBe(false)
+    expect(playback.selectedCar).toBe('1')
+
+    const t0 = clock.timeMs
+    press('ArrowRight')
+    press('ArrowRight', { repeat: true })
+    press('ArrowRight', { repeat: true })
+    expect(clock.timeMs).toBe(t0 + 3 * SEEK_STEP_MS)
+  })
+
+  it('un atajo conmutador (L, T, ?) cuenta una vez y su repetición no llega al navegador; un salto (coma, punto) se repite', () => {
+    const toggle = vi.fn()
+    const jump = vi.fn()
+    offs.push(registerShortcut({ key: 'l' }, toggle))
+    offs.push(registerShortcut({ key: '.' }, jump, { repeat: true }))
+    press('l')
+    for (let i = 0; i < 5; i++) expect(press('l', { repeat: true }).defaultPrevented).toBe(true)
+    expect(toggle).toHaveBeenCalledTimes(1)
+    press('.')
+    press('.', { repeat: true })
+    expect(jump).toHaveBeenCalledTimes(2)
   })
 })

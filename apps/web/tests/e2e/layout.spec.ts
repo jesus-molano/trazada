@@ -477,6 +477,19 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
       await expect(page.getByTestId('lb-columns')).toBeVisible()
     })
 
+    test('mantener pulsada la L (repetición automática del teclado) cambia el diseño una sola vez', async ({ page }) => {
+      await open(page)
+      await page.getByTestId('replay-title').click()
+      // Cada `down` de una tecla ya pulsada llega con `repeat`, como al mantenerla. Un número par: si cada repetición
+      // alternara, volvería a «Espectador».
+      for (let i = 0; i < 6; i++) await page.keyboard.down('l')
+      await page.keyboard.up('l')
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))
+      expect(saved).toMatchObject({ preset: 'analysis' })
+    })
+
     test('accesible (axe) en «Análisis», con las asas', async ({ page }) => {
       await resetStorage(page)
       await open(page)
