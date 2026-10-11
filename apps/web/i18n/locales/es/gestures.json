@@ -1,0 +1,13 @@
+{
+  "gestures": {
+    "name": "Gestos",
+    "hintLabel": "Qué gestos tiene la escena",
+    "hint": {
+      "follow": "Doble toque (o doble clic) en un coche o en su sigla: lo elige y la cámara lo sigue. Vale aunque el coche se haya movido un poco entre los dos toques.",
+      "scrub": "Dos dedos en horizontal sobre el mapa: mueven el reloj; todo el ancho de la escena son {min} min. Hacia la derecha avanza y hacia la izquierda retrocede, sin parar ni arrancar la reproducción.",
+      "pinch": "Pellizco: zoom del mapa o, siguiendo a un coche, distancia de la cámara.",
+      "map": "Dos dedos en vertical o en diagonal: inclinan y giran el mapa."
+    },
+    "scrubScale": "todo el ancho = {min} min"
+  }
+}

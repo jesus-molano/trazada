@@ -1,0 +1,13 @@
+{
+  "gestures": {
+    "name": "Gestures",
+    "hintLabel": "Which gestures the scene has",
+    "hint": {
+      "follow": "Double tap (or double click) a car or its label: it gets picked and the camera follows it. It works even if the car has moved a little between the two taps.",
+      "scrub": "Two fingers sideways on the map: they move the clock; the full width of the scene is {min} min. To the right goes forward and to the left goes back, without pausing or starting playback.",
+      "pinch": "Pinch: map zoom or, while following a car, camera distance.",
+      "map": "Two fingers up and down or diagonally: tilt and turn the map."
+    },
+    "scrubScale": "full width = {min} min"
+  }
+}
