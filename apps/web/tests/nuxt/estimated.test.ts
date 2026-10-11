@@ -6,8 +6,10 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
+// La hoja de análisis antes que una de sus pestañas: el hueco importa las pestañas y cada pestaña usa la hoja.
+import { useAnalysis } from '~/composables/useAnalysis'
+import TzMomentsTab from '~/components/analysis-tabs/TzMomentsTab.vue'
 import TzCompare from '~/components/TzCompare.vue'
-import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
@@ -20,10 +22,13 @@ import { createTimelinePreview, PREVIEW_EXT } from '~/engine/timeline/preview'
 import { createReplayRuntime } from '~/replay/runtime'
 import { useCompareStore } from '~/stores/compare'
 import { useDrsStore } from '~/stores/drs'
+import { useHeatStore } from '~/stores/heat'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
 import { compareTestRuntime } from '~/testing/compare'
 import { fakeTrzb, loadFixture } from '~/testing/fixture'
+import { heatTestRuntime } from '~/testing/heat'
+import { raceSession } from '~/testing/moments'
 import { testLapTable, withExt } from '~/testing/runtime'
 
 /** Runtime real sobre el fixture, con `quality.estimated` sustituido. */
@@ -66,19 +71,6 @@ function raceRuntime(timeMs: number) {
 }
 
 const label = (w: VueWrapper, field: EstimatedField) => w.find(`[data-testid="estimated"][data-field="${field}"]`)
-
-/**
- * Campo registrado antes que el componente que lo pinta (Tanda 0, D29): la etiqueta común lleva su texto y su
- * explicación propios, no el nombre del campo ni la explicación genérica. El ítem que lo pinte sustituye este caso
- * por uno sobre su componente (comparación, mapa de calor, zonas de DRS).
- */
-async function registeredOnly(field: EstimatedField) {
-  const w = await mountSuspended(TzEstimated, { props: { field } })
-  const { t } = useNuxtApp().$i18n
-  expect(label(w, field).text()).toContain(t(`estimated.fields.${field}`))
-  expect(label(w, field).attributes('title')).toBe(t(`estimated.hints.${field}`))
-  expect(label(w, field).attributes('title')).not.toBe(t('estimated.hintUnknown'))
-}
 
 const CASES: Record<EstimatedField, () => Promise<void>> = {
   async elevation() {
@@ -175,8 +167,31 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     w.unmount()
     usePlaybackStore().detach()
   },
-  // Mapa de calor (ítem 2, D32): ganador de cada minisector.
-  minisectors: () => registeredOnly('minisectors'),
+  // Mapa de calor (ítem 2, D32): ganador de cada minisector, solo en ese modo (la velocidad es dato real). Su
+  // herramienta va en un menú plegado: mientras se pinta, la etiqueta sale también en la fila de etiquetas de la escena.
+  async minisectors() {
+    // Coches 2 y 7: no están en el fixture, así el panel de telemetría que dejó montado el caso `telemetry` no se abre.
+    const h = heatTestRuntime()
+    usePlaybackStore().attach(h.rt as never)
+    usePlaybackStore().selectCar('2')
+    useCompareStore().setCompareCar('7')
+    h.coarse(h.seen(7, 3))
+    const heat = useHeatStore()
+    heat.setMode('minisectors')
+    const w = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
+    const row = () => w.find(`.tz-tools__estimated [data-testid="estimated"][data-field="minisectors"]`)
+    const { t } = useNuxtApp().$i18n
+    expect(row().text()).toContain(t('estimated.fields.minisectors'))
+    expect(row().attributes('title')).toBe(t('estimated.hints.minisectors'))
+    // Y junto a su leyenda, dentro del menú «Capas».
+    expect(w.find('[data-testid="heat-tool"] [data-testid="estimated"][data-field="minisectors"]').exists()).toBe(true)
+    heat.setMode('speed')
+    await nextTick()
+    expect(label(w, 'minisectors').exists()).toBe(false)
+    heat.setMode('off')
+    w.unmount()
+    usePlaybackStore().detach()
+  },
   // Zonas de DRS (ítem 11, D38): deducidas de la telemetría. Su herramienta va en un menú plegado, así que mientras
   // se pintan la etiqueta sale también en la fila de etiquetas de la escena, siempre a la vista.
   async drsZones() {
@@ -210,6 +225,30 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     const none = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
     expect(label(none, 'drsZones').exists()).toBe(false)
     none.unmount()
+    usePlaybackStore().detach()
+  },
+  // Momentos (ítem 5, D35): el adelantamiento lo confirma la línea de meta, pero su instante sale del GPS.
+  async overtakeTime() {
+    const s = await loadFixture()
+    // 3 sale 0,5 s detrás de 1 y le pasa en la vuelta 2 (el GPS los cruza a mitad de vuelta).
+    const race = raceSession(s, [
+      { car: 1, lapMs: [60_000, 60_000, 60_000] },
+      { car: 3, lapMs: [60_500, 59_000, 60_000] },
+    ])
+    usePlaybackStore().attach(createReplayRuntime(race))
+    const analysis = useAnalysis()
+    analysis.noSpoilers.value = false
+    const w = await mountSuspended(TzMomentsTab)
+    const { t } = useNuxtApp().$i18n
+    expect(w.find('[data-testid="overtake-row"]').attributes('data-located')).toBe('true')
+    expect(label(w, 'overtakeTime').text()).toContain(t('estimated.fields.overtakeTime'))
+    expect(label(w, 'overtakeTime').attributes('title')).toBe(t('estimated.hints.overtakeTime'))
+    // Con «Sin spoilers» y el reloj antes de que la línea lo confirme, ni adelantamiento ni etiqueta.
+    analysis.noSpoilers.value = true
+    await nextTick()
+    expect(w.find('[data-testid="overtake-row"]').exists()).toBe(false)
+    expect(label(w, 'overtakeTime').exists()).toBe(false)
+    w.unmount()
     usePlaybackStore().detach()
   },
 }

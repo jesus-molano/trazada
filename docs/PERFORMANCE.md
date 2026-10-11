@@ -93,7 +93,7 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 
 ¹ En tres rondas aisladas y alternas, base y Tanda 1 dan el mismo p95 (117, 133 y 117 ms) y el mismo JS por frame (1,6–1,8 ms).
 
-**Pendiente tuyo**: el bench con estelas en el iPad (`pnpm local --lan`, `/replay?s=…&bench=1` tras elegir «Capas → Estelas → Velocidad», que se recuerda) y el escenario «todas las capas» de `perf.spec.ts`, que se añade al cerrar la Tanda 4.
+**Pendiente tuyo**: el bench con estelas en el iPad (`pnpm local --lan`, `/replay?s=…&bench=1` tras elegir «Capas → Estelas → Velocidad», que se recuerda) y el escenario «todas las capas» de `perf.spec.ts`, añadido al cerrar la Tanda 4.
 
 **Tanda 2 (H14: gráficas de carrera, colores de sector, vista previa del timeline y zonas de DRS).** Se mide la base (Tanda 1) contra la Tanda 2 con lo de por defecto, en las mismas condiciones y con dos rondas alternas. Las dos sesiones locales son de 2026, así que las zonas de DRS no se dibujan (en 2026 ni se calculan) y la hoja de análisis está cerrada, como al abrir el replay.
 
@@ -137,6 +137,12 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 | Ídem | ×16 | 150–217 ms | 167–367 ms¹ | 150–350 ms¹ | 2,0–2,8 ms | 2,3–3,1 ms | 2,2–3,4 ms | 8,5–11,8 ms | 9,6–13,3 ms |
 
 ¹ Rondas sueltas con el contenedor cargado. En Japón ×16, una ronda empeoró a la vez la base y las dos variantes de la Tanda 3; sin ella, el ambiente apagado da 150 ms y la base, 150–217 ms. En Bélgica ×16, una ronda del ambiente apagado salió en 267 ms y las otras dos, en 133 y 167 ms.
+
+**Tanda 4 (H16: mapa de calor, momentos, paleta de comandos y gestos en tablet). Pendiente de medir al cierre (Tanda 6).** Por petición del usuario, esta tanda se integró con la verificación ligera (lint, typecheck, Vitest y build): el bench antes y después y los e2e se pasan una sola vez al cerrar la Tanda 6, y entonces se anotan aquí las cifras. Lo que se sabe sin medir:
+
+- **Escena por defecto**: no debería cambiar. El mapa de calor está apagado por defecto, la paleta y la pestaña «Momentos» no dibujan en el lienzo y los gestos solo actúan mientras hay dedos. Con el calor encendido, +1 draw call (una copia de la cinta, del orden de 14k triángulos en Spa según el plan §5), y los colores solo se suben al cambiar de modo, de coches o de vuelta.
+- **Por frame**: nada nuevo en la reactividad de Vue. Los momentos se precalculan una vez por sesión (`rt.ext`; ~6 ms en Japón en caliente, medido por el worker). La paleta solo trabaja al teclear, y el gesto del reloj hace como mucho un seek por frame.
+- **Escenario «todas las capas»** (`perf.spec.ts`, nuevo): cielo, estelas, calor y fantasma a la vez sobre Spa FP1, con el presupuesto de escena (< 30 draw calls, < 150.000 triángulos), sin niebla en las capas y sin renders en pausa. Anota el p50 y el p95 de los frames con la CPU ×4 («iPad aproximado», solo orientativo). **Pendiente tuyo** al cierre: el bench en el iPad con todas las capas y los gestos de dos dedos (`pnpm local --lan`).
 
 ## Peso por sesión
 

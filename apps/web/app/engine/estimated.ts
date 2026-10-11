@@ -13,6 +13,7 @@ export const ESTIMATED_FIELDS = [
   'lapDelta',
   'minisectors',
   'drsZones',
+  'overtakeTime',
 ] as const
 export type EstimatedField = (typeof ESTIMATED_FIELDS)[number]
 
@@ -21,10 +22,11 @@ export const USER_FIELDS: readonly EstimatedField[] = ['elevation', 'separation'
 /** Los que declara el manifest (`quality.estimated`) y dónde se pintan. */
 export const MANIFEST_FIELDS: readonly EstimatedField[] = ['positions', 'telemetry', 'trackStatus']
 /**
- * Los que calcula el front para las funciones de análisis (D31, D32, D38): diferencia en vivo entre dos pilotos
- * con el GPS (comparación), ganador de cada minisector (mapa de calor) y zonas de DRS deducidas de la telemetría.
+ * Los que calcula el front para las funciones de análisis (D31, D32, D35, D38): diferencia en vivo entre dos pilotos
+ * con el GPS (comparación), ganador de cada minisector (mapa de calor), zonas de DRS deducidas de la telemetría e
+ * instante de un adelantamiento con el GPS (momentos; el adelantamiento en sí lo confirma la línea de meta).
  */
-export const ANALYSIS_FIELDS: readonly EstimatedField[] = ['lapDelta', 'minisectors', 'drsZones']
+export const ANALYSIS_FIELDS: readonly EstimatedField[] = ['lapDelta', 'minisectors', 'drsZones', 'overtakeTime']
 
 export function isEstimatedField(x: string): x is EstimatedField {
   return (ESTIMATED_FIELDS as readonly string[]).includes(x)

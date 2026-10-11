@@ -12,6 +12,11 @@ import { RATES } from '../engine/clock/SessionClock'
 export const ESC_PRIORITY = {
   /** Tarjeta de fin de sesión (ítem 12). */
   summary: 100,
+  /**
+   * Paleta de comandos (ítem 14): por encima de todo lo que puede quedar debajo de ella. No se abre sobre otro diálogo
+   * modal (la tarjeta de fin de sesión), así que nunca coincide con él.
+   */
+  palette: 95,
   /** Pistas de primer uso (ítem 18). */
   tips: 90,
   /** Hoja de análisis (ítem 3). */
