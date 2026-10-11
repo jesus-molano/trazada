@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const SESSION = '2026/10-spa-francorchamps/fp1'
 const FP1 = `/replay?s=${SESSION}`
@@ -483,6 +483,7 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
       await page.getByTestId('layout-analysis').click()
       await expect(page.getByTestId('lb-columns')).toBeVisible()
       await expect(page.getByTestId('resize-lb')).toHaveAttribute('role', 'separator')
+      await settled(page)
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
         .exclude('[data-testid="scene"] canvas')

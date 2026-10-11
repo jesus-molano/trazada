@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const SESSION = '2026/10-spa-francorchamps/fp1'
 const FP1 = `/replay?s=${SESSION}`
@@ -32,6 +32,7 @@ const chip = (page: Page) => page.getByTestId('weather')
 const root = (page: Page) => page.locator('.tz-weather')
 
 async function serious(page: Page, selector: string) {
+  await settled(page)
   const results = await new AxeBuilder({ page }).include(selector).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)
 }

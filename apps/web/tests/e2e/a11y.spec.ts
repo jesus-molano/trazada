@@ -1,25 +1,9 @@
 /** Accesibilidad (axe-core, WCAG 2.1 A/AA): ninguna infracción seria o crítica. */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
-
-/**
- * axe mide los colores tal como están pintados en ese instante: con una transición a medias mediría un estado
- * intermedio que nunca se queda en pantalla (p. ej., el botón «×1» que deja de estar pulsado pasa en 120 ms de la
- * placa de pintura a transparente con el texto ya claro: a mitad, claro sobre claro). Se audita la interfaz quieta:
- * se esperan las transiciones y animaciones finitas en marcha (las infinitas, como un indicador de carga, no acaban).
- */
-async function settled(page: Page) {
-  await page.evaluate(async () => {
-    const running = document
-      .getAnimations()
-      .filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity)
-      .map((a) => a.finished.catch(() => undefined))
-    await Promise.race([Promise.all(running), new Promise((r) => setTimeout(r, 2000))])
-  })
-}
 
 async function serious(page: Page) {
   await settled(page)

@@ -10,7 +10,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, TIPS_KEY } from './helpers'
+import { gotoApp, settled, TIPS_KEY } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const STEPS = 6
@@ -39,6 +39,7 @@ const overlap = (
 ) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 
 async function serious(page: Page) {
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .exclude('[data-testid="scene"] canvas')

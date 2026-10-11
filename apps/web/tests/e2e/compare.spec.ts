@@ -6,7 +6,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
@@ -211,6 +211,7 @@ test('el panel de comparación es accesible (axe) y se elige B también con la l
   await page.getByTestId('compare-car').selectOption('23')
   await expect(page.getByTestId('compare-delta')).toBeVisible()
   await expect(row(page, '23')).toHaveAttribute('data-compare', 'b')
+  await settled(page)
   const results = await new AxeBuilder({ page }).include('[data-testid="telemetry"]').analyze()
   expect(results.violations).toEqual([])
 })

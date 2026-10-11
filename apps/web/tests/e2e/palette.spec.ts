@@ -8,7 +8,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 /** Origen del reloj visible (primer «Started» de la sesión) y datos del fixture (tabla de vueltas y marcadores). */
@@ -172,6 +172,7 @@ test('«siguiente momento» va adonde lleva el botón del dock (servicio de mome
 test('accesibilidad: axe sin infracciones serias ni críticas con la paleta abierta', async ({ page }) => {
   await openReplay(page)
   await command(page, 'vuelta 17 de NOR', 'goto.lap.17.1')
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="command-palette"]')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

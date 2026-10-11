@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, markTipsSeen } from './helpers'
+import { gotoApp, markTipsSeen, settled } from './helpers'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
@@ -62,8 +62,15 @@ test.describe('gestor de datos local', () => {
     await expect(fp1).toHaveAttribute('data-state', /queued|running/)
     await expect(page.getByTestId('progress-fp1')).toBeVisible()
     await expect(page.getByTestId('download-queue')).toBeVisible()
+    // Con el pipeline falso (pasos de 500 ms) y la cola consultada cada segundo, el progreso > 0 se ve ~1 s antes de
+    // terminar: se mira cada 100 ms (con intervalos crecientes, el sondeo podía saltárselo) y sin esperar a una barra
+    // que ya no está.
     await expect
-      .poll(async () => Number(await page.getByTestId('progress-fp1').getAttribute('aria-valuenow').catch(() => 0)))
+      .poll(
+        async () =>
+          Number(await page.getByTestId('progress-fp1').getAttribute('aria-valuenow', { timeout: 100 }).catch(() => 0)),
+        { intervals: [100] },
+      )
       .toBeGreaterThan(0)
 
     await expect(fp1).toHaveAttribute('data-state', 'link', { timeout: 15_000 })
@@ -138,15 +145,26 @@ test.describe('gestor de datos local', () => {
   })
 
   test('accesible con descargas en curso y errores', async ({ page }) => {
-    await open(page, '?season=2026&event=03-suzuka')
+    const serious = async () => {
+      await settled(page)
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+      return results.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)
+    }
+    // La clasificación al sprint de Bélgica no termina nunca en el pipeline falso: la cola sigue activa durante las
+    // auditorías (una descarga normal acaba en 2 s, y con la máquina cargada la cola se vaciaba antes de «Cancelar todo»).
+    await open(page, '?season=2026&event=10-spa-francorchamps')
+    await page.getByTestId('download-sq').click()
+    await expect(page.getByTestId('session-sq')).toHaveAttribute('data-state', 'running')
+    await expect(page.getByTestId('progress-sq')).toBeVisible()
+    expect(await serious()).toEqual([])
+    // Japón: la clasificación que falló (test anterior) y Libres 2 en cola, detrás de la que está en curso.
+    await page.getByTestId('event-suzuka').click()
     await page.getByTestId('download-fp2').click()
-    await expect(page.getByTestId('session-fp2')).toHaveAttribute('data-state', 'running')
+    await expect(page.getByTestId('session-fp2')).toHaveAttribute('data-state', 'queued')
     await expect(page.getByTestId('session-q')).toHaveAttribute('data-state', 'error')
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
-    const serious = results.violations
-      .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-      .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)
-    expect(serious).toEqual([])
+    expect(await serious()).toEqual([])
     await page.getByTestId('cancel-all').click()
     await expect(page.getByTestId('download-queue')).toHaveCount(0)
   })
