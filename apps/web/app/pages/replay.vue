@@ -16,6 +16,9 @@ import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 
+// Layout propio (D44): sin la cabecera global; la marca y el idioma van en la cabecera del replay (TzBrandBar).
+definePageMeta({ layout: 'replay' })
+
 const { t, locale } = useI18n()
 const route = useRoute()
 const session = useSessionStore()
@@ -114,6 +117,8 @@ const readyDetail = computed(() => {
     seconds: formatSeconds(timings.totalMs, locale.value),
   })
 })
+/** Nombre del estado (empieza por lo que se ve, «Listo») y su detalle, que se abre al pulsar el punto. */
+const readyName = computed(() => (readyDetail.value ? `${t('replay.ready')} · ${readyDetail.value}` : t('replay.ready')))
 
 onMounted(() => void session.load(id.value))
 watch(id, (value) => void session.load(value))
@@ -129,18 +134,29 @@ onBeforeUnmount(() => {
   <section class="tz-replay">
     <LazyTzScene v-if="sceneEnabled" />
 
+    <!--
+      Cabecera en una sola fila (D44): marca, título (se acorta con «…» antes que nada), estado, avisos, estado de pista,
+      botones del hueco y herramientas de la escena. Por debajo de 1600 px, lo secundario va solo con su icono; las
+      etiquetas «Estimado» nunca se esconden (las de la escena flotan justo debajo, sobre el mapa).
+    -->
     <header class="tz-replay__bar">
-      <h1 class="tz-replay__title" data-testid="replay-title">{{ title }}</h1>
+      <TzBrandBar />
+      <h1 class="tz-replay__title" :title="title" data-testid="replay-title">{{ title }}</h1>
       <p
         v-if="session.status === 'ready'"
         class="tz-replay__status"
         role="status"
         data-testid="replay-status"
         data-state="ready"
-        :title="readyDetail"
       >
-        <span class="tz-replay__dot" aria-hidden="true" />{{ t('replay.ready') }}
-        <span class="tz-replay__detail tz-tabular">{{ readyDetail }}</span>
+        <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1600 px, también «Listo» y el detalle. -->
+        <TzHint plain :label="readyName" :text="readyName" testid="replay-status-detail" :title="readyName">
+          <template #button>
+            <span class="tz-replay__dot" aria-hidden="true" />
+            <span class="tz-replay__ready">{{ t('replay.ready') }}</span>
+            <span class="tz-replay__detail tz-tabular" aria-hidden="true">{{ readyDetail }}</span>
+          </template>
+        </TzHint>
       </p>
       <!-- Avisos de calidad del pipeline (quality.notes del manifest), si los hay. -->
       <TzSessionNotes v-if="session.status === 'ready'" :key="`notes-${session.id}`" :notes="session.manifest?.quality.notes" />
@@ -174,27 +190,41 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* Columna: cabecera, escenario (paneles laterales) y dock; la escena 3D ocupa todo el fondo. */
+/*
+ * Columna a toda la ventana (layouts/replay.vue): cabecera, escenario (paneles laterales) y dock; la escena 3D ocupa
+ * todo el fondo. Anchos de los paneles con los tokens de densidad (D44); las etiquetas «Estimado» de la escena flotan
+ * bajo la cabecera, a la izquierda de la columna derecha (`--replay-over-*`, que usa TzSceneTools).
+ */
 .tz-replay {
+  --replay-side-w: var(--tz-panel-w);
+  --replay-over-right: calc(var(--tz-space-6) + var(--replay-side-w) + var(--tz-space-3));
+  /* Hasta la clasificación (su ancho, más el de las columnas de otras funciones y el margen), sin pisarla. */
+  --replay-over-max: calc(100% - var(--replay-over-right) - var(--tz-panel-w) - var(--tz-space-12) - var(--tz-space-6));
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 120px);
+  height: 100%;
   overflow: hidden;
 }
 
+/*
+ * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Desde 1180 px no se parte: el título se
+ * acorta con «…» y, si aun así no cabe, el estado de pista reparte sus chips en dos líneas (nunca se esconde una
+ * bandera). Por debajo (tablet), puede partirse.
+ */
 .tz-replay__bar {
   position: relative;
   z-index: var(--tz-z-panels);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--tz-space-4);
-  padding: var(--tz-space-4) var(--tz-space-6);
+  gap: var(--tz-space-2) var(--tz-space-3);
+  padding: var(--tz-space-3) var(--tz-space-6) var(--tz-space-2);
   pointer-events: none;
 }
 
 .tz-replay__bar > * {
+  flex: none;
   pointer-events: auto;
 }
 
@@ -203,28 +233,66 @@ onBeforeUnmount(() => {
   z-index: var(--tz-z-header);
 }
 
-.tz-replay__title {
-  margin: 0;
-  font-size: var(--tz-text-xl);
-  font-weight: var(--tz-weight-semibold);
+/* Con el chip de la realización automática (centrado bajo la cabecera), las etiquetas «Estimado» bajan una fila. */
+.tz-replay__bar:has([data-testid='tv-chip']) {
+  --replay-over-top: calc(var(--tz-space-12) + var(--tz-space-2));
 }
 
-.tz-replay__status {
-  display: inline-flex;
-  flex: none;
-  white-space: nowrap;
-  align-items: center;
-  gap: var(--tz-space-2);
+.tz-replay__title {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
-  padding: var(--tz-space-1) var(--tz-space-3);
+  overflow: hidden;
+  font-size: var(--tz-text-xl);
+  font-weight: var(--tz-weight-semibold);
+  line-height: var(--tz-leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (width >= 1180px) {
+  .tz-replay__bar {
+    flex-wrap: nowrap;
+  }
+
+  /* El título cede sitio antes que nadie (factor alto), hasta 6 em; después, el estado de pista. */
+  .tz-replay__title {
+    flex: 0 100 auto;
+    min-width: 6em;
+  }
+
+  .tz-replay__bar > [data-testid='track-status'] {
+    flex: 0 1 auto;
+    min-width: min-content;
+  }
+}
+
+/* Portátiles (< 1360 px): huecos más justos entre los elementos de la cabecera. */
+@media (width < 1360px) {
+  .tz-replay__bar {
+    column-gap: var(--tz-space-2);
+  }
+}
+
+/* Estado: un punto (el texto «Listo» sigue en el DOM, accesible); desde 1600 px, también «Listo» y el detalle. */
+.tz-replay__status {
+  margin: 0;
+}
+
+.tz-replay__status :deep(.tz-hint__trigger) {
+  gap: var(--tz-space-2);
+  height: 28px;
+  padding: 0 var(--tz-space-2);
   border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-pill);
   background: var(--tz-overlay);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
+  white-space: nowrap;
 }
 
 .tz-replay__dot {
+  flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -236,19 +304,22 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
 }
 
-/* Portátiles (< 1360 px): el tamaño y el tiempo de carga quedan en el título del chip; así la cabecera cabe en una
- * fila y la escena y la telemetría no pierden alto. */
-@media (width < 1360px) {
+@media (width < 1600px) {
+  .tz-replay__ready {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .tz-replay__detail {
     display: none;
   }
 }
 
 @media (width < 640px) {
-  .tz-replay__bar {
-    align-items: flex-start;
-  }
-
   .tz-replay__title {
     font-size: var(--tz-text-lg);
   }
@@ -281,8 +352,8 @@ onBeforeUnmount(() => {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--tz-space-3);
-  width: 290px;
+  gap: var(--tz-panel-gap);
+  width: var(--replay-side-w);
   pointer-events: none;
 }
 
@@ -304,8 +375,8 @@ onBeforeUnmount(() => {
 
 /* Tablet en horizontal y portátiles pequeños: paneles más estrechos. */
 @media (width <= 1100px) {
-  .tz-replay__side {
-    width: 250px;
+  .tz-replay {
+    --replay-side-w: var(--tz-panel-w-narrow);
   }
 }
 
@@ -314,12 +385,17 @@ onBeforeUnmount(() => {
  * encuadra el circuito por encima de esa franja (TzScene mide los paneles que ocupan la parte baja).
  */
 @media (width <= 900px) and (orientation: portrait) {
+  .tz-replay {
+    --replay-over-right: var(--tz-space-6);
+    --replay-over-max: calc(100% - 2 * var(--tz-space-6));
+  }
+
   .tz-replay__stage {
     --replay-panels-bottom: 1;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-content: end;
-    gap: var(--tz-space-3);
+    gap: var(--tz-panel-gap);
   }
 
   .tz-replay__stage > * {

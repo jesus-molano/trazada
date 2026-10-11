@@ -3,6 +3,9 @@
  * Avisos de calidad del manifest (`quality.notes`) en la cabecera del replay: un botón con cuántos hay que
  * despliega la lista. Se traducen por su código; uno desconocido se muestra con su texto original (en
  * español, como lo escribe el pipeline), nunca se esconde. Sin avisos, no se pinta nada.
+ *
+ * La cabecera del replay tiene que caber en una fila: por debajo de 1600 px, el botón muestra el icono y la cifra
+ * («⚠ 5»); la palabra («avisos») sigue en el texto y en el nombre accesible, que empieza por la cifra (WCAG 2.5.3).
  */
 import type { QualityNote } from '@trazada/schema'
 import { qualityNotes } from '~/data/quality-notes'
@@ -22,8 +25,14 @@ const params = (p: Record<string, number | string>) =>
     :label="t('sessionNotes.button', { n: items.length }, items.length)"
     :name="t('sessionNotes.buttonName', { n: items.length }, items.length)"
     testid="session-notes"
+    icon="alert"
     align="start"
   >
+    <template #label>
+      <span class="tz-tabular">{{ items.length }}</span>{{ ' ' }}<span class="tz-notes__word">{{
+        t('sessionNotes.word', items.length)
+      }}</span>
+    </template>
     <p class="tz-notes__title">{{ t('sessionNotes.title') }}</p>
     <ul class="tz-notes__list">
       <li v-for="(n, i) in items" :key="i" :data-code="n.code ?? 'unknown'">
@@ -38,6 +47,13 @@ const params = (p: Record<string, number | string>) =>
 </template>
 
 <style scoped>
+/* Por debajo de 1600 px, solo el icono y la cifra (la palabra sigue en el nombre accesible y en el título). */
+@media (width < 1600px) {
+  .tz-notes__word {
+    display: none;
+  }
+}
+
 .tz-notes__title {
   margin: 0 0 var(--tz-space-2);
   font-weight: var(--tz-weight-semibold);

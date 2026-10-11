@@ -341,8 +341,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Debajo de los controles (en una fila con ellos desde 1280 px: TzReplayDock le quita este margen). */
 .tz-timeline {
-  padding-top: var(--tz-space-5);
+  padding-top: var(--tz-space-3);
 }
 
 .tz-timeline__frame {

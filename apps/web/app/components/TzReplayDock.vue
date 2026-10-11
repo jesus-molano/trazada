@@ -1,5 +1,8 @@
 <script setup lang="ts">
-/** Dock de reproducción: controles (con los botones del hueco `components/replay-dock/`, D29) y timeline. */
+/**
+ * Dock de reproducción: controles (con los botones del hueco `components/replay-dock/`, D29) y timeline. Desde
+ * 1280 px de ancho, en una sola fila (los controles y, a su derecha, el timeline): la escena gana alto (D44).
+ */
 import { REPLAY_DOCK } from '~/slots/replay-dock'
 
 const { t } = useI18n()
@@ -23,12 +26,32 @@ const { t } = useI18n()
 .tz-dock {
   position: relative;
   flex: none;
-  margin: 0 var(--tz-space-6) var(--tz-space-6);
+  margin: 0 var(--tz-space-6) var(--tz-space-3);
   z-index: calc(var(--tz-z-panels) + 2);
-  padding: var(--tz-space-3) var(--tz-space-4) var(--tz-space-2);
+  padding: var(--tz-space-2) var(--tz-space-4);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
   box-shadow: var(--tz-shadow-panel);
+}
+
+/* Una sola fila: los controles a su ancho y el timeline con el resto (sin su margen de arriba). */
+@media (width >= 1280px) {
+  .tz-dock {
+    display: flex;
+    align-items: center;
+    gap: var(--tz-space-6);
+  }
+
+  .tz-dock > .tz-controls {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  .tz-dock > .tz-timeline {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-top: 0;
+  }
 }
 </style>

@@ -8,8 +8,12 @@
  *
  * Cada grupo del hueco es un menú (un botón que despliega sus controles): así la cabecera ocupa lo mismo por muchas
  * herramientas que tenga el grupo y sigue cabiendo en una fila a 1280 px (con una cabecera partida, la escena y la
- * telemetría pierden alto). Con la meteorología y el grupo «Cámara» (Tanda 3), por debajo de 1600 px esos menús van
- * solo con su icono y, por debajo de 1360 px, «Altura» y «Separar coches» también (ver los estilos).
+ * telemetría pierden alto). Con la meteorología y el grupo «Cámara» (Tanda 3), por debajo de 1600 px esos menús y
+ * «Cómo se dibuja» van solo con su icono y, por debajo de 1360 px, «Altura» y «Separar coches» también (ver los estilos).
+ *
+ * Las etiquetas «Estimado» de la escena no van en la fila de la cabecera (la partían en dos): flotan justo debajo de
+ * ella, sobre el mapa (lo que describen), a la izquierda de la columna derecha y siempre a la vista; cada una se pulsa
+ * para ver por qué es estimada. La página da su sitio con `--replay-over-right` (pages/replay.vue).
  */
 import type { IconName } from '~/design/icons'
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
@@ -95,7 +99,10 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
         <component :is="tool.component" v-for="tool in g.tools" :key="tool.name" />
       </div>
     </TzDisclosure>
-    <TzDisclosure :label="t('howDrawn.button')" testid="how-drawn">
+    <TzDisclosure :label="t('howDrawn.button')" :name="t('howDrawn.button')" testid="how-drawn">
+      <template #label>
+        <span class="tz-tools__menu-text">{{ t('howDrawn.button') }}</span>
+      </template>
       <p class="tz-how__title">{{ t('howDrawn.title') }}</p>
       <p id="tz-how-data" class="tz-how__heading">{{ t('howDrawn.dataTitle') }}</p>
       <ul class="tz-how__list" aria-labelledby="tz-how-data">
@@ -114,7 +121,7 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
         <li v-for="k in HOW_MODEL" :key="k" :data-item="k">{{ t(`howDrawn.${k}`, HOW_PARAMS[k] ?? {}) }}</li>
       </ul>
     </TzDisclosure>
-    <div class="tz-tools__estimated">
+    <div class="tz-tools__estimated" data-testid="scene-estimated">
       <TzEstimated v-if="!flat && yScale !== 1" field="elevation" :params="{ k: yScale }" />
       <TzEstimated v-if="settings.separation" field="separation" />
       <TzEstimated v-for="f in manifestFields" :key="f" :field="f" />
@@ -135,8 +142,9 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
 .tz-tools__group {
   display: inline-flex;
   align-items: center;
-  gap: var(--tz-space-1);
-  padding: 2px;
+  gap: var(--tz-space-0-5);
+  height: 28px;
+  padding: var(--tz-space-0-5);
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-md);
   background: var(--tz-overlay);
@@ -192,8 +200,9 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
 }
 
 .tz-tools__btn {
+  position: relative;
   min-width: 30px;
-  height: 26px;
+  height: 22px;
   border: 1px solid transparent;
   border-radius: var(--tz-radius-sm);
   background: transparent;
@@ -203,16 +212,31 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
+/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
+.tz-tools__btn::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
+}
+
 .tz-tools__toggle {
+  height: 28px;
   padding: 0 var(--tz-space-2);
   border-color: var(--tz-border);
   background: var(--tz-overlay);
 }
 
+/* Activado: placa maciza de pintura (D47); desplegado (los menús) conserva el relleno suave. */
 .tz-tools__btn[aria-pressed='true'] {
   border-color: var(--tz-accent);
-  background: var(--tz-accent-soft);
-  color: var(--tz-accent-strong);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+}
+
+@media (hover: hover) {
+  .tz-tools__btn:hover:not(:disabled, [aria-pressed='true']) {
+    background: var(--tz-surface-3);
+  }
 }
 
 .tz-tools__btn:disabled {
@@ -249,15 +273,29 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   padding-left: var(--tz-space-4);
 }
 
+/*
+ * Etiquetas «Estimado» de la escena: fuera de la fila de la cabecera (no la parten en dos), justo debajo y sobre el
+ * mapa, alineadas a la izquierda de la columna derecha. El bloque que las posiciona es la cabecera de la página
+ * (`.tz-replay__bar`, con posición relativa); las variables `--replay-over-*` las pone la página (por defecto, a la
+ * derecha y sin límite de ancho). Con la realización automática, bajan una fila (`--replay-over-top`).
+ */
 .tz-tools__estimated {
+  position: absolute;
+  top: calc(100% + var(--replay-over-top, var(--tz-space-1)));
+  right: var(--replay-over-right, 0);
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--tz-space-1);
-  flex-basis: 100%;
+  max-width: var(--replay-over-max, none);
 }
 
 .tz-tools__estimated:empty {
   display: none;
+}
+
+/* Sobre la escena, con el fondo de los paneles para leerse. */
+.tz-tools__estimated > .tz-estimated {
+  background: var(--tz-overlay);
 }
 </style>

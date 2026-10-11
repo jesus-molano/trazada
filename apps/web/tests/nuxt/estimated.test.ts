@@ -10,6 +10,7 @@ import { defineComponent, h } from 'vue'
 import { useAnalysis } from '~/composables/useAnalysis'
 import TzMomentsTab from '~/components/analysis-tabs/TzMomentsTab.vue'
 import TzCompare from '~/components/TzCompare.vue'
+import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
@@ -260,5 +261,73 @@ describe('etiqueta Estimado', () => {
 
   it.each(ESTIMATED_FIELDS)('%s: se pinta con su etiqueta', async (field) => {
     await CASES[field]()
+  })
+})
+
+/**
+ * El chip se pulsa para ver por qué es estimado (en iPad un título no se ve nunca, D30): «Estimado:» y el campo siguen
+ * a la vista; el icono ≈ solo acompaña a la palabra. En la cabecera, compacto; en un tooltip, sin botón.
+ */
+describe('etiqueta Estimado: se pulsa para ver por qué', () => {
+  it('«Estimado:» y el campo a la vista; al pulsar, la explicación (aria-expanded, aria-controls y título)', async () => {
+    const { t } = useNuxtApp().$i18n
+    const w = await mountSuspended(TzEstimated, { props: { field: 'separation' }, attachTo: document.body })
+    const chip = w.find('[data-testid="estimated"][data-field="separation"]')
+    const button = chip.find('button')
+    expect(button.exists()).toBe(true)
+    expect(button.text()).toContain(t('estimated.tag'))
+    expect(button.text()).toContain(t('estimated.fields.separation'))
+    expect(button.find('[data-icon="estimated"]').exists()).toBe(true)
+    expect(button.attributes('aria-label')).toBe(`${t('estimated.tag')} ${t('estimated.fields.separation')}`)
+    expect(chip.attributes('title')).toBe(t('estimated.hints.separation'))
+    const panel = w.find('[data-testid="estimated-separation-why-panel"]')
+    expect(button.attributes('aria-controls')).toBe(panel.attributes('id'))
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect((panel.element as HTMLElement).style.display).toBe('none')
+    expect(panel.text()).toBe(t('estimated.hints.separation'))
+    await button.trigger('click')
+    await nextTick()
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect((panel.element as HTMLElement).style.display).toBe('')
+    w.unmount()
+  })
+
+  it('compacto (cabecera): la palabra «Estimado» se ve siempre; el campo sigue en el nombre accesible y en el título', async () => {
+    const { t } = useNuxtApp().$i18n
+    const w = await mountSuspended(TzEstimated, { props: { field: 'trackStatus', compact: true } })
+    const chip = w.find('[data-testid="estimated"]')
+    expect(chip.classes()).toContain('is-compact')
+    expect(chip.find('.tz-estimated__short').text()).toBe(t('estimated.tagShort'))
+    expect(t('estimated.tag')).toContain(t('estimated.tagShort'))
+    // Lo que se oculta por debajo de 1600 px se recorta (sigue en el DOM), nunca se quita.
+    expect(chip.find('.tz-estimated__label').text()).toBe(t('estimated.fields.trackStatus'))
+    expect(chip.find('button').attributes('aria-label')).toBe(`${t('estimated.tag')} ${t('estimated.fields.trackStatus')}`)
+    expect(chip.attributes('title')).toBe(t('estimated.hints.trackStatus'))
+  })
+
+  it('sin botón (dentro de un tooltip): la explicación va en el título y en el texto para lectores de pantalla', async () => {
+    const { t } = useNuxtApp().$i18n
+    const w = await mountSuspended(TzEstimated, { props: { field: 'trackStatus', plain: true } })
+    const chip = w.find('[data-testid="estimated"]')
+    expect(chip.find('button').exists()).toBe(false)
+    expect(chip.text()).toContain(t('estimated.tag'))
+    expect(chip.text()).toContain(t('estimated.fields.trackStatus'))
+    expect(chip.find('.tz-visually-hidden').text()).toContain(t('estimated.hints.trackStatus'))
+    expect(chip.attributes('title')).toBe(t('estimated.hints.trackStatus'))
+  })
+
+  it('en la cabecera, el estado de pista deducido lleva el chip compacto y pulsable; en la vista previa, sin botón', async () => {
+    const rt = await fixtureRuntime(['trackStatus'])
+    const header = await mountSuspended(TzTrackStatus)
+    const chip = header.find('[data-testid="estimated"][data-field="trackStatus"]')
+    expect(chip.classes()).toContain('is-compact')
+    expect(chip.find('button').exists()).toBe(true)
+    const at = rt.ext(PREVIEW_EXT, createTimelinePreview).at(rt.clock.startMs)
+    const card = await mountSuspended(TzTimelinePreview, { props: { at, x: 0, width: 400, visible: true } })
+    expect(card.find('[data-testid="estimated"][data-field="trackStatus"]').exists()).toBe(true)
+    expect(card.find('[data-testid="estimated"][data-field="trackStatus"] button').exists()).toBe(false)
+    header.unmount()
+    card.unmount()
+    usePlaybackStore().detach()
   })
 })
