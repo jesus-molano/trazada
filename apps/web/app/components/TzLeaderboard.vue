@@ -60,10 +60,21 @@ const season = useSessionStore().data?.manifest.session.season ?? 0
 const compoundStyle = (compound: string) => ({ '--compound': `var(${compoundToken(season, compound)})` })
 /** Color del equipo de una fila (franja y tinte de la fila elegida); sin dato, el gris de «sin dato», nunca uno inventado. */
 const teamStyle = (r: LeaderboardRow) => ({ '--team': r.driver?.color || 'var(--tz-team-unknown)' })
-/** Compuesto y vueltas del neumático: título (ratón) y texto para lectores de pantalla (en iPad un título no se ve). */
+/**
+ * Compuesto y vueltas del neumático: título (ratón) y texto para lectores de pantalla (en iPad un título no se ve). Las
+ * filas se refrescan varias veces por segundo y este texto solo cambia con el compuesto o las vueltas: se guarda por
+ * compuesto, vueltas e idioma (unas decenas de entradas por sesión).
+ */
+const tyreTexts = new Map<string, string>()
 function tyreText(r: LeaderboardRow): string {
-  const compound = t(`compound.${r.compound}`)
-  return r.tyreLife === null ? t('leaderboard.tyreNoLife', { compound }) : t('leaderboard.tyre', { compound, laps: r.tyreLife }, r.tyreLife)
+  const key = `${r.compound}|${r.tyreLife}|${locale.value}`
+  let text = tyreTexts.get(key)
+  if (text === undefined) {
+    const compound = t(`compound.${r.compound}`)
+    text = r.tyreLife === null ? t('leaderboard.tyreNoLife', { compound }) : t('leaderboard.tyre', { compound, laps: r.tyreLife }, r.tyreLife)
+    tyreTexts.set(key, text)
+  }
+  return text
 }
 
 const gapFmt = computed(() => new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
@@ -83,8 +94,8 @@ function gapText(r: LeaderboardRow): string {
   return `+${fmt.format(s)}`
 }
 
-/** Filas con su flecha de cambio de puesto (null si no la llevan). */
-const items = computed(() => rows.value.map((r) => ({ r, b: changes.value.get(r.car) ?? null })))
+/** Filas con su flecha de cambio de puesto (null si no la llevan) y el texto de su neumático (una vez por fila). */
+const items = computed(() => rows.value.map((r) => ({ r, b: changes.value.get(r.car) ?? null, tyre: tyreText(r) })))
 
 /** «ganó 2 posiciones» / «perdió 1 posición». */
 function changeText(b: Pick<RankBadge, 'delta'>): string {
@@ -205,7 +216,7 @@ function compareRole(car: string): 'a' | 'b' | null {
       data-testid="lb-rows"
     >
       <li
-        v-for="{ r, b } in items"
+        v-for="{ r, b, tyre } in items"
         :key="r.car"
         class="tz-lb__row"
         :class="{ 'is-selected': playback.selectedCar === r.car, 'is-nosignal': r.noSignal, 'is-compare': compareRole(r.car) === 'b' }"
@@ -267,12 +278,12 @@ function compareRole(car: string): 'a' | 'b' | null {
             </Transition>
           </span>
           <span class="tz-lb__gap tz-tabular">{{ gapText(r) }}</span>
-          <span class="tz-lb__tyre" :style="compoundStyle(r.compound)" :title="tyreText(r)">
+          <span class="tz-lb__tyre" :style="compoundStyle(r.compound)" :title="tyre">
             <span class="tz-lb__compound" :class="{ 'is-long': compoundLetter(r.compound).length > 1 }" aria-hidden="true">{{
               compoundLetter(r.compound)
             }}</span>
             <span class="tz-lb__life tz-tabular" aria-hidden="true">{{ r.tyreLife ?? '' }}</span>
-            <span class="tz-visually-hidden">{{ tyreText(r) }}</span>
+            <span class="tz-visually-hidden">{{ tyre }}</span>
           </span>
           <component :is="c.component" v-for="c in cells" :key="c.name" :row="r" :preset="preset" />
         </button>
