@@ -5,6 +5,9 @@
  * Un clic en el ritmo y un stint pulsado saltan en el tiempo. «Sin spoilers» viene activo y oculta lo que aún no ha
  * pasado. Cabe entre la cabecera y el dock (también en iPad), la cabecera sigue en una fila a 1280 px y es accesible
  * (axe) en español y en inglés. El race trace con datos de carrera reales solo se prueba en local (Japón, @local).
+ *
+ * D49: al pasar el ratón por un punto del ritmo sale su ficha (Esc la oculta sin cerrar la hoja); en táctil, un toque la
+ * fija sin saltar en el tiempo y su botón salta a la vuelta; el coche elegido se quita desde la cabecera de la hoja.
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
@@ -227,6 +230,190 @@ for (const vp of [
       expect(Math.abs(middle((await button.boundingBox())!) - title)).toBeLessThan(12)
       // Las herramientas de la escena (lo último de la cabecera) siguen en la misma fila.
       expect(Math.abs(middle((await page.getByTestId('scene-tools').boundingBox())!) - title)).toBeLessThan(12)
+    })
+  })
+}
+
+// --- D49: ficha de cada serie y coche elegido en la hoja ---
+
+const card = (page: Page) => page.getByTestId('analysis-card')
+
+const oneFrame = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(r)))
+
+/**
+ * Busca con el ratón un punto del ritmo (barre en vertical unas cuantas columnas del área de datos) hasta que la gráfica
+ * resalta una serie; devuelve dónde. Un punto se toca a 12 px: con pasos de 10 px en vertical no se salta ninguno que
+ * quede a menos de 6 px de la columna. La gráfica mira el puntero en el frame siguiente a moverlo.
+ */
+async function hoverAPoint(page: Page, testid = 'pace-chart'): Promise<{ x: number; y: number; car: string }> {
+  const chart = page.getByTestId(testid)
+  const box = (await chart.locator('.u-over').boundingBox())!
+  for (const fx of [0.5, 0.35, 0.65, 0.2, 0.8, 0.45, 0.55]) {
+    const x = box.x + box.width * fx
+    for (let y = box.y + 2; y < box.y + box.height; y += 10) {
+      await page.mouse.move(x, y)
+      await oneFrame(page)
+      const car = await chart.getAttribute('data-preview')
+      if (car) return { x, y, car }
+    }
+  }
+  throw new Error('ningún punto bajo el ratón')
+}
+
+test('ritmo: al pasar el ratón por un punto, su ficha (sigla y «Clic: ir al inicio de esa vuelta»); al salir se va; Esc la oculta sin cerrar la hoja', async ({
+  page,
+}) => {
+  await openReplay(page)
+  await seek(page, await page.evaluate(() => window.__trazada!.endMs))
+  await openSheet(page)
+  await expect(page.getByTestId('pace')).toHaveAttribute('data-axis', 'time')
+  await expect(card(page)).toBeHidden()
+  const hit = await hoverAPoint(page)
+  await expect(card(page)).toBeVisible()
+  await expect(card(page)).toHaveAttribute('data-mode', 'hover')
+  await expect(card(page)).toHaveAttribute('role', 'tooltip')
+  await expect(card(page)).toHaveAttribute('data-car', hit.car)
+  await expect(page.getByTestId('analysis-card-head').locator('.tz-achart__card-tla')).toHaveText(/^[A-Z]{3}$/)
+  await expect(page.getByTestId('analysis-card-click')).toHaveText('Clic: ir al inicio de esa vuelta')
+  await expect(page.getByTestId('analysis-card-mark')).toHaveText(/vuelta representativa|excluida|anulada/)
+  // Fuera de la gráfica, se va.
+  await page.mouse.move(5, 5)
+  await expect(card(page)).toBeHidden()
+  // Esc la oculta y la hoja sigue abierta; otro Esc cierra la hoja.
+  await page.mouse.move(hit.x, hit.y)
+  await expect(card(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(card(page)).toBeHidden()
+  await expect(sheet(page)).toBeVisible()
+  await page.mouse.move(5, 5)
+  await page.keyboard.press('Escape')
+  await expect(sheet(page)).toHaveCount(0)
+})
+
+test('coche elegido en la hoja: el chip lo dice y su × lo quita (sin destacar, sin selección); al cerrar, vista general sin telemetría', async ({
+  page,
+}) => {
+  await openReplay(page)
+  await seek(page, await page.evaluate(() => window.__trazada!.endMs))
+  const car = (await page.locator('[data-testid="leaderboard"] [data-car]').first().getAttribute('data-car'))!
+  await page.locator(`[data-testid="leaderboard"] [data-car="${car}"]`).first().getByRole('button').click()
+  await expect(page.getByTestId('telemetry')).toBeVisible()
+  await openSheet(page)
+  const chip = page.getByTestId('analysis-selection')
+  await expect(chip).toBeVisible()
+  await expect(chip).toHaveAttribute('data-car', car)
+  await expect(chip.locator('.tz-aselect__label')).toHaveText('Elegido')
+  await expect(page.locator('[data-testid="pace-chart"] .tz-achart__key.is-emphasis')).toHaveCount(1)
+  await page.getByTestId('analysis-selection-clear').click()
+  await expect(chip).toHaveCount(0)
+  await expect(page.locator('[data-testid="pace-chart"] .tz-achart__key.is-emphasis')).toHaveCount(0)
+  expect(await page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
+  await expect(page.getByTestId('analysis-spoilers')).toBeFocused()
+  // El coche sigue en «Ritmo» (se congelan los visibles), ya sin destacar.
+  await expect(page.locator(`[data-testid="pace-chart"] [data-testid="analysis-legend-item"][data-car="${car}"]`)).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('analysis-close').click()
+  await expect(sheet(page)).toHaveCount(0)
+  await expect(page.getByTestId('telemetry')).toHaveCount(0)
+})
+
+for (const lang of ['es', 'en'] as const) {
+  test(`accesible (axe) con el chip del coche elegido y una ficha a la vista (${lang})`, async ({ page, baseURL }) => {
+    // Busca un punto con el ratón y luego pasa axe: con la suite entera en paralelo, más de 30 s.
+    test.setTimeout(90_000)
+    await openReplay(page, baseURL, lang)
+    await seek(page, await page.evaluate(() => window.__trazada!.endMs))
+    await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+    await page.getByTestId('follow-toggle').click()
+    await openSheet(page)
+    await expect(page.getByTestId('analysis-selection')).toHaveAttribute('data-following', 'true')
+    await hoverAPoint(page)
+    await expect(card(page)).toBeVisible()
+    expect(await serious(page)).toEqual([])
+  })
+}
+
+test.describe('táctil 1024×768 (D49)', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true })
+
+  test('un toque fija la ficha sin mover el reloj; su botón salta a esa vuelta y la cierra; un toque fuera la cierra', async ({ page }) => {
+    test.setTimeout(60_000)
+    await openReplay(page)
+    const endMs = await page.evaluate(() => window.__trazada!.endMs)
+    await seek(page, endMs)
+    await openSheet(page)
+    // Dónde hay un punto (con el ratón) y adónde salta un clic en él.
+    const hit = await hoverAPoint(page)
+    await page.mouse.click(hit.x, hit.y)
+    await expect.poll(() => page.evaluate(() => window.__trazada!.timeMs)).not.toBe(endMs)
+    const target = await page.evaluate(() => window.__trazada!.timeMs)
+    await page.mouse.move(2, 2)
+    await expect(card(page)).toBeHidden()
+    await seek(page, endMs)
+
+    await page.touchscreen.tap(hit.x, hit.y)
+    await expect(card(page)).toHaveAttribute('data-mode', 'pinned')
+    await expect(card(page)).toHaveAttribute('role', 'group')
+    await expect(card(page)).toBeVisible()
+    expect(await page.evaluate(() => window.__trazada!.timeMs)).toBe(endMs)
+    const go = page.getByTestId('analysis-card-go')
+    await expect(go).toHaveText(/ir al inicio de esa vuelta/i)
+    expect((await go.boundingBox())!.height).toBeGreaterThanOrEqual(31.5)
+    await go.tap()
+    await expect.poll(() => page.evaluate(() => window.__trazada!.timeMs)).toBe(target)
+    await expect(card(page)).toBeHidden()
+
+    // Otra vez fijada: un toque fuera de la gráfica la cierra; la hoja sigue.
+    await seek(page, endMs)
+    await page.touchscreen.tap(hit.x, hit.y)
+    await expect(card(page)).toHaveAttribute('data-mode', 'pinned')
+    const title = (await page.locator('.tz-analysis__title').boundingBox())!
+    await page.touchscreen.tap(title.x + 5, title.y + title.height / 2)
+    await expect(card(page)).toBeHidden()
+    await expect(sheet(page)).toBeVisible()
+    expect(await page.evaluate(() => window.__trazada!.timeMs)).toBe(endMs)
+  })
+})
+
+for (const vp of [
+  { name: 'iPad horizontal 1024×768', width: 1024, height: 768 },
+  { name: 'iPad vertical 768×1024', width: 768, height: 1024 },
+]) {
+  test.describe(`${vp.name} táctil, con el coche elegido (D49)`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: true })
+
+    test('la cabecera de la hoja no se desborda con el chip; su × tiene zona táctil', async ({ page }) => {
+      await openReplay(page)
+      await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').tap()
+      await page.getByTestId('follow-toggle').tap()
+      await openSheet(page)
+      const chip = page.getByTestId('analysis-selection')
+      await expect(chip).toBeVisible()
+      // Nada de la cabecera (título, chip, «Sin spoilers», ⓘ, ×) se sale de ella; si no cabe, pasa a otra fila. Las zonas
+      // táctiles (::after) pueden asomar a propósito: se miden las cajas.
+      const overflow = await page.evaluate(() => {
+        const head = document.querySelector('.tz-analysis__head')!.getBoundingClientRect()
+        const sheet = document.querySelector('[data-testid="analysis-sheet"]')!
+        const doc = document.documentElement
+        const parts = [...document.querySelectorAll('.tz-analysis__head > *, .tz-analysis__actions > *')]
+        const out = parts.filter((el) => {
+          const r = el.getBoundingClientRect()
+          return r.left < head.left - 0.5 || r.right > head.right + 0.5
+        })
+        return { page: doc.scrollWidth > doc.clientWidth, sheet: sheet.scrollWidth > sheet.clientWidth, head: out.map((el) => el.className) }
+      })
+      expect(overflow).toEqual({ page: false, sheet: false, head: [] })
+      const chipBox = (await chip.boundingBox())!
+      const sheetBox = (await sheet(page).boundingBox())!
+      expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(sheetBox.x + sheetBox.width)
+      // La zona táctil del × (su ::after) llega a --tz-hit-min con puntero grueso.
+      const hit = await page.getByTestId('analysis-selection-clear').evaluate((el) => {
+        const after = getComputedStyle(el, '::after')
+        const r = el.getBoundingClientRect()
+        return { coarse: matchMedia('(pointer: coarse)').matches, h: r.height - 2 * Number.parseFloat(after.top) }
+      })
+      expect(hit.h).toBeGreaterThanOrEqual(hit.coarse ? 43.5 : 23.5)
+      // Por debajo de 900 px, sin «la cámara lo sigue».
+      if (vp.width < 900) await expect(chip.locator('.tz-aselect__follow')).toBeHidden()
     })
   })
 }

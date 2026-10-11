@@ -7,11 +7,18 @@
  *   clasificación y el timeline siguen). Al cerrarla, o al desechar el runtime, la escena vuelve.
  * - «Sin spoilers» (activo por defecto): las gráficas solo usan los datos hasta el instante del reloj, con el estado
  *   grueso de Pinia (≤ 10 Hz). Cada pestaña recalcula solo cuando el reloj cruza un instante que cambia lo que
- *   muestra (`useEffectiveCutoff` sobre sus instantes de cambio), nunca en cada frame.
+ *   muestra (`useEffectiveCutoff` sobre sus instantes de cambio), nunca en cada frame. Con el reloj al final de la
+ *   reproducción ya no hay nada que esconder: sin corte (si no, un paso por meta posterior al final de la reproducción
+ *   no se vería nunca y la regla de fin de los datos de `stoppedCars` no se aplicaría).
  * - Coches visibles de cada gráfica: lo que elija el usuario en la leyenda (por pestaña); si no ha elegido, los de
  *   cada pestaña por defecto.
+ * - Al quitar la selección con la hoja abierta (su × en la cabecera, D49), el coche que estaba elegido se queda entre
+ *   los de por defecto de «Ritmo» (`paceKept`): sigue dibujado, sin destacar, en vez de desaparecer. Vale también
+ *   desde otra pestaña (la hoja solo monta la activa). Es aparte de la elección del usuario en la leyenda: el coche
+ *   que se elija después también sale (y destacado). Al cerrar la hoja se olvida; con la hoja cerrada, nada: «Ritmo»
+ *   muestra por defecto el coche elegido de cada momento y los cinco primeros.
  */
-import { computed, type ComputedRef, effectScope, readonly, type Ref, ref, shallowRef } from 'vue'
+import { computed, type ComputedRef, effectScope, readonly, type Ref, ref, shallowRef, watch } from 'vue'
 import type { LapTable } from '~/engine/analysis/lapTable'
 import { countUpTo } from '~/engine/analysis/raceTrace'
 import { registerSceneStat } from '~/replay/debug'
@@ -27,11 +34,19 @@ export interface AnalysisState {
   readonly tab: Ref<string>
   /** «Sin spoilers: hasta ahora»: solo los datos hasta el instante del reloj. */
   readonly noSpoilers: Ref<boolean>
-  /** Corte de los datos (ms de sesión): el instante del reloj con «Sin spoilers»; si no, Infinity. */
+  /**
+   * Corte de los datos (ms de sesión): el instante del reloj con «Sin spoilers»; si no, o con el reloj al final de la
+   * reproducción, Infinity.
+   */
   readonly cutoffMs: ComputedRef<number>
   /** Coches que el usuario dejó visibles en cada pestaña (sin entrada: los de por defecto de la pestaña). */
   readonly shown: Readonly<Ref<Readonly<Record<string, readonly string[]>>>>
   setShown(tab: string, cars: readonly string[]): void
+  /**
+   * Coches que se quitaron de la selección con la hoja abierta (D49): «Ritmo» los sigue mostrando por defecto, sin
+   * destacar, junto al coche elegido y los cinco primeros. Se vacía al cerrar la hoja.
+   */
+  readonly paceKept: Readonly<Ref<readonly string[]>>
   show(): void
   close(): void
   toggle(): void
@@ -45,12 +60,29 @@ export function createAnalysisState(rt: ReplayRuntime): AnalysisState {
   const tab = ref(defaultTab(ANALYSIS_TABS, rt.leaderboard.lapTable.race))
   const noSpoilers = ref(true)
   const shown = shallowRef<Readonly<Record<string, readonly string[]>>>({})
-  const cutoffMs = scope.run(() => computed(() => (noSpoilers.value ? playback.timeMs : Infinity)))!
+  const playEnd = rt.session.manifest.session.playback.endMs
+  const cutoffMs = scope.run(() => computed(() => (noSpoilers.value && playback.timeMs < playEnd ? playback.timeMs : Infinity)))!
+  const table = rt.leaderboard.lapTable
+  const paceKept = shallowRef<readonly string[]>([])
+  const setShown = (key: string, cars: readonly string[]) => {
+    shown.value = { ...shown.value, [key]: [...cars] }
+  }
+  scope.run(() =>
+    watch(
+      () => playback.selectedCar,
+      (now, before) => {
+        if (now || !before || !open.value || paceKept.value.includes(before)) return
+        paceKept.value = [...paceKept.value, before]
+      },
+      { flush: 'sync' },
+    ),
+  )
 
   const setOpen = (value: boolean) => {
     if (open.value === value) return
     open.value = value
     rt.setSceneHidden(value)
+    if (!value && paceKept.value.length) paceKept.value = []
   }
 
   // Para los e2e (`window.__trazada.scene.analysis`).
@@ -62,15 +94,14 @@ export function createAnalysisState(rt: ReplayRuntime): AnalysisState {
   }))
 
   return {
-    table: rt.leaderboard.lapTable,
+    table,
     open: readonly(open),
     tab,
     noSpoilers,
     cutoffMs,
     shown: readonly(shown) as Readonly<Ref<Readonly<Record<string, readonly string[]>>>>,
-    setShown(key, cars) {
-      shown.value = { ...shown.value, [key]: [...cars] }
-    },
+    setShown,
+    paceKept: readonly(paceKept) as Readonly<Ref<readonly string[]>>,
     show: () => setOpen(true),
     close: () => setOpen(false),
     toggle: () => setOpen(!open.value),

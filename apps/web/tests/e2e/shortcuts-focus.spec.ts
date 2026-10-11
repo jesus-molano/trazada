@@ -25,12 +25,13 @@ async function openScene(page: Page) {
 
 /**
  * Clic en el timeline en la fracción `f` del extracto: el reloj salta ahí y el foco se queda en el timeline. Después
- * el ratón sale de la pista (sin la tarjeta de la vista previa, que se quedaría el primer Esc).
+ * el ratón sale de la pista hacia abajo, al pie de la página (sin la tarjeta de la vista previa ni, con la hoja de
+ * análisis abierta, la ficha de un nombre de su leyenda: cualquiera de las dos se quedaría el primer Esc).
  */
 async function clickTimeline(page: Page, f: number) {
   const box = (await timeline(page).boundingBox())!
   await page.mouse.click(box.x + box.width * f, box.y + box.height / 2)
-  await page.mouse.move(box.x + box.width * f, box.y - 200)
+  await page.mouse.move(box.x + box.width * f, page.viewportSize()!.height - 2)
   await twoFrames(page)
   await expect(timeline(page)).toBeFocused()
   await expect(page.getByTestId('timeline-preview')).toBeHidden()

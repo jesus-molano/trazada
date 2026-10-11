@@ -15,6 +15,7 @@ import { duration, LIST_MOTION_MAX_CHANGES, LIST_MOTION_MAX_RATE, useReducedMoti
 import { formatClock } from '~/engine/format/time'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { visibleCount } from '~/engine/trackstate/TrackState'
+import { rcTone } from '~/replay/rcKinds'
 import { useLayoutStore } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -86,18 +87,6 @@ function kindLabel(e: RaceControlEvent): string {
   const key = `rc.kind.${e.parsed.kind}`
   return te(key) ? t(key) : t('rc.kind.other')
 }
-
-const FLAG_KINDS = new Set(['sector_yellow', 'sector_double_yellow', 'sector_clear', 'blue_flag', 'chequered_flag', 'green_light', 'track_clear'])
-const NEUTRAL_KINDS = new Set(['sc_deployed', 'sc_ending', 'sc_in_this_lap', 'vsc_deployed', 'vsc_ending', 'red_flag'])
-const STEWARD_KINDS = new Set(['incident', 'penalty', 'penalty_served', 'lap_deleted', 'lap_reinstated', 'track_limits', 'black_and_white_flag', 'black_and_orange_flag', 'black_flag'])
-
-function tone(kind: string): string {
-  if (NEUTRAL_KINDS.has(kind)) return 'is-neutral'
-  if (kind === 'sector_yellow' || kind === 'sector_double_yellow') return 'is-yellow'
-  if (FLAG_KINDS.has(kind)) return 'is-flag'
-  if (STEWARD_KINDS.has(kind)) return 'is-stewards'
-  return ''
-}
 </script>
 
 <template>
@@ -140,7 +129,7 @@ function tone(kind: string): string {
         v-for="(e, i) in visible"
         :key="count - 1 - i"
         class="tz-rc__item"
-        :class="tone(e.parsed.kind)"
+        :class="rcTone(e.parsed.kind)"
         :data-t="e.t"
         :data-kind="e.parsed.kind"
         :data-fresh="fresh === count - 1 - i ? '' : undefined"

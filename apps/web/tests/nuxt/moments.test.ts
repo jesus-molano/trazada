@@ -17,7 +17,9 @@ import TzJumpButtons from '~/components/replay-dock/TzJumpButtons.vue'
 import TzOvertakeLane from '~/components/timeline-lanes/TzOvertakeLane.vue'
 import { useAnalysis } from '~/composables/useAnalysis'
 import type { LoadedSession } from '~/data/types'
+import { formatClock } from '~/engine/format/time'
 import { JUMP_LEAD_MS } from '~/engine/moments/jumps'
+import { clockOrigin } from '~/engine/timeline/markers'
 import { commandServices } from '~/replay/commands'
 import { findShortcut } from '~/replay/keys'
 import { createReplayRuntime, type ReplayRuntime } from '~/replay/runtime'
@@ -184,6 +186,163 @@ describe('pestaña «Momentos» (hueco analysis-tabs)', () => {
   })
 })
 
+describe('«Ver y saltar entre» filtra también la pestaña (D49)', () => {
+  const sections = () => ['moments-overtakes', 'moments-duels', 'moments-others'].filter((id) => $(`[data-testid="${id}"]`) !== null)
+  const single = () => $('[data-testid="moments-cols"]')!.classList.contains('is-single')
+  const otherTargets = (cutoff: number) =>
+    useMomentsStore()
+      .model()!
+      .moments.filter((m) => (m.kind === 'neutralisation' || m.kind === 'raceControl') && m.t <= cutoff)
+      .map((m) => m.t)
+
+  it('la lista «Neutralizaciones y dirección de carrera» son los destinos de esas clases hasta el corte', async () => {
+    attachRace()
+    await mount(TzMomentsTab)
+    expect($('[data-testid="others-nothing-yet"]')).not.toBeNull()
+    for (const t of [S + 299_999, S + 300_000, S + 400_000]) {
+      await seek(t)
+      const rows = $$('[data-testid="other-row"]')
+      expect(rows.map((r) => Number(r.dataset.t)), String(t - S)).toEqual(otherTargets(t))
+    }
+    const [sc, rc] = $$('[data-testid="other-row"]')
+    expect(sc!.dataset).toMatchObject({ kind: 'neutralisation', sub: 'sc' })
+    expect(sc!.textContent).toMatch(/Coche de seguridad|Safety car/)
+    // Hora exacta del reloj del dock, sin «≈».
+    const origin = clockOrigin(rt.session.manifest.session.type, rt.session.timing, rt.session.manifest.session.playback)
+    expect(sc!.textContent).toContain(formatClock(S + 300_000 - origin))
+    expect(sc!.textContent).not.toContain('≈')
+    // La vuelta en curso del primero (NOR completó la 5 a los 300 s).
+    expect(sc!.querySelector('.tz-moments__lap')!.textContent).toMatch(/[VL]6/)
+    expect(rc!.dataset).toMatchObject({ kind: 'raceControl', sub: 'incident' })
+    expect(rc!.querySelector('[data-testid="other-text"]')!.textContent).toBe('INCIDENT INVOLVING CAR 1 (NOR) NOTED')
+    expect(rc!.querySelector('[data-testid="other-text"]')!.getAttribute('lang')).toBe('en')
+    expect(rc!.querySelector('[data-testid="other-kind"]')!.classList).toContain('is-stewards')
+    // El coche que nombra el mensaje, elegido: la fila se destaca.
+    expect(rc!.classList).not.toContain('is-involved')
+    usePlaybackStore().selectCar('1')
+    await settle()
+    expect($$('[data-testid="other-row"]')[1]!.classList).toContain('is-involved')
+  })
+
+  it('cada clase deja solo su lista (una sola, a 48 rem como mucho); «Todos», las tres', async () => {
+    attachRace()
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    const moments = useMomentsStore()
+    expect(sections()).toEqual(['moments-overtakes', 'moments-duels', 'moments-others'])
+    expect(single()).toBe(false)
+    moments.setFilter('overtake')
+    await settle()
+    expect(sections()).toEqual(['moments-overtakes'])
+    expect(single()).toBe(true)
+    moments.setFilter('duel')
+    await settle()
+    expect(sections()).toEqual(['moments-duels'])
+    expect(single()).toBe(true)
+    moments.setFilter('neutralisation')
+    await settle()
+    expect(sections()).toEqual(['moments-others'])
+    expect($$('[data-testid="other-row"]').map((r) => r.dataset.kind)).toEqual(['neutralisation'])
+    expect($('[data-testid="moments-others"] h3')!.textContent).toMatch(/^\s*(Neutralizaciones|Neutralisations)\s/)
+    moments.setFilter('raceControl')
+    await settle()
+    expect($$('[data-testid="other-row"]').map((r) => r.dataset.kind)).toEqual(['raceControl'])
+    expect($('[data-testid="moments-others"] h3')!.textContent).toMatch(/^\s*(Dirección de carrera|Race control)\s/)
+    moments.setFilter('all')
+    await settle()
+    expect($$('[data-testid="other-row"]')).toHaveLength(2)
+  })
+
+  it('los textos siguen al filtro: la explicación de la lista de abajo y qué se elige al pulsar, solo de lo que se ve', async () => {
+    attachRace()
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    const moments = useMomentsStore()
+    const pick = () => $('[data-testid="moments-pick"]')!.textContent!.replace(/\s+/g, ' ').trim()
+    const basis = () => $('[data-testid="others-basis"]')?.textContent ?? null
+    const PICK = /^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)/
+    // Todos: las tres listas y las dos frases de quién se elige.
+    expect(pick()).toMatch(PICK)
+    expect(pick()).toMatch(/(antes\. En un adelantamiento.*persigue|before it\. For an overtake.*chasing)/)
+    expect(basis()).toMatch(/SC, VSC.*luz verde|SC, VSC.*green light/)
+    moments.setFilter('overtake')
+    await settle()
+    expect(pick()).toMatch(/(antes\. Se elige al que adelanta|before it\. The overtaking driver is selected)\.$/)
+    expect(pick()).not.toMatch(/persigue|chasing/)
+    expect(basis()).toBeNull()
+    moments.setFilter('duel')
+    await settle()
+    expect(pick()).toMatch(/persigue|chasing/)
+    expect(pick()).not.toMatch(/adelanta|overtak/)
+    // Neutralizaciones: ni adelantamientos ni duelos a la vista, así que solo «Pulsa uno…»; y la explicación, solo de ellas.
+    moments.setFilter('neutralisation')
+    await settle()
+    expect(pick()).toMatch(/^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)$/)
+    expect(basis()).toMatch(/SC, VSC/)
+    expect(basis()).not.toMatch(/luz verde|green light|en inglés|in English/)
+    moments.setFilter('raceControl')
+    await settle()
+    expect(pick()).toMatch(/^(Pulsa uno para ir 5 s antes\.|Click one to go 5 s before it\.)$/)
+    expect(basis()).toMatch(/luz verde|green light/)
+    expect(basis()).not.toMatch(/SC, VSC/)
+  })
+
+  it('pulsar una fila salta adonde salta ⏭ (5 s antes)', async () => {
+    attachRace()
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    const target = useMomentsStore().model()!.moments.find((m) => m.kind === 'neutralisation')!
+    $<HTMLButtonElement>('[data-testid="other-row"][data-kind="neutralisation"]')!.click()
+    await settle()
+    expect(time()).toBe(target.seekMs)
+    expect(time()).toBe(S + 300_000 - JUMP_LEAD_MS)
+  })
+
+  it('«Estimado» del estado de pista solo si el manifest lo marca y hay una neutralización en la lista', async () => {
+    const estimated = () => $('[data-testid="moments-others"] [data-testid="estimated"][data-field="trackStatus"]')
+    attachRace()
+    useAnalysis().noSpoilers.value = false
+    const w = await mount(TzMomentsTab)
+    expect(estimated()).toBeNull()
+    w.unmount()
+    unmounts.splice(0)
+    usePlaybackStore().detach()
+
+    const base = raceSession(fixture, [NOR, VER], {
+      windows: [{ kind: 'sc', fromMs: S + 300_000, toMs: S + 330_000 }],
+      raceControl: [rcMessage(S + 400_000, 'incident', 'INCIDENT INVOLVING CAR 1 (NOR) NOTED', ['1'])],
+    })
+    attach({ ...base, manifest: { ...base.manifest, quality: { ...base.manifest.quality, estimated: ['trackStatus'] } } })
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    expect(estimated()).not.toBeNull()
+    // Sin neutralizaciones en la lista (solo los mensajes), sin «Estimado».
+    useMomentsStore().setFilter('raceControl')
+    await settle()
+    expect(estimated()).toBeNull()
+    // Con «Sin spoilers», antes del SC tampoco.
+    useMomentsStore().setFilter('all')
+    useAnalysis().noSpoilers.value = true
+    await seek(S + 299_000)
+    expect(estimated()).toBeNull()
+  })
+
+  it('en libres: la nota de «solo en carrera» y, debajo, las neutralizaciones y los mensajes', async () => {
+    attach(fixture)
+    useAnalysis().noSpoilers.value = false
+    await mount(TzMomentsTab)
+    expect($('[data-testid="moments-only-race"]')).not.toBeNull()
+    expect(sections()).toEqual(['moments-others'])
+    expect(single()).toBe(true)
+    const rows = $$('[data-testid="other-row"]')
+    expect(rows.length).toBe(otherTargets(Infinity).length)
+    expect(rows.length).toBeGreaterThan(0)
+    // Sin vuelta fuera de carrera.
+    expect(rows[0]!.classList).toContain('no-lap')
+    expect(rows[0]!.querySelector('.tz-moments__lap')).toBeNull()
+  })
+})
+
 describe('botones de saltos (hueco replay-dock)', () => {
   const prev = () => $<HTMLButtonElement>('[data-testid="jump-prev"]')!
   const next = () => $<HTMLButtonElement>('[data-testid="jump-next"]')!
@@ -253,6 +412,28 @@ describe('botones de saltos (hueco replay-dock)', () => {
     expect(service.list().map((m) => m.t - S)).toEqual([300_000 - JUMP_LEAD_MS])
     w.unmount()
     expect(commandServices().moments).toBeUndefined()
+  })
+
+  it('con una clase elegida, el dock lo dice («Solo duelos ×») y su × vuelve a «todos» (D49)', async () => {
+    attachRace()
+    await mount(TzJumpButtons)
+    const chip = () => $('[data-testid="jump-filter-chip"]')
+    expect(chip()).toBeNull()
+    useMomentsStore().setFilter('duel')
+    await settle()
+    expect($('[data-testid="jump-filter-text"]')!.textContent!.trim()).toMatch(/^(Solo duelos|Only battles)$/)
+    // Forma corta (por debajo de 900 px): solo la clase, oculta a los lectores de pantalla (leen el texto entero).
+    const short = $('[data-testid="jump-filter-short"]')!
+    expect(short.textContent!.trim()).toMatch(/^(Duelos|Battles)$/)
+    expect(short.getAttribute('aria-hidden')).toBe('true')
+    expect(chip()!.getAttribute('title')).toMatch(/duelos|battles/)
+    const clear = $<HTMLButtonElement>('[data-testid="jump-filter-clear"]')!
+    expect(clear.getAttribute('aria-label')).toMatch(/Saltar entre todos los momentos|Jump between all moments/)
+    clear.click()
+    await settle()
+    expect(useMomentsStore().filter).toBe('all')
+    expect(chip()).toBeNull()
+    expect($('[data-testid="jump-buttons"]')!.dataset.filter).toBe('all')
   })
 
   it('al cambiar de sesión, la clase vuelve a «todos»', async () => {

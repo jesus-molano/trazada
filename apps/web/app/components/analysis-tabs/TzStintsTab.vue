@@ -36,6 +36,8 @@ for (const c of table.cars.values()) for (const lap of c.lap) maxLap = Math.max(
 const times = rt.ext('analysis:stintTimes', (r) => stintEventTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const byCar = computed(() => markRaw(new Map(stints(table, cutoff.value).map((c) => [c.car, c.stints]))))
+/** Sin corte («Sin spoilers» desactivado o el reloj al final de la reproducción); cambia poco (no con cada aviso del reloj). */
+const uncut = computed(() => cutoff.value === Infinity)
 const leadLap = computed(() => (race ? leaderLapAt(table, playback.timeMs) : null))
 
 /** Eje: vueltas [0, N] (la vuelta k ocupa (k−1, k]) o instantes de la sesión. */
@@ -43,13 +45,13 @@ const domain = computed<[number, number]>(() => {
   const all = [...byCar.value.values()].flat()
   if (race) {
     const shown = all.reduce((n, s) => Math.max(n, s.lastLap), 0)
-    const hi = st.noSpoilers.value ? Math.max(shown, leadLap.value ?? 0) : maxLap
+    const hi = uncut.value ? maxLap : Math.max(shown, leadLap.value ?? 0)
     return [0, Math.max(1, hi)]
   }
   const starts = all.map((s) => s.startMs).filter(Number.isFinite)
   const ends = all.map((s) => s.endMs).filter(Number.isFinite)
   const lo = Math.min(playStart, ...starts)
-  const hi = st.noSpoilers.value ? playEnd : Math.max(playEnd, ...ends)
+  const hi = uncut.value ? Math.max(playEnd, ...ends) : playEnd
   return [lo, hi > lo ? hi : lo + 1]
 })
 
@@ -96,7 +98,7 @@ const rows = computed(() => {
   const text = texts.value
   // En libres, con corte, un stint en curso llega hasta el reloj (no hasta el último instante de cambio). Solo entonces
   // depende del reloj (≤ 10 Hz); en carrera, solo de los instantes de cambio.
-  const now = race || !st.noSpoilers.value ? 0 : playback.timeMs
+  const now = race || uncut.value ? 0 : playback.timeMs
   return cars.map((car) => {
     const style = styles.get(car)
     const label = style?.label ?? car
@@ -104,7 +106,7 @@ const rows = computed(() => {
     const bars: Bar[] = []
     for (const s of list) {
       const a = race ? s.firstLap - 1 : s.startMs
-      const b = race ? s.lastLap : s.open && st.noSpoilers.value ? Math.max(s.startMs, now) : s.endMs
+      const b = race ? s.lastLap : s.open && !uncut.value ? Math.max(s.startMs, now) : s.endMs
       if (!Number.isFinite(a) || !Number.isFinite(b)) continue
       const left = pct(a, d)
       bars.push({

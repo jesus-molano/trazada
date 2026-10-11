@@ -5,6 +5,9 @@
  * análisis explica que las listas solo existen en carrera y sprint, y elige entre qué clases saltan los botones. Sin
  * carril de adelantamientos en libres. Accesible (axe) en español y en inglés. Las listas con datos de carrera reales
  * solo se prueban en local (Japón, local-moments.spec.ts).
+ *
+ * D49: «Ver y saltar entre» filtra también la pestaña, que lista las neutralizaciones y los mensajes destacados de
+ * dirección de carrera (los mismos destinos que los botones), y con una clase elegida el dock lo dice («Solo …×»).
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
@@ -95,6 +98,10 @@ test('pestaña «Momentos» en libres: explica que las listas son de carrera y e
   await expect(filter.locator('[data-filter="all"]')).toHaveAttribute('aria-pressed', 'true')
   await expect(filter.locator('[data-filter="overtake"]')).toBeDisabled()
   await expect(filter.locator('[data-filter="duel"]')).toBeDisabled()
+  // Debajo de la nota, la lista de neutralizaciones y mensajes (D49), sola.
+  await expect(page.getByTestId('moments-others')).toBeVisible()
+  await expect(page.getByTestId('moments-overtakes')).toHaveCount(0)
+  await expect(page.getByTestId('moments-cols')).toHaveClass(/is-single/)
   await filter.locator('[data-filter="raceControl"]').click()
   await expect(filter.locator('[data-filter="raceControl"]')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('jump-buttons')).toHaveAttribute('data-filter', 'raceControl')
@@ -142,3 +149,94 @@ test.describe('iPad horizontal 1024×768', () => {
     await expect.poll(() => time(page)).toBe((await stat(page)).targets[0]!.seekMs)
   })
 })
+
+// --- D49: el filtro filtra la pestaña y el dock lo dice ---
+
+async function openMoments(page: Page) {
+  await page.getByTestId('analysis-button').click()
+  await page.getByTestId('analysis-tab-moments').click()
+  await expect(page.getByTestId('analysis-sheet')).toHaveAttribute('data-tab', 'moments')
+}
+
+test('la lista de neutralizaciones y dirección de carrera son los destinos de los botones (sin spoilers, todos)', async ({ page }) => {
+  await openReplay(page)
+  await openMoments(page)
+  const others = (await stat(page)).targets.filter((m) => m.kind === 'raceControl' || m.kind === 'neutralisation')
+  // Con «Sin spoilers», hasta el reloj (al principio de la reproducción).
+  const now = await time(page)
+  await expect(page.getByTestId('other-row')).toHaveCount(others.filter((m) => m.t <= now).length)
+  await page.getByTestId('analysis-spoilers').click()
+  const rows = page.getByTestId('other-row')
+  await expect(rows).toHaveCount(others.length)
+  expect((await rows.evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-t')))))).toEqual(others.map((m) => m.t))
+  // Cada fila: su clase, el texto original en inglés (si es un mensaje) y la hora exacta, sin «≈».
+  const first = rows.first()
+  await expect(first.getByTestId('other-kind')).not.toBeEmpty()
+  await expect(first).not.toContainText('≈')
+  // Pulsar una salta adonde salta ⏭.
+  const target = others[others.length - 1]!
+  await rows.last().click()
+  await expect.poll(() => time(page)).toBe(target.seekMs)
+})
+
+test('«Dirección de carrera» deja solo su lista; el dock lo dice y ⏭ va al siguiente mensaje; su × vuelve a «Todos»', async ({ page }) => {
+  await openReplay(page)
+  await openMoments(page)
+  await page.locator('[data-testid="moments-filter"] [data-filter="raceControl"]').click()
+  await expect(page.getByTestId('moments-others')).toBeVisible()
+  await expect(page.getByTestId('moments-others').locator('h3')).toContainText('Dirección de carrera')
+  for (const row of await page.getByTestId('other-row').all()) await expect(row).toHaveAttribute('data-kind', 'raceControl')
+  const chip = page.getByTestId('jump-filter-chip')
+  await expect(page.getByTestId('jump-filter-text')).toHaveText('Solo dirección de carrera')
+  const start = await time(page)
+  const next = (await stat(page)).targets.find((m) => m.kind === 'raceControl' && m.seekMs > start)!
+  await page.getByTestId('jump-next').click()
+  await expect.poll(() => time(page)).toBe(next.seekMs)
+  expect(next.seekMs).toBe(Math.max(await page.evaluate(() => window.__trazada!.startMs), next.t - 5000))
+  await page.getByTestId('jump-filter-clear').click()
+  await expect(page.getByTestId('jump-buttons')).toHaveAttribute('data-filter', 'all')
+  await expect(chip).toHaveCount(0)
+  await expect(page.locator('[data-testid="moments-filter"] [data-filter="all"]')).toHaveAttribute('aria-pressed', 'true')
+})
+
+for (const lang of ['es', 'en'] as const) {
+  test(`accesible (axe) con la lista de dirección de carrera y el chip del dock (${lang})`, async ({ page, baseURL }) => {
+    await openReplay(page, baseURL, lang)
+    await openMoments(page)
+    await page.getByTestId('analysis-spoilers').click()
+    await page.locator('[data-testid="moments-filter"] [data-filter="raceControl"]').click()
+    await expect(page.getByTestId('jump-filter-chip')).toBeVisible()
+    await expect(page.getByTestId('other-row').first()).toBeVisible()
+    expect(await serious(page)).toEqual([])
+  })
+}
+
+for (const vp of [
+  { name: 'iPad horizontal 1024×768', width: 1024, height: 768 },
+  { name: 'iPad vertical 768×1024', width: 768, height: 1024 },
+]) {
+  test.describe(`${vp.name} táctil (D49)`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: true })
+
+    test('con el chip del dock a la vista, ni la página ni el dock se desbordan, y el dock no crece', async ({ page }) => {
+      await openReplay(page)
+      await page.getByTestId('analysis-button').tap()
+      await page.getByTestId('analysis-tab-moments').tap()
+      const dockHeight = async () => (await page.getByTestId('replay-dock').boundingBox())!.height
+      const before = await dockHeight()
+      // La clase de nombre más largo: con «Solo dirección de carrera ×», a 768 px el dock pasaba a dos filas.
+      await page.locator('[data-testid="moments-filter"] [data-filter="raceControl"]').tap()
+      await expect(page.getByTestId('jump-filter-chip')).toBeVisible()
+      expect(await dockHeight()).toBe(before)
+      const overflow = await page.evaluate(() => {
+        const dock = document.querySelector('[data-testid="replay-dock"]')!
+        const doc = document.documentElement
+        return { page: doc.scrollWidth > doc.clientWidth, dock: dock.scrollWidth > dock.clientWidth }
+      })
+      expect(overflow).toEqual({ page: false, dock: false })
+      const chip = (await page.getByTestId('jump-filter-chip').boundingBox())!
+      const dock = (await page.getByTestId('replay-dock').boundingBox())!
+      expect(chip.x + chip.width).toBeLessThanOrEqual(dock.x + dock.width)
+    })
+  })
+}
