@@ -1,0 +1,48 @@
+# Regenera las capturas de referencia de Playwright en el mismo entorno que el CI y las sube a la rama.
+# Se lanza a mano (Actions → Snapshots → Run workflow) o con un push cuyo mensaje contenga [snapshots],
+# cuando cambia la escena a propósito.
+name: Snapshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[snapshots]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @trazada/web exec playwright install --with-deps chromium
+      - name: Update screenshots
+        env:
+          CI: 'true'
+        run: pnpm --filter @trazada/web exec playwright test --grep @screenshot --update-snapshots
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/tests/e2e/*-snapshots
+          if git diff --cached --quiet; then
+            echo "Sin cambios en las capturas"
+          else
+            git commit -m "test: capturas de referencia regeneradas en CI [skip ci]"
+            git push
+          fi

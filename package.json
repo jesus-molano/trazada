@@ -1,0 +1,19 @@
+{
+  "name": "trazada",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @trazada/web dev",
+    "build": "pnpm --filter @trazada/web generate",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "e2e": "pnpm --filter @trazada/web e2e",
+    "perf:table": "node scripts/perf-table.mjs",
+    "local": "node scripts/local.mjs"
+  }
+}

@@ -1,0 +1,708 @@
+<script setup lang="ts">
+import { parseSessionId } from '~/data/session-id'
+import { installDebugHandle } from '~/replay/debug'
+import {
+  parseTimeParam,
+  planResume,
+  RESUME_EXT,
+  type ResumeApplied,
+  resumeInfo,
+  resumeStore,
+  type ResumeTracker,
+  trackResume,
+} from '~/replay/resume'
+import { createReplayRuntime, defaultInitialMs } from '~/replay/runtime'
+import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
+import { useLayoutStore } from '~/stores/layout'
+import { usePlaybackStore } from '~/stores/playback'
+import { useSessionStore } from '~/stores/session'
+
+// Layout propio (D44): sin la cabecera global; la marca y el idioma van en la cabecera del replay (TzBrandBar).
+definePageMeta({ layout: 'replay' })
+
+const { t, locale } = useI18n()
+const route = useRoute()
+const session = useSessionStore()
+const playback = usePlaybackStore()
+const layout = useLayoutStore()
+useReplayShortcuts()
+
+/**
+ * Diseños y anchos de los paneles (ítem 15): «Espectador» o «Análisis» y los anchos de las asas, recortados para que
+ * el mapa conserve su mínimo; en tablet vertical, sin anchos (la franja de abajo de siempre).
+ */
+const root = ref<HTMLElement | null>(null)
+const { widths, ranges, vars: layoutVars, resizable } = useReplayLayout()
+
+/** Prioridad del título en la cabecera (D44): lo secundario se acorta antes que el título (useHeaderFit). */
+const bar = ref<HTMLElement | null>(null)
+const titleEl = ref<HTMLElement | null>(null)
+useHeaderFit(bar, titleEl)
+
+const id = computed(() => (typeof route.query.s === 'string' ? route.query.s : ''))
+const parsed = computed(() => parseSessionId(id.value))
+
+// La página se prerenderiza sin `?s=`: hasta montar, el título es el genérico (sin desajuste de hidratación).
+const mounted = ref(false)
+onMounted(() => {
+  mounted.value = true
+  // El diseño guardado (por navegador, D41), ya en el cliente: el HTML prerenderizado es el de por defecto.
+  layout.hydrate()
+})
+const title = computed(() => {
+  const m = session.manifest
+  if (m) return `${m.session.event} · ${t(`session.${m.session.type}`)} · ${m.session.season}`
+  return mounted.value && parsed.value ? `${parsed.value.season} · ${t(`session.${parsed.value.type}`)}` : t('replay.title')
+})
+useHead({ title })
+
+/** `?bench=1`: bench de rendimiento (docs/PERFORMANCE.md). */
+const benchMode = computed(() => route.query.bench === '1')
+/** `?t=<ms de sesión>`: instante de arranque explícito; manda sobre la posición guardada (ítem 13). */
+const urlTime = computed(() => parseTimeParam(route.query.t))
+
+// La escena (y three.js) se monta un frame después de "listo": su coste no entra en la carga de datos.
+const sceneEnabled = ref(false)
+let removeDebug: (() => void) | null = null
+/** Guardado de la posición de la sesión abierta (ítem 13). */
+let tracker: ResumeTracker | null = null
+/** Guarda por última vez la sesión que se deja; antes de soltar su runtime. */
+function stopTracking() {
+  tracker?.stop()
+  tracker = null
+}
+
+watch(
+  () => session.status,
+  (status) => {
+    removeDebug?.()
+    removeDebug = null
+    if (status !== 'ready' || !session.data) {
+      stopTracking()
+      sceneEnabled.value = false
+      playback.detach()
+      return
+    }
+    // El montaje (modelo, controles y escena) va en frames posteriores a "listo": así el mensaje de datos
+    // listos se procesa en un instante y la interfaz no se bloquea.
+    const data = session.data
+    requestAnimationFrame(() => {
+      if (session.data !== data) return
+      stopTracking()
+      // Reanudar donde se dejó (ítem 13): en pausa, en ese instante, con el coche (si sigue en la sesión), el
+      // seguimiento y la velocidad. `?t=` manda sobre lo guardado; el bench ni lo usa ni guarda nada.
+      const pb = data.manifest.session.playback
+      const defaultMs = defaultInitialMs(pb)
+      const plan =
+        benchMode.value || urlTime.value !== null
+          ? null
+          : planResume(resumeStore.get(data.id), {
+              t0Utc: data.manifest.session.t0Utc,
+              startMs: pb.startMs,
+              endMs: pb.endMs,
+              defaultMs,
+              cars: data.manifest.drivers.map((d) => d.number),
+            })
+      const rt = createReplayRuntime(data, { initialMs: urlTime.value ?? plan?.t })
+      const info = resumeInfo(data, rt.markers, defaultMs)
+      // Lo retomado, para el aviso (components/replay-overlays/TzResumeToast.vue), antes de que se monte.
+      rt.ext<ResumeApplied | null>(RESUME_EXT, () => (plan ? { plan, info } : null))
+      if (plan) rt.clock.setRate(plan.rate)
+      playback.attach(rt)
+      if (plan?.car) {
+        playback.selectCar(plan.car)
+        playback.setFollowing(plan.follow)
+      }
+      removeDebug = installDebugHandle(rt, () => playback.selectedCar)
+      if (!benchMode.value) {
+        tracker = trackResume(rt, info, () => ({ car: playback.selectedCar, follow: playback.following }))
+      }
+      requestAnimationFrame(() => (sceneEnabled.value = session.data === data))
+    })
+  },
+)
+// Elegir otro coche o dejar de seguirlo también se recuerda (1 s después del último cambio).
+watch(
+  () => [playback.selectedCar, playback.following],
+  () => tracker?.touch(),
+)
+
+const readyDetail = computed(() => {
+  const timings = session.data?.timings
+  if (!timings) return ''
+  return t('replay.readyDetail', {
+    size: formatBytes(timings.bytes, locale.value),
+    seconds: formatSeconds(timings.totalMs, locale.value),
+  })
+})
+/** Nombre del estado (empieza por lo que se ve, «Listo») y su detalle, que se abre al pulsar el punto. */
+const readyName = computed(() => (readyDetail.value ? `${t('replay.ready')} · ${readyDetail.value}` : t('replay.ready')))
+
+onMounted(() => void session.load(id.value))
+watch(id, (value) => void session.load(value))
+onBeforeUnmount(() => {
+  stopTracking()
+  removeDebug?.()
+  playback.detach()
+  session.unload()
+})
+</script>
+
+<template>
+  <section ref="root" class="tz-replay" :class="`is-${layout.preset}`" :style="layoutVars" :data-layout="layout.preset">
+    <LazyTzScene v-if="sceneEnabled" />
+
+    <!--
+      Cabecera en una sola fila (D44): marca, título, estado, avisos, estado de pista, botones del hueco y herramientas
+      de la escena. El título tiene prioridad: por debajo de 1600 px lo secundario va solo con su icono (el estado, los
+      avisos y «Cómo se dibuja», por debajo de 1920 px) y, si aun así el título no cabe entero, lo secundario pasa antes
+      a su forma corta (`data-fit`, useHeaderFit); solo con todo en su forma más corta se acorta el título con «…». Si
+      ni así cabe la fila con las banderas, el estado de pista pasa a una fila propia debajo (como mucho, una fila más;
+      nunca una columna de chips). Las etiquetas «Estimado» y las banderas nunca se esconden (las de la escena flotan
+      justo debajo, sobre el mapa).
+    -->
+    <header ref="bar" class="tz-replay__bar">
+      <TzBrandBar />
+      <h1 ref="titleEl" class="tz-replay__title" :title="title" data-testid="replay-title">{{ title }}</h1>
+      <p
+        v-if="session.status === 'ready'"
+        class="tz-replay__status"
+        role="status"
+        data-testid="replay-status"
+        data-state="ready"
+      >
+        <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1920 px, también «Listo» y el detalle. -->
+        <TzHint plain :label="readyName" :text="readyName" testid="replay-status-detail" :title="readyName">
+          <template #button>
+            <span class="tz-replay__dot" aria-hidden="true" />
+            <span class="tz-replay__ready">{{ t('replay.ready') }}</span>
+            <span class="tz-replay__detail tz-tabular" aria-hidden="true">{{ readyDetail }}</span>
+          </template>
+        </TzHint>
+      </p>
+      <!-- Avisos de calidad del pipeline (quality.notes del manifest) y, desde 2026, el del reglamento (por la temporada). -->
+      <TzSessionNotes
+        v-if="session.status === 'ready'"
+        :key="`notes-${session.id}`"
+        :notes="session.manifest?.quality.notes"
+        :season="session.manifest?.session.season"
+      />
+      <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
+      <!-- Botones y chips de otras funciones (hueco components/replay-header/, D29). -->
+      <template v-if="playback.attached">
+        <component :is="h.component" v-for="h in REPLAY_HEADER" :key="`${h.name}-${session.id}`" />
+      </template>
+      <!-- La escena teletransporta aquí sus herramientas (altura, separación y etiquetas "Estimado"). -->
+      <div id="tz-scene-tools" class="tz-replay__tools" />
+    </header>
+
+    <div v-if="session.status === 'loading' || session.status === 'error'" class="tz-replay__center">
+      <TzLoadPanel />
+    </div>
+
+    <!--
+      Escenario: la clasificación a la izquierda y la columna derecha, cada una con su asa en el borde que da al mapa
+      (ítem 15; en tablet vertical, sin asas). Al montarse, aparecen escalonados con un fundido (solo opacidad: la escena
+      los mide para encuadrar, D42).
+    -->
+    <div v-if="playback.attached" class="tz-replay__stage">
+      <TzLeaderboard :key="`lb-${session.id}`" class="tz-replay__lb" :preset="layout.preset">
+        <TzResizeHandle
+          v-if="resizable"
+          class="tz-replay__resize is-lb"
+          panel="lb"
+          edge="end"
+          :value="widths.lb"
+          :min="ranges.lb.min"
+          :max="ranges.lb.max"
+          :label="t('layout.resize.lb')"
+          :hint="t('layout.resize.hint')"
+          controls="tz-leaderboard"
+          :target="root"
+          css-var="--replay-lb-w"
+          @commit="(w: number) => layout.setWidth('lb', w)"
+          @reset="layout.setWidth('lb', null)"
+        />
+      </TzLeaderboard>
+      <aside id="tz-replay-side" class="tz-replay__side">
+        <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" :preset="layout.preset" />
+        <TzRaceControl :key="`rc-${session.id}`" />
+      </aside>
+      <TzResizeHandle
+        v-if="resizable"
+        class="tz-replay__resize is-side"
+        panel="side"
+        edge="start"
+        :value="widths.side"
+        :min="ranges.side.min"
+        :max="ranges.side.max"
+        :label="t('layout.resize.side')"
+        :hint="t('layout.resize.hint')"
+        controls="tz-replay-side"
+        :target="root"
+        css-var="--replay-side-w"
+        @commit="(w: number) => layout.setWidth('side', w)"
+        @reset="layout.setWidth('side', null)"
+      />
+    </div>
+    <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" class="tz-replay__dock" />
+    <!-- Hojas, tarjetas y avisos de otras funciones (hueco components/replay-overlays/, D29). -->
+    <template v-if="playback.attached">
+      <component :is="o.component" v-for="o in REPLAY_OVERLAYS" :key="`${o.name}-${session.id}`" />
+    </template>
+    <TzBench v-if="benchMode && sceneEnabled" :key="`bench-${session.id}`" />
+  </section>
+</template>
+
+<style scoped>
+/*
+ * Columna a toda la ventana (layouts/replay.vue): cabecera, escenario (paneles laterales) y dock; la escena 3D ocupa
+ * todo el fondo. Anchos de los paneles con los tokens de densidad (D44) o los del diseño y las asas (ítem 15: la página
+ * pone `--replay-lb-w` y `--replay-side-w` en línea, salvo en tablet vertical); las etiquetas «Estimado» de la escena
+ * flotan bajo la cabecera, a la izquierda de la columna derecha (`--replay-over-*`, que usa TzSceneTools).
+ */
+.tz-replay {
+  --replay-side-w: var(--tz-panel-w);
+  --replay-over-right: calc(var(--tz-space-6) + var(--replay-side-w) + var(--tz-space-3));
+  /*
+   * Hasta la clasificación (su ancho, más el de sus columnas extra —las de «Análisis», `--replay-lb-more`— y el
+   * margen), sin pisarla.
+   */
+  --replay-over-max: calc(
+    100% - var(--replay-over-right) - var(--replay-lb-w, var(--tz-panel-w)) - var(--replay-lb-more, 0px) - var(--tz-space-12) -
+      var(--tz-space-6)
+  );
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/*
+ * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Para decidir si cabe, el título cuenta
+ * solo con su mínimo (6 em) y el estado de pista con todos sus chips en una línea: el título crece hasta su contenido
+ * y se acorta con «…» si no llega. Antes de eso, lo secundario pasa a su forma corta por niveles (`data-fit`, más
+ * abajo). Si ni así cabe con las banderas, el estado de pista va en su propia fila (nivel 4); solo si la fila se parte
+ * igualmente (tablet en vertical), se parte. Nunca se esconde una bandera ni una etiqueta «Estimado».
+ */
+.tz-replay__bar {
+  position: relative;
+  z-index: var(--tz-z-panels);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-2) var(--tz-space-3);
+  padding: var(--tz-space-3) var(--tz-space-6) var(--tz-space-2);
+  pointer-events: none;
+}
+
+.tz-replay__bar > * {
+  flex: none;
+  pointer-events: auto;
+}
+
+/* Con un panel desplegado (avisos, «Cómo se dibuja»), la cabecera pasa por encima de los paneles laterales. */
+.tz-replay__bar:has([aria-expanded='true']) {
+  z-index: var(--tz-z-header);
+}
+
+/* Con el chip de la realización automática (centrado bajo la cabecera), las etiquetas «Estimado» bajan una fila. */
+.tz-replay__bar:has([data-testid='tv-chip']) {
+  --replay-over-top: calc(var(--tz-space-12) + var(--tz-space-2));
+}
+
+/*
+ * Con la hoja de análisis abierta, la escena está tapada entera (`rt.setSceneHidden`): sus etiquetas «Estimado» no
+ * describen nada que se vea y no flotan sobre la hoja (con la hoja, la cabecera pasa por encima de ella, por su
+ * botón desplegado). Al cerrarla vuelven; lo estimado de cada pestaña lleva su propia etiqueta.
+ */
+.tz-replay:has([data-testid='analysis-sheet']) {
+  --replay-over-display: none;
+}
+
+/* Base 0 y crece hasta su texto: cede sitio antes que nadie (con «…» y el texto entero en su título). */
+.tz-replay__title {
+  flex: 1 1 0;
+  min-width: min(6em, 100%);
+  max-width: max-content;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--tz-text-xl);
+  font-weight: var(--tz-weight-semibold);
+  line-height: var(--tz-leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Estado de pista: entero, con sus chips en una línea (nunca encoge hasta su chip más ancho: sería una columna de chips
+ * que alarga la cabecera); como mucho, el ancho de la cabecera, y entonces sus chips pasan a otra línea, en horizontal.
+ */
+.tz-replay__bar > [data-testid='track-status'] {
+  flex: none;
+  max-width: 100%;
+}
+
+/*
+ * Nivel 4 (useHeaderFit): con las banderas no cabe la fila ni con todo lo secundario en su forma más corta. El estado de
+ * pista pasa a una fila propia, debajo de todo lo demás y a todo el ancho (sus chips, en horizontal), y lo demás vuelve
+ * a la primera fila, con el título.
+ */
+.tz-replay__bar[data-fit~='4'] > [data-testid='track-status'] {
+  order: 99;
+  flex: 1 0 100%;
+}
+
+/* Portátiles (< 1360 px): huecos más justos entre los elementos de la cabecera. */
+@media (width < 1360px) {
+  .tz-replay__bar {
+    column-gap: var(--tz-space-2);
+  }
+}
+
+/* Estado: un punto (el texto «Listo» sigue en el DOM, accesible); desde 1920 px, también «Listo» y el detalle. */
+.tz-replay__status {
+  margin: 0;
+}
+
+.tz-replay__status :deep(.tz-hint__trigger) {
+  gap: var(--tz-space-2);
+  height: 28px;
+  padding: 0 var(--tz-space-2);
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-pill);
+  background: var(--tz-overlay);
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-semibold);
+  white-space: nowrap;
+}
+
+.tz-replay__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tz-success);
+}
+
+.tz-replay__detail {
+  font-weight: var(--tz-weight-regular);
+  color: var(--tz-text-muted);
+}
+
+@media (width < 1920px) {
+  .tz-replay__ready {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tz-replay__detail {
+    display: none;
+  }
+}
+
+@media (width < 640px) {
+  .tz-replay__title {
+    font-size: var(--tz-text-lg);
+  }
+}
+
+/*
+ * Prioridad del título (D44, useHeaderFit): si el título no cabe entero con lo que dicen las media queries, lo
+ * secundario adelanta su forma corta por niveles acumulativos (`data-fit="1 2 3"`), los mismos cortes que por ancho (y
+ * el 4, el estado de pista en su fila, arriba):
+ *   1 → las formas de por debajo de 1920 px (estado sin «Listo», avisos con la cifra, «Cómo se dibuja» y meteorología
+ *       sin lo de 1920, «≈ Estimado» corto);
+ *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, meteorología solo con el suyo);
+ *   3 → las de por debajo de 1360 px («Altura» y «Separar coches» con su icono, huecos más justos y el cambio de
+ *       diseño compacto: en táctil, un solo botón que alterna; con ratón, más estrecho, como el botón «?»).
+ * Lo que se acorta sigue en el nombre accesible y en el título de cada control. «Estimado» y las banderas, siempre.
+ * Un elemento nuevo de la cabecera (hueco replay-header) se suma sin tocar esto: su texto largo lleva
+ * `data-fit-hide="N"` (se oculta desde el nivel N, como con su media query) y su forma corta, si la tiene,
+ * `data-fit-show="N"` (se ve desde el nivel N).
+ */
+.tz-replay__bar[data-fit~='1'] :deep([data-fit-hide='1']),
+.tz-replay__bar[data-fit~='2'] :deep([data-fit-hide='2']),
+.tz-replay__bar[data-fit~='3'] :deep([data-fit-hide='3']) {
+  display: none !important;
+}
+
+.tz-replay__bar[data-fit~='1'] :deep([data-fit-show='1']),
+.tz-replay__bar[data-fit~='2'] :deep([data-fit-show='2']),
+.tz-replay__bar[data-fit~='3'] :deep([data-fit-show='3']) {
+  display: inline !important;
+}
+
+.tz-replay__bar[data-fit~='1'] .tz-replay__ready,
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__tag),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tz-replay__bar[data-fit~='1'] .tz-replay__detail,
+.tz-replay__bar[data-fit~='1'] :deep(.tz-notes__word),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-tools__how-text),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-weather__piece.is-wide) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__short) {
+  display: inline;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-analysis-btn),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tv-btn) {
+  padding: 0 var(--tz-space-2);
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-analysis-btn__text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tv-btn__text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__menu-text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__pieces),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__piece.is-mid),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__nodata-long) {
+  display: none;
+}
+
+/* Con lluvia, «Lluvia» se queda (sola, sin separador delante), como por debajo de 1600 px. */
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__pieces.has-always) {
+  display: inline-flex;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__piece.is-always)::before {
+  content: none;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__nodata-short) {
+  display: inline;
+}
+
+.tz-replay__bar[data-fit~='3'] {
+  column-gap: var(--tz-space-2);
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label),
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-text) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label-icon),
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-icon) {
+  display: inline-block;
+}
+
+/*
+ * El cambio de diseño y el botón «?» (Tanda 6), como por debajo de 1360 px (sus media queries): en táctil, el cambio de
+ * diseño pasa a un solo botón que alterna (con su zona táctil); con ratón, los dos van con botones de 24 px de ancho
+ * (el mínimo de WCAG 2.2).
+ */
+.tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__group) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__toggle) {
+  display: inline-flex;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__group) {
+    display: inline-flex;
+  }
+
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__toggle) {
+    display: none;
+  }
+
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__btn),
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-help-btn) {
+    padding-inline: var(--tz-space-1);
+  }
+}
+
+.tz-replay__tools {
+  margin-left: auto;
+}
+
+.tz-replay__stage {
+  /* 1 si los paneles van en una franja inferior (tablet vertical): la escena encuadra por encima. */
+  --replay-panels-bottom: 0;
+  position: relative;
+  z-index: var(--tz-z-panels);
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 var(--tz-space-6) var(--tz-space-3);
+  pointer-events: none;
+}
+
+.tz-replay__stage > * {
+  pointer-events: auto;
+}
+
+/* Columna derecha: telemetría (si hay coche seleccionado) y, debajo, dirección de carrera. */
+.tz-replay__side {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tz-panel-gap);
+  width: var(--replay-side-w);
+  pointer-events: none;
+  /*
+   * Alto mínimo de la dirección de carrera bajo la telemetría (`--replay-rc-floor`, que leen las dos): el del diseño
+   * (`--replay-rc-min`, más abajo) o, si con él no caben enteras las gráficas o las celdas de la telemetría, lo que esta
+   * le pida (`--replay-rc-fit`, TzTelemetry): un mensaje (`--replay-rc-one`; con menos alto, la lista no asoma) o solo
+   * la cabecera (`--replay-rc-head`). Nunca más que el del diseño.
+   */
+  --replay-rc-one: 6rem;
+  --replay-rc-head: 48px;
+  --replay-rc-floor: min(var(--replay-rc-min, 150px), var(--replay-rc-fit, 100vh));
+}
+
+.tz-replay__side > * {
+  pointer-events: auto;
+}
+
+/* Con un coche elegido, la dirección de carrera cede sitio (se ve su último mensaje) para que quepan las gráficas. */
+.tz-replay__side:has([data-testid='telemetry']) {
+  --replay-rc-min: 104px;
+}
+
+/* Portátiles bajos (≤ 860 px de alto): con un coche elegido, de la dirección de carrera solo queda su cabecera. */
+@media (height <= 860px) {
+  .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: var(--replay-rc-head);
+  }
+}
+
+/* «Análisis»: con un coche elegido, la dirección de carrera conserva más alto (unos cuantos mensajes a la vista). */
+.tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+  --replay-rc-min: 200px;
+}
+
+@media (height <= 860px) {
+  .tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: 120px;
+  }
+}
+
+/*
+ * Asas de los anchos (ítem 15): sobre el borde que da al mapa, la mitad sobre el panel. La de la clasificación va
+ * dentro de ella (su hueco por defecto); la de la columna derecha, en el escenario, a su izquierda.
+ */
+.tz-replay__resize.is-lb {
+  right: calc(var(--tz-resize-hit) / -2);
+}
+
+.tz-replay__resize.is-side {
+  right: calc(var(--replay-side-w) - var(--tz-resize-hit) / 2);
+}
+
+/*
+ * Al montarse el replay, la clasificación, la columna derecha y el dock aparecen escalonados con un fundido (21b): solo
+ * opacidad, porque la escena los mide para encuadrar (D42). Con reduced motion, la duración y el paso valen 0. Relleno
+ * solo hacia atrás (invisibles mientras esperan su turno): al acabar, la animación no deja nada puesto.
+ */
+.tz-replay__lb,
+.tz-replay__side,
+.tz-replay__dock {
+  animation: tz-fade var(--tz-dur-base) var(--tz-ease-enter) backwards;
+}
+
+.tz-replay__side {
+  animation-delay: var(--tz-stagger);
+}
+
+.tz-replay__dock {
+  animation-delay: calc(2 * var(--tz-stagger));
+}
+
+/* Tablet en horizontal y portátiles pequeños: paneles más estrechos. */
+@media (width <= 1100px) {
+  .tz-replay {
+    --replay-side-w: var(--tz-panel-w-narrow);
+  }
+}
+
+/*
+ * Tablet en vertical: el mapa arriba y los paneles en una franja inferior, en dos columnas. La escena
+ * encuadra el circuito por encima de esa franja (TzScene mide los paneles que ocupan la parte baja).
+ */
+@media (width <= 900px) and (orientation: portrait) {
+  .tz-replay {
+    --replay-over-right: var(--tz-space-6);
+    --replay-over-max: calc(100% - 2 * var(--tz-space-6));
+  }
+
+  .tz-replay__stage {
+    --replay-panels-bottom: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-content: end;
+    gap: var(--tz-panel-gap);
+  }
+
+  .tz-replay__stage > * {
+    position: relative;
+    max-height: 34vh;
+  }
+
+  .tz-replay__side {
+    position: relative;
+    inset: auto;
+    width: auto;
+    height: 34vh;
+  }
+
+  /* «Análisis» (ítem 15): sin anchos ni asas en vertical; la clasificación, con sus columnas extra, toma más franja. */
+  .tz-replay.is-analysis .tz-replay__stage {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  /*
+   * Con un coche elegido, la telemetría manda: la franja crece (en 34vh no cabían sus cifras) y de la dirección de
+   * carrera queda al menos su cabecera (también en «Análisis»). Las mini gráficas que no quepan enteras no van.
+   */
+  .tz-replay__stage:has([data-testid='telemetry']) > * {
+    max-height: 46vh;
+  }
+
+  .tz-replay__stage:has([data-testid='telemetry']) > .tz-replay__side {
+    height: 46vh;
+  }
+
+  .tz-replay .tz-replay__side:has([data-testid='telemetry']),
+  .tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: var(--replay-rc-head);
+  }
+}
+
+/*
+ * Carga y error: el panel, centrado en toda la página. La capa la cubre entera (cabecera incluida) y va después en el
+ * DOM, así que solo el panel recibe el puntero: la marca (volver al selector) y el cambio de idioma de la cabecera
+ * siguen pulsándose mientras se carga o con el error a la vista.
+ */
+.tz-replay__center {
+  position: absolute;
+  inset: 0;
+  z-index: var(--tz-z-panels);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.tz-replay__center > * {
+  pointer-events: auto;
+}
+</style>

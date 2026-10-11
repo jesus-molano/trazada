@@ -1,0 +1,52 @@
+{
+  "tips": {
+    "name": "First-use guide",
+    "button": "First-use guide",
+    "buttonHint": "First-use guide (? key)",
+    "counter": "{n} of {total}",
+    "next": "Next",
+    "prev": "Back",
+    "done": "Done",
+    "skip": "Skip",
+    "announce": "First-use guide, {n} of {total}: {title}. Esc closes it.",
+    "example": {
+      "caption": "Example: not data from this session",
+      "why": "Pressing it tells you why: {why}"
+    },
+    "steps": {
+      "leaderboard": {
+        "title": "The leaderboard",
+        "body": "The order according to official timing. Click a driver, or their car on the map, to see their telemetry; ↑ and ↓ move to the car ahead or behind.",
+        "bodyTouch": "The order according to official timing. Tap a driver, or their car on the map, to see their telemetry."
+      },
+      "follow": {
+        "title": "Follow a car",
+        "body": "With a car selected, “Follow” (in its panel) puts the camera behind it; double-clicking the car does the same. Esc goes back to the overview.",
+        "bodyTouch": "With a car selected, “Follow” (in its panel) puts the camera behind it; double-tapping the car does the same."
+      },
+      "timeline": {
+        "title": "The timeline",
+        "body": "Click or drag to go to another moment. Hovering shows a preview of what was happening then: the lap, the leader (or the best lap, outside races), flags and nearby marks. Space plays or pauses; ← and → move {seconds} s.",
+        "bodyTouch": "Tap or drag to go to another moment; meanwhile a preview shows what was happening then: the lap, the leader (or the best lap, outside races) and flags. Two fingers sideways on the map also move the clock."
+      },
+      "estimated": {
+        "title": "What does “Estimated” mean?",
+        "body": "Anything Trazada estimates or infers without the source giving it carries this label with a dashed border; press it to see why. What it computes from official data does not: its info button explains it. Missing data is never made up: it shows “no data”."
+      },
+      "analysis": {
+        "title": "Analysis",
+        "body": "Race trace, lap pace, tyres and moments of the session, from official timing (the moment of an overtake is approximated from GPS). “No spoilers” only shows what has already happened in the player."
+      },
+      "palette": {
+        "title": "Commands and this guide",
+        "body": "Ctrl+K (⌘K on Mac) or “/” opens the command palette: type “follow VER”, “lap 30” or “x4”. This guide comes back with the ? button in the header or the ? key.",
+        "bodyTouch": "The magnifier in the dock opens the command palette: type “follow VER”, “lap 30” or “x4”. Type “guide” to see this guide again."
+      }
+    },
+    "cmd": {
+      "title": "Show the first-use guide",
+      "detail": "Opens it again from the first step: leaderboard, following a car, timeline, “Estimated”, analysis and commands",
+      "already": "The guide is already open"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trazada/schema/events.schema.json",
+  "title": "Eventos de sesión de Trazada (race control resuelto)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "raceControl", "sectorFlags", "windows"],
+  "properties": {
+    "schema": { "const": "trazada.events" },
+    "schemaVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "raceControl": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t", "lap", "category", "flag", "scope", "sector", "car", "text", "parsed"],
+        "properties": {
+          "t": { "type": "integer", "description": "Tiempo de sesión (ms)" },
+          "lap": { "type": ["integer", "null"] },
+          "category": { "type": "string" },
+          "flag": { "type": ["string", "null"] },
+          "scope": { "type": ["string", "null"] },
+          "sector": { "type": ["integer", "null"] },
+          "car": { "type": ["string", "null"] },
+          "text": { "type": "string", "description": "Texto original, sin modificar" },
+          "parsed": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "cars", "turn", "lap"],
+            "properties": {
+              "kind": { "type": "string" },
+              "cars": { "type": "array", "items": { "type": "string" } },
+              "turn": { "type": ["integer", "null"] },
+              "lap": { "type": ["integer", "null"] },
+              "outcome": { "type": ["string", "null"] },
+              "detail": { "type": ["string", "null"] },
+              "s": { "type": ["number", "null"] },
+              "marshalSector": { "type": ["integer", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "sectorFlags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sector", "flag", "fromMs", "toMs"],
+        "properties": {
+          "sector": { "type": "integer" },
+          "flag": { "enum": ["YELLOW", "DOUBLE YELLOW", "RED"] },
+          "fromMs": { "type": "integer" },
+          "toMs": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "windows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "fromMs", "toMs"],
+        "properties": {
+          "kind": { "enum": ["sc", "vsc", "vsc-ending", "red", "yellow", "overtake", "drs"] },
+          "fromMs": { "type": "integer" },
+          "toMs": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "weather": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Desde 1.1.0, opcional. Meteorología del live timing (stream WeatherData, una muestra por minuto de la estación del circuito), en columnas del mismo largo. null = sin dato (clave ausente o ilegible en el feed): nunca el 0 con el que rellena FastF1. Sin interpolar. Ver docs/DATA_FORMAT.md.",
+      "required": ["t", "airC", "trackC", "humidity", "pressureHpa", "rain", "windMs", "windDeg"],
+      "properties": {
+        "t": { "type": "array", "items": { "type": "integer" }, "description": "Instante de cada muestra (ms de sesión), creciente" },
+        "airC": { "type": "array", "items": { "type": ["number", "null"] }, "description": "Temperatura del aire (°C)" },
+        "trackC": { "type": "array", "items": { "type": ["number", "null"] }, "description": "Temperatura de la pista (°C)" },
+        "humidity": { "type": "array", "items": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }, "description": "Humedad relativa (%)" },
+        "pressureHpa": { "type": "array", "items": { "type": ["number", "null"], "exclusiveMinimum": 0 }, "description": "Presión (hPa = mbar)" },
+        "rain": { "type": "array", "items": { "type": ["boolean", "null"] }, "description": "Lluvia sí/no (Rainfall): nunca intensidad ni mm" },
+        "windMs": { "type": "array", "items": { "type": ["number", "null"], "minimum": 0 }, "description": "Velocidad del viento (m/s)" },
+        "windDeg": {
+          "type": "array",
+          "items": { "type": ["integer", "null"], "minimum": 0, "maximum": 359 },
+          "description": "Dirección del viento (grados desde el norte, como la da el feed)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,327 @@
+/*
+ * Design tokens de Trazada. Única fuente de verdad para color, espacio, tipografía,
+ * radios, capas y movimiento. motion.ts lee las duraciones y curvas desde aquí.
+ *
+ * Identidad «Asfalto y pintura» (D47): superficies de asfalto (grises carbón neutros, algo cálidos, sin el azul
+ * de pizarra), texto y acento de pintura de pista (blanco hueso), un único color de señal (amarillo-verde de alta
+ * visibilidad) solo para el foco, la selección de texto y la traza de velocidad, y el motivo de piano (rojo/blanco)
+ * solo bajo la marca y en la pestaña activa. Placa de pintura maciza = activado. El amarillo de seguridad queda
+ * para las banderas y avisos.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Superficies: asfalto */
+  --tz-bg: #121211;
+  --tz-surface-1: #1a1a18;
+  --tz-surface-2: #21211e;
+  --tz-surface-3: #2b2a27;
+  /* Fondo de paneles sobre la escena. Sin backdrop-filter: desenfocar un lienzo animado cuesta en cada frame. */
+  --tz-overlay: rgb(18 18 17 / 0.9);
+  --tz-border: #363530;
+  --tz-border-strong: #57554c;
+  /* Fondo de las etiquetas sobre la escena (siglas y curvas) */
+  --tz-label-bg: rgb(22 22 20 / 0.86);
+  --tz-label-bg-soft: rgb(22 22 20 / 0.72);
+
+  /* Texto: pintura de pista */
+  --tz-text: #f2eee3;
+  --tz-text-muted: #b5b1a5;
+  --tz-text-faint: #9a968b; /* ≥ 4,5:1 sobre todas las superficies (WCAG AA) */
+  --tz-text-inverse: #121211;
+
+  /* Pintura de pista: blanco hueso (líneas, acento de los controles) */
+  --tz-paint: #e8e1cf;
+  --tz-paint-strong: #fffaee;
+
+  /* Acento de marca: la pintura (neutro, sin asociación con marcas de terceros) */
+  --tz-accent: var(--tz-paint);
+  --tz-accent-strong: var(--tz-paint-strong);
+  /* Relleno suave (desplegado, destellos, hover): una capa fina de pintura; el estado «activado» es la placa maciza */
+  --tz-accent-soft: rgb(232 225 207 / 0.15);
+  --tz-accent-soft-hover: rgb(232 225 207 / 0.22);
+  /* Texto e iconos sobre una placa maciza de pintura (botón principal, opción elegida): 14,37:1 */
+  --tz-accent-on: var(--tz-text-inverse);
+  /* Subrayado de enlace (.tz-link): la pintura a media opacidad */
+  --tz-link-line: rgb(232 225 207 / 0.5);
+
+  /*
+   * Señal: el único color saturado de la interfaz (anillo de foco, selección de texto y traza de velocidad).
+   * Amarillo-verde de alta visibilidad (chaleco de comisario): a ≥ 29° de los amarillos (bandera, sector,
+   * medio) y a ≥ 65° de los verdes, y lejos del violeta de mejor vuelta. Nunca significa un estado de pista.
+   * Solo se referencia aquí y en base.css (lo vigila tokens.test.ts).
+   */
+  --tz-signal: #b8ef45;
+  --tz-focus: var(--tz-signal);
+
+  /*
+   * Piano (kerb): franja de bloques rojo/blanco. Decorativa y siempre en pareja con el blanco (nunca un rojo
+   * suelto, que se leería como bandera roja); rojo óxido de pintura, no el rojo de ninguna marca. Solo bajo la
+   * marca (layouts/default.vue) y en la pestaña activa del análisis (TzAnalysis.vue); lo vigila tokens.test.ts.
+   */
+  --tz-kerb-red: #c4392d;
+  --tz-kerb-white: #ece6d6;
+  --tz-kerb-block: 9px;
+  --tz-kerb: repeating-linear-gradient(90deg, var(--tz-kerb-red) 0 var(--tz-kerb-block), var(--tz-kerb-white) var(--tz-kerb-block) calc(2 * var(--tz-kerb-block)));
+  /*
+   * Grano de asfalto: textura estática solo con gradientes (sin imagen ni animación). Cuatro motas en losetas
+   * rectangulares de lados primos entre sí (el patrón se repite cada miles de px, así que no se ve una cuadrícula):
+   * árido claro y poros oscuros. Solo en el fondo de la página, nunca en los paneles que se repintan.
+   */
+  --tz-grain:
+    radial-gradient(circle at 30% 40%, rgb(255 255 255 / 0.05) 0 0.5px, transparent 1px) 0 0 / 7px 11px,
+    radial-gradient(circle at 70% 25%, rgb(255 255 255 / 0.035) 0 0.6px, transparent 1.1px) 0 0 / 13px 9px,
+    radial-gradient(circle at 20% 75%, rgb(0 0 0 / 0.45) 0 0.7px, transparent 1.2px) 0 0 / 11px 13px,
+    radial-gradient(circle at 60% 60%, rgb(255 255 255 / 0.03) 0 0.9px, transparent 1.4px) 0 0 / 17px 19px;
+
+  /* Semánticos de carrera */
+  --tz-flag-green: #2ecc71;
+  --tz-flag-yellow: #f5c518;
+  --tz-flag-double-yellow: #ff9f1a;
+  --tz-flag-red: #ff4d4f;
+  --tz-flag-blue: #3b82f6;
+  --tz-flag-chequered: #f2eee3;
+  --tz-sc: #f59e0b;
+  --tz-vsc: #fbbf24;
+  --tz-pit: #a78bfa;
+  /* «Estimado»: magenta claro, a ΔE OKLab ≥ 0,08 del morado de mejor vuelta y del de boxes (tokens.test.ts) */
+  --tz-estimated: #e07af5;
+  --tz-danger: #ff6b6b;
+  --tz-success: #34d399;
+
+  /* Clasificación: ganar o perder puestos (siempre con flecha, cifra y texto; nunca solo el color) */
+  --tz-gain: var(--tz-success);
+  --tz-loss: var(--tz-danger);
+
+  /*
+   * Colores de cronometraje por sector, calculados por Trazada con los tiempos oficiales (no son las banderas
+   * del feed): mejor de la sesión hasta ese momento, mejor personal, el resto y «sin dato».
+   */
+  --tz-timing-best: #b36bff;
+  --tz-timing-personal: #2fbf71;
+  --tz-timing-normal: #e5c22b;
+  --tz-timing-none: #7d7a72; /* contorno, no texto: ≥ 3:1 sobre todas las superficies (3,35:1 sobre surface-3) */
+  /* Vuelta rápida (resumen de la sesión) */
+  --tz-best: var(--tz-timing-best);
+
+  /* Comparación de dos pilotos (A y B): par distinguible con daltonismo y lejos de los tonos de bandera */
+  --tz-compare-a: #5c9dff;
+  --tz-compare-b: #ff9fd0;
+  /* Opacidad del coche fantasma (posición real de B desplazada en el tiempo) */
+  --tz-ghost-opacity: 0.35;
+
+  /*
+   * Mapa de calor de velocidad: rampa secuencial de luminosidad creciente (legible con cualquier tipo de
+   * daltonismo) y sin los tonos de bandera, que siempre se pintan encima. Empate de minisector (< 50 ms): gris.
+   */
+  --tz-heat-0: #4c3fae;
+  --tz-heat-1: #4a63dc;
+  --tz-heat-2: #4593ea;
+  --tz-heat-3: #77c4f3;
+  --tz-heat-4: #d6f2ff;
+  --tz-heat-tie: #8a867c;
+
+  /* Meteorología: franja de lluvia (sí/no) y curva de temperatura de pista */
+  --tz-rain: #6fa8dc;
+  --tz-weather-temp: #d9a38c;
+
+  /* Estelas por velocidad: sin rojo, amarillo ni verde de bandera; sin muestra reciente, gris */
+  --tz-trail-slow: #8b6cff;
+  --tz-trail-mid: #4aa8ff;
+  --tz-trail-fast: #d9f3ff;
+  --tz-trail-nodata: #7d7a72;
+
+  /* Zonas de DRS deducidas de la telemetría (Estimado) */
+  --tz-drs: #7dd3fc;
+
+  /* Escena 3D y gráficas (three.js y uPlot los leen con token() de tokens.ts) */
+  /* La pista es asfalto (gris neutro, más claro con la altura) con el borde de pintura blanca. */
+  --tz-scene-bg: #121211;
+  --tz-track-low: #262624;
+  --tz-track-high: #4a4943;
+  --tz-track-edge: #a9a495;
+  --tz-track-finish: #f2eee3;
+  --tz-team-unknown: #a8a498;
+  --tz-chart-speed: var(--tz-signal);
+  --tz-chart-throttle: #34d399;
+  --tz-chart-brake: #ff6b6b;
+  /* Piezas neutras del coche 3D (la carrocería lleva el color del equipo; el casco nunca el de un piloto) */
+  --tz-car-carbon: #35373c;
+  --tz-car-dark: #1d1e22;
+  --tz-car-tyre: #242427;
+  --tz-car-rim: #6f7379;
+  --tz-car-halo: #3f4245;
+  --tz-car-helmet: #9599a0;
+  /*
+   * Ambiente de la escena: cielo según la elevación del sol en el circuito (cálculo astronómico; decorativo,
+   * no es el tiempo atmosférico), niebla solo en la pista y tono de la pista de noche (focos).
+   */
+  --tz-sky-day-zenith: #161a1f;
+  --tz-sky-day-horizon: #2e3236;
+  --tz-sky-dusk-zenith: #17161b;
+  --tz-sky-dusk-horizon: #4a3428;
+  --tz-sky-night-zenith: #070708;
+  --tz-sky-night-horizon: #15161b;
+  --tz-fog: #1a1a19;
+  --tz-track-night-tint: #b4c6ee;
+
+  /* Compuestos de neumático */
+  --tz-tyre-soft: #ff3b30;
+  --tz-tyre-medium: #ffd60a;
+  --tz-tyre-hard: #eef0f3;
+  --tz-tyre-inter: #34c759;
+  --tz-tyre-wet: #0a84ff;
+  --tz-tyre-unknown: #78756d;
+  /* 2018: compuestos con nombre y color propios */
+  --tz-tyre-hypersoft: #ffb1c8;
+  --tz-tyre-ultrasoft: #b24ba7;
+  --tz-tyre-supersoft: #ff3b30;
+  --tz-tyre-soft-2018: #ffd60a;
+  --tz-tyre-medium-2018: #eef0f3;
+  --tz-tyre-hard-2018: #3fb6f2;
+
+  /* Espaciado (base 4 px) */
+  --tz-space-0: 0;
+  --tz-space-0-5: 2px;
+  --tz-space-1: 4px;
+  --tz-space-2: 8px;
+  --tz-space-3: 12px;
+  --tz-space-4: 16px;
+  --tz-space-5: 20px;
+  --tz-space-6: 24px;
+  --tz-space-8: 32px;
+  --tz-space-10: 40px;
+  --tz-space-12: 48px;
+
+  /*
+   * Radios: cantos casi vivos, como una placa o una franja pintada. «pill» deja de ser una cápsula: las
+   * etiquetas y barras son rectángulos (los círculos de verdad usan 50 % en el componente).
+   */
+  --tz-radius-sm: 1px;
+  --tz-radius-md: 2px;
+  --tz-radius-lg: 3px;
+  --tz-radius-pill: 2px;
+
+  /*
+   * Tipografía (OFL-1.1, autoalojadas, D47): Barlow, de rotulación vial, para leer (cifras tabulares en toda la
+   * app, ver base.css); Barlow Condensed para rótulos y titulares, como una pizarra de boxes; e IBM Plex Mono para
+   * siglas y datos de cronometraje.
+   */
+  --tz-font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tz-font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --tz-font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  /*
+   * Escala ~8 % mayor que con Inter: Barlow tiene la altura de x un 8 % menor y es un 9 % más estrecha. xl y 2xl
+   * no crecen: xl protege las celdas grandes de la telemetría (una cifra como «10.414» en Plex Mono cabe en la
+   * rejilla de tres columnas) y la cabecera en tablet.
+   */
+  --tz-text-2xs: 11px;
+  --tz-text-xs: 12px;
+  --tz-text-sm: 13px;
+  --tz-text-md: 15px;
+  --tz-text-lg: 17px;
+  --tz-text-xl: 20px;
+  --tz-text-2xl: 28px;
+  /* Titular de portada: condensada y grande, como un cartel */
+  --tz-text-3xl: 52px;
+  --tz-weight-regular: 400;
+  --tz-weight-medium: 500;
+  --tz-weight-semibold: 600;
+  --tz-weight-bold: 700;
+  --tz-leading-none: 1;
+  --tz-leading-tight: 1.2;
+  /* 1,4: con la escala algo mayor, las filas de datos conservan su alto (la clasificación sigue cabiendo entera) */
+  --tz-leading-normal: 1.4;
+  /* Cifras destacadas (muestra cruda vigente: su valor nunca se anima) */
+  --tz-text-num-md: 18px;
+  --tz-text-num-lg: 24px;
+  --tz-text-num-xl: 36px;
+  /* Espaciado entre letras: rótulos en mayúsculas, siglas en monoespaciada y cifras grandes */
+  --tz-tracking-caps: 0.08em;
+  --tz-tracking-mono: 0.02em;
+  --tz-tracking-num: 0;
+  /* Rótulos condensados en mayúsculas (títulos, botones): algo de aire, como la rotulación pintada */
+  --tz-tracking-display: 0.04em;
+
+  /* Iconos (Lucide, trazo con el color del texto) */
+  --tz-icon-sm: 14px;
+  --tz-icon-md: 16px;
+  --tz-icon-lg: 20px;
+  --tz-icon-stroke: 2;
+
+  /* Paneles y densidad: cómodos en pantallas altas, compactos en las bajas (ver las media queries) */
+  --tz-panel-w: 300px;
+  --tz-panel-w-narrow: 256px;
+  /* Columna derecha del diseño «Análisis» (telemetría más grande); en tablet, la estrecha de siempre */
+  --tz-panel-w-wide: 360px;
+  --tz-panel-pad: var(--tz-space-4);
+  --tz-panel-gap: var(--tz-space-3);
+  --tz-row-h: 28px;
+  --tz-chart-h: 64px;
+  /* Gráficas de telemetría del diseño «Análisis» */
+  --tz-chart-h-tall: 96px;
+  /* Asa para cambiar el ancho de un panel: zona de agarre (la mitad sobre el panel, la otra sobre el mapa) */
+  --tz-resize-hit: 24px;
+  /* Zona táctil mínima de un control (44 px con puntero grueso) */
+  --tz-hit-min: 32px;
+  /* Tinte máximo del color de equipo en fondos y franjas (nunca como color de texto: no llega a 4,5:1) */
+  --tz-team-tint: 16%;
+
+  /* Capas */
+  --tz-z-canvas: 0;
+  --tz-z-panels: 10;
+  --tz-z-header: 20;
+  --tz-z-overlay: 100;
+  --tz-z-toast: 1000;
+
+  /* Sombras: canto superior con un filo de luz (placa) y una sombra corta y dura, sin difuminados grandes */
+  --tz-shadow-panel: inset 0 1px 0 rgb(242 238 227 / 0.05), 0 2px 0 rgb(0 0 0 / 0.45);
+
+  /* Movimiento: duraciones y curvas (Material-like, sobrias) */
+  --tz-dur-fast: 120ms;
+  --tz-dur-base: 200ms;
+  --tz-dur-slow: 360ms;
+  --tz-dur-camera: 900ms;
+  /* Destello único de una fila o un mensaje que cambia */
+  --tz-dur-flash: 900ms;
+  --tz-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --tz-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --tz-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  /* Microinteracciones: paso de una entrada escalonada, desplazamiento de entrada y escala al pulsar */
+  --tz-stagger: 24ms;
+  --tz-shift: 6px;
+  --tz-press-scale: 0.97;
+}
+
+/* Pantallas bajas (portátil de 800 px, iPad en horizontal): densidad compacta. */
+@media (max-height: 860px) {
+  :root {
+    --tz-panel-pad: var(--tz-space-3);
+    --tz-row-h: 24px;
+    --tz-text-num-xl: 30px;
+    /* Gráficas de telemetría algo más bajas: en 800 px de alto caben enteras con los sectores de la vuelta. */
+    --tz-chart-h: 54px;
+    --tz-chart-h-tall: 80px;
+  }
+}
+
+/* Puntero grueso (táctil): zonas de 44 px. */
+@media (pointer: coarse) {
+  :root {
+    --tz-hit-min: 44px;
+  }
+}
+
+/* Movimiento reducido: sin duraciones, sin escalonado, sin desplazamiento y sin escala al pulsar (1 = neutra). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tz-dur-fast: 0ms;
+    --tz-dur-base: 0ms;
+    --tz-dur-slow: 0ms;
+    --tz-dur-camera: 0ms;
+    --tz-dur-flash: 0ms;
+    --tz-stagger: 0ms;
+    --tz-shift: 0px;
+    --tz-press-scale: 1;
+  }
+}

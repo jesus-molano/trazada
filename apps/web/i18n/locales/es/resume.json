@@ -1,0 +1,19 @@
+{
+  "resume": {
+    "at": {
+      "lap": "Vuelta {lap}/{total} · {clock}",
+      "lapNoTotal": "Vuelta {lap} · {clock}"
+    },
+    "continue": {
+      "title": "Seguir viendo",
+      "where": "{session} en {at}",
+      "progress": "en el {pct} de la sesión",
+      "forget": "Olvidar {session}"
+    },
+    "toast": {
+      "resumed": "Retomado en {at}",
+      "restart": "Empezar desde el principio",
+      "close": "Cerrar aviso"
+    }
+  }
+}

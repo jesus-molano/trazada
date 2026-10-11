@@ -1,0 +1,55 @@
+{
+  "schema": "trazada.catalog",
+  "schemaVersion": "1.1.0",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "seasons": [
+    {
+      "season": 2026,
+      "events": [
+        {
+          "round": 10,
+          "slug": "spa-francorchamps",
+          "event": "Belgian Grand Prix",
+          "country": "Belgium",
+          "sessions": [
+            {
+              "session": "fp1",
+              "name": "Practice 1",
+              "status": "ok",
+              "path": "sessions/2026/10-spa-francorchamps/fp1/manifest.json",
+              "bytes": 181446
+            },
+            {
+              "session": "fp2",
+              "name": "Practice 2",
+              "status": "no-position",
+              "path": "sessions/2026/10-spa-francorchamps/fp2/manifest.json",
+              "dev": true
+            },
+            {
+              "session": "fp3",
+              "name": "Practice 3",
+              "status": "ok",
+              "path": "sessions/2026/10-spa-francorchamps/fp3/manifest.json",
+              "dev": true
+            },
+            {
+              "session": "q",
+              "name": "Qualifying",
+              "status": "ok",
+              "path": "sessions/2026/10-spa-francorchamps/q/manifest.json",
+              "dev": true
+            },
+            {
+              "session": "race",
+              "name": "Race",
+              "status": "ok",
+              "path": "sessions/2026/10-spa-francorchamps/race/manifest.json",
+              "dev": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

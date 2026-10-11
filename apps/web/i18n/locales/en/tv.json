@@ -1,0 +1,42 @@
+{
+  "tv": {
+    "name": "Auto direction",
+    "short": "Direction",
+    "off": "Off",
+    "on": "On",
+    "key": "T",
+    "keyHint": "T key: turn on or off",
+    "buttonStart": "Turn on auto direction (T key)",
+    "buttonStop": "Turn off auto direction (T key)",
+    "unavailable": "Without the 3D scene there is no auto direction",
+    "hintLabel": "What auto direction does",
+    "hint": {
+      "what": "The camera picks what to show by itself. In a race, the closest battle by the official timing tower interval (under {s} s), preferring those further ahead. Without official intervals (practice, qualifying or sessions without a tower), two cars running close together on track.",
+      "number": "The only figure it gives is the tower interval; if it picks them by how close they are on track, it gives none.",
+      "neutral": "In a race, under a safety car (real or virtual), it follows the leader of the classification; under a red flag, or outside a race, the overview.",
+      "cuts": "It chases the pair or watches them go by from a fixed camera at some corners, and never cuts more than once every {s} s.",
+      "exit": "It turns off as soon as you touch anything: picking or following a car, moving the map, Esc or the T key."
+    },
+    "chip": {
+      "label": "Auto direction",
+      "starting": "Looking for the closest battle…",
+      "duelTower": "Following {ahead} and {behind} (P{p1}–P{p2}), {interval} s apart",
+      "duelTowerNoInterval": "Following {ahead} and {behind} (P{p1}–P{p2})",
+      "duel": "Following {a} and {b}",
+      "duelProximity": "Following {a} and {b}, close on track",
+      "leader": "Following the leader, {driver}",
+      "leaderNeutral": "Following the leader, {driver} · {neutral}",
+      "overview": "Overview: no battle nearby",
+      "overviewNeutral": "Overview · {neutral}",
+      "corner": "camera at turn {label}",
+      "cornerNoLabel": "fixed camera at a corner",
+      "towerTitle": "The figure is the official timing tower interval.",
+      "proximityTitle": "Picked because they are close on track: without an official interval, no figure is given.",
+      "leaderTitle": "The leader according to the official classification.",
+      "overviewTitle": "Nothing to follow right now.",
+      "announce": "Auto direction: {text}",
+      "exit": "Exit",
+      "exitLabel": "Exit auto direction"
+    }
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "palette": {
+    "button": "Comandos",
+    "buttonHint": "Paleta de comandos (Ctrl+K o ⌘K, o la tecla /)",
+    "title": "Paleta de comandos",
+    "inputLabel": "Comando",
+    "placeholder": "Escribe un comando: seguir VER, vuelta 30, x4…",
+    "listLabel": "Sugerencias",
+    "close": "Cerrar la paleta (Esc)",
+    "empty": "Ningún comando encaja con «{q}».",
+    "examples": "Prueba con «seguir NOR», «vuelta 7 de VER», «1:02:30», «x4», «siguiente sc», «parada de NOR» o «siguiente adelantamiento».",
+    "count": "Sin sugerencias | 1 sugerencia | {n} sugerencias",
+    "rules": "Reglas fijas, sin IA: acepta español e inglés, sin tildes ni mayúsculas.",
+    "previewLabel": "Ese instante",
+    "keys": {
+      "move": "↑↓ elegir",
+      "run": "Enter ejecutar",
+      "complete": "Tab completar",
+      "close": "Esc cerrar"
+    },
+    "group": {
+      "drivers": "Pilotos",
+      "goto": "Ir a",
+      "playback": "Reproducción",
+      "compare": "Comparar",
+      "layout": "Diseño",
+      "help": "Ayuda"
+    },
+    "cmd": {
+      "driverUnknown": "Sin dato: ningún piloto «{q}» en esta sesión",
+      "play": {
+        "title": "Reproducir",
+        "detail": "Arranca el reproductor a {rate}",
+        "already": "Ya se está reproduciendo"
+      },
+      "pause": {
+        "title": "Pausar",
+        "detail": "Para el reproductor en el instante actual",
+        "already": "Ya está en pausa"
+      },
+      "rate": {
+        "title": "Velocidad {rate}",
+        "detail": "Reproduce a {rate}",
+        "already": "Ya va a {rate}",
+        "invalid": "No existe: las velocidades son {rates}"
+      },
+      "time": {
+        "title": "Ir a {clock}",
+        "detail": "Lleva el reproductor a {clock} del reloj de la sesión",
+        "outside": "Fuera de la sesión: el reloj va de {from} a {to}"
+      },
+      "relative": {
+        "forward": "Avanzar {amount}",
+        "back": "Retroceder {amount}",
+        "detail": "Hasta el reloj {clock}",
+        "atEnd": "Ya estás al final de la sesión",
+        "atStart": "Ya estás al principio de la sesión"
+      },
+      "follow": {
+        "title": "Seguir a {driver}",
+        "titleUnknown": "Seguir a «{q}»",
+        "detail": "{name} · cámara de seguimiento",
+        "already": "Ya lo sigues"
+      },
+      "select": {
+        "title": "Seleccionar a {driver}",
+        "titleUnknown": "Seleccionar a «{q}»",
+        "detail": "{name} · su telemetría en el panel, sin mover la cámara",
+        "already": "Ya está seleccionado"
+      },
+      "overview": {
+        "title": "Vista general",
+        "detail": "Deja de seguir al coche; sigue seleccionado",
+        "already": "Ya estás en la vista general"
+      },
+      "clear": {
+        "title": "Quitar la selección",
+        "detail": "Deja de seleccionar a {driver}",
+        "none": "No hay ningún coche seleccionado"
+      },
+      "jump": {
+        "noneAfter": "Ninguno más después del reloj {clock}",
+        "noneBefore": "Ninguno antes del reloj {clock}",
+        "pitDetail": "{driver} entra en el pit lane (reloj {clock}) y queda seleccionado",
+        "sectorDetail": "Sector {sector} · reloj {clock}",
+        "atDetail": "Reloj {clock}",
+        "sc": {
+          "next": "Siguiente coche de seguridad",
+          "prev": "Coche de seguridad anterior",
+          "none": "Sin dato: ningún coche de seguridad en esta sesión"
+        },
+        "vsc": {
+          "next": "Siguiente coche de seguridad virtual",
+          "prev": "Coche de seguridad virtual anterior",
+          "none": "Sin dato: ningún coche de seguridad virtual en esta sesión"
+        },
+        "red": {
+          "next": "Siguiente bandera roja",
+          "prev": "Bandera roja anterior",
+          "none": "Sin dato: ninguna bandera roja en esta sesión"
+        },
+        "yellow": {
+          "next": "Siguiente bandera amarilla",
+          "prev": "Bandera amarilla anterior",
+          "none": "Sin dato: ninguna bandera amarilla en esta sesión"
+        },
+        "chequered": {
+          "next": "Bandera a cuadros",
+          "prev": "Bandera a cuadros (ya pasada)",
+          "none": "Sin dato: ninguna bandera a cuadros en esta sesión"
+        },
+        "pit": {
+          "next": "Siguiente entrada en boxes",
+          "prev": "Entrada en boxes anterior",
+          "none": "Sin dato: ninguna entrada en boxes en esta sesión",
+          "nextCar": "Siguiente entrada en boxes de {driver}",
+          "prevCar": "Entrada en boxes anterior de {driver}",
+          "noneCar": "Sin dato: ninguna entrada en boxes de {driver} en esta sesión"
+        },
+        "moment": {
+          "next": "Siguiente momento",
+          "prev": "Momento anterior",
+          "none": "Sin dato: ningún momento en esta sesión"
+        }
+      },
+      "lap": {
+        "title": "Ir a la vuelta {lap}",
+        "detail": "El líder empieza la vuelta {lap} (reloj {clock})",
+        "fromOne": "Las vueltas empiezan en la 1",
+        "beyondTotal": "Sin dato: la carrera tiene {total} vueltas",
+        "noData": "Sin dato: no hay vueltas del líder en esta sesión",
+        "noDataMax": "Sin dato: hay vueltas del líder hasta la {max}",
+        "carTitle": "Vuelta {lap} de {driver}",
+        "carDetail": "{name} empieza la vuelta {lap} (reloj {clock}) y queda seleccionado",
+        "carOutside": "Sin dato: la vuelta {lap} de {driver} empieza fuera de lo que se puede reproducir",
+        "carNoStart": "Sin dato: no se sabe cuándo empezó la vuelta {lap} de {driver}",
+        "carNoLaps": "Sin dato: {driver} no tiene vueltas en esta sesión",
+        "carNoLap": "Sin dato: {driver} tiene vueltas hasta la {last}",
+        "needsDriver": "En libres y clasificación cada piloto lleva sus vueltas: escribe «vuelta {lap} de VER»",
+        "next": "Siguiente vuelta",
+        "prev": "Vuelta anterior",
+        "stepNeedsDriver": "En libres y clasificación cada piloto lleva sus vueltas: selecciona uno o escríbelo («siguiente vuelta de VER»)",
+        "leaderStep": "Vuelta {lap} del líder (reloj {clock})",
+        "carStep": "Vuelta {lap} de {driver} (reloj {clock})"
+      },
+      "compare": {
+        "title": "Comparar {a} con {b}",
+        "detail": "Selecciona a {a} y abre «Comparar» con {b}",
+        "same": "Elige dos pilotos distintos",
+        "already": "Ya los estás comparando",
+        "withTitle": "Comparar con {b}",
+        "needsA": "Selecciona antes un piloto o escribe los dos: «comparar NOR y PIA»",
+        "titleUnknown": "Comparar con «{q}»",
+        "hintTitle": "Comparar dos pilotos",
+        "needsTwo": "Escribe los dos: «comparar NOR y PIA»",
+        "close": "Cerrar la comparación",
+        "closeDetail": "Vuelve a la telemetría en vivo",
+        "notOpen": "No hay ninguna comparación abierta"
+      },
+      "resume": {
+        "back": "Volver a donde lo dejaste",
+        "backDetail": "Al instante que se retomó al abrir la sesión (reloj {clock})",
+        "nothing": "Al abrir esta sesión no se retomó ninguna posición",
+        "restart": "Empezar desde el principio",
+        "restartDetail": "Al inicio de la sesión (reloj {clock})",
+        "restartRace": "Poco antes de la salida (reloj {clock})",
+        "atStart": "Ya estás al principio"
+      }
+    }
+  }
+}

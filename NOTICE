@@ -1,0 +1,35 @@
+Trazada — third-party notices
+=============================
+
+This project's source code is MIT-licensed (see LICENSE). It depends on third-party
+software and data sources with their own terms:
+
+- GSAP (GreenSock) — "Standard 'no charge' license" (https://gsap.com/standard-license).
+  Proprietary, free of charge; not an OSI open-source license. Used for UI/camera transitions.
+- Barlow and Barlow Condensed (Copyright 2017 The Barlow Project Authors, https://github.com/jpt/barlow)
+  and IBM Plex Mono (Copyright 2017 IBM Corp., Reserved Font Name "Plex") — SIL Open Font License 1.1,
+  self-hosted via the @fontsource packages (@fontsource/barlow, @fontsource/barlow-condensed,
+  @fontsource/ibm-plex-mono 5.3.0), used unmodified and never renamed. License texts ship with the font
+  packages (node_modules/@fontsource/*/LICENSE).
+- three.js, TresJS, Vue, Nuxt, Pinia, vue-i18n, uPlot, troika-three-text — MIT.
+- Lucide (@lucide/vue 1.48.0) — ISC, Copyright (c) 2026 Lucide Icons and Contributors. The icons that
+  Lucide derives from the Feather project are MIT, Copyright (c) 2013-present Cole Bemis. Icon SVGs are
+  bundled into the app from the npm package (no network requests); the full license text, with the list of
+  Feather-derived icons, ships with the package (node_modules/@lucide/vue/LICENSE).
+- country-flag-icons (@catamphetamine) — MIT. Flag SVGs bundled into the app from the npm package;
+  the license text ships with the package.
+- bacinger/f1-circuits (Tomislav Bacinger) — MIT, Copyright (c) 2019-2025 Tomislav Bacinger. The circuit
+  outlines in apps/web/app/assets/circuit-outlines.json are simplified from its GeoJSON (commit pinned in
+  the file), and the approximate circuit centres in the same file (used for the sun position of the scene
+  ambience) are computed from it; full license text in apps/web/app/assets/circuit-outlines.LICENSE.txt.
+- FastF1 (pipeline) — MIT. Used to read the public F1 live-timing archive.
+- MultiViewer — circuit markers (corners, marshal sectors, map rotation) obtained via FastF1.
+  No public licence is published; used with attribution, pending explicit permission.
+- OpenF1 (optional cross-check in the pipeline) — API consumed under its terms (personal /
+  non-commercial). No OpenF1 code is included in this repository.
+
+Data notice: see DATA_NOTICE.md.
+
+Trazada is unofficial and is not associated in any way with the Formula 1 companies. F1,
+FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are
+trade marks of Formula One Licensing B.V.

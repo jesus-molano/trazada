@@ -1,0 +1,52 @@
+{
+  "tips": {
+    "name": "Guía de primer uso",
+    "button": "Guía de primer uso",
+    "buttonHint": "Guía de primer uso (tecla ?)",
+    "counter": "{n} de {total}",
+    "next": "Siguiente",
+    "prev": "Anterior",
+    "done": "Terminar",
+    "skip": "Saltar",
+    "announce": "Guía de primer uso, {n} de {total}: {title}. Esc la cierra.",
+    "example": {
+      "caption": "Ejemplo: no es un dato de esta sesión",
+      "why": "Al pulsarla, dice por qué: {why}"
+    },
+    "steps": {
+      "leaderboard": {
+        "title": "La clasificación",
+        "body": "El orden según el cronometraje oficial. Haz clic en un piloto, o en su coche en el mapa, para ver su telemetría; ↑ y ↓ pasan al de delante o al de detrás.",
+        "bodyTouch": "El orden según el cronometraje oficial. Toca un piloto, o su coche en el mapa, para ver su telemetría."
+      },
+      "follow": {
+        "title": "Seguir a un coche",
+        "body": "Con un coche elegido, «Seguir» (en su panel) pone la cámara detrás de él; un doble clic en el coche hace lo mismo. Esc vuelve a la vista general.",
+        "bodyTouch": "Con un coche elegido, «Seguir» (en su panel) pone la cámara detrás de él; un doble toque en el coche hace lo mismo."
+      },
+      "timeline": {
+        "title": "La línea de tiempo",
+        "body": "Haz clic o arrastra para ir a otro instante. Al pasar el puntero, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y las marcas cercanas. Espacio reproduce o pausa; ← y → mueven {seconds} s.",
+        "bodyTouch": "Toca o arrastra para ir a otro instante; mientras, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera) y las banderas. Dos dedos en horizontal sobre el mapa también mueven el reloj."
+      },
+      "estimated": {
+        "title": "¿Qué es «Estimado»?",
+        "body": "Lo que Trazada estima o deduce sin que lo dé la fuente lleva esta etiqueta con borde discontinuo; púlsala para ver por qué. Lo que calcula con datos oficiales no la lleva: lo explica su botón de información. Lo que falta no se inventa: se muestra «sin dato»."
+      },
+      "analysis": {
+        "title": "Análisis",
+        "body": "Race trace, ritmo por vuelta, neumáticos y momentos de la sesión, con los tiempos oficiales (el instante de un adelantamiento se aproxima con el GPS). «Sin spoilers» enseña solo lo que ya ha pasado en el reproductor."
+      },
+      "palette": {
+        "title": "Comandos y esta guía",
+        "body": "Ctrl+K (⌘K en Mac) o «/» abren la paleta de comandos: escribe «seguir VER», «vuelta 30» o «x4». Esta guía vuelve con el botón ? de la cabecera o con la tecla ?.",
+        "bodyTouch": "La lupa del dock abre la paleta de comandos: escribe «seguir VER», «vuelta 30» o «x4». Escribe «guía» para volver a ver esta guía."
+      }
+    },
+    "cmd": {
+      "title": "Ver la guía de primer uso",
+      "detail": "Vuelve a abrirla desde el primer paso: clasificación, seguir un coche, línea de tiempo, «Estimado», análisis y comandos",
+      "already": "La guía ya está abierta"
+    }
+  }
+}

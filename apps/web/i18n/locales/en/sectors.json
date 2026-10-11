@@ -1,0 +1,22 @@
+{
+  "sectors": {
+    "title": "Sectors",
+    "short": "S{n}",
+    "lapTag": "L{lap}",
+    "status": {
+      "best": "session best when set",
+      "personal": "personal best",
+      "normal": "no improvement",
+      "none": "no data"
+    },
+    "cell": "S{n} {time} ({status})",
+    "cellDeleted": "S{n} {time}",
+    "cellNoData": "S{n}: no data",
+    "lap": "Sectors of lap {lap}: {list}.",
+    "lapDeleted": "Sectors of lap {lap}, deleted by race control (does not count): {list}.",
+    "noLap": "Sectors: no completed lap (no data).",
+    "basis": "Colours calculated by Trazada from the official times; they are not the timing feed's marks.",
+    "hintLabel": "How the sector colours are calculated",
+    "hint": "Purple: best time of the session in that sector when it was set (a tie does not count). Green: personal best. Yellow: no improvement. Grey: no data. Each colour is fixed when the sector is completed and does not change afterwards. Deleted laps stop counting from the race control message. Colours calculated by Trazada from the official times; they are not the timing feed's marks."
+  }
+}

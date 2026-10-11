@@ -1,0 +1,12 @@
+{
+  "rank": {
+    "gained": "gained {n} place | gained {n} places",
+    "lost": "lost {n} place | lost {n} places",
+    "titleRace": "Compared with the previous order of the classification (never the grid): {change}.",
+    "titleBestLap": "Best-lap order, not an on-track overtake: {change}.",
+    "announceRace": "Position changes:",
+    "announceBestLap": "Changes in the best-lap order:",
+    "announceItem": "{driver}, {change}, now P{position}.",
+    "announceMore": "And {n} more."
+  }
+}

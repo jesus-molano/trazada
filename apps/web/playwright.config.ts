@@ -1,0 +1,45 @@
+import { defineConfig, devices } from '@playwright/test'
+
+const PORT = Number(process.env.E2E_PORT ?? 4173)
+// En entornos con Chromium preinstalado (p. ej. /opt/pw-browsers/chromium) se usa ese binario.
+const executablePath = process.env.PW_CHROMIUM_PATH || undefined
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: 0,
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL: `http://127.0.0.1:${PORT}`,
+    trace: 'retain-on-failure',
+    launchOptions: {
+      executablePath,
+      // WebGL por software en entornos sin GPU (CI, contenedores). Sin desplazamiento suave: en headless, la
+      // animación del desplazamiento con el teclado (End en un panel enfocado) a veces no llega a avanzar y el
+      // panel se queda arriba (explanations.spec falló 5 de 12 veces así); ningún test necesita esa animación.
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-smooth-scrolling'],
+    },
+  },
+  projects: [
+    {
+      name: 'desktop',
+      testIgnore: /perf\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // Las medidas de rendimiento corren solas, después del resto: sin CPU compartida con otros tests.
+    {
+      name: 'perf',
+      testMatch: /perf\.spec\.ts/,
+      dependencies: ['desktop'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
+  webServer: {
+    // Sirve el estático generado y, bajo /data, los datos de fixture (mismo origen).
+    command: `node tests/e2e/serve.mjs --port ${PORT}`,
+    url: `http://127.0.0.1:${PORT}/`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000,
+  },
+})

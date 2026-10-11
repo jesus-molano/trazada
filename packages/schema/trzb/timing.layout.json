@@ -1,0 +1,50 @@
+{
+  "layout": "timing",
+  "revision": 1,
+  "description": "Cronometraje: vueltas, torre de tiempos oficial (en cada cambio), estado de pista y de sesión.",
+  "tables": {
+    "laps": {
+      "columns": {
+        "car": { "type": "u8" },
+        "lap": { "type": "u16" },
+        "startMs": { "type": "i32", "unit": "ms", "description": "-1 = desconocido" },
+        "endMs": { "type": "i32", "unit": "ms" },
+        "lapMs": { "type": "i32", "unit": "ms", "description": "-1 = sin tiempo" },
+        "s1Ms": { "type": "i32", "unit": "ms" },
+        "s2Ms": { "type": "i32", "unit": "ms" },
+        "s3Ms": { "type": "i32", "unit": "ms" },
+        "compound": { "type": "u8", "enum": "compound" },
+        "tyreLife": { "type": "u8", "description": "Vueltas del set al final de la vuelta; 255 = desconocido" },
+        "fresh": { "type": "u8", "description": "0 usado, 1 nuevo, 255 desconocido" },
+        "stint": { "type": "u8" },
+        "pitInMs": { "type": "i32", "unit": "ms", "description": "-1 = no entra en boxes" },
+        "pitOutMs": { "type": "i32", "unit": "ms", "description": "-1 = no sale de boxes" },
+        "position": { "type": "u8", "description": "Posición al final de la vuelta; 0 = no aplica" },
+        "trackStatusMask": { "type": "u8", "description": "Bits: 1 amarilla, 2 SC, 4 roja, 8 VSC, 16 fin de VSC" },
+        "deleted": { "type": "u8", "description": "1 = tiempo anulado por los comisarios" }
+      }
+    },
+    "stream": {
+      "columns": {
+        "t": { "type": "i32", "unit": "ms" },
+        "car": { "type": "u8" },
+        "position": { "type": "u8" },
+        "gapToLeaderMs": { "type": "i32", "unit": "ms", "description": "-1 = líder o sin dato" },
+        "intervalMs": { "type": "i32", "unit": "ms", "description": "-1 = líder o sin dato" },
+        "lapsBehind": { "type": "u8", "description": "Vueltas por detrás del líder (si el gap se da en vueltas)" }
+      }
+    },
+    "trackStatus": {
+      "columns": {
+        "t": { "type": "i32", "unit": "ms" },
+        "code": { "type": "u8", "description": "1 libre, 2 amarilla, 4 SC, 5 roja, 6 VSC, 7 fin de VSC" }
+      }
+    },
+    "sessionStatus": {
+      "columns": {
+        "t": { "type": "i32", "unit": "ms" },
+        "status": { "type": "u8", "enum": "sessionStatus" }
+      }
+    }
+  }
+}

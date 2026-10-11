@@ -1,0 +1,5 @@
+{
+  "path": ["track", "pit", "nodata"],
+  "compound": ["UNKNOWN", "SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET", "TEST_UNKNOWN", "HYPERSOFT", "ULTRASOFT", "SUPERSOFT"],
+  "sessionStatus": ["Unknown", "Inactive", "Started", "Aborted", "Finished", "Finalised", "Ends"]
+}

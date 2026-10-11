@@ -1,0 +1,61 @@
+{
+  "layout": "car",
+  "revision": 1,
+  "description": "Telemetría de coche (CarData). Coches concatenados, ordenados por coche y tiempo.",
+  "tables": {
+    "cars": {
+      "columns": {
+        "car": {
+          "type": "u8"
+        },
+        "start": {
+          "type": "u32"
+        },
+        "count": {
+          "type": "u32"
+        }
+      }
+    },
+    "tel": {
+      "columns": {
+        "t": {
+          "type": "i32",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "ms",
+          "decode": "f64"
+        },
+        "speed": {
+          "type": "i16",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "km/h",
+          "decode": "f32"
+        },
+        "rpm": {
+          "type": "i16",
+          "encoding": "delta",
+          "shuffle": true,
+          "unit": "rpm",
+          "decode": "f32"
+        },
+        "gear": {
+          "type": "u8"
+        },
+        "throttle": {
+          "type": "u8",
+          "unit": "%",
+          "description": "0–100; 255 = sin dato (incluye el 104 del feed)"
+        },
+        "brake": {
+          "type": "u8",
+          "description": "0/1"
+        },
+        "drs": {
+          "type": "u8",
+          "description": "Código crudo del canal 45; 255 = canal ausente (2026)"
+        }
+      }
+    }
+  }
+}

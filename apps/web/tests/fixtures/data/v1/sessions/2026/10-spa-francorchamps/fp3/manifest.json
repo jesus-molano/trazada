@@ -1,0 +1,380 @@
+{
+  "schema": "trazada.session",
+  "schemaVersion": "99.0.0",
+  "minReader": "99.0.0",
+  "generatedAt": "2026-01-01T00:00:00Z",
+  "pipeline": {
+    "version": "0.1.0",
+    "source": "fastf1-offline-cache",
+    "fastf1": "3.8.3",
+    "apiCoreVersion": 15
+  },
+  "session": {
+    "season": 2026,
+    "round": 10,
+    "slug": "spa-francorchamps",
+    "event": "Belgian Grand Prix",
+    "type": "fp3",
+    "name": "Practice 3",
+    "circuit": "7-a",
+    "t0Utc": "2026-07-17T11:16:23.172Z",
+    "gmtOffset": "+02:00",
+    "playback": {
+      "startMs": 4230000,
+      "endMs": 4770000,
+      "lightsOutMs": null
+    },
+    "totalLaps": null,
+    "status": "ok"
+  },
+  "drivers": [
+    {
+      "number": "1",
+      "tla": "NOR",
+      "first": "Lando",
+      "last": "Norris",
+      "team": "McLaren",
+      "color": "#F47600"
+    },
+    {
+      "number": "3",
+      "tla": "VER",
+      "first": "Max",
+      "last": "Verstappen",
+      "team": "Red Bull Racing",
+      "color": "#4781D7"
+    },
+    {
+      "number": "5",
+      "tla": "BOR",
+      "first": "Gabriel",
+      "last": "Bortoleto",
+      "team": "Audi",
+      "color": "#F50537"
+    },
+    {
+      "number": "6",
+      "tla": "HAD",
+      "first": "Isack",
+      "last": "Hadjar",
+      "team": "Red Bull Racing",
+      "color": "#4781D7"
+    },
+    {
+      "number": "10",
+      "tla": "GAS",
+      "first": "Pierre",
+      "last": "Gasly",
+      "team": "Alpine",
+      "color": "#00A1E8"
+    },
+    {
+      "number": "11",
+      "tla": "PER",
+      "first": "Sergio",
+      "last": "Perez",
+      "team": "Cadillac",
+      "color": "#909090"
+    },
+    {
+      "number": "12",
+      "tla": "ANT",
+      "first": "Kimi",
+      "last": "Antonelli",
+      "team": "Mercedes",
+      "color": "#00D7B6"
+    },
+    {
+      "number": "16",
+      "tla": "LEC",
+      "first": "Charles",
+      "last": "Leclerc",
+      "team": "Ferrari",
+      "color": "#ED1131"
+    },
+    {
+      "number": "18",
+      "tla": "STR",
+      "first": "Lance",
+      "last": "Stroll",
+      "team": "Aston Martin",
+      "color": "#229971"
+    },
+    {
+      "number": "23",
+      "tla": "ALB",
+      "first": "Alexander",
+      "last": "Albon",
+      "team": "Williams",
+      "color": "#1868DB"
+    },
+    {
+      "number": "27",
+      "tla": "HUL",
+      "first": "Nico",
+      "last": "Hulkenberg",
+      "team": "Audi",
+      "color": "#F50537"
+    },
+    {
+      "number": "30",
+      "tla": "LAW",
+      "first": "Liam",
+      "last": "Lawson",
+      "team": "Racing Bulls",
+      "color": "#6C98FF"
+    },
+    {
+      "number": "31",
+      "tla": "OCO",
+      "first": "Esteban",
+      "last": "Ocon",
+      "team": "Haas F1 Team",
+      "color": "#9C9FA2"
+    },
+    {
+      "number": "34",
+      "tla": "CRA",
+      "first": "Jak",
+      "last": "Crawford",
+      "team": "Aston Martin",
+      "color": "#229971"
+    },
+    {
+      "number": "41",
+      "tla": "LIN",
+      "first": "Arvid",
+      "last": "Lindblad",
+      "team": "Racing Bulls",
+      "color": "#6C98FF"
+    },
+    {
+      "number": "43",
+      "tla": "COL",
+      "first": "Franco",
+      "last": "Colapinto",
+      "team": "Alpine",
+      "color": "#00A1E8"
+    },
+    {
+      "number": "44",
+      "tla": "HAM",
+      "first": "Lewis",
+      "last": "Hamilton",
+      "team": "Ferrari",
+      "color": "#ED1131"
+    },
+    {
+      "number": "55",
+      "tla": "SAI",
+      "first": "Carlos",
+      "last": "Sainz",
+      "team": "Williams",
+      "color": "#1868DB"
+    },
+    {
+      "number": "63",
+      "tla": "RUS",
+      "first": "George",
+      "last": "Russell",
+      "team": "Mercedes",
+      "color": "#00D7B6"
+    },
+    {
+      "number": "77",
+      "tla": "BOT",
+      "first": "Valtteri",
+      "last": "Bottas",
+      "team": "Cadillac",
+      "color": "#909090"
+    },
+    {
+      "number": "81",
+      "tla": "PIA",
+      "first": "Oscar",
+      "last": "Piastri",
+      "team": "McLaren",
+      "color": "#F47600"
+    },
+    {
+      "number": "87",
+      "tla": "BEA",
+      "first": "Oliver",
+      "last": "Bearman",
+      "team": "Haas F1 Team",
+      "color": "#9C9FA2"
+    }
+  ],
+  "channels": {
+    "drs": "absent",
+    "overtakeWindows": "none",
+    "elevation": "real",
+    "timingStream": "present",
+    "marshalSectors": "absent",
+    "weather": "present"
+  },
+  "quality": {
+    "coverage": {
+      "1": {
+        "pos": 0.9967,
+        "car": 1.0
+      },
+      "3": {
+        "pos": 0.9963,
+        "car": 1.0
+      },
+      "5": {
+        "pos": 0.9787,
+        "car": 1.0
+      },
+      "6": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "10": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "11": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "12": {
+        "pos": 0.9983,
+        "car": 1.0
+      },
+      "16": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "18": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "23": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "27": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "30": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "31": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "34": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "41": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "43": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "44": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "55": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "63": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "77": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "81": {
+        "pos": 1.0,
+        "car": 1.0
+      },
+      "87": {
+        "pos": 1.0,
+        "car": 1.0
+      }
+    },
+    "centerlineClosureM": 1.455,
+    "elevationRangeM": 102.4,
+    "estimated": [],
+    "notes": [
+      {
+        "code": "position-coverage-low",
+        "text": "cobertura de posición < 99 % en algún piloto",
+        "params": {
+          "cars": 1,
+          "minPos": 0.9787
+        }
+      },
+      {
+        "code": "position-glitches",
+        "text": "más del 1 % de las posiciones sin dato por fallos del feed (retrocesos o posición congelada con el coche en marcha) en los coches 5",
+        "params": {
+          "cars": "5"
+        }
+      },
+      {
+        "code": "no-corners",
+        "text": "circuito sin curvas ni rotación oficial (MultiViewer no estaba accesible al construirlo)"
+      },
+      {
+        "code": "e2e-extract",
+        "text": "Extracto recortado para tests e2e."
+      },
+      {
+        "code": "e2e-variant",
+        "text": "Variante inventada para los tests e2e (estado de error o no disponible): no es una sesión real."
+      }
+    ]
+  },
+  "files": {
+    "motion": {
+      "path": "../fp1/motion.601ce1c2.trzb.gz",
+      "bytes": 52988,
+      "sha256": "601ce1c26b5c9fde588b7c6bc858aa12aee6584028365a6314d42d2774e82b1a",
+      "layout": "motion@1",
+      "compression": "gzip"
+    },
+    "car": {
+      "path": "../fp1/car.ff27c16f.trzb.gz",
+      "bytes": 106094,
+      "sha256": "ff27c16fb648ea1baef7a01a08516687cbe30878f8bde8900922acbae24bbc8d",
+      "layout": "car@1",
+      "compression": "gzip"
+    },
+    "timing": {
+      "path": "../fp1/timing.be1be220.trzb.gz",
+      "bytes": 8739,
+      "sha256": "be1be2205ad463c3c68a00950e9a3d4f53ab42305f3353b153155c726e9b79d1",
+      "layout": "timing@1",
+      "compression": "gzip"
+    },
+    "events": {
+      "path": "../fp1/events.16810940.json.gz",
+      "bytes": 1962,
+      "sha256": "16810940b7cdcd291b5328373d5954754212cb9eb305ceaa3b9ca30bbab44016",
+      "layout": "events@1",
+      "compression": "gzip"
+    },
+    "circuit": {
+      "path": "../../../../circuits/7-a/circuit.7c659596.trzb.gz",
+      "bytes": 11663,
+      "sha256": "7c659596e68c090959766fb38e96af869b9de2dd4a25929c2ed581a345364ef4",
+      "layout": "circuit@1",
+      "compression": "gzip"
+    }
+  },
+  "attribution": [
+    "F1 live timing (vía FastF1)"
+  ]
+}

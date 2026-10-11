@@ -1,0 +1,13 @@
+{
+  "_doc": "Registro de trazados. circuitKey = Meeting.Circuit.Key del live timing (0 = desconocido, solo datos de desarrollo). officialLengthM: longitud oficial publicada; lengthSource indica de dónde sale y si falta verificarla.",
+  "circuits": {
+    "7": {
+      "name": "Spa-Francorchamps",
+      "layouts": [{ "id": "a", "fromSeason": 2018, "officialLengthM": 7004, "lengthSource": "longitud oficial publicada (7,004 km); pendiente de verificar contra fuente primaria" }]
+    }
+  },
+  "dev": {
+    "marina-bay": { "name": "Marina Bay", "layoutId": "marina-bay-dev", "officialLengthM": 4927, "lengthSource": "longitud oficial publicada (4,927 km); pendiente de verificar contra fuente primaria" },
+    "suzuka": { "name": "Suzuka", "layoutId": "suzuka-dev", "officialLengthM": 5807, "lengthSource": "longitud oficial publicada (5,807 km); pendiente de verificar contra fuente primaria" }
+  }
+}

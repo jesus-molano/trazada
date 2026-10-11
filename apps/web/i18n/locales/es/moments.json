@@ -1,0 +1,122 @@
+{
+  "moments": {
+    "tab": "Momentos",
+    "onlyRace": "Adelantamientos y duelos solo en carrera y sprint: en libres y clasificación cada piloto rueda a su aire y no hay un orden en pista que comparar vuelta a vuelta. Abajo, las neutralizaciones y los mensajes destacados de dirección de carrera, entre los que también saltan los botones de momentos del reproductor.",
+    "noLaps": "Sin dato: esta sesión no trae vueltas cronometradas.",
+    "basis": "Un adelantamiento es un cambio del orden oficial en la línea de meta entre dos vueltas seguidas de los dos coches, sin que ninguno entre ni salga de boxes en esas vueltas y a menos de 30 s el uno del otro. Si a uno le falta el paso por meta de una de esas vueltas, ahí no se afirma ninguno. Pasar y volver a pasar dentro de la misma vuelta no se ve.",
+    "lap1": "La vuelta 1 no cuenta: no hay un orden oficial anterior (la parrilla no está en los datos).",
+    "pick": "Pulsa uno para ir 5 s antes.",
+    "pickWho": {
+      "both": "En un adelantamiento se elige al que adelanta; en un duelo, al que persigue, comparado con el de delante.",
+      "overtake": "Se elige al que adelanta.",
+      "duel": "Se elige al que persigue, comparado con el de delante."
+    },
+    "overtakes": {
+      "title": "Adelantamientos",
+      "count": "{n} adelantamiento | {n} adelantamientos",
+      "who": "{passer} adelanta a {passed}",
+      "lap": "V{lap}",
+      "lapLong": "Vuelta {lap}:",
+      "at": "≈ {time}",
+      "atLong": "instante aproximado (GPS)",
+      "atNoData": "momento exacto: sin dato",
+      "atNoDataLong": "se salta al inicio de la vuelta",
+      "approx": "El adelantamiento lo confirma la línea de meta; el instante (≈) sale de las posiciones GPS de los dos coches dentro de esa vuelta.",
+      "none": "Ningún adelantamiento confirmado en la línea de meta.",
+      "nothingYet": "Todavía no hay adelantamientos confirmados hasta este instante. Avanza el reproductor o desactiva «Sin spoilers»."
+    },
+    "duels": {
+      "title": "Duelos a menos de 1 s",
+      "count": "{n} duelo | {n} duelos",
+      "basis": "Dos coches seguidos en la línea a menos de 1 s durante 3 vueltas o más, sin paradas ni SC, VSC o bandera roja en esas vueltas (con neutralización las diferencias se comprimen).",
+      "who": "{chaser} tras {leader}",
+      "laps": "V{from}–V{to}",
+      "lapsLong": "vueltas {from} a {to}",
+      "min": "mín. {gap} s",
+      "open": "en curso",
+      "overtake": "terminó en adelantamiento",
+      "none": "Ningún duelo de 3 vueltas o más a menos de 1 s.",
+      "nothingYet": "Todavía no hay duelos hasta este instante. Avanza el reproductor o desactiva «Sin spoilers».",
+      "noTrackStatus": "Sin dato de estado de pista por vuelta: no se pueden descartar las vueltas con SC o VSC, así que no se buscan duelos."
+    },
+    "others": {
+      "title": {
+        "all": "Neutralizaciones y dirección de carrera",
+        "neutralisation": "Neutralizaciones",
+        "raceControl": "Dirección de carrera"
+      },
+      "count": "{n} momento | {n} momentos",
+      "basis": {
+        "all": "El inicio de cada SC, VSC o bandera roja y los mensajes destacados de dirección de carrera: luz verde, bandera a cuadros, doble amarilla, coche detenido o trompo, incidente, sanción o bandera negra (varios de la misma clase a menos de 30 s cuentan como uno; sale el primero). El texto es el original, en inglés; la hora, la del reloj del reproductor.",
+        "neutralisation": "El inicio de cada SC, VSC o bandera roja, con la hora del reloj del reproductor.",
+        "raceControl": "Los mensajes destacados de dirección de carrera: luz verde, bandera a cuadros, doble amarilla, coche detenido o trompo, incidente, sanción o bandera negra (varios de la misma clase a menos de 30 s cuentan como uno; sale el primero). El texto es el original, en inglés; la hora, la del reloj del reproductor."
+      },
+      "none": "Ni neutralizaciones ni mensajes destacados de dirección de carrera en esta sesión.",
+      "nothingYet": "Todavía no hay ninguno hasta este instante. Avanza el reproductor o desactiva «Sin spoilers»."
+    },
+    "jump": {
+      "group": "Saltar entre momentos",
+      "prev": "Momento anterior ({kind})",
+      "next": "Momento siguiente ({kind})",
+      "key": "tecla {key}",
+      "filterLabel": "Ver y saltar entre",
+      "filterHint": "Elige qué momentos ves en esta pestaña y entre cuáles saltan los botones «Momento anterior» y «Momento siguiente» del reproductor (y las teclas coma y punto), que llegan 5 s antes: adelantamientos, inicios de duelo, neutralizaciones (SC, VSC o bandera roja) y mensajes destacados de dirección de carrera (luz verde, bandera a cuadros, doble amarilla, coche detenido o trompo, incidente, sanción o bandera negra). Con una sola clase elegida, el reproductor lo recuerda junto a esos botones.",
+      "only": "Solo {kind}",
+      "onlyTitle": "Los botones de momentos solo saltan entre {kind}. Se elige en la pestaña «Momentos» del análisis.",
+      "clear": "Saltar entre todos los momentos",
+      "filter": {
+        "all": "Todos",
+        "overtake": "Adelantamientos",
+        "duel": "Duelos",
+        "neutralisation": "Neutralizaciones",
+        "raceControl": "Dirección de carrera"
+      },
+      "kind": {
+        "all": "todos",
+        "overtake": "adelantamientos",
+        "duel": "duelos",
+        "neutralisation": "neutralizaciones",
+        "raceControl": "dirección de carrera"
+      }
+    },
+    "lane": {
+      "title": "Adelantamientos confirmados en la línea: {n}. El instante de cada marca es aproximado (GPS).",
+      "titleSoFar": "Adelantamientos confirmados hasta ahora («Sin spoilers»): {n}. El instante de cada marca es aproximado (GPS).",
+      "tick": "V{lap}: {passer} adelanta a {passed} (instante aproximado, GPS)",
+      "tickNoData": "V{lap}: {passer} adelanta a {passed} (momento exacto: sin dato; marca al inicio de la vuelta)"
+    },
+    "cmd": {
+      "onlyRace": "Solo en carrera y sprint: en libres y clasificación no hay un orden en pista que comparar vuelta a vuelta",
+      "overtake": {
+        "next": "Siguiente adelantamiento",
+        "prev": "Adelantamiento anterior",
+        "nextCar": "Siguiente adelantamiento con {driver}",
+        "prevCar": "Adelantamiento anterior con {driver}",
+        "nextPair": "Siguiente adelantamiento entre {a} y {b}",
+        "prevPair": "Adelantamiento anterior entre {a} y {b}",
+        "none": "Sin dato: ningún adelantamiento confirmado en la línea de meta en esta sesión (la vuelta 1 no cuenta)",
+        "noneCar": "Sin dato: ningún adelantamiento confirmado en la línea de meta con {driver} en esta sesión (la vuelta 1 no cuenta)",
+        "nonePair": "Sin dato: ningún adelantamiento confirmado en la línea de meta entre {a} y {b} en esta sesión (la vuelta 1 no cuenta)",
+        "detail": "V{lap}: {passer} adelanta a {passed} (≈ reloj {clock}) · queda seleccionado {select}",
+        "detailNoTime": "V{lap}: {passer} adelanta a {passed} · momento exacto: sin dato, al inicio de la vuelta (reloj {clock}) · queda seleccionado {select}",
+        "hidden": "V{lap} (≈ reloj {clock}) · sin spoilers: quién, al llegar",
+        "hiddenNoTime": "V{lap} · momento exacto: sin dato, al inicio de la vuelta (reloj {clock}) · sin spoilers: quién, al llegar"
+      },
+      "duel": {
+        "next": "Siguiente duelo",
+        "prev": "Duelo anterior",
+        "nextCar": "Siguiente duelo con {driver}",
+        "prevCar": "Duelo anterior con {driver}",
+        "nextPair": "Siguiente duelo entre {a} y {b}",
+        "prevPair": "Duelo anterior entre {a} y {b}",
+        "none": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s en esta sesión",
+        "noneCar": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s con {driver} en esta sesión",
+        "nonePair": "Sin dato: ningún duelo de 3 vueltas o más a menos de 1 s entre {a} y {b} en esta sesión",
+        "noTrackStatus": "Sin dato de estado de pista por vuelta: no se pueden descartar las vueltas con SC o VSC, así que no se buscan duelos",
+        "detail": "Desde la V{lap}: {chaser} tras {leader} a menos de 1 s (reloj {clock}) · compara a {select} con {rival}",
+        "detailNoCompare": "Desde la V{lap}: {chaser} tras {leader} a menos de 1 s (reloj {clock}) · queda seleccionado {select}",
+        "hidden": "Desde la V{lap} (reloj {clock}) · sin spoilers: quiénes, al llegar"
+      }
+    }
+  }
+}
