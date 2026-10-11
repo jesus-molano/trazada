@@ -5,11 +5,12 @@
  * si la cabecera se parte de todos modos. Las etiquetas «Estimado» y las banderas no se esconden en ningún nivel: solo
  * pasan a su forma corta, como por debajo de 1920 px.
  *
- * Se vuelve a medir cuando cambia el tamaño de la cabecera o de alguno de sus elementos (un chip de bandera que
- * entra, la meteorología que cambia de medida, el idioma, la ventana) o cuando entra o sale un elemento en cualquier
- * punto de ella (en su fila propia, el estado de pista no cambia de tamaño al perder un chip, y quizá ya quepa en la
- * del título), como mucho una vez por frame y nunca por cada frame de la reproducción. El atributo se escribe directo
- * en el DOM: cada nivel se mide en el mismo frame, sin pintar los intermedios.
+ * Se vuelve a medir cuando cambia el tamaño de la cabecera, de alguno de sus elementos (la meteorología que cambia
+ * de medida, el idioma, la ventana) o de alguno de los chips del estado de pista, o cuando entra o sale uno de ellos (en
+ * su fila propia, el estado de pista no cambia de tamaño al perder una bandera, y quizá ya quepa en la del título);
+ * como mucho una vez por frame y nunca por cada frame de la reproducción (nada más hondo: el texto que cambia dentro de
+ * un elemento, como la edad de la medida de la meteorología, no obliga a medir). El atributo se escribe directo en el
+ * DOM: cada nivel se mide en el mismo frame, sin pintar los intermedios.
  */
 import type { Ref } from 'vue'
 import { chooseLevel, fitAttribute, HEADER_FIT_MAX, type HeaderFit } from '~/engine/layout/fit'
@@ -58,13 +59,23 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
     if (!raf) raf = requestAnimationFrame(measure)
   }
 
-  /** La cabecera y cada uno de sus elementos (el destino de las herramientas de la escena, incluido). */
+  /**
+   * La cabecera, cada uno de sus elementos (el destino de las herramientas de la escena, incluido) y los chips del
+   * estado de pista; los elementos que entran o salen en la cabecera y en el estado de pista.
+   */
   function observe() {
     const b = bar.value
-    if (!resize || !b) return
+    if (!resize || !mutation || !b) return
     resize.disconnect()
+    mutation.disconnect()
     resize.observe(b)
+    mutation.observe(b, { childList: true })
     for (const child of b.children) resize.observe(child)
+    const status = b.querySelector(':scope > [data-testid="track-status"]')
+    if (status) {
+      mutation.observe(status, { childList: true })
+      for (const chip of status.children) resize.observe(chip)
+    }
   }
 
   onMounted(() => {
@@ -74,7 +85,6 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
       observe()
       schedule()
     })
-    mutation.observe(bar.value, { childList: true, subtree: true })
     observe()
     schedule()
   })
