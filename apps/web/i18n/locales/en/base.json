@@ -277,7 +277,6 @@
       "unknown": "No data"
     },
     "drsUnavailable": "Not available in {season}",
-    "drsUnavailableHint": "There is no DRS from 2026: active aerodynamics (straight mode) and overtake mode replace it, enabled track-wide by race control.",
     "drsWhy": "Why?",
     "chartSpeed": "Speed over the last {s} s",
     "chartPedals": "Pedals over the last {s} s",

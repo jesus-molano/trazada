@@ -137,6 +137,72 @@ describe('avisos de calidad del manifest (quality.notes)', () => {
   })
 })
 
+describe('aviso del reglamento de 2026 (en los avisos de la sesión)', () => {
+  const NOTES = [
+    { code: 'no-corners', text: 'circuito sin curvas ni rotación oficial' },
+    { code: 'e2e-extract', text: 'Extracto recortado.' },
+  ] as const
+
+  it('una sesión de 2026 lo muestra aparte, rotulado como información, y cuenta en la cifra del botón', async () => {
+    const w = await mountSuspended(TzSessionNotes, { props: { notes: NOTES, season: 2026 }, attachTo: document.body })
+    const button = w.find('[data-testid="session-notes"]')
+    expect(button.text()).toMatch(/^3 (avisos|notes)$/)
+    expect(button.attributes('aria-label')).toMatch(/^3 (avisos sobre los datos|notes on the data)$/)
+    expect(button.find('[data-icon]').attributes('data-icon')).toBe('alert')
+    await button.trigger('click')
+    const panel = w.find('[data-testid="session-notes-panel"]')
+    // Los avisos del procesado siguen siendo los del manifest; el del reglamento va aparte, después.
+    expect(panel.findAll('li').map((li) => li.attributes('data-code'))).toEqual(['no-corners', 'e2e-extract'])
+    const notice = panel.find('[data-testid="regulation-notice"]')
+    expect(notice.exists()).toBe(true)
+    expect(notice.classes()).toContain('is-after')
+    // Grupo con nombre (el título), con el icono de información con nombre propio.
+    expect(notice.attributes('role')).toBe('group')
+    const title = notice.find(`#${notice.attributes('aria-labelledby')}`)
+    expect(title.text()).toMatch(/^(Reglamento de 2026|2026 regulations)$/)
+    const icon = title.find('[data-icon="info"]')
+    expect(icon.attributes('role')).toBe('img')
+    expect(icon.attributes('aria-label')).toMatch(/^(Información|Information)$/)
+    // Lo que falta y lo que sí se muestra, sin afirmar de más.
+    const body = notice.find('.tz-notes__info-body').text()
+    expect(body).toMatch(/(no hay DRS|no DRS)/)
+    expect(body).toMatch(/(aerodinámica activa|active aerodynamics)/)
+    expect(body).toMatch(/(modo recta o modo curva|straight or corner mode)/)
+    expect(body).toMatch(/(modo adelantamiento|overtake mode)/)
+    expect(body).toMatch(/Boost/)
+    expect(body).toMatch(/(batería|battery)/)
+    expect(body).toMatch(/(para toda la pista|track-wide)/)
+    expect(body).toMatch(/(«Overtake activado»|“Overtake enabled”)/)
+    expect(body).toMatch(/(línea de tiempo|timeline)/)
+    // Dirección de carrera también publica el estado global del modo recta: el aviso no puede negarlo.
+    expect(body).toMatch(/(«Modo recta»|“Straight mode”)/)
+    expect(body).toMatch(/(lista de dirección de carrera|race control list)/)
+    expect(body).not.toMatch(/\{chip\}|\{straight\}/)
+  })
+
+  it('una sesión de 2025 no lo muestra (y la cifra no cambia)', async () => {
+    const w = await mountSuspended(TzSessionNotes, { props: { notes: NOTES, season: 2025 } })
+    expect(w.find('[data-testid="session-notes"]').text()).toMatch(/^2 (avisos|notes)$/)
+    expect(w.find('[data-testid="regulation-notice"]').exists()).toBe(false)
+    // Sin temporada conocida, tampoco.
+    const none = await mountSuspended(TzSessionNotes, { props: { notes: NOTES } })
+    expect(none.find('[data-testid="regulation-notice"]').exists()).toBe(false)
+  })
+
+  it('2026 sin avisos del procesado: el botón sale igual, con el icono de información y solo ese aviso', async () => {
+    const w = await mountSuspended(TzSessionNotes, { props: { notes: [], season: 2027 } })
+    const button = w.find('[data-testid="session-notes"]')
+    expect(button.text()).toMatch(/^1 (aviso|note)$/)
+    expect(button.find('[data-icon]').attributes('data-icon')).toBe('info')
+    const panel = w.find('[data-testid="session-notes-panel"]')
+    expect(panel.find('ul').exists()).toBe(false)
+    expect(panel.find('[data-testid="regulation-notice"]').classes()).not.toContain('is-after')
+    // 2025 sin avisos: nada que pintar.
+    const old = await mountSuspended(TzSessionNotes, { props: { notes: [], season: 2025 } })
+    expect(old.find('[data-testid="session-notes"]').exists()).toBe(false)
+  })
+})
+
 describe('textos que no afirman de más', () => {
   it('separación: la fuente no dice en qué parte del ancho va el coche (no «su posición real es la línea central»)', async () => {
     const w = await mountSuspended(TzEstimated, { props: { field: 'separation' } })

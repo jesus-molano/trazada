@@ -18,6 +18,7 @@
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
 import type { LayoutPreset } from '~/engine/layout/presets'
+import { hasRegulation2026Notice } from '~/data/regulation'
 import { drsState, Telemetry, type TelemetrySample } from '~/engine/telemetry/telemetry'
 import { ESC_PRIORITY, registerEscape } from '~/replay/keys'
 import { useCompareStore } from '~/stores/compare'
@@ -39,6 +40,13 @@ const rt = getRuntime()!
 const telemetry = new Telemetry(rt.session.car)
 const drsChannel = rt.session.manifest.channels.drs === 'present'
 const season = rt.session.manifest.session.season
+/**
+ * «¿Por qué?» del DRS que falta: desde 2026, el aviso del reglamento (el mismo texto que en los avisos de la sesión);
+ * antes, que esta sesión no trae el canal.
+ */
+const drsWhyText = computed(() =>
+  hasRegulation2026Notice(season) ? t('regulation.body', { chip: t('trackStatus.overtake'), straight: t('rc.kind.straight_mode') }) : t('drs.noChannel'),
+)
 /** La fuente no trae telemetría tal cual: el panel lo dice (Estimado). */
 const telemetryEstimated = rt.session.manifest.quality.estimated.includes('telemetry')
 
@@ -268,10 +276,12 @@ watch(
           <dd v-if="drsChannel" ref="drsEl" class="tz-tel__drs" data-state="none" data-testid="tel-drs">—</dd>
           <dd v-else class="tz-tel__drs-na" data-testid="tel-drs-unavailable">
             {{ t('telemetry.drsUnavailable', { season }) }}
-            <details class="tz-tel__why">
-              <summary class="tz-link">{{ t('telemetry.drsWhy') }}</summary>
-              <span class="tz-tel__hint">{{ t('telemetry.drsUnavailableHint') }}</span>
-            </details>
+            <!-- Pista flotante (TzHint): el texto del reglamento es largo y, en línea, empujaría las gráficas fuera del panel. -->
+            <TzHint plain class="tz-tel__why" :label="t('telemetry.drsWhy')" :text="drsWhyText" testid="tel-drs-why" align="end">
+              <template #button>
+                <span class="tz-link">{{ t('telemetry.drsWhy') }}</span>
+              </template>
+            </TzHint>
           </dd>
         </div>
       </dl>
@@ -503,33 +513,9 @@ watch(
   color: var(--tz-text-muted);
 }
 
+/* «¿Por qué?»: pista con aspecto de enlace (.tz-link, pintura subrayada); la zona táctil la pone TzHint. */
 .tz-tel__why {
-  display: inline;
-}
-
-/* «¿Por qué?»: desplegable con aspecto de enlace (.tz-link, pintura subrayada), sin el triángulo nativo. */
-.tz-tel__why summary {
-  position: relative;
-  display: inline;
   margin-left: var(--tz-space-1);
-  list-style: none;
-}
-
-/* Zona táctil de --tz-hit-min de alto con puntero grueso, sin mover el layout. */
-.tz-tel__why summary::after {
-  content: '';
-  position: absolute;
-  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
-}
-
-.tz-tel__why summary::-webkit-details-marker {
-  display: none;
-}
-
-.tz-tel__hint {
-  display: block;
-  margin-top: var(--tz-space-0-5);
-  font-size: var(--tz-text-2xs);
-  color: var(--tz-text-faint);
+  vertical-align: baseline;
 }
 </style>

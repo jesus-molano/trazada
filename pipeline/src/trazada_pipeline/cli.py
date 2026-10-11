@@ -254,6 +254,60 @@ def probe(timeout: float = typer.Option(10.0)) -> None:
     raise typer.Exit(0 if ok else 1)
 
 
+@app.command("probe-feed")
+def probe_feed(
+    season: int = typer.Argument(..., help="Temporada, p. ej. 2026."),
+    event: str = typer.Argument(..., help="Ronda (número) o nombre del evento según FastF1."),
+    session: str = typer.Argument(..., help="fp1|fp2|fp3|sq|sprint|q|race"),
+    cache: Path | None = typer.Option(None, help="Caché de FastF1 (por defecto .cache/fastf1, la de build)."),
+    offline: bool = typer.Option(
+        False,
+        help="Solo la caché HTTP de FastF1: tras un build sirven CarData.z y dirección de carrera; "
+        "el Index.json (temas) no lo descarga build.",
+    ),
+    max_records: int = typer.Option(
+        0, min=0, help="Lee solo los N primeros mensajes de CarData.z (0: todos)."
+    ),
+) -> None:
+    """R4: ¿publica el feed de la sesión temas o canales de CarData.z que el pipeline no lee?
+
+    Lee el Index.json (temas), el CarData.z (canales por coche) y los OVERTAKE/DRS de dirección de carrera.
+
+    Necesita una IP residencial (F1 da 403 a las de nube), salvo con --offline tras un build.
+
+    Sale con 0 si pudo leer muestras de CarData.z, haya o no canales nuevos; con 1 si no.
+    """
+    if session not in SESSION_TYPES:
+        typer.echo(f"ERROR: sesión desconocida {session!r} (usa {'|'.join(SESSION_TYPES)})", err=True)
+        raise typer.Exit(2)
+    from trazada_pipeline import feedprobe
+
+    ev: str | int = int(event) if event.isdigit() else event
+    try:
+        label, path, fetch, pages = feedprobe.open_session(
+            season, ev, session, cache or DEFAULT_CACHE, offline=offline
+        )
+    except Exception as exc:  # calendario inaccesible, evento o sesión inexistentes…
+        typer.echo(f"ERROR: {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(1) from None
+    report = feedprobe.probe(fetch, pages, max_records or None)
+    for line in feedprobe.format_report(report, label, path):
+        typer.echo(line)
+    if report.car is None:
+        typer.echo(
+            "ERROR: no se pudo leer CarData.z. Si estás en una IP de nube, F1 responde 403: "
+            "ejecuta la sonda desde una IP residencial (o con --offline tras un build).",
+            err=True,
+        )
+        raise typer.Exit(1)
+    if report.car.samples == 0:
+        typer.echo(
+            "ERROR: CarData.z no tiene ninguna muestra legible: no se puede decir nada de sus canales.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+
 def _referenced(v1: Path) -> set[Path]:
     refs: set[Path] = set()
     for manifest in v1.glob("sessions/*/*/*/manifest.json"):
