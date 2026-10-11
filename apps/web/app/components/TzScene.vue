@@ -94,7 +94,8 @@ function insets(canvas: HTMLCanvasElement): Insets {
       if (r.width > 0 && r.height > 0) fn(r)
     }
   }
-  each('.tz-replay__bar, [data-testid="scene-tools"]', (r) => (out.top = Math.max(out.top, (r.bottom - c.top) / c.height)))
+  // Arriba: la cabecera y, si las hay, las etiquetas «Estimado» de la escena, que flotan justo debajo de ella.
+  each('.tz-replay__bar, [data-testid="scene-tools"], [data-testid="scene-estimated"]', (r) => (out.top = Math.max(out.top, (r.bottom - c.top) / c.height)))
   each('[data-testid="replay-dock"]', (r) => (out.bottom = Math.max(out.bottom, (c.bottom - r.top) / c.height)))
   if (panelsBottom) {
     each('.tz-replay__stage > *', (r) => (out.bottom = Math.max(out.bottom, (c.bottom - r.top) / c.height)))
@@ -509,12 +510,12 @@ onBeforeUnmount(() => {
     </Teleport>
 
     <div v-if="supported === false" class="tz-scene__notice" role="alert" data-testid="webgl-unsupported">
-      <p class="tz-scene__title">{{ t('scene.noWebgl') }}</p>
+      <p class="tz-scene__title"><TzIcon name="webgl" />{{ t('scene.noWebgl') }}</p>
       <p class="tz-scene__hint">{{ t('scene.noWebglHint') }}</p>
     </div>
 
     <div v-if="lost" class="tz-scene__notice" role="alert" data-testid="webgl-lost">
-      <p class="tz-scene__title">{{ t('scene.contextLost') }}</p>
+      <p class="tz-scene__title"><TzIcon name="alert" />{{ t('scene.contextLost') }}</p>
       <p class="tz-scene__hint">{{ t('scene.contextLostHint') }}</p>
       <button type="button" class="tz-button" data-testid="webgl-recover" @click="remount">
         {{ t('scene.recover') }}
@@ -536,11 +537,11 @@ onBeforeUnmount(() => {
   touch-action: none;
 }
 
-/* Arriba, bajo la cabecera del replay: el dock de controles ocupa la parte inferior. */
+/* Arriba, bajo la cabecera del replay (una fila, D44): el dock de controles ocupa la parte inferior. */
 .tz-scene__notice {
   position: absolute;
   left: 50%;
-  top: 72px;
+  top: calc(var(--tz-space-12) + var(--tz-space-4));
   transform: translateX(-50%);
   width: min(480px, calc(100% - 2 * var(--tz-space-6)));
   padding: var(--tz-space-4) var(--tz-space-6);
@@ -550,7 +551,11 @@ onBeforeUnmount(() => {
   box-shadow: var(--tz-shadow-panel);
 }
 
+/* El icono acompaña al texto del aviso, nunca lo sustituye (D30). */
 .tz-scene__title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tz-space-2);
   margin: 0 0 var(--tz-space-1);
   font-weight: var(--tz-weight-semibold);
 }

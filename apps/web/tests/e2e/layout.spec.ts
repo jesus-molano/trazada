@@ -1,11 +1,15 @@
 /**
  * Escritorio y tablet: sin scroll horizontal en la página ni en los paneles; en tablet (táctil), tocar un
- * coche lo selecciona y arrastrar el timeline con el dedo mueve el reloj.
+ * coche lo selecciona y arrastrar el timeline con el dedo mueve el reloj. La cabecera del replay va en una sola fila
+ * también con todo lo que trae una carrera dev (D44), sin esconder ninguna etiqueta «Estimado».
  */
+import { createHash } from 'node:crypto'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { expect, type Page, test } from '@playwright/test'
 import { gotoApp, resetStorage } from './helpers'
 
-const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
+const SESSION = '2026/10-spa-francorchamps/fp1'
+const FP1 = `/replay?s=${SESSION}`
 const PANELS = [
   '.tz-replay__bar',
   '[data-testid="scene-tools"]',
@@ -120,6 +124,119 @@ for (const vp of VIEWPORTS) {
         expect(Math.abs(t - (startMs + 0.8 * (endMs - startMs)))).toBeLessThan((endMs - startMs) * 0.01)
       })
     }
+  })
+}
+
+/**
+ * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
+ * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
+ * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado).
+ */
+async function serveLikeDevRace(page: Page): Promise<void> {
+  let patched: Promise<Buffer> | null = null
+  const events = (url: string) =>
+    (patched ??= page.request.get(url).then(async (r) => {
+      const doc = JSON.parse(gunzipSync(await r.body()).toString('utf8'))
+      delete doc.weather
+      return gzipSync(Buffer.from(JSON.stringify(doc), 'utf8'))
+    }))
+  await page.route(`**/sessions/${SESSION}/manifest.json`, async (route) => {
+    const res = await route.fetch()
+    const manifest = await res.json()
+    const body = await events(new URL(manifest.files.events.path, route.request().url()).href)
+    manifest.channels.weather = 'absent'
+    manifest.quality.estimated = ['positions', 'telemetry', 'trackStatus']
+    manifest.quality.notes = [
+      ...manifest.quality.notes,
+      { code: 'track-status-from-race-control', text: 'Estado de pista aproximado desde race control; sin torre de tiempos.' },
+    ]
+    manifest.files.events.bytes = body.byteLength
+    manifest.files.events.sha256 = createHash('sha256').update(body).digest('hex')
+    await route.fulfill({ response: res, json: manifest })
+  })
+  await page.route(`**/sessions/${SESSION}/events.*.json.gz`, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/gzip', body: await events(route.request().url()) })
+  })
+}
+
+/** Centro vertical de cada hijo de la cabecera en el flujo (lo que flota debajo, como el chip de la realización, no). */
+function barRowMiddles(page: Page) {
+  return page.evaluate(() =>
+    [...document.querySelector('.tz-replay__bar')!.children]
+      .filter((c) => getComputedStyle(c).position !== 'absolute')
+      .map((c) => c.getBoundingClientRect())
+      .filter((r) => r.height > 0)
+      .map((r) => Math.round(r.top + r.height / 2)),
+  )
+}
+
+for (const vp of [
+  { name: 'escritorio 1440×900', width: 1440, height: 900 },
+  { name: 'portátil 1280×800', width: 1280, height: 800 },
+]) {
+  test.describe(`${vp.name}: cabecera del replay`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height } })
+
+    test('con lo de una carrera dev (5 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
+      await resetStorage(page)
+      await serveLikeDevRace(page)
+      await open(page)
+      const bar = page.locator('.tz-replay__bar')
+      // Todo lo que partía la cabecera está ahí: avisos, estado de pista deducido con su bandera, meteorología sin dato,
+      // análisis y herramientas de la escena.
+      await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+      await expect(page.getByTestId('track-status').getByTestId('track-sector')).toBeVisible()
+      await expect(page.getByTestId('weather')).toBeVisible()
+      await expect(page.locator('.tz-weather')).toHaveAttribute('data-state', 'absent')
+      await expect(page.getByTestId('analysis-button')).toBeVisible()
+      await expect(page.getByTestId('scene-tools')).toBeVisible()
+
+      const middles = await barRowMiddles(page)
+      expect(middles.length).toBeGreaterThanOrEqual(7)
+      expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+      expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(56)
+      expect(await overflowing(page)).toEqual([])
+
+      // Ninguna etiqueta «Estimado» se esconde: la del estado de pista, en la cabecera (corta, pulsable); la de las
+      // posiciones, flotando justo debajo, sobre el mapa, sin tapar la clasificación ni la columna derecha.
+      const words = /Estimad[oa]|Estimated/
+      const track = page.getByTestId('track-status').locator('[data-testid="estimated"][data-field="trackStatus"]')
+      await expect(track).toBeVisible()
+      await expect(track).toContainText(words, { useInnerText: true })
+      const positions = page.getByTestId('scene-estimated').locator('[data-testid="estimated"][data-field="positions"]')
+      await expect(positions).toBeVisible()
+      await expect(positions).toContainText(words, { useInnerText: true })
+      const p = (await positions.boundingBox())!
+      const b = (await bar.boundingBox())!
+      const lb = (await page.getByTestId('leaderboard').boundingBox())!
+      const side = (await page.locator('.tz-replay__side').boundingBox())!
+      expect(p.y).toBeGreaterThanOrEqual(b.y + b.height - 1)
+      expect(p.x).toBeGreaterThanOrEqual(lb.x + lb.width)
+      expect(p.x + p.width).toBeLessThanOrEqual(side.x)
+
+      // Pulsar «Estimado» explica por qué (en iPad un título no se ve).
+      await track.getByRole('button').click()
+      await expect(page.getByTestId('estimated-trackStatus-why-panel')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('estimated-trackStatus-why-panel')).toBeHidden()
+    })
+
+    test('el replay ocupa la ventana exacta: sin cabecera global, con el dock y el disclaimer a la vista', async ({ page }) => {
+      await open(page)
+      await expect(page.locator('.tz-header')).toHaveCount(0)
+      await expect(page.getByTestId('brand-link')).toBeVisible()
+      const dock = (await page.getByTestId('replay-dock').boundingBox())!
+      const footer = (await page.getByTestId('disclaimer').boundingBox())!
+      expect(dock.y + dock.height).toBeLessThanOrEqual(footer.y)
+      expect(Math.round(footer.y + footer.height)).toBe(vp.height)
+      expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(vp.height)
+      // Desde 1280 px, controles y timeline en una sola fila: el dock no llega a los 80 px de alto.
+      expect(dock.height).toBeLessThanOrEqual(80)
+      const play = (await page.getByTestId('play-toggle').boundingBox())!
+      const timeline = (await page.getByTestId('timeline').boundingBox())!
+      expect(timeline.x).toBeGreaterThan(play.x + play.width)
+      expect(Math.abs(timeline.y + timeline.height / 2 - (play.y + play.height / 2))).toBeLessThan(dock.height / 2)
+    })
   })
 }
 

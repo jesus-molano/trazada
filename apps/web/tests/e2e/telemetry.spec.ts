@@ -66,6 +66,40 @@ test('clic en el coche (raycast): panel de telemetría con DRS "no disponible en
     .toBeGreaterThan(0.6)
 })
 
+test('cabecera del panel: cerrar es un icono con nombre; seguir y comparar, placa maciza cuando están activos', async ({ page }) => {
+  await open(page)
+  await page.locator('[data-testid="leaderboard"] [data-car]').first().getByRole('button').click()
+  const panel = page.getByTestId('telemetry')
+  await expect(panel).toBeVisible()
+  // Las cifras grandes de la muestra cruda: velocidad y marcha.
+  await expect(page.getByTestId('tel-speed')).toHaveClass(/tz-num--xl/)
+  await expect(page.getByTestId('tel-gear')).toHaveClass(/tz-num--xl/)
+  // El color de equipo tiñe la cabecera, nunca el texto.
+  const head = panel.locator('.tz-tel__head')
+  expect(await head.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('gradient')
+  const tla = panel.locator('.tz-tel__tla')
+  expect(await tla.evaluate((el) => getComputedStyle(el).color)).toBe(await page.evaluate(() => getComputedStyle(document.body).color))
+
+  // «Seguir»: con el texto y su icono; activo, una placa de pintura con el texto oscuro encima.
+  const follow = page.getByTestId('follow-toggle')
+  await expect(follow.locator('[data-icon="follow"]')).toBeVisible()
+  const idle = await follow.evaluate((el) => getComputedStyle(el).backgroundColor)
+  await follow.click()
+  await expect(follow).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => follow.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(idle)
+  await follow.click()
+  await expect(follow).toHaveAttribute('aria-pressed', 'false')
+
+  // Cerrar: un botón de icono (sin «×» suelto) con su nombre accesible.
+  const close = page.getByTestId('telemetry-close')
+  await expect(close).toHaveAccessibleName(/^(Cerrar telemetría|Close telemetry)$/)
+  await expect(close.locator('[data-icon="close"]')).toBeVisible()
+  expect((await close.textContent())!.trim()).toBe('')
+  await close.click()
+  await expect(panel).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBeNull()
+})
+
 test('seguir con la cámara y volver con Esc; con el foco de un clic, el espacio reproduce', async ({ page }) => {
   await open(page)
   const overview = await page.evaluate(() => window.__trazada!.scene.camera)

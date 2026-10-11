@@ -134,4 +134,24 @@ describe('TzHint', () => {
     })
     expect(w.find('[data-testid="hint-panel"] strong').text()).toBe('Detalle')
   })
+
+  it('`plain` con el hueco `button`: el botón es su contenido (un chip entero), sin aspecto de botón de icono', async () => {
+    const w = await mountSuspended(TzHint, {
+      props: { label: 'Estimado: algo', text: 'Por qué lo es.', plain: true, testid: 'chip' },
+      slots: { button: () => h('span', { class: 'mine' }, 'Estimado: algo') },
+      attachTo: document.body,
+    })
+    const button = w.find('[data-testid="chip"]')
+    expect(button.element.tagName).toBe('BUTTON')
+    expect(button.classes()).toContain('tz-hint__trigger')
+    expect(button.classes()).not.toContain('tz-iconbtn')
+    // Su contenido sustituye al icono «ⓘ»; el nombre accesible empieza por lo que se ve.
+    expect(button.find('.mine').text()).toBe('Estimado: algo')
+    expect(button.find('svg').exists()).toBe(false)
+    expect(button.attributes('aria-label')).toBe('Estimado: algo')
+    await button.trigger('click')
+    await nextTick()
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(w.find('[data-testid="chip-panel"]').text()).toBe('Por qué lo es.')
+  })
 })

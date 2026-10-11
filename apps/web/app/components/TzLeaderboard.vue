@@ -9,6 +9,10 @@
  *
  * Comparar dos pilotos (ítem 1, D31): con un coche seleccionado, Mayús+clic en otra fila lo elige para comparar (otra
  * vez, lo quita). Mientras se compara, las dos filas llevan su marca «A» y «B» (letra y texto, con el color de cada uno).
+ *
+ * Jerarquía (D44, D47): posiciones en la condensada, cada fila con su `--team` (franja y, en la fila elegida, un tinte
+ * y un filo; nunca como color de texto), el modo del gap como control segmentado (la opción elegida, placa maciza) y la
+ * bandera azul con su icono, su título y su texto (nunca solo el color).
  */
 import type { RankBadge } from '~/composables/useLeaderboard'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
@@ -40,6 +44,13 @@ settings.hydrate()
 const season = useSessionStore().data?.manifest.session.season ?? 0
 /** Color del compuesto (según la temporada) para el borde de su letra. */
 const compoundStyle = (compound: string) => ({ '--compound': `var(${compoundToken(season, compound)})` })
+/** Color del equipo de una fila (franja y tinte de la fila elegida); sin dato, el gris de «sin dato», nunca uno inventado. */
+const teamStyle = (r: LeaderboardRow) => ({ '--team': r.driver?.color || 'var(--tz-team-unknown)' })
+/** Compuesto y vueltas del neumático: título (ratón) y texto para lectores de pantalla (en iPad un título no se ve). */
+function tyreText(r: LeaderboardRow): string {
+  const compound = t(`compound.${r.compound}`)
+  return r.tyreLife === null ? t('leaderboard.tyreNoLife', { compound }) : t('leaderboard.tyre', { compound, laps: r.tyreLife }, r.tyreLife)
+}
 
 const gapFmt = computed(() => new Intl.NumberFormat(locale.value, { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
 
@@ -114,8 +125,8 @@ function compareRole(car: string): 'a' | 'b' | null {
     data-testid="leaderboard"
   >
     <header class="tz-lb__head">
-      <h2 class="tz-lb__title">{{ t('leaderboard.title') }}</h2>
-      <div class="tz-lb__modes" role="group" :aria-label="t('leaderboard.gapMode')">
+      <h2 class="tz-panel-title tz-lb__title">{{ t('leaderboard.title') }}</h2>
+      <div class="tz-segmented tz-lb__modes" role="group" :aria-label="t('leaderboard.gapMode')">
         <button
           type="button"
           class="tz-lb__mode"
@@ -155,6 +166,7 @@ function compareRole(car: string): 'a' | 'b' | null {
         :data-position-known="r.positionKnown"
         :data-change="b ? (b.delta > 0 ? 'up' : 'down') : undefined"
         :data-compare="compareRole(r.car) ?? undefined"
+        :style="teamStyle(r)"
       >
         <button
           type="button"
@@ -168,7 +180,7 @@ function compareRole(car: string): 'a' | 'b' | null {
             :title="r.positionKnown ? undefined : t('leaderboard.positionUnknown')"
             data-testid="lb-position"
           >{{ r.positionKnown ? r.position : '—' }}</span>
-          <span class="tz-lb__team" :style="{ background: r.driver?.color ?? 'var(--tz-team-unknown)' }" aria-hidden="true" />
+          <span class="tz-lb__team" aria-hidden="true" />
           <span class="tz-lb__tla">{{ r.driver?.tla ?? r.car }}</span>
           <span class="tz-lb__flags">
             <span
@@ -198,23 +210,19 @@ function compareRole(car: string): 'a' | 'b' | null {
               :title="t('leaderboard.blueFlag', { s: BLUE_FLAG_MS / 1000 })"
               data-testid="blue-flag"
             >
+              <TzIcon name="flag" size="sm" />
               <span class="tz-visually-hidden">{{ t('leaderboard.blueFlag', { s: BLUE_FLAG_MS / 1000 }) }}</span>
             </span>
             <span v-if="r.inPit" class="tz-lb__chip tz-lb__chip--pit">{{ t('leaderboard.pit') }}</span>
             <span v-else-if="r.noSignal" class="tz-lb__chip" data-testid="no-signal">{{ t('leaderboard.noSignal') }}</span>
           </span>
           <span class="tz-lb__gap tz-tabular">{{ gapText(r) }}</span>
-          <span
-            class="tz-lb__tyre"
-            :style="compoundStyle(r.compound)"
-            :title="
-              r.tyreLife === null
-                ? t('leaderboard.tyreNoLife', { compound: t(`compound.${r.compound}`) })
-                : t('leaderboard.tyre', { compound: t(`compound.${r.compound}`), laps: r.tyreLife }, r.tyreLife)
-            "
-          >
-            <span class="tz-lb__compound" :class="{ 'is-long': compoundLetter(r.compound).length > 1 }">{{ compoundLetter(r.compound) }}</span>
-            <span class="tz-lb__life tz-tabular">{{ r.tyreLife ?? '' }}</span>
+          <span class="tz-lb__tyre" :style="compoundStyle(r.compound)" :title="tyreText(r)">
+            <span class="tz-lb__compound" :class="{ 'is-long': compoundLetter(r.compound).length > 1 }" aria-hidden="true">{{
+              compoundLetter(r.compound)
+            }}</span>
+            <span class="tz-lb__life tz-tabular" aria-hidden="true">{{ r.tyreLife ?? '' }}</span>
+            <span class="tz-visually-hidden">{{ tyreText(r) }}</span>
           </span>
           <component :is="c.component" v-for="c in cells" :key="c.name" :row="r" :preset="preset" />
         </button>
@@ -251,7 +259,7 @@ function compareRole(car: string): 'a' | 'b' | null {
    */
   --lb-cols: 22px 4px 38px 1fr 76px 38px;
   --lb-gap: var(--tz-space-2);
-  --lb-w: 290px;
+  --lb-w: var(--tz-panel-w);
   position: absolute;
   top: 0;
   left: 0;
@@ -274,32 +282,14 @@ function compareRole(car: string): 'a' | 'b' | null {
   padding: var(--tz-space-1) var(--tz-space-2) var(--tz-space-2);
 }
 
+/* Título de panel común (.tz-panel-title: condensada, mayúsculas, --tz-tracking-caps, una línea). */
 .tz-lb__title {
-  margin: 0;
-  font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--tz-text-muted);
+  flex: 0 1 auto;
 }
 
+/* «Líder / Intervalo»: control segmentado (.tz-segmented); la opción elegida es una placa maciza de pintura. */
 .tz-lb__modes {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.tz-lb__mode {
-  padding: 2px var(--tz-space-2);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-sm);
-  background: transparent;
-  font-size: var(--tz-text-2xs);
-  cursor: pointer;
-}
-
-.tz-lb__mode[aria-pressed='true'] {
-  border-color: var(--tz-accent);
-  color: var(--tz-accent-strong);
+  flex: none;
 }
 
 .tz-lb__rows {
@@ -369,12 +359,14 @@ function compareRole(car: string): 'a' | 'b' | null {
   color: var(--tz-loss);
 }
 
+/* Fila de --tz-row-h (densidad: 28 px en pantallas altas, 24 en las bajas); la clasificación cabe entera. */
 .tz-lb__btn {
   display: grid;
   grid-template-columns: var(--lb-cols);
   align-items: center;
   gap: var(--lb-gap);
   width: 100%;
+  min-height: var(--tz-row-h);
   padding: 3px var(--tz-space-2);
   border: 0;
   border-radius: var(--tz-radius-sm);
@@ -392,13 +384,21 @@ function compareRole(car: string): 'a' | 'b' | null {
   grid-template-columns: var(--lb-cols) var(--lb-cells);
 }
 
-.tz-lb__btn:hover {
-  background: var(--tz-surface-2);
+@media (hover: hover) {
+  .tz-lb__btn:hover {
+    background: var(--tz-surface-2);
+  }
 }
 
+/*
+ * Fila elegida: un tinte del color del equipo (≤ --tz-team-tint) y su filo a la izquierda; sin color-mix, la superficie
+ * lisa. El texto sigue en los colores del tema: el color de equipo nunca es color de texto.
+ */
 .is-selected .tz-lb__btn {
   background: var(--tz-surface-3);
+  background: color-mix(in oklab, var(--team) var(--tz-team-tint), var(--tz-surface-2));
   outline: 1px solid var(--tz-border-strong);
+  box-shadow: inset 3px 0 0 var(--team);
 }
 
 .is-nosignal .tz-lb__tla,
@@ -406,7 +406,10 @@ function compareRole(car: string): 'a' | 'b' | null {
   color: var(--tz-text-faint);
 }
 
+/* Posición en la condensada, como en una torre de tiempos pintada. */
 .tz-lb__pos {
+  font-family: var(--tz-font-display);
+  font-weight: var(--tz-weight-semibold);
   color: var(--tz-text-muted);
   text-align: end;
 }
@@ -414,13 +417,14 @@ function compareRole(car: string): 'a' | 'b' | null {
 .tz-lb__team {
   width: 4px;
   height: 16px;
-  border-radius: 2px;
+  border-radius: var(--tz-radius-sm);
+  background: var(--team);
 }
 
 .tz-lb__tla {
   font-family: var(--tz-font-mono);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tz-tracking-mono);
 }
 
 .tz-lb__flags {
@@ -430,11 +434,15 @@ function compareRole(car: string): 'a' | 'b' | null {
   min-width: 0;
 }
 
+/* Bandera azul: el icono teñido (con su título y su texto oculto), nunca un cuadrado de color suelto. */
 .tz-lb__blue {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--tz-flag-blue);
+  display: inline-flex;
+  flex: none;
+  color: var(--tz-flag-blue);
+}
+
+.tz-lb__blue :deep(.tz-icon) {
+  fill: currentColor;
 }
 
 .tz-lb__chip {
@@ -485,17 +493,19 @@ function compareRole(car: string): 'a' | 'b' | null {
 .tz-lb__compound {
   display: inline-grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--compound, var(--tz-tyre-unknown));
   border-radius: 50%;
-  font-size: 9px;
+  font-size: var(--tz-text-2xs);
   font-weight: var(--tz-weight-bold);
+  line-height: var(--tz-leading-none);
 }
 
+/* Compuestos de 2018 con dos letras (HS, US, SS): más juntas y algo menores, dentro del círculo. */
 .tz-lb__compound.is-long {
   letter-spacing: -0.06em;
-  font-size: 7px;
+  font-size: calc(var(--tz-text-2xs) * 0.75);
 }
 
 .tz-lb__life {
@@ -506,9 +516,9 @@ function compareRole(car: string): 'a' | 'b' | null {
 
 @media (width <= 1100px) {
   .tz-lb {
-    --lb-cols: 20px 4px 34px 1fr 64px 34px;
+    --lb-cols: 20px 4px 34px 1fr 64px 38px;
     --lb-gap: 6px;
-    --lb-w: 250px;
+    --lb-w: var(--tz-panel-w-narrow);
   }
 }
 

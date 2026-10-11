@@ -141,7 +141,8 @@ describe('tokens de diseño', () => {
   })
 
   it('el piano (kerb) solo bajo la marca y en la pestaña activa del análisis: no se extiende como disfraz (D47)', () => {
-    const allowed = ['components/replay-overlays/TzAnalysis.vue', 'layouts/default.vue']
+    // La marca está en la cabecera de la portada (layouts/default.vue) y en la del replay (TzBrandBar, D44).
+    const allowed = ['components/TzBrandBar.vue', 'components/replay-overlays/TzAnalysis.vue', 'layouts/default.vue']
     // Comprueba el uso: vale con cero usos (las piezas lo adoptan en su propio commit) y nunca fuera de esos dos.
     expect(usersOf('--tz-kerb').filter((f) => !allowed.includes(f))).toEqual([])
   })

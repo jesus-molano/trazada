@@ -134,6 +134,7 @@
   "sessionNotes": {
     "button": "{n} note | {n} notes",
     "buttonName": "{n} note on the data | {n} notes on the data",
+    "word": "note | notes",
     "title": "Processing notes for this session",
     "raw": "Untranslated note (original text):",
     "note": {
@@ -199,6 +200,7 @@
   },
   "estimated": {
     "tag": "Estimated:",
+    "tagShort": "Estimated",
     "hintUnknown": "This value does not come from the source as is: it has been derived.",
     "fields": {
       "elevation": "visual exaggeration ×{k}",
@@ -362,6 +364,7 @@
     },
     "yellow": "Yellow on track",
     "noGeometry": "No marshal sector geometry for this circuit: the flag cannot be placed on the map.",
+    "noGeometryLabel": "Why the flag is not on the map",
     "overtake": "Overtake enabled",
     "drs": "DRS enabled"
   },

@@ -1,0 +1,8 @@
+{
+  "ui": {
+    "brand": {
+      "name": "{app}: volver al selector de sesiones",
+      "back": "Volver al selector de sesiones"
+    }
+  }
+}
