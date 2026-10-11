@@ -6,6 +6,9 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
+// La hoja de análisis antes que una de sus pestañas: el hueco importa las pestañas y cada pestaña usa la hoja.
+import { useAnalysis } from '~/composables/useAnalysis'
+import TzMomentsTab from '~/components/analysis-tabs/TzMomentsTab.vue'
 import TzCompare from '~/components/TzCompare.vue'
 import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
@@ -24,6 +27,7 @@ import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
 import { compareTestRuntime } from '~/testing/compare'
 import { fakeTrzb, loadFixture } from '~/testing/fixture'
+import { raceSession } from '~/testing/moments'
 import { testLapTable, withExt } from '~/testing/runtime'
 
 /** Runtime real sobre el fixture, con `quality.estimated` sustituido. */
@@ -210,6 +214,30 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     const none = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
     expect(label(none, 'drsZones').exists()).toBe(false)
     none.unmount()
+    usePlaybackStore().detach()
+  },
+  // Momentos (ítem 5, D35): el adelantamiento lo confirma la línea de meta, pero su instante sale del GPS.
+  async overtakeTime() {
+    const s = await loadFixture()
+    // 3 sale 0,5 s detrás de 1 y le pasa en la vuelta 2 (el GPS los cruza a mitad de vuelta).
+    const race = raceSession(s, [
+      { car: 1, lapMs: [60_000, 60_000, 60_000] },
+      { car: 3, lapMs: [60_500, 59_000, 60_000] },
+    ])
+    usePlaybackStore().attach(createReplayRuntime(race))
+    const analysis = useAnalysis()
+    analysis.noSpoilers.value = false
+    const w = await mountSuspended(TzMomentsTab)
+    const { t } = useNuxtApp().$i18n
+    expect(w.find('[data-testid="overtake-row"]').attributes('data-located')).toBe('true')
+    expect(label(w, 'overtakeTime').text()).toContain(t('estimated.fields.overtakeTime'))
+    expect(label(w, 'overtakeTime').attributes('title')).toBe(t('estimated.hints.overtakeTime'))
+    // Con «Sin spoilers» y el reloj antes de que la línea lo confirme, ni adelantamiento ni etiqueta.
+    analysis.noSpoilers.value = true
+    await nextTick()
+    expect(w.find('[data-testid="overtake-row"]').exists()).toBe(false)
+    expect(label(w, 'overtakeTime').exists()).toBe(false)
+    w.unmount()
     usePlaybackStore().detach()
   },
 }

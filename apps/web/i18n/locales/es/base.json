@@ -209,7 +209,8 @@
       "trackStatus": "estado de pista deducido",
       "lapDelta": "diferencia en vivo (GPS)",
       "minisectors": "minisectores calculados",
-      "drsZones": "zonas de DRS deducidas"
+      "drsZones": "zonas de DRS deducidas",
+      "overtakeTime": "instante del adelantamiento (GPS)"
     },
     "hints": {
       "elevation": "La altura de la pista está multiplicada para que se aprecie el desnivel: no es la real.",
@@ -220,7 +221,8 @@
       "trackStatus": "Sin el estado de pista oficial: banderas y neutralizaciones se deducen de los mensajes de dirección de carrera.",
       "lapDelta": "Se calcula con las posiciones GPS de los dos coches a la misma distancia recorrida, no con el cronometraje oficial. El GPS tiene un margen de unos metros, así que solo se dan décimas. La cifra exacta es la del cronometraje oficial al cerrar la vuelta.",
       "minisectors": "Trazada divide la pista en minisectores y calcula quién es más rápido en cada uno con las posiciones GPS: no son los minisectores oficiales. Si la diferencia es muy pequeña, no se elige ganador.",
-      "drsZones": "Se deducen de dónde abren el DRS los coches según su telemetría: no son las zonas oficiales de detección y activación."
+      "drsZones": "Se deducen de dónde abren el DRS los coches según su telemetría: no son las zonas oficiales de detección y activación.",
+      "overtakeTime": "El adelantamiento lo confirma el orden oficial en la línea de meta; el instante en que ocurrió se sitúa con las posiciones GPS de los dos coches dentro de esa vuelta (donde se cruzan sus distancias recorridas), con un margen de alrededor de un segundo. Si el GPS no lo ve, «momento exacto: sin dato»."
     }
   },
   "leaderboard": {

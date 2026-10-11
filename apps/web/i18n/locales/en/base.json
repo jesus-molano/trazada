@@ -209,7 +209,8 @@
       "trackStatus": "inferred track status",
       "lapDelta": "live gap (GPS)",
       "minisectors": "computed minisectors",
-      "drsZones": "inferred DRS zones"
+      "drsZones": "inferred DRS zones",
+      "overtakeTime": "overtake time (GPS)"
     },
     "hints": {
       "elevation": "Track height is multiplied so the elevation change is visible: it is not the real one.",
@@ -220,7 +221,8 @@
       "trackStatus": "No official track status: flags and neutralisations are inferred from race control messages.",
       "lapDelta": "Computed from the GPS positions of both cars at the same distance covered, not from official timing. GPS is off by a few metres, so only tenths are given. The exact figure is the official timing one when the lap ends.",
       "minisectors": "Trazada splits the track into minisectors and works out who is faster in each one from GPS positions: they are not the official minisectors. When the difference is very small, no winner is picked.",
-      "drsZones": "Inferred from where cars open DRS according to their telemetry: they are not the official detection and activation zones."
+      "drsZones": "Inferred from where cars open DRS according to their telemetry: they are not the official detection and activation zones.",
+      "overtakeTime": "The overtake is confirmed by the official order at the finish line; the moment it happened is placed with both cars’ GPS positions within that lap (where their distances travelled cross), to within about a second. If the GPS does not show it, «exact moment: no data»."
     }
   },
   "leaderboard": {
