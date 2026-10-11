@@ -281,3 +281,47 @@ test('con prefers-reduced-motion: reordenación instantánea, flechas estáticas
   expect(seen.flashed).toEqual([])
   await expect(page.locator('[data-testid="rank-flash"]')).toHaveCount(0)
 })
+
+// ── Diseño «Análisis» (ítem 15): columnas opcionales ─────────────────────────────────────────────────────────────
+
+test('«Análisis»: mejor vuelta, última vuelta y entradas en el pit lane, con su rótulo, su texto y «—» sin dato', async ({ page }) => {
+  await open(page)
+  await page.getByTestId('layout-analysis').click()
+  await expect(page.getByTestId('lb-columns')).toBeVisible()
+  await expect(page.getByTestId('lb-columns')).toContainText(/(Mejor|Best)/)
+  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.endMs - 1_000))
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+  const cells = await page.locator('[data-testid="leaderboard"] [data-car]').evaluateAll((rows) =>
+    rows.map((li) => {
+      const read = (id: string) => {
+        const el = li.querySelector(`[data-testid="${id}"]`)!
+        return {
+          shown: el.querySelector('[aria-hidden="true"]')!.textContent!.trim(),
+          title: el.getAttribute('title') ?? '',
+          text: el.querySelector('.tz-visually-hidden')?.textContent?.trim() ?? '',
+        }
+      }
+      return { car: li.getAttribute('data-car')!, best: read('lb-best'), last: read('lb-last'), pits: read('lb-pits') }
+    }),
+  )
+  const time = /^\d+:\d\d[.,]\d{3}$|^\d+[.,]\d{3}$/
+  for (const c of cells) {
+    expect(c.best.shown, c.car).toMatch(new RegExp(`${time.source}|^—$`))
+    expect(c.last.shown, c.car).toMatch(new RegExp(`${time.source}|^—$`))
+    expect(c.pits.shown, c.car).toMatch(/^\d+$|^—$/)
+    // El valor nunca va sin contexto: título y el mismo texto para lectores de pantalla en cada celda.
+    for (const x of [c.best, c.last, c.pits]) {
+      expect(x.title).not.toBe('')
+      expect(x.text).toBe(x.title)
+    }
+  }
+  // Al final del extracto, alguien tiene mejor vuelta (dato oficial del fixture).
+  expect(cells.some((c) => time.test(c.best.shown))).toBe(true)
+  // En libres no se estima nada: sin etiqueta «Estimado» en el pie.
+  await expect(page.getByTestId('lb-estimated')).toHaveCount(0)
+
+  // «Última» es la misma vuelta que «Última vuelta» del panel del coche (la misma regla).
+  const withLap = cells.find((c) => time.test(c.last.shown))!
+  await page.locator(`[data-testid="leaderboard"] [data-car="${withLap.car}"]`).getByRole('button').click()
+  await expect(page.getByTestId('lap-last')).toHaveText(withLap.last.shown)
+})

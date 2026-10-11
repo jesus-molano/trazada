@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
  * Mini gráfica (uPlot, Canvas 2D) de una ventana deslizante. Los datos llegan por `setData` desde el
- * panel (sin reactividad de Vue sobre los arrays). Alto de `--tz-chart-h` (más bajo con la densidad compacta).
+ * panel (sin reactividad de Vue sobre los arrays). Alto de `--tz-chart-h` (más bajo con la densidad compacta) o, con
+ * `tall` (diseño «Análisis», ítem 15), de `--tz-chart-h-tall`. Al cambiar el ancho del panel (también al arrastrar su
+ * asa), un `setSize` como mucho por frame.
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
@@ -14,15 +16,17 @@ const props = defineProps<{
   /** Rango fijo de cada escala (p. ej. velocidad 0–360). */
   ranges: Record<string, [number, number]>
   windowS: number
+  /** Más alta (diseño «Análisis»). */
+  tall?: boolean
 }>()
 
 const host = ref<HTMLElement | null>(null)
 let plot: uPlot | null = null
 let ro: ResizeObserver | null = null
-let resize: (() => void) | null = null
+let raf = 0
 
 /** Alto del trazado (px): el token de densidad, que cambia con el alto de la ventana. */
-const chartHeight = () => Number.parseFloat(token('--tz-chart-h'))
+const chartHeight = () => Number.parseFloat(token(props.tall ? '--tz-chart-h-tall' : '--tz-chart-h'))
 
 function setData(data: uPlot.AlignedData): void {
   // Con las escalas fijas (rangos de props), «resetScales» las deja igual; lo importante es que uPlot rehaga
@@ -33,6 +37,16 @@ function setData(data: uPlot.AlignedData): void {
 /** Deja la gráfica vacía (sin dato: nada de trazos de otro coche u otro instante). */
 function clear(): void {
   plot?.setData([new Float64Array(0), ...props.series.map(() => new Float64Array(0))])
+}
+
+/** El ancho sigue al panel; el alto, a la densidad. Un solo `setSize` por frame aunque avisen la ventana y el panel. */
+function resize() {
+  if (raf) return
+  raf = requestAnimationFrame(() => {
+    raf = 0
+    const el = host.value
+    if (plot && el) plot.setSize({ width: el.clientWidth, height: chartHeight() })
+  })
 }
 
 onMounted(() => {
@@ -66,8 +80,7 @@ onMounted(() => {
     [new Float64Array(0), ...props.series.map(() => new Float64Array(0))],
     el,
   )
-  // El ancho sigue al panel; el alto, a la densidad (una ventana más baja no cambia el ancho del panel).
-  resize = () => plot?.setSize({ width: el.clientWidth, height: chartHeight() })
+  // Una ventana más baja no cambia el ancho del panel: también al cambiar el tamaño de la ventana.
   ro = new ResizeObserver(resize)
   ro.observe(el)
   window.addEventListener('resize', resize)
@@ -75,7 +88,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   ro?.disconnect()
-  if (resize) window.removeEventListener('resize', resize)
+  window.removeEventListener('resize', resize)
+  if (raf) cancelAnimationFrame(raf)
+  raf = 0
   plot?.destroy()
   plot = null
 })
@@ -84,7 +99,7 @@ defineExpose({ setData, clear })
 </script>
 
 <template>
-  <figure class="tz-chart" :aria-label="label">
+  <figure class="tz-chart" :aria-label="label" :data-window-s="windowS" :data-tall="tall || undefined">
     <figcaption class="tz-chart__label">
       <span v-for="s in series" :key="s.label" class="tz-chart__key">
         <i :style="{ background: s.color }" aria-hidden="true" />{{ s.label }}

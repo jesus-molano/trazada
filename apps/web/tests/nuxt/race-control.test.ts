@@ -7,6 +7,7 @@ import TzTrackStatus from '~/components/TzTrackStatus.vue'
 import type { TimelineMarkers } from '~/engine/timeline/markers'
 import { TrackState } from '~/engine/trackstate/TrackState'
 import type { ReplayRuntime } from '~/replay/runtime'
+import { useLayoutStore } from '~/stores/layout'
 import { usePlaybackStore } from '~/stores/playback'
 import { testLapTable } from '~/testing/runtime'
 
@@ -83,7 +84,15 @@ function fakeRuntime(opts: { markers?: TimelineMarkers; trackState?: TrackState 
     for (const f of frames) f(t)
     coarse?.({ timeMs: t, playing: false, rate: 1 })
   }
-  return { rt, setTime }
+  /** Como con reproducción a ×1: el estado grueso llega con `playing`. */
+  const playTo = (t: number) => {
+    clock.timeMs = t
+    clock.playing = true
+    trackState.update(t)
+    for (const f of frames) f(t)
+    ;(coarse as ((s: { timeMs: number; playing: boolean; rate: 1 }) => void) | null)?.({ timeMs: t, playing: true, rate: 1 })
+  }
+  return { rt, setTime, playTo }
 }
 
 describe('TzRaceControl', () => {
@@ -116,6 +125,50 @@ describe('TzRaceControl', () => {
     setTime(500) // seek atrás
     await nextTick()
     expect(shown()).toEqual([])
+  })
+
+  it('21b: con reproducción, el mensaje nuevo destella una vez (data-fresh); tras un seek o en pausa, no', async () => {
+    const { rt, setTime, playTo } = fakeRuntime()
+    usePlaybackStore().attach(rt)
+    const w = await mountSuspended(TzRaceControl)
+    const fresh = () => w.findAll('[data-testid="rc-message"][data-fresh]').map((m) => Number(m.attributes('data-t')))
+    // Reproducción continua (el reloj avanza poco entre dos actualizaciones gruesas): entra el de 1000 y destella.
+    playTo(900)
+    await nextTick()
+    playTo(1050)
+    await nextTick()
+    expect(fresh()).toEqual([1000])
+    // Un salto del reloj (seek) con reproducción: los mensajes cambian al instante, sin destello.
+    playTo(2500)
+    await nextTick()
+    expect(w.findAll('[data-testid="rc-message"]').length).toBe(2)
+    expect(fresh()).toEqual([])
+    // En pausa, tampoco.
+    setTime(3100)
+    await nextTick()
+    expect(fresh()).toEqual([])
+    usePlaybackStore().detach()
+  })
+
+  it('desplegada o plegada se recuerda por diseño (stores/layout)', async () => {
+    const { rt } = fakeRuntime()
+    usePlaybackStore().attach(rt)
+    const layout = useLayoutStore()
+    layout.setPreset('spectator')
+    layout.setRcOpen(true)
+    const w = await mountSuspended(TzRaceControl)
+    const toggle = w.find('[data-testid="race-control-toggle"]')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    await toggle.trigger('click')
+    expect(layout.current.rcOpen).toBe(false)
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    // En el otro diseño, la suya (abierta por defecto).
+    layout.setPreset('analysis')
+    await nextTick()
+    expect(w.find('[data-testid="race-control-toggle"]').attributes('aria-expanded')).toBe(layout.current.rcOpen ? 'true' : 'false')
+    layout.setPreset('spectator')
+    layout.setRcOpen(true)
+    usePlaybackStore().detach()
   })
 })
 

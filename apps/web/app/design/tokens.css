@@ -252,10 +252,16 @@
   /* Paneles y densidad: cómodos en pantallas altas, compactos en las bajas (ver las media queries) */
   --tz-panel-w: 300px;
   --tz-panel-w-narrow: 256px;
+  /* Columna derecha del diseño «Análisis» (telemetría más grande); en tablet, la estrecha de siempre */
+  --tz-panel-w-wide: 360px;
   --tz-panel-pad: var(--tz-space-4);
   --tz-panel-gap: var(--tz-space-3);
   --tz-row-h: 28px;
   --tz-chart-h: 64px;
+  /* Gráficas de telemetría del diseño «Análisis» */
+  --tz-chart-h-tall: 96px;
+  /* Asa para cambiar el ancho de un panel: zona de agarre (la mitad sobre el panel, la otra sobre el mapa) */
+  --tz-resize-hit: 24px;
   /* Zona táctil mínima de un control (44 px con puntero grueso) */
   --tz-hit-min: 32px;
   /* Tinte máximo del color de equipo en fondos y franjas (nunca como color de texto: no llega a 4,5:1) */
@@ -295,6 +301,7 @@
     --tz-text-num-xl: 30px;
     /* Gráficas de telemetría algo más bajas: en 800 px de alto caben enteras con los sectores de la vuelta. */
     --tz-chart-h: 54px;
+    --tz-chart-h-tall: 80px;
   }
 }
 

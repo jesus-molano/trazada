@@ -1,0 +1,61 @@
+{
+  "layout": {
+    "switch": {
+      "label": "Diseño de los paneles",
+      "spectator": "Espectador",
+      "analysis": "Análisis",
+      "spectatorHint": "Diseño Espectador: el mapa primero, con los paneles compactos (tecla L)",
+      "analysisHint": "Diseño Análisis: clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande (tecla L)",
+      "toggle": "Diseño «Análisis»",
+      "toggleHint": "Alterna entre los diseños «Análisis» (pulsado) y «Espectador» (tecla L)"
+    },
+    "resize": {
+      "lb": "Ancho de la clasificación",
+      "side": "Ancho de la columna de la derecha",
+      "hint": "Arrastra o usa ← y → para cambiar el ancho (Mayús: más rápido); doble clic o Intro lo restablece",
+      "value": "{px} px"
+    },
+    "cells": {
+      "estimatedNote": "Estimado en la columna «Última»: la vuelta 1, de la salida al paso por meta",
+      "best": {
+        "head": "Mejor",
+        "title": "Mejor vuelta válida hasta este instante: {time}",
+        "titleQuali": "Mejor vuelta válida de la tanda en curso: {time}",
+        "none": "Mejor vuelta: sin dato"
+      },
+      "last": {
+        "head": "Última",
+        "title": "Última vuelta ({lap}): {time}",
+        "deleted": "Última vuelta ({lap}): {time}, anulada por dirección de carrera",
+        "noTime": "Última vuelta ({lap}): sin tiempo oficial",
+        "estimated": "Estimado: última vuelta (1), {time}, de la salida al paso por meta; no es un tiempo oficial",
+        "none": "Última vuelta: sin dato"
+      },
+      "pits": {
+        "head": "Pit",
+        "title": "Entradas en el pit lane hasta este instante: {n} (paradas, pasos sin parar y vueltas al garaje, como los da el cronometraje)",
+        "none": "Entradas en el pit lane: sin dato"
+      }
+    },
+    "cmd": {
+      "spectator": {
+        "title": "Diseño Espectador",
+        "detail": "El mapa primero, con los paneles compactos"
+      },
+      "analysis": {
+        "title": "Diseño Análisis",
+        "detail": "Clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande"
+      },
+      "already": "Ya estás en este diseño",
+      "reset": {
+        "title": "Restablecer el ancho de los paneles",
+        "detail": {
+          "spectator": "Vuelven al ancho por defecto del diseño Espectador",
+          "analysis": "Vuelven al ancho por defecto del diseño Análisis"
+        },
+        "none": "Los paneles ya tienen su ancho por defecto",
+        "portrait": "En vertical, los paneles van en la franja de abajo y no tienen ancho"
+      }
+    }
+  }
+}

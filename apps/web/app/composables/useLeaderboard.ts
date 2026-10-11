@@ -1,9 +1,12 @@
-import type { ShallowRef } from 'vue'
+import type { InjectionKey, ShallowRef } from 'vue'
 import { listMotionAllowed, LIST_MOTION_MAX_RATE, useReducedMotion } from '~/design/motion'
 import { MAX_DELTA_MS } from '~/engine/clock/SessionClock'
+import type { EstimatedField } from '~/engine/estimated'
 import { RankChangeTracker, rankedOrder } from '~/engine/leaderboard/changes'
 import type { LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { LapTimes } from '~/engine/timing/laps'
 import { leaderboardStats } from '~/replay/debug'
+import type { ReplayRuntime } from '~/replay/runtime'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
 /** Intervalo de actualización con reproducción: ~6,7 Hz, con margen sobre los 4 Hz del criterio. */
@@ -197,4 +200,89 @@ export function useLeaderboard(): LeaderboardView {
     if (announceTimer) clearTimeout(announceTimer)
   })
   return { rows, animate, changes, announcement, race }
+}
+
+/*
+ * Columnas opcionales del diseño «Análisis» (ítem 15): precálculos por runtime (`rt.ext`, perezosos y memoizados) que
+ * comparten las celdas de todas las filas. Todo es dato real de la tabla de vueltas; nada se interpola.
+ */
+
+export const LAP_TIMES_EXT = 'lapTimes'
+export const PIT_ENTRIES_EXT = 'pitEntries'
+
+/** Última vuelta de cada coche (la misma regla que «Última vuelta» del panel del coche, `LapTimes`). */
+export function runtimeLapTimes(rt: ReplayRuntime): LapTimes {
+  return rt.ext(LAP_TIMES_EXT, (r) => {
+    const s = r.session.manifest.session
+    return new LapTimes(r.session.timing, s.type, s.playback.lightsOutMs ?? null, r.session.events.raceControl)
+  })
+}
+
+/**
+ * Entradas en el pit lane de cada coche (`markers.pits`, ms de sesión, en orden), solo de los coches con vueltas en
+ * la tabla: un coche sin ninguna no tiene «0 entradas», no tiene dato.
+ */
+export function runtimePitEntries(rt: ReplayRuntime): ReadonlyMap<string, readonly number[]> {
+  return rt.ext(PIT_ENTRIES_EXT, (r) => {
+    const out = new Map<string, number[]>()
+    for (const car of r.leaderboard.lapTable.cars.keys()) out.set(car, [])
+    for (const p of r.markers.pits) out.get(p.car)?.push(p.inMs)
+    for (const list of out.values()) list.sort((a, b) => a - b)
+    return out
+  })
+}
+
+/** Cuántas entradas hay con t ≤ `t` en una lista ordenada (búsqueda binaria). */
+export function countUpTo(sorted: readonly number[], t: number): number {
+  let lo = 0
+  let hi = sorted.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (sorted[mid]! <= t) lo = mid + 1
+    else hi = mid
+  }
+  return lo
+}
+
+/**
+ * Lo estimado que enseñan ahora las celdas de la clasificación (p. ej. la vuelta 1 en «Última»): cada celda apunta lo
+ * suyo (campo y coche) y la clasificación pone una sola etiqueta «Estimado» por campo, fuera de los botones de las
+ * filas (dentro no cabe un control).
+ */
+export type LeaderboardEstimated = Map<string, EstimatedField>
+
+const LB_ESTIMATED: InjectionKey<LeaderboardEstimated> = Symbol('tz-lb-estimated')
+
+/** Para TzLeaderboard: el registro de lo estimado de sus celdas (reactivo) y los campos que hay ahora. */
+export function provideLeaderboardEstimated() {
+  const shown: LeaderboardEstimated = reactive(new Map())
+  provide(LB_ESTIMATED, shown)
+  const fields = computed(() => [...new Set(shown.values())])
+  return { fields }
+}
+
+/**
+ * Para una celda: mientras `active()` sea cierto, la clasificación lleva la etiqueta «Estimado» de `field`. Fuera de
+ * una clasificación (un test que monta la celda sola), no hace nada.
+ */
+export function useCellEstimated(field: EstimatedField, key: () => string, active: () => boolean): void {
+  const shown = inject(LB_ESTIMATED, null)
+  if (!shown) return
+  let mine: string | null = null
+  const release = () => {
+    if (mine !== null) shown.delete(mine)
+    mine = null
+  }
+  watch(
+    () => (active() ? `${field}:${key()}` : null),
+    (next) => {
+      release()
+      if (next !== null) {
+        mine = next
+        shown.set(next, field)
+      }
+    },
+    { immediate: true },
+  )
+  onBeforeUnmount(release)
 }

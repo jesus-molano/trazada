@@ -131,7 +131,8 @@ export function recordingServices(
   over: { comparing?: string | null; resumedMs?: number | null; moments?: MomentsServiceOptions } = {},
 ) {
   const calls: string[] = []
-  const services: CommandServices = {
+  // Sin el de diseño (ítem 15, lo registra el cambio de diseño de la cabecera): sus comandos no se ofrecen aquí.
+  const services: Omit<CommandServices, 'layout'> = {
     playback: {
       play: () => calls.push('play'),
       pause: () => calls.push('pause'),
@@ -173,7 +174,7 @@ export function paletteContext(o: PaletteContextOptions = {}): CommandContext {
  * Los servicios sin el de momentos (ítem 5; en la app lo registran los botones de salto del dock): los comandos de
  * momentos no se ofrecen.
  */
-export function withoutMoments(services: CommandServices): Partial<CommandServices> {
+export function withoutMoments(services: Partial<CommandServices>): Partial<CommandServices> {
   const { moments: _moments, ...rest } = services
   return rest
 }

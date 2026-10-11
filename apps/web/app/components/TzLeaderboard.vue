@@ -13,8 +13,15 @@
  * Jerarquía (D44, D47): posiciones en la condensada, cada fila con su `--team` (franja y, en la fila elegida, un tinte
  * y un filo; nunca como color de texto), el modo del gap como control segmentado (la opción elegida, placa maciza) y la
  * bandera azul con su icono, su título y su texto (nunca solo el color).
+ *
+ * Diseños (ítem 15): el ancho sale de la página (`--replay-lb-w`, que el usuario cambia con el asa que la página pone
+ * en el hueco por defecto); en «Análisis», las columnas opcionales llevan su rótulo encima y, si alguna enseña algo
+ * estimado (la vuelta 1 en «Última»), su etiqueta «Estimado» va en el pie (dentro del botón de una fila no cabe un
+ * control). Microinteracciones (21b, D42): los chips PIT y «sin señal» entran con un fundido solo con reproducción a
+ * ≤ ×4 (tras un seek, al instante) y la fila elegida con el teclado o la paleta se desplaza a la vista.
  */
 import type { RankBadge } from '~/composables/useLeaderboard'
+import { LIST_MOTION_MAX_RATE, useReducedMotion } from '~/design/motion'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { compoundLetter, compoundToken } from '~/engine/timing/compound'
 import { cellsFor, LEADERBOARD_CELLS, type LayoutPreset } from '~/slots/leaderboard-cells'
@@ -25,6 +32,10 @@ import { useSettingsStore } from '~/stores/settings'
 
 const props = withDefaults(defineProps<{ preset?: LayoutPreset }>(), { preset: 'spectator' })
 const cells = computed(() => cellsFor(LEADERBOARD_CELLS, props.preset))
+/** Rótulos de las columnas extra (diseño «Análisis»): solo si alguna lo trae. */
+const labelled = computed(() => cells.value.some((c) => c.label !== null))
+/** Lo estimado que enseñan ahora las celdas (su etiqueta «Estimado» va en el pie). */
+const { fields: estimatedFields } = provideLeaderboardEstimated()
 /**
  * Pistas de la rejilla de cada fila para las columnas extra (solo si hay alguna) y lo que se ensancha el panel por
  * ellas (sus anchos más un hueco de la rejilla por cada una): las columnas fijas no ceden sitio.
@@ -41,6 +52,9 @@ const settings = useSettingsStore()
 const compare = useCompareStore()
 const { rows, animate, changes, announcement, race } = useLeaderboard()
 settings.hydrate()
+const reduced = useReducedMotion()
+/** Con reproducción a ≤ ×4 y movimiento permitido, los chips que entran lo hacen con un fundido (tras un seek, no). */
+const live = computed(() => playback.playing && playback.rate <= LIST_MOTION_MAX_RATE && !reduced.value)
 const season = useSessionStore().data?.manifest.session.season ?? 0
 /** Color del compuesto (según la temporada) para el borde de su letra. */
 const compoundStyle = (compound: string) => ({ '--compound': `var(${compoundToken(season, compound)})` })
@@ -108,6 +122,31 @@ function onRowDown(event: MouseEvent) {
   if (event.shiftKey) event.preventDefault()
 }
 
+const root = ref<HTMLElement | null>(null)
+
+/**
+ * La fila elegida (con ↑/↓, la paleta o el mapa) se desplaza a la vista dentro de la lista, sin mover nada más de la
+ * página; con reduced motion, sin animación.
+ */
+function reveal(car: string) {
+  const list = root.value?.querySelector<HTMLElement>('.tz-lb__rows')
+  const row = list && [...list.children].find((el) => (el as HTMLElement).dataset.car === car)
+  if (!list || !row) return
+  const lr = list.getBoundingClientRect()
+  const rr = row.getBoundingClientRect()
+  const delta = rr.top < lr.top ? rr.top - lr.top : rr.bottom > lr.bottom ? rr.bottom - lr.bottom : 0
+  if (delta !== 0 && typeof list.scrollBy === 'function') list.scrollBy({ top: delta, behavior: reduced.value ? 'auto' : 'smooth' })
+}
+
+watch(
+  () => playback.selectedCar,
+  async (car) => {
+    if (!car) return
+    await nextTick()
+    reveal(car)
+  },
+)
+
 /** «A» (el seleccionado) o «B» (el comparado) mientras se compara. */
 function compareRole(car: string): 'a' | 'b' | null {
   if (!compare.comparing) return null
@@ -118,10 +157,13 @@ function compareRole(car: string): 'a' | 'b' | null {
 
 <template>
   <section
+    id="tz-leaderboard"
+    ref="root"
     class="tz-lb"
-    :class="{ 'has-cells': cells.length > 0 }"
+    :class="{ 'has-cells': cells.length > 0, 'has-labels': labelled }"
     :style="cellsStyle"
     :aria-label="t('leaderboard.title')"
+    :data-preset="preset"
     data-testid="leaderboard"
   >
     <header class="tz-lb__head">
@@ -147,6 +189,12 @@ function compareRole(car: string): 'a' | 'b' | null {
         </button>
       </div>
     </header>
+
+    <!-- Rótulos de las columnas extra (cada celda lleva además su título y su texto para lectores de pantalla). -->
+    <div v-if="labelled" class="tz-lb__cols" aria-hidden="true" data-testid="lb-columns">
+      <span class="tz-lb__colfixed" />
+      <span v-for="c in cells" :key="c.name" class="tz-lb__col" :data-cell="c.name"><template v-if="c.label">{{ t(c.label) }}</template></span>
+    </div>
 
     <!-- Sin animación (move-class sin transición), Vue no desliza las filas: ×8/×16, saltos y reduced motion. -->
     <TransitionGroup
@@ -213,8 +261,10 @@ function compareRole(car: string): 'a' | 'b' | null {
               <TzIcon name="flag" size="sm" />
               <span class="tz-visually-hidden">{{ t('leaderboard.blueFlag', { s: BLUE_FLAG_MS / 1000 }) }}</span>
             </span>
-            <span v-if="r.inPit" class="tz-lb__chip tz-lb__chip--pit">{{ t('leaderboard.pit') }}</span>
-            <span v-else-if="r.noSignal" class="tz-lb__chip" data-testid="no-signal">{{ t('leaderboard.noSignal') }}</span>
+            <Transition name="tz-lb-chip" :css="live">
+              <span v-if="r.inPit" key="pit" class="tz-lb__chip tz-lb__chip--pit">{{ t('leaderboard.pit') }}</span>
+              <span v-else-if="r.noSignal" key="nosignal" class="tz-lb__chip" data-testid="no-signal">{{ t('leaderboard.noSignal') }}</span>
+            </Transition>
           </span>
           <span class="tz-lb__gap tz-tabular">{{ gapText(r) }}</span>
           <span class="tz-lb__tyre" :style="compoundStyle(r.compound)" :title="tyreText(r)">
@@ -248,6 +298,13 @@ function compareRole(car: string): 'a' | 'b' | null {
       >
       {{ t('leaderboard.showBlueFlags') }}
     </label>
+    <!-- Etiquetas «Estimado» de lo que enseñan las columnas (la vuelta 1 estimada en «Última»), mientras se vea. -->
+    <p v-if="estimatedFields.length" class="tz-lb__estimated" data-testid="lb-estimated">
+      <TzEstimated v-for="f in estimatedFields" :key="f" :field="f" />
+      <span class="tz-lb__estimated-note">{{ t('layout.cells.estimatedNote') }}</span>
+    </p>
+    <!-- Asa para cambiar el ancho (la pone la página, salvo en tablet en vertical). -->
+    <slot />
   </section>
 </template>
 
@@ -259,7 +316,8 @@ function compareRole(car: string): 'a' | 'b' | null {
    */
   --lb-cols: 22px 4px 38px 1fr 76px 38px;
   --lb-gap: var(--tz-space-2);
-  --lb-w: var(--tz-panel-w);
+  /* Ancho elegido con el asa o el del diseño (lo pone la página); sin página, el de los tokens. */
+  --lb-w: var(--replay-lb-w, var(--tz-panel-w));
   position: absolute;
   top: 0;
   left: 0;
@@ -518,7 +576,7 @@ function compareRole(car: string): 'a' | 'b' | null {
   .tz-lb {
     --lb-cols: 20px 4px 34px 1fr 64px 38px;
     --lb-gap: 6px;
-    --lb-w: var(--tz-panel-w-narrow);
+    --lb-w: var(--replay-lb-w, var(--tz-panel-w-narrow));
   }
 }
 
@@ -527,6 +585,59 @@ function compareRole(car: string): 'a' | 'b' | null {
   .tz-lb.has-cells {
     width: auto;
   }
+}
+
+/*
+ * Rótulos de las columnas extra: la misma rejilla que las filas, sobre sus columnas. Los dos reservan el hueco de la
+ * barra de desplazamiento de la lista (si la hay), así los rótulos no se desalinean cuando la lista no cabe entera.
+ */
+.tz-lb.has-labels .tz-lb__rows {
+  scrollbar-gutter: stable;
+}
+
+.tz-lb__cols {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  display: grid;
+  grid-template-columns: var(--lb-cols) var(--lb-cells);
+  gap: var(--lb-gap);
+  padding: 0 var(--tz-space-2) var(--tz-space-0-5);
+  font-family: var(--tz-font-display);
+  font-size: var(--tz-text-2xs);
+  font-weight: var(--tz-weight-semibold);
+  letter-spacing: var(--tz-tracking-caps);
+  line-height: var(--tz-leading-tight);
+  text-transform: uppercase;
+  color: var(--tz-text-muted);
+}
+
+.tz-lb__colfixed {
+  grid-column: 1 / span 6;
+}
+
+.tz-lb__col {
+  overflow: hidden;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* Chips PIT y «sin señal» que entran con reproducción a ≤ ×4: un fundido (con reduce, la duración es 0). */
+.tz-lb-chip-enter-active {
+  animation: tz-fade var(--tz-dur-base) var(--tz-ease-enter);
+}
+
+.tz-lb__estimated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-1) var(--tz-space-2);
+  margin: 0;
+  padding: var(--tz-space-1) var(--tz-space-2) 0;
+}
+
+.tz-lb__estimated-note {
+  font-size: var(--tz-text-2xs);
+  color: var(--tz-text-muted);
 }
 
 .tz-lb__opt {

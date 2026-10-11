@@ -3,25 +3,84 @@
  * Mensajes de dirección de carrera hasta el instante del reloj, del más reciente al más antiguo: el texto
  * original tal cual (en inglés) y el tipo traducido. Se recalcula con el estado grueso (~10 Hz) y solo
  * cambia el DOM cuando aparece o desaparece un mensaje. El título es el común de los paneles (una línea, condensada) y
- * el desplegable lleva el chevrón del registro de iconos (D30).
+ * el desplegable lleva el chevrón del registro de iconos (D30). Desplegada o plegada se recuerda por diseño
+ * (stores/layout.ts, ítem 15).
+ *
+ * Microinteracciones (21b, D42): un mensaje nuevo entra desde arriba con un fundido y destella una vez (`data-fresh`)
+ * solo con reproducción a ≤ ×4, si entran como mucho LIST_MOTION_MAX_CHANGES a la vez y sin salto del reloj; tras un
+ * seek, en pausa, con reduced motion o a ×8/×16, la lista cambia al instante. El texto nunca se anima: solo la entrada.
  */
 import type { RaceControlEvent } from '@trazada/schema'
+import { duration, LIST_MOTION_MAX_CHANGES, LIST_MOTION_MAX_RATE, useReducedMotion } from '~/design/motion'
 import { formatClock } from '~/engine/format/time'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { visibleCount } from '~/engine/trackstate/TrackState'
+import { useLayoutStore } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
 const { t, te } = useI18n()
 const playback = usePlaybackStore()
+const layout = useLayoutStore()
+const reduced = useReducedMotion()
 const rt = getRuntime()!
 const { playback: pb, type } = rt.session.manifest.session
 const origin = clockOrigin(type, rt.session.timing, pb)
 const events = rt.raceControl
 const times = events.map((e) => e.t)
 
-const open = ref(true)
-const count = computed(() => visibleCount(times, playback.timeMs))
+const open = computed({
+  get: () => layout.current.rcOpen,
+  set: (value: boolean) => layout.setRcOpen(value),
+})
+const count = ref(visibleCount(times, playback.timeMs))
 const visible = computed(() => events.slice(0, count.value).reverse())
+
+/** ¿Se anima la última entrada de mensajes? Y el índice del mensaje que destella (null: ninguno). */
+const animate = ref(false)
+const fresh = ref<number | null>(null)
+let freshTimer: ReturnType<typeof setTimeout> | null = null
+/** Margen (ms de pared) sobre lo que avanza el reloj entre dos actualizaciones gruesas antes de llamarlo salto. */
+const JUMP_SLACK_MS = 250
+let lastT = playback.timeMs
+let lastWall = performance.now()
+
+/**
+ * ¿El reloj saltó (seek) entre dos actualizaciones gruesas? Con reproducción, el reloj avanza como mucho lo que pasa de
+ * tiempo de pared por la velocidad; hacia atrás o mucho más, es un salto. En pausa, cualquier cambio lo es.
+ */
+function jumped(dt: number, wall: number): boolean {
+  if (!playback.playing) return true
+  return dt < 0 || dt > (wall + JUMP_SLACK_MS) * playback.rate
+}
+
+function clearFresh() {
+  if (freshTimer) clearTimeout(freshTimer)
+  freshTimer = null
+  fresh.value = null
+}
+
+watch(
+  () => playback.timeMs,
+  (t) => {
+    const now = performance.now()
+    const jump = jumped(t - lastT, now - lastWall)
+    lastT = t
+    lastWall = now
+    const next = visibleCount(times, t)
+    const added = next - count.value
+    if (added === 0) return
+    animate.value =
+      !jump && added > 0 && added <= LIST_MOTION_MAX_CHANGES && playback.rate <= LIST_MOTION_MAX_RATE && !reduced.value
+    count.value = next
+    clearFresh()
+    if (animate.value) {
+      // El más nuevo destella una vez (dura lo que --tz-dur-flash) y deja de estar «fresco».
+      fresh.value = next - 1
+      freshTimer = setTimeout(clearFresh, duration('flash') * 1000 + 50)
+    }
+  },
+)
+onBeforeUnmount(clearFresh)
 
 function kindLabel(e: RaceControlEvent): string {
   const key = `rc.kind.${e.parsed.kind}`
@@ -59,9 +118,24 @@ function tone(kind: string): string {
         <TzIcon name="chevron" size="sm" class="tz-rc__chevron" />
       </button>
     </h2>
-    <!-- Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. -->
-    <ol v-show="open" id="tz-rc-list" class="tz-rc__list" aria-live="off" tabindex="0" :aria-label="t('rc.title')">
-      <li v-if="!visible.length" class="tz-rc__empty">{{ t('rc.empty') }}</li>
+    <!--
+      Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. Sin animación (css y
+      move-class sin transición), los mensajes entran y salen al instante.
+    -->
+    <TransitionGroup
+      v-show="open"
+      id="tz-rc-list"
+      tag="ol"
+      name="tz-rc"
+      class="tz-rc__list"
+      aria-live="off"
+      tabindex="0"
+      :aria-label="t('rc.title')"
+      :css="animate"
+      :move-class="animate ? 'tz-rc-move' : 'tz-rc-still'"
+      data-testid="rc-list"
+    >
+      <li v-if="!visible.length" key="empty" class="tz-rc__empty">{{ t('rc.empty') }}</li>
       <li
         v-for="(e, i) in visible"
         :key="count - 1 - i"
@@ -69,6 +143,7 @@ function tone(kind: string): string {
         :class="tone(e.parsed.kind)"
         :data-t="e.t"
         :data-kind="e.parsed.kind"
+        :data-fresh="fresh === count - 1 - i ? '' : undefined"
         data-testid="rc-message"
       >
         <div class="tz-rc__meta">
@@ -78,7 +153,7 @@ function tone(kind: string): string {
         </div>
         <p class="tz-rc__text" lang="en" :title="t('rc.original')" data-testid="rc-text">{{ e.text }}</p>
       </li>
-    </ol>
+    </TransitionGroup>
   </section>
 </template>
 
@@ -163,6 +238,27 @@ function tone(kind: string): string {
 
 .tz-rc__item + .tz-rc__item {
   margin-top: var(--tz-space-1);
+}
+
+/* Entrada de un mensaje nuevo (solo cuando se anima): desde arriba, con un fundido; los de debajo se desplazan. */
+.tz-rc-enter-active {
+  transition:
+    opacity var(--tz-dur-base) var(--tz-ease-enter),
+    transform var(--tz-dur-base) var(--tz-ease-enter);
+}
+
+.tz-rc-enter-from {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--tz-shift)));
+}
+
+.tz-rc-move {
+  transition: transform var(--tz-dur-base) var(--tz-ease-standard);
+}
+
+/* El más nuevo destella una vez: el fondo, del acento suave a nada (con reduce, 0 ms). */
+.tz-rc__item[data-fresh] {
+  animation: tz-flash var(--tz-dur-flash) var(--tz-ease-exit);
 }
 
 .tz-rc__item.is-yellow {
