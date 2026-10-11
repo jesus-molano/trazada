@@ -16,6 +16,7 @@ import {
 } from '@trazada/schema'
 import { sessionDrsZones } from '../engine/drs/zones'
 import { computeTangents } from '../engine/replay/motion'
+import { realignPositionTimes } from '../engine/replay/realign'
 import { LoadError, type LoadedSession, type LoadStage, type LoadTimings } from './types'
 
 export interface LoadOptions {
@@ -23,6 +24,8 @@ export interface LoadOptions {
   onManifest?: (manifest: Manifest) => void
   fetch?: typeof fetch
   now?: () => number
+  /** Reajuste de la hora de las posiciones (D52); solo se apaga para medir su efecto (tests @local). */
+  realign?: boolean
 }
 
 const FILE_KEYS = ['circuit', 'motion', 'car', 'timing', 'events'] as const
@@ -177,7 +180,9 @@ export async function loadSession(
   opts.onProgress?.('decode', FILE_KEYS.length, FILE_KEYS.length)
   const t5 = now()
 
-  // 6. Tangentes de la interpolación (velocidad medida, con el limitador de monotonía)
+  // 6. Hora de las posiciones reajustada por consenso entre coches (D52: sin los tirones del feed), y tangentes de la
+  //    interpolación (velocidad medida, con el limitador de monotonía) sobre esas horas.
+  if (opts.realign !== false) realignPositionTimes(decoded.motion, decoded.car)
   const tangents = computeTangents(decoded.motion, decoded.car, 'speed')
   const t6 = now()
 

@@ -53,9 +53,10 @@ export function loadFixture(id = FIXTURE_FP1): Promise<LoadedSession> {
 }
 
 /** Sesión completa de data/ (solo en local). */
-export function loadLocal(id: string): Promise<LoadedSession> {
+export function loadLocal(id: string, opts: { realign?: boolean } = {}): Promise<LoadedSession> {
   return loadSession(`http://datos.test/data/v1/sessions/${id}/manifest.json`, id, SCHEMA_VERSION, {
     fetch: fixtureFetch({ root: LOCAL_DATA_ROOT }),
+    ...opts,
   })
 }
 

@@ -484,3 +484,16 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
     - «Parado en pista» por GPS: dato estimado nuevo, con huecos y contradicciones en la fuente dev.
     - Rellenar `drivers[].finish`: no hay fuente honesta todavía y Jolpica está prohibida.
     - El foco de series de uPlot.
+- **2026-10-11** — **D52, tirones del mapa: hora de las posiciones por consenso entre coches**
+  - Petición (el usuario): a ×1, «frenazos y acelerones» de los coches en el mapa.
+  - **Causa**: pintar está bien (cada frame se dibuja con la hora exacta). Las horas de Position.z llegan desplazadas hasta ±145 ms, casi lo mismo para todos los coches de un mismo envío, y la Hermite pasa exactamente por cada (t, s): la velocidad dibujada oscilaba un ±50–80 % a 3–4 Hz (en Spa FP1, un coche a 292→312 km/h se dibujaba a 265→460→231→308).
+  - **Arreglo** (`engine/replay/realign.ts`, en el Web Worker al cargar, antes de las tangentes; no hay que volver a descargar nada): solo se toca `t`, nunca `s`.
+    - Para cada coche, D(t) = integral trapezoidal de la velocidad de CarData.
+    - En las muestras en pista, con vecinas dibujables a los dos lados (mismo segmento) y a más de 80 km/h: r = s − D(t) y ε = (r − mediana de r en i±6, sin i) / v.
+    - Para cada instante del feed (la misma hora en varios coches), δ = mediana de ε entre coches (al menos 3); con |δ| > 200 ms no es el desfase del envío y no se toca. Se aplica a todas las muestras de ese instante, de todos los coches (también en pit).
+    - Dos pasadas, la segunda sobre las horas ya corregidas: las vecinas llevan su propio desfase y con una sola quedaba un sesgo común de ~25 ms; con dos, unos pocos ms de error local (más pasadas no mejoran con datos reales).
+    - Si con δ la hora de algún coche deja de ser estrictamente creciente con 20 ms o más entre muestras, esos δ pasan a 0.
+  - **Medido** (`realign.local.test.ts`, con las carreras de Madrid y Marina Bay 2026 del PC del usuario): p95 de |velocidad dibujada / medida − 1| 62 % → 11 % y 65 % → 10 %; p95 de la aceleración dibujada entre frames ~400 → ~60 m/s². Coste en el worker: ~300 ms en una carrera entera (547.000 muestras).
+  - **Tests**: jitter sintético común (error local ≤ 5 ms, nunca hacia atrás, `s` intacta, δ fuera de rango o que invierte el orden descartados, sin consenso no se mueve nada) y el `@local` de arriba con las sesiones que haya en `data/`.
+  - **Efecto lateral**: el test de la persecución de la realización a ×16 (`FollowCamera.test.ts`) dependía de la velocidad dibujada de un coche en un instante fijo de la horquilla (11–12 m/s, al borde del mínimo de un duelo); ahora empieza en el primer instante con duelo.
+  - **Descartado**: hacerlo en el pipeline (habría que volver a descargar todas las sesiones); suavizar la velocidad dibujada (escondería el dato sin arreglar la hora); un filtro por coche (el desfase es del envío, común a todos).

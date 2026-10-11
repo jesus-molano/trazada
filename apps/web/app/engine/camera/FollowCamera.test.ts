@@ -110,7 +110,19 @@ async function chaseScripted(rate: number) {
   const director = new Director()
   const cam = new FollowCamera(CHASE_MIN_DISTANCE_M)
   const dtWall = 1 / 60
-  const start = s.manifest.session.playback.startMs + 30_000
+  // A ×16 el director decide una sola vez en estos 60 s (los cortes van por tiempo de pared): se empieza en el primer
+  // instante, desde los 30 s, en el que ve un duelo (si no, depende de la velocidad de un coche en un instante fijo: en
+  // la horquilla, a 11–12 m/s, al borde del mínimo de un duelo).
+  let start = s.manifest.session.playback.startMs + 30_000
+  for (let probe = start; probe < start + 30_000; probe += 250) {
+    model.update(probe)
+    const d = new Director()
+    d.update({ wallMs: 0, timeMs: probe, rate, race: false, cars: model.states, tower: [], leader: () => null, neutral: null, trackLength: L, corners: [] })
+    if (d.shot?.kind === 'duel') {
+      start = probe
+      break
+    }
+  }
   let t = start
   let wall = 0
   let lastDecision = -Infinity
