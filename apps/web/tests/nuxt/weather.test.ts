@@ -146,6 +146,19 @@ describe('chip de meteorología', () => {
     expect(w.find('[data-testid="weather"]').attributes('aria-label')).toMatch(/(vuelve a descargarla|download it again)/)
   })
 
+  it('sesión de desarrollo sin canal (no se vuelve a descargar desde el selector): su fuente no la trae, sin consejo imposible', async () => {
+    await attach((s) => {
+      const out = withWeather(undefined, undefined)(s)
+      const notes = [...(out.manifest.quality.notes ?? []), { code: 'dev-source' as const, text: 'Datos de desarrollo: no publicar.' }]
+      return { ...out, manifest: { ...out.manifest, quality: { ...out.manifest.quality, notes } } }
+    })
+    const w = await mountSuspended(TzWeather)
+    expect(w.find('.tz-weather').attributes('data-state')).toBe('outdated')
+    const name = w.find('[data-testid="weather"]').attributes('aria-label')!
+    expect(name).toMatch(/(datos de desarrollo\) no trae meteorología|development data\) has no weather)/)
+    expect(name).not.toMatch(/(vuelve a descargarla|download it again)/)
+  })
+
   it('con lluvia: el icono y la palabra se ven también en el chip compacto', async () => {
     const rt = await attach((s) => {
       const src = s.events.weather!

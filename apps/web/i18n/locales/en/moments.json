@@ -39,7 +39,7 @@
       "prev": "Previous moment ({kind})",
       "next": "Next moment ({kind})",
       "key": "{key} key",
-      "filterLabel": "Player jumps",
+      "filterLabel": "Jump to",
       "filterHint": "The player's moment buttons (and the comma and full stop keys) land 5 s before the previous or next moment: an overtake, the start of a battle, a neutralisation (SC, VSC or red flag) or a notable race control message (green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag). Choose which ones here.",
       "filter": {
         "all": "All",

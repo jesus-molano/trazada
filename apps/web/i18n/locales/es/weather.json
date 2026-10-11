@@ -21,6 +21,7 @@
     },
     "noData": "sin dato",
     "reason": {
+      "dev": "La fuente de esta sesión (datos de desarrollo) no trae meteorología.",
       "outdated": "Esta sesión se generó antes de que Trazada guardara la meteorología: vuelve a descargarla para verla.",
       "absent": "La fuente no trae meteorología para esta sesión.",
       "stale": "Ninguna medida en los últimos {s} s (o el reloj está antes de la primera): la estación da una por minuto y aquí falta."
