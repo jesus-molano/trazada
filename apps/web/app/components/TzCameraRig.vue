@@ -2,7 +2,9 @@
 /**
  * Cámara: vista general (MapControls), seguimiento del coche seleccionado (FollowCamera) o realización automática
  * (ítem 9, D39), con transiciones GSAP al entrar y al salir (instantáneas con prefers-reduced-motion). Va dentro de
- * TresCanvas y escribe la cámara antes de cada render.
+ * TresCanvas y escribe la cámara antes de cada render (`useSceneFrame`). En la vista general, solo entonces (la mueven
+ * los controles del mapa, que piden su frame); siguiendo a un coche o en la realización, en cada tick, porque se anima
+ * sola y pide los frames que le faltan (también en pausa, mientras se acomoda).
  *
  * Realización automática: `engine/camera/Director.ts` decide el plano (unas 4 veces por segundo y al momento tras un
  * seek) y aquí se coloca la cámara. Dentro de ella, los cambios de plano y de cámara son siempre cortes secos (la pose
@@ -16,10 +18,10 @@
  *   mapa (que atienden ya ese mismo gesto). Las demás salidas (botón, T, Esc, elegir un coche) vuelven a la vista
  *   general; seguir a un coche lleva al seguimiento.
  */
-import { useLoop } from '@tresjs/core'
 import gsap from 'gsap'
 import { type Camera, Vector3 } from 'three'
 import type { MapControls } from 'three/examples/jsm/controls/MapControls.js'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { duration, GSAP_EASE, useReducedMotion } from '~/design/motion'
 import { CAM_HEIGHT_M, type CornerCam, cornerCams } from '~/engine/camera/cornerCams'
 import { Director, type DirectorInput } from '~/engine/camera/Director'
@@ -495,9 +497,16 @@ function followFrame(cam: Camera, delta: number) {
   }
 }
 
-const { onBeforeRender } = useLoop()
-onBeforeRender(({ camera, delta }) => {
-  const cam = camera.value
+useSceneFrame(
+  ({ camera, delta, pending }) => {
+    // Vista general sin render pendiente: nada que poner al día (los controles piden su frame al mover el mapa).
+    if (!pending && mode === 'overview') return
+    rigFrame(camera, delta)
+  },
+  { everyTick: true },
+)
+
+function rigFrame(cam: Camera | undefined, delta: number) {
   if (!cam) return
   cameraRef = cam
   if (mode === 'overview' || pendingFollow) {
@@ -507,8 +516,12 @@ onBeforeRender(({ camera, delta }) => {
   }
   if (mode === 'to-tv' || mode === 'tv') tvFrame(cam, delta)
   else if (mode !== 'overview') followFrame(cam, delta)
-  sceneStats.camera = [cam.position.x, cam.position.y, cam.position.z]
-})
+  // En su sitio: en cada tick siguiendo a un coche, sin reservar memoria.
+  const out = sceneStats.camera
+  out[0] = cam.position.x
+  out[1] = cam.position.y
+  out[2] = cam.position.z
+}
 
 // Un seek: el director elige de cero en el próximo frame (la escena entera ha cambiado igualmente).
 const offClock = rt.clock.on((event) => {

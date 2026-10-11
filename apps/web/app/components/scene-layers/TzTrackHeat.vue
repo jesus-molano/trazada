@@ -11,11 +11,12 @@
  * y encima (la seguridad gana al mapa de calor).
  *
  * Los colores se suben a la GPU solo cuando cambia lo que se pinta (modo, coches o vuelta: `heat.view.version`), nunca
- * en cada frame: el store se recalcula con el reloj grueso y la capa copia el resultado en el siguiente render.
+ * en cada frame: el store se recalcula con el reloj grueso y la capa copia el resultado justo antes del siguiente render
+ * (`useSceneFrame`; nada en pausa ni con la escena tapada).
  */
-import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, DynamicDrawUsage, Mesh, MeshBasicMaterial } from 'three'
 import { useMapWidth } from '~/composables/useMapWidth'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { type HeatPalette, heatPointColors, heatRibbon, type HeatView, type Rgb } from '~/engine/track/heat'
@@ -146,8 +147,7 @@ function apply(view: HeatView | null): void {
   stats.triangles = count / 3
 }
 
-const { onBeforeRender } = useLoop()
-onBeforeRender(() => {
+useSceneFrame(() => {
   if (pending === undefined) return
   const view = pending
   pending = undefined

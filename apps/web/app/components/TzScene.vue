@@ -6,6 +6,7 @@
 import type { TresContext } from '@tresjs/core'
 import { type PerspectiveCamera, Vector3, type WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
+import { provideSceneFrames } from '~/composables/useSceneFrame'
 import { useSceneGestures } from '~/composables/useSceneGestures'
 import { token } from '~/design/tokens'
 import { QualityGovernor } from '~/engine/perf/QualityGovernor'
@@ -13,7 +14,7 @@ import { cornerAnchor } from '~/engine/track/circuit'
 import { type Fit, fitCircuit, frameCircuit, type Insets } from '~/engine/track/framing'
 import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
-import { sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
+import { registerSceneStat, sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
 import { SCENE_LAYERS } from '~/slots/scene-layers'
 import { LAYOUT_SETTLED_EVENT, RESIZING_ATTR } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
@@ -31,6 +32,13 @@ const lost = ref(false)
 const canvasKey = ref(0)
 let canvasEl: HTMLCanvasElement | null = null
 let ctx: TresContext | null = null
+/**
+ * Preparación de la escena (`useSceneFrame`): pista, banderas, coches y capas se registran aquí, y un solo gancho en el
+ * bucle de cada lienzo los llama solo antes de cada render (nada en pausa ni con la escena tapada).
+ */
+const sceneFrames = provideSceneFrames()
+let offSceneFrames: (() => void) | null = null
+const offLoopStat = registerSceneStat('loop', () => ({ ...sceneFrames.stats }))
 let controls: MapControls | null = null
 /** Los controles, para el rig de cámara (que los desactiva al seguir a un coche). */
 const controlsRef = shallowRef<MapControls | null>(null)
@@ -347,6 +355,8 @@ const { hud: scrubHud } = useSceneGestures({
 })
 
 function detach() {
+  offSceneFrames?.()
+  offSceneFrames = null
   resizeObserver?.disconnect()
   resizeObserver = null
   window.removeEventListener(LAYOUT_SETTLED_EVENT, onResize)
@@ -362,6 +372,7 @@ function onReady(context: TresContext) {
   detach()
   ctx = context
   canvasEl = context.renderer.instance.domElement as HTMLCanvasElement
+  offSceneFrames = sceneFrames.attach(context)
   canvasEl.addEventListener('webglcontextlost', onLost)
   canvasEl.addEventListener('webglcontextrestored', onRestored)
   // Modo on-demand: el runtime pide un frame en cada tick con reproducción y tras cada seek.
@@ -463,6 +474,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   offFrames?.()
+  offLoopStat()
   sceneEl.value?.removeEventListener('wheel', onWheel)
   sceneProbe.trackScreen = null
   detach()
