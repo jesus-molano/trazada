@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChartGroup, ChartSpec } from './chart'
-import { drawEndLabels, LABEL_GAP, type LabelFrame } from './endLabels'
+import { COLUMN, CURSOR_REACH, drawEndLabels, LABEL_GAP, LABEL_PADDING, type LabelFrame } from './endLabels'
 
 type Pt = { x: number; y: number }
 
@@ -100,9 +100,12 @@ function race(extra: Partial<Record<string, Partial<ChartGroup>>> = {}, o: Opts 
   }
 }
 
-/** Marco de una gráfica de 200 px de alto (el mínimo de la hoja), r = 1; `lastX`: la x del borde derecho. */
-function frame(yMax = 200, lastX = LAPS): LabelFrame & { right: number; bottom: number } {
-  const bbox = { left: 64, top: 8, width: 800, height: 142 }
+/**
+ * Marco de una gráfica de 200 px de alto (el mínimo de la hoja), r = 1; `lastX`: la x del borde derecho; `width`: el
+ * ancho del área de datos (800 px; unos 450 en un iPad en vertical y 650 en horizontal).
+ */
+function frame(yMax = 200, lastX = LAPS, width = 800): LabelFrame & { right: number; bottom: number } {
+  const bbox = { left: 64, top: 8, width, height: 142 }
   return {
     r: 1,
     bbox,
@@ -114,6 +117,30 @@ function frame(yMax = 200, lastX = LAPS): LabelFrame & { right: number; bottom: 
 }
 
 const style = { font: '10px sans', text: '#ffffff' }
+/**
+ * Carrera con «Sin spoilers» en la vuelta `lead` de una de `laps`: cinco coches con datos hasta la vuelta `done` (uno por
+ * cada 40 s de diferencia, para que lleven todos su sigla).
+ */
+function raceTo(done: number, laps: number): ChartSpec {
+  const keys = ['NOR', 'PIA', 'VER', 'LEC', 'HAM']
+  return {
+    x: Array.from({ length: laps }, (_, i) => i + 1),
+    series: keys.map((k, j) => ({
+      group: k,
+      mark: 'line' as const,
+      values: Array.from({ length: laps }, (_, i) => (i < done ? (40 * j * (i + 1)) / done : null)),
+    })),
+    groups: keys.map((k) => group(k)),
+    xRange: [1, laps],
+    yRange: [0, 200],
+    yDir: -1,
+    xIncrs: null,
+    formatX: String,
+    formatY: String,
+    labelColumn: true,
+  }
+}
+
 /** Altura de su dato (dentro del área de las siglas, a 5 px de los bordes). */
 const home = (f: ReturnType<typeof frame>, v: number) => Math.min(Math.max(f.yPos(v), f.bbox.top + 5), f.bottom - 5)
 const lastValue = (spec: ChartSpec, key: string) => {
@@ -173,15 +200,50 @@ describe('siglas de las gráficas de análisis', () => {
     expect(inside[0]!.x).toBeLessThan(f.xPos(31))
   })
 
-  it('con «Sin spoilers» (el eje llega a la vuelta en curso), la columna va justo tras el último dato, no al borde', () => {
+  it('con «Sin spoilers» y la vuelta en curso estrecha, la columna va pasada la línea del instante actual (el final del eje)', () => {
     const { ctx, log } = recorder()
-    // El eje acaba en la vuelta 54, sin datos: la columna, tras la 53.
+    // El eje acaba en la vuelta 54, sin datos y a 15 px de la 53: la columna no cabe antes de la línea, que va en la 54.
     const f = frame(200, LAPS + 1)
     drawEndLabels(ctx, f, race(), style)
+    expect(log.text.length).toBeGreaterThan(0)
+    for (const t of log.text) expect(t.x, t.text).toBeGreaterThanOrEqual(f.right + CURSOR_REACH.after)
+    for (const m of log.rects.filter((r) => r.x >= f.xPos(LAPS) + 1)) expect(m.x).toBeGreaterThanOrEqual(f.right + CURSOR_REACH.after)
+  })
+
+  it('con «Sin spoilers» y la vuelta en curso ancha, la columna va justo tras el último dato, antes de la línea', () => {
+    const { ctx, log } = recorder()
+    // Cinco vueltas en 200 px: datos hasta la 4 y la línea en la 5, 50 px más allá; la columna cabe entre medias.
+    const f = frame(200, 5, 200)
+    drawEndLabels(ctx, f, raceTo(4, 5), style)
+    expect(log.text.length).toBeGreaterThan(0)
     for (const t of log.text) {
-      expect(t.x, t.text).toBeGreaterThan(f.xPos(LAPS))
-      expect(t.x, t.text).toBeLessThan(f.xPos(LAPS) + 20)
+      expect(t.x, t.text).toBeGreaterThan(f.xPos(4))
+      expect(t.x + t.text.length * 6 + 1, t.text).toBeLessThanOrEqual(f.xPos(5) - CURSOR_REACH.before)
     }
+  })
+
+  it('en un iPad (450 y 650 px de datos), ninguna sigla de la columna cruza la línea del instante actual', () => {
+    for (const width of [450, 650]) {
+      for (const lead of [20, 40, LAPS]) {
+        const { ctx, log } = recorder()
+        // Con «Sin spoilers», datos hasta la vuelta anterior y el eje (y la línea) hasta la vuelta en curso.
+        const f = frame(200, lead, width)
+        drawEndLabels(ctx, f, raceTo(lead - 1, lead), style)
+        const cursor = f.xPos(lead)
+        expect(log.text.length, `${width} px, V${lead}`).toBeGreaterThan(0)
+        for (const t of log.text) {
+          const mark = t.x - COLUMN.text
+          const end = t.x + t.text.length * 6 + 1
+          // La caja de la sigla (marca y texto) no toca la línea con su halo: [cursor − 1, cursor + 3].
+          expect(end <= cursor - 1 || mark >= cursor + CURSOR_REACH.after, `${t.text} a ${width} px, V${lead}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('el margen derecho de la gráfica cabe la columna pasada la línea con una sigla de tres letras', () => {
+    // Tres letras de la condensada de 10 px: menos de 24 px.
+    expect(LABEL_PADDING).toBeGreaterThanOrEqual(COLUMN.gap + CURSOR_REACH.after + COLUMN.text + 24)
   })
 
   it('un doblado lleva su sigla a la altura de su dato (sin nada entre su final y la columna)', () => {
