@@ -7,21 +7,23 @@
  *   depende de la altura de cada dirección (`backdropColor`): del horizonte al cénit por encima y hacia un «suelo»
  *   oscuro por debajo, que es lo que hay detrás de la pista en la vista general. Se pinta la primera (renderOrder −10),
  *   sin profundidad ni niebla y sin tone mapping (los colores son los tokens), y la escena va encima.
- * - Niebla: la de three.js, lineal, recalculada en cada render con la profundidad de la pista vista desde la cámara: 0
- *   en su parte más cercana y `FOG_MAX` en la más lejana. Solo la usan los materiales de la pista (TzTrack.vue); todo lo
- *   demás declara `fog: false` (lo comprueba `sceneStats.ambience.foggedObjects` en los e2e).
+ * - Niebla: la de three.js, lineal, con la profundidad de la pista vista desde la cámara: 0 en su parte más cercana y
+ *   `FOG_MAX` en la más lejana. Solo se recalcula si la cámara (posición, giro o plano near) o la escala de altura
+ *   cambiaron desde la última vez (`sceneStats.ambience.computes`). Solo la usan los materiales de la pista
+ *   (TzTrack.vue); todo lo demás declara `fog: false` (lo comprueba `sceneStats.ambience.foggedObjects` en los e2e).
  *
  * Sin dato de ubicación o de hora, o con el ambiente apagado: ni cielo ni niebla (0 draw calls) y se ve el fondo neutro
- * de siempre (`--tz-scene-bg`). No pide frames: se recalcula en los renders que ya hay (reproducción, seek, cámara) y
- * solo recolorea al cambiar de paso de sol, así que en pausa no hay renders en bucle.
+ * de siempre (`--tz-scene-bg`). No pide frames: se prepara antes de los renders que ya hay (reproducción, seek, cámara;
+ * `useSceneFrame`, nada en pausa ni con la escena tapada) y solo recolorea al cambiar de paso de sol.
  */
-import { useLoop, useTres } from '@tresjs/core'
+import { useTres } from '@tresjs/core'
 import {
   BackSide,
   BufferAttribute,
   Color,
   Fog,
   type Material,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   type Object3D,
@@ -31,6 +33,7 @@ import {
   Vector3,
 } from 'three'
 import { useSceneAmbience } from '~/composables/useSceneAmbience'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { type AmbienceLook, backdropColor, FOG_MAX, fogRange } from '~/engine/ambience/ambience'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { registerSceneStat } from '~/replay/debug'
@@ -103,6 +106,8 @@ const stats = {
   sunDeg: null as number | null,
   trackTint: 0,
   fog: null as null | { near: number; far: number; max: number },
+  /** Veces que se recalculó la niebla (solo al moverse la cámara o cambiar la escala de altura). */
+  computes: 0,
   drawCalls: 0,
   triangles: 0,
 }
@@ -129,7 +134,14 @@ const offStat = registerSceneStat('ambience', () => ({
   foggedObjects: foggedObjects(),
 }))
 
+/** Cámara (matriz y plano near) y escala de altura con las que se calculó la niebla; NaN: hay que calcularla. */
+const fogCamera = new Matrix4()
+let fogNear = Number.NaN
+let fogScale = Number.NaN
+let range: { near: number; far: number } | null = null
+
 function hide() {
+  fogNear = Number.NaN
   mesh.visible = false
   if (scene.value.fog === fog) scene.value.fog = null
   stats.shown = false
@@ -143,9 +155,8 @@ function hide() {
 
 const camPos = new Vector3()
 const forward = new Vector3()
-const { onBeforeRender } = useLoop()
-onBeforeRender(({ camera }) => {
-  const cam = camera.value as PerspectiveCamera | undefined
+useSceneFrame(({ camera }) => {
+  const cam = camera as PerspectiveCamera | undefined
   const look = ambience.look(rt.clock.timeMs)
   if (!look || !cam) {
     if (mesh.visible || stats.shown) hide()
@@ -163,18 +174,26 @@ onBeforeRender(({ camera }) => {
   mesh.scale.set(r, r / k, r)
   mesh.visible = true
 
-  // Niebla: de la parte más cercana a la más lejana de la pista, a lo largo de la vista (la profundidad de three).
-  let near = Number.POSITIVE_INFINITY
-  let far = Number.NEGATIVE_INFINITY
-  for (let i = 0; i < footprint.length; i += 3) {
-    const x = footprint[i]!
-    const y = props.flat ? 0 : footprint[i + 2]! * k
-    const z = -footprint[i + 1]!
-    const d = (x - camPos.x) * forward.x + (y - camPos.y) * forward.y + (z - camPos.z) * forward.z
-    if (d < near) near = d
-    if (d > far) far = d
+  // Niebla: de la parte más cercana a la más lejana de la pista, a lo largo de la vista (la profundidad de three). Solo
+  // depende de la cámara (su matriz ya está al día: la han actualizado getWorldPosition/getWorldDirection) y de la escala.
+  if (k !== fogScale || cam.near !== fogNear || !cam.matrixWorld.equals(fogCamera)) {
+    fogScale = k
+    fogNear = cam.near
+    fogCamera.copy(cam.matrixWorld)
+    let near = Number.POSITIVE_INFINITY
+    let far = Number.NEGATIVE_INFINITY
+    for (let i = 0; i < footprint.length; i += 3) {
+      const x = footprint[i]!
+      const y = props.flat ? 0 : footprint[i + 2]! * k
+      const z = -footprint[i + 1]!
+      const d = (x - camPos.x) * forward.x + (y - camPos.y) * forward.y + (z - camPos.z) * forward.z
+      if (d < near) near = d
+      if (d > far) far = d
+    }
+    range = fogRange(Math.max(cam.near, near), far)
+    stats.fog = range ? { near: range.near, far: range.far, max: FOG_MAX } : null
+    stats.computes++
   }
-  const range = fogRange(Math.max(cam.near, near), far)
   if (range) {
     fog.near = range.near
     fog.far = range.far
@@ -185,7 +204,6 @@ onBeforeRender(({ camera }) => {
   stats.phase = look.phase
   stats.sunDeg = look.sunDeg
   stats.trackTint = look.trackTint
-  stats.fog = range ? { near: range.near, far: range.far, max: FOG_MAX } : null
   stats.drawCalls = 1
   stats.triangles = triangles
 })

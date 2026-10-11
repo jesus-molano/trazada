@@ -51,6 +51,7 @@ import {
 import { drawEndLabels, drawPreviewLine, LABEL_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
 import { token } from '~/design/tokens'
 import { ESC_PRIORITY, registerEscape } from '~/replay/keys'
+import { canDraw2d } from '~/utils/canvas2d'
 
 const props = defineProps<{
   spec: ChartSpec
@@ -89,14 +90,6 @@ let plot: uPlot | null = null
 let cursorEl: HTMLDivElement | null = null
 let ro: ResizeObserver | null = null
 let raf = 0
-
-function canDraw(): boolean {
-  try {
-    return typeof document !== 'undefined' && !!document.createElement('canvas').getContext('2d')
-  } catch {
-    return false
-  }
-}
 
 const DASH = [6, 4]
 
@@ -679,7 +672,7 @@ let offEscape: (() => void) | null = null
 function build() {
   destroy()
   const el = host.value
-  if (!el || !canDraw()) return
+  if (!el || !canDraw2d()) return
   const spec = props.spec
   const muted = token('--tz-text-muted')
   const grid = token('--tz-border')

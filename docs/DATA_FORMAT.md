@@ -10,7 +10,7 @@ Este documento los explica. Si discrepa de ellos, mandan los ficheros.
 
 ## Rutas
 
-En producción se sirven desde el Worker de datos (`${dataBaseUrl}`). En desarrollo se sirven desde `data/`, montado en `/data`.
+Se sirven en local desde `data/` (D25: no hay despliegue), montado en `/data` (`${dataBaseUrl}`), tanto con `pnpm local` como con `pnpm dev`.
 
 ```
 /v1/catalog.json
@@ -22,8 +22,7 @@ En producción se sirven desde el Worker de datos (`${dataBaseUrl}`). En desarro
 
 - `session ∈ {fp1, fp2, fp3, sq, sprint, q, race}`.
 - Las rutas de `files` en el manifest son relativas al propio manifest.
-- Los ficheros con hash son inmutables (`Cache-Control: immutable`).
-- `manifest.json` y `catalog.json` llevan una caché corta.
+- Los ficheros con hash son inmutables: si el contenido cambia, cambia el nombre. El servidor local los sirve, como todo lo demás, sin caché (`Cache-Control: no-store`), así que una sesión que se vuelve a descargar se ve al recargar.
 
 ## Versionado
 
@@ -90,9 +89,10 @@ Cabecera:
 - 0 en `position` cuando no aplica.
 
 **Circuito y movimiento**:
-- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m y las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h). Su `s` vale 0 y no se usa.
+- `motion.pos.path = 2` (sin dato) marca también las posiciones que el feed da mal: las que la monotonía tendría que mover más de 5 m, las paradas que la telemetría desmiente (posición congelada o corregida hacia atrás con el coche a más de 30 km/h) y, al cambiar entre pista y pit lane, las del camino de antes que quedan más de 1 m por delante (en `s`) de la primera del nuevo (el feed deja el coche en la pista hasta 10 m más allá de la bifurcación). Su `s` vale 0 y no se usa. Sin pit lane en el circuito, también las que están a más de 6 m de la pista en las ventanas de boxes y en el minuto de antes y de después.
 - `circuit.pitlane.z` es la altura de la pista más cercana, no la del feed (que da la misma a todo el pit lane).
 - El `meta` del circuito lleva `geometryVersion`, la versión de su construcción. Un circuito sin el campo es de la versión 1.
+- Desde `geometryVersion` 3, el pit lane se valida con las muestras de pit lane (a más de 4 m de la pista y a 30 km/h o más) de las otras paradas de la sesión que construyó el circuito, y `meta.quality` lo dice: `pitFitStopShare` (fracción de esas paradas cuyas muestras lo siguen, con p90 de distancia ≤ 3 m; hace falta la mitad), `pitFitP50M` y `pitFitP90M` (distancia en planta de las muestras de las paradas que lo siguen, en m), `pitFitFarShare` (fracción de todas las muestras a más de 5 m), `pitFitUncoveredShare` (fracción del tramo con muestras del pit lane a más de 5 m de toda muestra; 0 si había menos de 5 paradas con que comprobarlo), `pitFitSamples` y `pitFitStops`. Las uniones con la pista (la bifurcación no tiene muestras) son curvas que salen de ella y vuelven con su dirección. Si ninguna parada da un pit lane sin huecos y que sigan los coches, el circuito no lo trae (`meta.pit` es `null` y la tabla `pitlane`, vacía) y `meta.quality` dice por qué: `pitStops` (paradas de la sesión que lo construyó; 0, ninguna) y, si se descartó el guardado al reconstruirlo, `pitDroppedStopShare` (fracción de las paradas que lo seguían). Cada sesión que lo use lleva el aviso `pitlane-missing`, y la siguiente con paradas que dé uno bueno se lo añade (sin tocar la línea, la meta, las curvas ni los sectores: aviso `circuit-rebuilt`, `gains-pit`).
 - Un trazado puede tener variantes `{circuitKey}-{layoutId}-v2`, `-v3`…: se crean cuando una sesión no encaja en el circuito guardado (D21).
 
 ## Eventos (JSON, `events.schema.json`)
@@ -125,9 +125,8 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - `channels.weather` (desde 1.1.0): `present` si `events.weather` trae alguna muestra, `absent` si la fuente no la da (p. ej. TracingInsights o un fallo de descarga). Un manifest sin el campo es de un pipeline anterior: no se sabe si había meteorología, y la app propone volver a descargar la sesión.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
-- `quality.notes`: avisos del pipeline al procesar la sesión, en texto libre (español). El front los muestra en la cabecera del replay: traduce los que reconoce (`apps/web/app/data/quality-notes.ts`; un test comprueba que esos textos siguen en el código del pipeline) y de los demás enseña el texto original. Nunca se esconden.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
-- `quality.notes`: avisos de calidad que la UI puede mostrar. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y no se muestra en la interfaz. Un manifest anterior puede traer cadenas sueltas (texto libre, sin código). Códigos:
+- `quality.notes`: avisos del pipeline al procesar la sesión. El front los muestra en la cabecera del replay (`apps/web/app/data/quality-notes.ts`) y nunca los esconde. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y la UI solo lo enseña si no conoce el código (ver abajo). Un manifest anterior puede traer cadenas sueltas (texto libre, sin código): la UI traduce las que reconoce por patrón (textos antiguos, congelados) y de las demás enseña el texto original. Códigos:
 
   | `code` | Qué significa | `params` |
   |---|---|---|
@@ -145,15 +144,16 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
   | `circuit-fit-unchecked` | No se pudo comprobar que la sesión encaja en el circuito guardado (pocas vueltas limpias): se reutiliza sin comprobar. | `circuit`, `laps` |
   | `circuit-variant-used` | La sesión no encaja en el circuito base del trazado y se usa una variante suya ya guardada. | `circuit`, `base` |
   | `circuit-layout-changed` | La sesión no encaja en ningún circuito guardado del trazado: se construye una variante nueva (¿cambió el trazado?). | `circuit`, `base` |
-  | `circuit-rebuilt` | El circuito se reconstruyó en su sitio con esta sesión (`reason`: `outdated`, versión anterior de la geometría; `gains-corners`, no tenía curvas). | `circuit`, `reason` |
+  | `circuit-rebuilt` | El circuito se reconstruyó en su sitio con esta sesión (`reason`: `outdated`, versión anterior de la geometría; `gains-corners`, no tenía curvas; `gains-pit`, no tenía pit lane y se le añade el de esta sesión sin tocar lo demás). | `circuit`, `reason` |
   | `circuit-outdated-kept` | El circuito está anticuado pero se reutiliza tal cual (`reason`: `no-corners`, `build-failed`, `would-lose`). | `circuit`, `reason` |
   | `position-glitches` | Más del 1 % de las posiciones de algún coche son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha). | `cars` |
+  | `pitlane-missing` | El circuito no tiene pit lane: los coches en el pit lane no se dibujan (`reason`: `no-stops`, la sesión que lo construyó no tenía paradas; `none-valid`, ninguna de sus `stops` paradas lo daba bien; `dropped`, el que tenía no seguía a los coches, solo el `stopShare` % de las paradas; `unknown`, circuito anterior a la versión 3). Se añade solo con la próxima sesión con paradas que lo dé. | `reason`, `stops`, `stopShare` |
 
-  Un lector debe tolerar códigos que no conoce (un aviso genérico, nunca el `text` en español). En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
+  Un lector debe tolerar códigos que no conoce (datos de un pipeline más nuevo): enseña su `text` tal cual, marcado como texto original sin traducir («Aviso sin traducir (texto original):»), y nunca lo esconde. En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
 
 ## Estado de la versión 1
 
-La versión 1 del esquema **no se ha publicado todavía**. Hasta el primer deploy de datos (H11), los cambios en v1 se hacen en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. Desde ese deploy rige la política de versiones de arriba.
+La versión 1 del esquema **no se publica** (D25: no hay despliegue; los datos se quedan en `data/` del PC). Mientras no haya datos de usuarios que conservar, los cambios en v1 se pueden hacer en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. En cuanto los haya, rige la política de versiones de arriba. La 1.1.0 (meteorología) ya siguió esa política, como un minor aditivo: los datos 1.0.0 siguen siendo válidos y un lector 1.0.0 lee los 1.1.0.
 
 Historial de versiones:
 

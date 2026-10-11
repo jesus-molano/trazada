@@ -33,8 +33,10 @@ export function isEstimatedField(x: string): x is EstimatedField {
 }
 
 /**
- * Campos del manifest que se muestran en la escena: `positions` y cualquiera desconocido (versión de
- * datos más nueva), para que nada estimado quede sin etiqueta. `telemetry` y `trackStatus` van en su panel.
+ * Campos del manifest que se muestran siempre en la escena: `positions` y cualquiera desconocido (versión de
+ * datos más nueva), para que nada estimado quede sin etiqueta. `telemetry` y `trackStatus` van en su panel;
+ * `telemetry` sale además en la escena mientras una capa la pinta (mapa de calor o estelas por velocidad: lo
+ * declaran en `stores/sceneEstimated.ts`).
  */
 export function sceneManifestFields(estimated: readonly string[]): string[] {
   return estimated.filter((f) => f === 'positions' || !isEstimatedField(f))

@@ -7,9 +7,12 @@
  *   «Estimado» (`lapDelta`). «En boxes» con A en el pit lane; «sin dato» sin posición de alguno o sin referencia (y el
  *   motivo, debajo).
  * - Diferencia oficial de la última vuelta cerrada (tiempos de vuelta del cronometraje: dato real, en milésimas).
- * - Trazas por distancia de velocidad, acelerador y freno (TzDistanceChart): las muestras reales de la telemetría, de
- *   la vuelta en curso de A hasta el instante actual y de la vuelta de referencia de B.
- * - El fantasma de B sobre el mapa (scene-layers/TzGhost.vue), con su estado aquí.
+ * - Trazas por distancia de velocidad, acelerador y freno (TzDistanceChart): las muestras de la telemetría, de la
+ *   vuelta en curso de A hasta el instante actual y de la vuelta de referencia de B. Son las reales salvo cuando el
+ *   manifest declara la telemetría reconstruida (fuentes dev): la explicación lo dice, y el panel ya lleva su
+ *   «Estimado» (`telemetry`, en TzTelemetry).
+ * - El fantasma de B sobre el mapa (scene-layers/TzGhost.vue), con su estado aquí: la posición real de B, o la
+ *   reconstruida si el manifest declara `positions` (la escena ya lleva su «Estimado»; la explicación lo dice).
  *
  * Nada por frame pasa por la reactividad de Vue: la diferencia, el estado del fantasma y la línea de las gráficas se
  * escriben en el DOM (y solo cuando cambian); las trazas se redibujan cuando cambia la vuelta o llega una muestra
@@ -153,7 +156,21 @@ const official = computed(() => {
   }
 })
 
-const hint = computed(() => t('compare.hint', { gap: SEGMENT_GAP_MS / 1000 }))
+/** Lo que el manifest declara reconstruido en esta sesión (fijo: el panel se monta con cada sesión). */
+const estimated = rt.session.manifest.quality.estimated
+const telemetryEstimated = estimated.includes('telemetry')
+const positionsEstimated = estimated.includes('positions')
+const hint = computed(() =>
+  [
+    t('compare.hint'),
+    telemetryEstimated ? t('compare.hintTracesEstimated') : t('compare.hintTraces'),
+    positionsEstimated
+      ? t('compare.hintGhostEstimated', { gap: SEGMENT_GAP_MS / 1000 })
+      : t('compare.hintGhost', { gap: SEGMENT_GAP_MS / 1000 }),
+    t('compare.hintRefs'),
+  ].join(' '),
+)
+const ghostHint = computed(() => (positionsEstimated ? t('compare.ghostHintEstimated') : t('compare.ghostHint')))
 
 // --- Por frame (fuera de Vue) ---
 
@@ -323,7 +340,7 @@ watch(
         class="tz-cmp__ghost"
         :aria-pressed="compare.showGhost"
         :aria-label="t('compare.ghost')"
-        :title="t('compare.ghostHint')"
+        :title="ghostHint"
         data-testid="compare-ghost"
         @click="compare.setShowGhost(!compare.showGhost)"
       >

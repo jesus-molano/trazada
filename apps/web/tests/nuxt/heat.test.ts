@@ -12,7 +12,7 @@ import TzHeatTool from '~/components/scene-tools/TzHeatTool.vue'
 import { renderOrder as drsOrder } from '~/components/scene-layers/TzDrsZones.vue'
 import { renderOrder as heatOrder } from '~/components/scene-layers/TzTrackHeat.vue'
 import { renderOrder as flagsOrder } from '~/components/TzTrackFlags.vue'
-import { HEAT_MINISECTORS } from '~/engine/track/heat'
+import { HEAT_GAP_MS, HEAT_MINISECTORS } from '~/engine/track/heat'
 import { SCENE_LAYERS } from '~/slots/scene-layers'
 import { SCENE_TOOLS } from '~/slots/scene-tools'
 import { useCompareStore } from '~/stores/compare'
@@ -23,8 +23,8 @@ import { heatTestRuntime } from '~/testing/heat'
 
 const KEY = 'trazada.heat'
 
-function attach(type: 'race' | 'fp1' = 'race') {
-  const h = heatTestRuntime(type)
+function attach(type: 'race' | 'fp1' = 'race', estimated: readonly string[] = []) {
+  const h = heatTestRuntime(type, estimated)
   usePlaybackStore().attach(h.rt as never)
   return h
 }
@@ -36,8 +36,8 @@ const wrappers: VueWrapper[] = []
  * La herramienta con el runtime de prueba. `mountSuspended` deja activo el Pinia de la app de Nuxt (el que usan los
  * componentes y que comparten todos los casos): después de montar se deja como al empezar y se engancha ahí el runtime.
  */
-async function mountTool(type: 'race' | 'fp1' = 'race') {
-  const h = attach(type)
+async function mountTool(type: 'race' | 'fp1' = 'race', estimated: readonly string[] = []) {
+  const h = attach(type, estimated)
   const w = await mountSuspended(TzHeatTool)
   wrappers.push(w)
   const heat = useHeatStore()
@@ -193,6 +193,44 @@ describe('herramienta del mapa de calor', () => {
     expect(text).toMatch(/25/)
     expect(text).toMatch(/50 ms/)
     expect(text).toMatch(/(banderas|flags)/)
+    expect(text).not.toMatch(/(reconstruida|reconstructed)/)
+  })
+
+  it('telemetría reconstruida (manifest de una sesión dev): la velocidad lleva «Estimado», también en la fila de la escena, y la pista lo dice', async () => {
+    const { h, w } = await mountTool('race', ['positions', 'telemetry', 'trackStatus'])
+    const { t } = useNuxtApp().$i18n
+    usePlaybackStore().selectCar('2')
+    h.coarse(h.seen(2, 3))
+    // Apagado, nada que etiquetar.
+    expect(sceneLabels()).toEqual([])
+    expect(w.find('[data-testid="estimated"]').exists()).toBe(false)
+
+    await w.find('[data-testid="heat-speed"]').trigger('click')
+    expect(w.find('[data-testid="heat-tool"]').attributes('data-status')).toBe('ok')
+    expect(useSceneEstimatedStore().labels).toEqual([{ field: 'telemetry' }])
+    expect(w.find('[data-testid="heat-tool"] [data-testid="estimated"][data-field="telemetry"]').exists()).toBe(true)
+    const text = w.find('[data-testid="heat-hint-panel"]').text()
+    expect(text).toContain(t('heat.hintSpeedEstimated', { gap: HEAT_GAP_MS / 1000 }))
+    expect(text).not.toMatch(/(midió el coche|as measured by the car)/)
+
+    // Minisectores: el mismo dueño cambia de etiqueta (los dos modos nunca se pintan a la vez).
+    useCompareStore().setCompareCar('7')
+    h.coarse(h.seen(7, 3))
+    await w.find('[data-testid="heat-minisectors"]').trigger('click')
+    expect(sceneLabels()).toEqual(['minisectors'])
+    expect(w.find('[data-testid="estimated"][data-field="telemetry"]').exists()).toBe(false)
+    // De vuelta a velocidad, otra vez la de la telemetría; sin vuelta que pintar (antes de la primera), ninguna.
+    await w.find('[data-testid="heat-speed"]').trigger('click')
+    expect(sceneLabels()).toEqual(['telemetry'])
+    h.coarse(1000)
+    await nextTick()
+    expect(w.find('[data-testid="heat-tool"]').attributes('data-status')).toBe('noLap')
+    expect(sceneLabels()).toEqual([])
+    h.coarse(h.seen(2, 3))
+    await nextTick()
+    expect(sceneLabels()).toEqual(['telemetry'])
+    await w.find('[data-testid="heat-off"]').trigger('click')
+    expect(sceneLabels()).toEqual([])
   })
 
   it('preferencia: un modo guardado se recupera; lo inválido o de otra versión, no; la vuelta vuelve a la de por defecto', async () => {

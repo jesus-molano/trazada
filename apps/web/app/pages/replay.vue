@@ -180,8 +180,13 @@ onBeforeUnmount(() => {
           </template>
         </TzHint>
       </p>
-      <!-- Avisos de calidad del pipeline (quality.notes del manifest), si los hay. -->
-      <TzSessionNotes v-if="session.status === 'ready'" :key="`notes-${session.id}`" :notes="session.manifest?.quality.notes" />
+      <!-- Avisos de calidad del pipeline (quality.notes del manifest) y, desde 2026, el del reglamento (por la temporada). -->
+      <TzSessionNotes
+        v-if="session.status === 'ready'"
+        :key="`notes-${session.id}`"
+        :notes="session.manifest?.quality.notes"
+        :season="session.manifest?.session.season"
+      />
       <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
       <!-- Botones y chips de otras funciones (hueco components/replay-header/, D29). -->
       <template v-if="playback.attached">

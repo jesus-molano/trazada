@@ -129,6 +129,12 @@
     "forward": "A car is never drawn going backwards: if the source places it moving back (noise or a spin), the distance travelled is adjusted so that it does not decrease; if that adjustment would move it more than 5 m, or the telemetry says it was moving while the position stayed frozen, that stretch has no data and the car is not drawn.",
     "width": "The track has a generic {m} m width, not each circuit's own. From afar, the track and the cars have a minimum on-screen size so they stay visible.",
     "car": "The 3D car is generic: it carries the team colour and, on the tyres, the colour of the compound given by timing (grey with no data).",
+    "trails": "Trails are the last {s} s of the same movement drawn for the car: they also run on the centre line and break where the car is not drawn. Coloured by speed, each point carries the last speed measured at most {age} s earlier, not interpolated; with none, grey.",
+    "drs": "DRS zones are deduced from where cars had DRS open according to their telemetry: they are not the official lines, which no source provides, and they carry the “Estimated” label. In 2026 there is no DRS and no per-car channel, so none are drawn.",
+    "sectors": "Sector colours are calculated by Trazada from the official sector times: they are not the timing feed’s marks, which the source does not include.",
+    "compare": "When comparing two drivers, the live gap comes from the distance given by the GPS: it is shown in tenths and carries the “Estimated” label; the exact one is the official gap, when the lap ends. The ghost is the other car on its reference lap, drawn as in the replay and shifted in time; where there is no position, it is not drawn.",
+    "weather": "Weather comes from the circuit’s station, one reading per minute: the latest is shown, not interpolated, and after {s} s without another it becomes «no data». Nothing the source lacks is ever filled with 0.",
+    "sky": "The sky and the fog in the scene are decorative: they come from the session time and the circuit’s location, not from the weather at the time.",
     "estimated": "Anything calculated or exaggerated (height ×2 or ×3, spreading cars, lap 1…) carries the “Estimated” label."
   },
   "sessionNotes": {
@@ -157,6 +163,7 @@
       "circuit-rebuilt": {
         "outdated": "Circuit {circuit} was rebuilt from this session (it was made with an older version).",
         "gains-corners": "Circuit {circuit} was rebuilt from this session, which has the official corners and rotation.",
+        "gains-pit": "Circuit {circuit} had no pit lane: the one from this session has been added (nothing else changes).",
         "other": "Circuit {circuit} was rebuilt from this session."
       },
       "circuit-outdated-kept": {
@@ -165,7 +172,13 @@
         "would-lose": "Circuit {circuit} is from an older version, but rebuilding it from this session would drop the pit lane or the sectors: it is used as is.",
         "other": "Circuit {circuit} is from an older version and is used as is."
       },
-      "position-glitches": "More than 1% of the positions of some cars ({cars}) are «no data» because of feed glitches (going backwards or frozen while moving)."
+      "position-glitches": "More than 1% of the positions of some cars ({cars}) are «no data» because of feed glitches (going backwards or frozen while moving).",
+      "pitlane-missing": {
+        "no-stops": "The circuit has no pit lane: the session it was built from had no pit stops. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops.",
+        "none-valid": "The circuit has no pit lane: none of the {stops} pit stops of the session it was built from gave one without gaps that the cars follow. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
+        "dropped": "The circuit has no pit lane: the one it had did not follow the cars ({stopShare}% of the pit stops followed it) and no pit stop gave a good one. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
+        "other": "The circuit has no pit lane: cars in the pit lane are not drawn."
+      }
     }
   },
   "controls": {
@@ -182,7 +195,7 @@
     "label": "Session timeline",
     "atLap": "Lap {lap} · {time}",
     "lapStart": "Start of lap {lap}",
-    "pit": "Pit stop: {tla}",
+    "pit": "Pit lane entry: {tla}",
     "window": {
       "sc": "Safety car",
       "vsc": "Virtual safety car",
@@ -277,7 +290,6 @@
       "unknown": "No data"
     },
     "drsUnavailable": "Not available in {season}",
-    "drsUnavailableHint": "There is no DRS from 2026: active aerodynamics (straight mode) and overtake mode replace it, enabled track-wide by race control.",
     "drsWhy": "Why?",
     "chartSpeed": "Speed over the last {s} s",
     "chartPedals": "Pedals over the last {s} s",

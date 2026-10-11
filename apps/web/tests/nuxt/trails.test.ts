@@ -1,15 +1,23 @@
 /**
  * Estelas (ítem 7): la herramienta de escena (apagadas por defecto, «No / Equipo / Velocidad», leyenda y pista que
- * explica qué es dato), su preferencia por navegador y los huecos reales donde se montan capa y herramienta.
+ * explica qué es dato; con la telemetría reconstruida del manifest, «Estimado» también en la fila de la escena), su
+ * preferencia por navegador y los huecos reales donde se montan capa y herramienta.
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import type { VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import TzHeatTool from '~/components/scene-tools/TzHeatTool.vue'
 import TzTrailsTool from '~/components/scene-tools/TzTrailsTool.vue'
 import { TRAIL_SPEED_KMH } from '~/engine/replay/trail'
+import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
 import { SCENE_LAYERS } from '~/slots/scene-layers'
 import { SCENE_TOOLS } from '~/slots/scene-tools'
+import { useHeatStore } from '~/stores/heat'
+import { usePlaybackStore } from '~/stores/playback'
+import { useSceneEstimatedStore } from '~/stores/sceneEstimated'
 import { useTrailsStore } from '~/stores/trails'
+import { heatTestRuntime } from '~/testing/heat'
 
 const KEY = 'trazada.trails'
 
@@ -61,6 +69,88 @@ describe('herramienta de estelas', () => {
     expect(text).toMatch(/2 s/)
     expect(text).toMatch(/3 s/)
     expect(text).not.toMatch(/(real position|posición real|exact|exacta)/)
+  })
+})
+
+describe('estelas por velocidad y telemetría reconstruida', () => {
+  /** Montados en el caso: se desmontan al acabar (comparten la Pinia de la app y seguirían reaccionando). */
+  const wrappers: VueWrapper[] = []
+  /** Una sesión con su manifest (`quality.estimated`) y la herramienta montada; las estelas, apagadas. */
+  async function mountWith(estimated: readonly string[]) {
+    const h = heatTestRuntime('race', estimated)
+    usePlaybackStore().attach(h.rt as never)
+    const w = await mountSuspended(TzTrailsTool)
+    wrappers.push(w)
+    useTrailsStore().setMode('off')
+    return { h, w }
+  }
+  const labels = () => useSceneEstimatedStore().labels
+  afterEach(() => {
+    for (const w of wrappers.splice(0)) w.unmount()
+    useTrailsStore().setMode('off')
+    useHeatStore().setMode('off')
+    usePlaybackStore().detach()
+  })
+
+  it('con la telemetría medida: sin «Estimado» y la pista habla de la velocidad medida', async () => {
+    const { w } = await mountWith([])
+    await w.find('[data-testid="trails-speed"]').trigger('click')
+    expect(w.find('[data-testid="trails-legend"]').exists()).toBe(true)
+    expect(w.find('[data-testid="estimated"]').exists()).toBe(false)
+    expect(labels()).toEqual([])
+    const text = w.find('[data-testid="trails-hint-panel"]').text()
+    expect(text).toMatch(/(velocidad medida|measured speed)/)
+    expect(text).not.toMatch(/(reconstruida|reconstructed)/)
+  })
+
+  it('con la telemetría reconstruida (manifest de una sesión dev): por velocidad, «Estimado» junto a la leyenda y en la fila de la escena; la pista lo dice', async () => {
+    const { w } = await mountWith(['positions', 'telemetry', 'trackStatus'])
+    const { t } = useNuxtApp().$i18n
+    const tag = () => w.find('[data-testid="trails-tool"] [data-testid="estimated"][data-field="telemetry"]')
+    expect(labels()).toEqual([])
+    // Por equipo no se pinta ninguna velocidad: nada que etiquetar.
+    await w.find('[data-testid="trails-team"]').trigger('click')
+    expect(tag().exists()).toBe(false)
+    expect(labels()).toEqual([])
+
+    await w.find('[data-testid="trails-speed"]').trigger('click')
+    expect(tag().exists()).toBe(true)
+    expect(labels()).toEqual([{ field: 'telemetry' }])
+    const text = w.find('[data-testid="trails-hint-panel"]').text()
+    expect(text).toContain(t('trails.hintSpeedEstimated', { age: MAX_SAMPLE_AGE_MS / 1000 }))
+    expect(text).not.toMatch(/(velocidad medida|measured speed)/)
+
+    await w.find('[data-testid="trails-off"]').trigger('click')
+    expect(labels()).toEqual([])
+    // Sin la herramienta (otra sesión, sin escena), la etiqueta no se queda colgada.
+    await w.find('[data-testid="trails-speed"]').trigger('click')
+    expect(labels()).toEqual([{ field: 'telemetry' }])
+    wrappers.splice(0).forEach((x) => x.unmount())
+    expect(labels()).toEqual([])
+  })
+
+  it('mapa de calor y estelas por velocidad a la vez: una sola etiqueta en la escena, mientras pinte alguna de las dos', async () => {
+    const { h } = await mountWith(['telemetry'])
+    wrappers.push(await mountSuspended(TzHeatTool))
+    // La Pinia de la app (la de los componentes) con el runtime, un coche y su vuelta 3 ya vista.
+    usePlaybackStore().attach(h.rt as never)
+    usePlaybackStore().selectCar('2')
+    h.coarse(h.seen(2, 3))
+    useHeatStore().setMode('speed')
+    useTrailsStore().setMode('speed')
+    await nextTick()
+    expect(useHeatStore().view?.status).toBe('ok')
+    expect(labels()).toEqual([{ field: 'telemetry' }])
+    useTrailsStore().setMode('off')
+    await nextTick()
+    expect(labels()).toEqual([{ field: 'telemetry' }])
+    useTrailsStore().setMode('speed')
+    useHeatStore().setMode('off')
+    await nextTick()
+    expect(labels()).toEqual([{ field: 'telemetry' }])
+    useTrailsStore().setMode('team')
+    await nextTick()
+    expect(labels()).toEqual([])
   })
 })
 

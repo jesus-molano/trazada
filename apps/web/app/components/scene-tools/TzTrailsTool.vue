@@ -4,14 +4,27 @@
  * defecto y recordadas por navegador (`stores/trails.ts`). Con el color por velocidad, una leyenda con la escala fija
  * y el gris de «sin dato». La pista «ⓘ» explica qué es dato y qué no (línea central, cortes, velocidad sin
  * interpolar).
+ *
+ * Si el manifest declara la telemetría reconstruida (`quality.estimated` con `telemetry`, fuentes dev), la velocidad
+ * que colorea las estelas es una estimación: lleva la etiqueta `telemetry` junto a la leyenda y, mientras se pinta, en
+ * la fila de etiquetas de la escena (`stores/sceneEstimated.ts`), siempre a la vista: este menú va plegado.
  */
 import { TRAIL_SPAN_MS, TRAIL_SPEED_KMH } from '~/engine/replay/trail'
 import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
+import { getRuntime } from '~/stores/playback'
+import { useSceneEstimatedStore } from '~/stores/sceneEstimated'
 import { type TrailMode, useTrailsStore } from '~/stores/trails'
 
 const { t } = useI18n()
 const trails = useTrailsStore()
+const sceneEstimated = useSceneEstimatedStore()
 onMounted(() => trails.hydrate())
+
+/** ¿Declara el manifest la telemetría reconstruida? (fijo mientras vive la escena, que se monta con cada sesión) */
+const telemetryEstimated = getRuntime()?.session.manifest.quality.estimated.includes('telemetry') ?? false
+const speedEstimated = computed(() => trails.mode === 'speed' && telemetryEstimated)
+watch(speedEstimated, (on) => sceneEstimated.set('trails', on ? { field: 'telemetry' } : null), { immediate: true })
+onBeforeUnmount(() => sceneEstimated.set('trails', null))
 
 const modes = computed<{ mode: TrailMode; label: string }[]>(() => [
   { mode: 'off', label: t('trails.modes.off') },
@@ -19,7 +32,12 @@ const modes = computed<{ mode: TrailMode; label: string }[]>(() => [
   { mode: 'speed', label: t('trails.modes.speed') },
 ])
 const hint = computed(() =>
-  [t('trails.hint', { s: TRAIL_SPAN_MS / 1000 }), t('trails.hintSpeed', { age: MAX_SAMPLE_AGE_MS / 1000 })].join(' '),
+  [
+    t('trails.hint', { s: TRAIL_SPAN_MS / 1000 }),
+    telemetryEstimated
+      ? t('trails.hintSpeedEstimated', { age: MAX_SAMPLE_AGE_MS / 1000 })
+      : t('trails.hintSpeed', { age: MAX_SAMPLE_AGE_MS / 1000 }),
+  ].join(' '),
 )
 </script>
 
@@ -55,6 +73,7 @@ export const group = 'layers'
       <span class="tz-trails__swatch" aria-hidden="true" />
       <span>{{ t('trails.noSample') }}</span>
     </span>
+    <TzEstimated v-if="speedEstimated" field="telemetry" />
     <TzHint :label="t('trails.hintLabel')" :text="hint" testid="trails-hint" align="end" />
   </span>
 </template>

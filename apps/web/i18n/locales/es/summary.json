@@ -22,6 +22,7 @@
     "tyresNoData": "Neumáticos: sin dato",
     "compoundNoData": "Compuesto sin dato",
     "stops": "Sin paradas | {n} parada | {n} paradas",
+    "stopsAtLeast": "Al menos {n} parada | Al menos {n} paradas",
     "stopsNoData": "Paradas: sin dato",
     "pitLane": "Pit lane",
     "pitLaneHint": "Tiempo en el pit lane, de la entrada a la salida: no es el tiempo de la parada en el box, que no está en los datos. Solo cuenta como parada si cambian los neumáticos.",

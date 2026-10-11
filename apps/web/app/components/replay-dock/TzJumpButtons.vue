@@ -38,8 +38,9 @@ const keyHint = (key: string) => t('moments.jump.key', { key })
 let offKeys: (() => void)[] = []
 onMounted(() => {
   offKeys = [
-    registerShortcut({ key: PREV_KEY }, () => moments.jump(-1)),
-    registerShortcut({ key: NEXT_KEY }, () => moments.jump(1)),
+    // Mantenidas, siguen saltando (como las flechas); los conmutadores (L, T, ?) no.
+    registerShortcut({ key: PREV_KEY }, () => moments.jump(-1), { repeat: true }),
+    registerShortcut({ key: NEXT_KEY }, () => moments.jump(1), { repeat: true }),
     registerCommandService(
       'moments',
       // «Sin spoilers» de la hoja de análisis, al leerlo (uno por runtime: `useAnalysis` lo crea si aún no existe).

@@ -7,7 +7,7 @@
     "continue": {
       "title": "Seguir viendo",
       "where": "{session} en {at}",
-      "progress": "{pct} visto",
+      "progress": "en el {pct} de la sesión",
       "forget": "Olvidar {session}"
     },
     "toast": {

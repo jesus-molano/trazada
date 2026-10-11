@@ -7,12 +7,12 @@
  * Una sola malla con todas las zonas (1 draw call), con la anchura de mapa de la pista (mismo shader y parámetros que
  * la cinta y las banderas, así que la cubre entera a cualquier distancia), sin niebla y sin escribir profundidad. Por
  * debajo de las banderas (renderOrder 0,7 < 1): una bandera amarilla en una zona se sigue viendo. Lee el estado de
- * pista en cada render sin reactividad y solo toca el material cuando cambia. Sin zonas (2026, sin canal o sin
+ * pista antes de cada render (`useSceneFrame`) sin reactividad y solo toca el material cuando cambia. Sin zonas (2026, sin canal o sin
  * aperturas suficientes) o apagadas, no se dibuja nada (0 draw calls).
  */
-import { useLoop } from '@tresjs/core'
 import { BufferAttribute, BufferGeometry, DoubleSide, Mesh, MeshBasicMaterial } from 'three'
 import { useMapWidth } from '~/composables/useMapWidth'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { token } from '~/design/tokens'
 import { drsZoneMesh } from '~/engine/drs/zoneMesh'
 import type { CircuitModel } from '~/engine/track/circuit'
@@ -93,8 +93,7 @@ watch(
 
 let seenVersion = -1
 let seenShow: boolean | null = null
-const { onBeforeRender } = useLoop()
-onBeforeRender(() => {
+useSceneFrame(() => {
   const ts = rt.trackState
   if (ts.version === seenVersion && show === seenShow) return
   seenVersion = ts.version

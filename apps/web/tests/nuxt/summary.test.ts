@@ -139,6 +139,66 @@ describe('sin dato, nunca un valor inventado', () => {
     expect(text('[data-testid="summary-fastest"]')).toMatch(/(sin dato|no data)$/)
   })
 
+  it('un paso por el pit lane sin dato de neumáticos puede ser una parada: nunca «Sin paradas» ni una cifra cerrada', async () => {
+    const start = rt.clock.startMs
+    const visit = (lap: number, kind: 'stop' | 'pass' | 'unknown') => ({
+      lap,
+      inMs: start + lap,
+      outMs: start + lap + 20_000,
+      pitLaneMs: 20_000,
+      kind,
+    })
+    const row = (position: number, car: string, pits: ReturnType<typeof visit>[]) => ({
+      position,
+      car,
+      driver: null,
+      gapMs: position === 1 ? 0 : 1000 * position,
+      lapsBehind: 0,
+      bestLapMs: null,
+      laps: 53,
+      stints: ['MEDIUM', 'HARD'],
+      pits,
+    })
+    rt.ext('summary', (): SessionSummary => ({
+      type: 'race',
+      race: true,
+      end: { t: start, source: 'finished' },
+      showMs: start,
+      rows: [
+        // Solo un paso sin dato de neumáticos (p. ej., la vuelta de entrada es la última fila): no se sabe si paró.
+        row(1, '1', [visit(53, 'unknown')]),
+        // Una parada segura y otro paso sin dato: al menos una.
+        row(2, '44', [visit(20, 'stop'), visit(40, 'unknown')]),
+        // Ningún paso por el pit lane: sin paradas, de verdad.
+        row(3, '16', []),
+      ],
+      fastest: null,
+    }))
+    await mountBoth()
+    frame()
+    await nextTick()
+    useSessionSummary().show()
+    await nextTick()
+    const [p1, p2, p3] = [...dialog()!.querySelectorAll<HTMLElement>('[data-testid="summary-row"]')] as [
+      HTMLElement,
+      HTMLElement,
+      HTMLElement,
+    ]
+    const count = (r: HTMLElement) => r.querySelector('[data-testid="summary-stop-count"]')!
+
+    expect(text('[data-testid="summary-stop-count"]', p1)).toMatch(/^(Paradas: sin dato|Stops: no data)$/)
+    expect(count(p1).classList).toContain('is-missing')
+    expect(p1.textContent).not.toMatch(/(Sin paradas|No stops)/)
+    expect(text('[data-testid="summary-unknown-visits"]', p1)).toMatch(/1 (paso|pit lane pass)/)
+
+    expect(text('[data-testid="summary-stop-count"]', p2)).toMatch(/^(Al menos 1 parada|At least 1 stop)$/)
+    expect(count(p2).classList).not.toContain('is-missing')
+    expect(text('[data-testid="summary-unknown-visits"]', p2)).toMatch(/[VL]40/)
+
+    expect(text('[data-testid="summary-stop-count"]', p3)).toMatch(/^(Sin paradas|No stops)$/)
+    expect(p3.querySelector('[data-testid="summary-unknown-visits"]')).toBeNull()
+  })
+
   it('libres: mejor vuelta, gap con el primero y vueltas; sin mejor vuelta ni vueltas, «sin dato»', async () => {
     const start = rt.clock.startMs
     const row = (position: number, car: string, bestLapMs: number | null, gapMs: number | null, laps: number | null) => ({

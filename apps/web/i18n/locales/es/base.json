@@ -129,6 +129,12 @@
     "forward": "Un coche nunca se dibuja marcha atrás: si la fuente lo sitúa retrocediendo (ruido o un trompo), la distancia recorrida se ajusta para que no disminuya; si ese ajuste tuviera que moverlo más de 5 m, o la telemetría dice que iba en marcha mientras la posición se quedaba congelada, ese tramo queda sin dato y el coche no se dibuja.",
     "width": "La pista tiene una anchura genérica de {m} m, no la de cada circuito. De lejos, la pista y los coches tienen un tamaño mínimo en pantalla para que se vean.",
     "car": "El coche 3D es genérico: lleva el color del equipo y, en los neumáticos, el del compuesto que da el cronometraje (gris si no hay dato).",
+    "trails": "Las estelas son los últimos {s} s del mismo movimiento que se dibuja para el coche: también van sobre la línea central y se cortan donde el coche no se dibuja. Por velocidad, cada punto lleva la última velocidad medida de hace {age} s como mucho, sin interpolar; si no hay ninguna, gris.",
+    "drs": "Las zonas de DRS se deducen de dónde llevaron los coches el DRS abierto según su telemetría: no son las líneas oficiales, que ninguna fuente da, y llevan la etiqueta «Estimado». En 2026 no hay DRS ni canal por coche, así que no se dibujan.",
+    "sectors": "Los colores de sector los calcula Trazada con los tiempos oficiales de cada sector: no son las marcas del cronometraje, que la fuente no trae.",
+    "compare": "Al comparar dos pilotos, la diferencia en vivo sale de la distancia que da el GPS: va en décimas y lleva la etiqueta «Estimado»; la exacta es la oficial, al cerrar la vuelta. El fantasma es el otro coche en su vuelta de referencia, dibujado como en el replay y desplazado en el tiempo; donde no hay posición, no se dibuja.",
+    "weather": "La meteorología es la de la estación del circuito, una medida por minuto: se muestra la última, sin interpolar, y a los {s} s sin otra pasa a «sin dato». Lo que la fuente no trae nunca se rellena con 0.",
+    "sky": "El cielo y la niebla de la escena son decorativos: salen de la hora de la sesión y de la posición del circuito, no del tiempo que hacía.",
     "estimated": "Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado»."
   },
   "sessionNotes": {
@@ -157,6 +163,7 @@
       "circuit-rebuilt": {
         "outdated": "El circuito {circuit} se ha reconstruido con esta sesión (estaba hecho con una versión anterior).",
         "gains-corners": "El circuito {circuit} se ha reconstruido con esta sesión, que trae las curvas y la rotación oficiales.",
+        "gains-pit": "El circuito {circuit} no tenía pit lane: se le ha añadido el de esta sesión (lo demás no cambia).",
         "other": "El circuito {circuit} se ha reconstruido con esta sesión."
       },
       "circuit-outdated-kept": {
@@ -165,7 +172,13 @@
         "would-lose": "El circuito {circuit} es de una versión anterior, pero reconstruirlo con esta sesión le quitaría el pit lane o los sectores: se usa tal cual.",
         "other": "El circuito {circuit} es de una versión anterior y se usa tal cual."
       },
-      "position-glitches": "Más del 1 % de las posiciones de algunos coches ({cars}) son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha)."
+      "position-glitches": "Más del 1 % de las posiciones de algunos coches ({cars}) son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha).",
+      "pitlane-missing": {
+        "no-stops": "El circuito no tiene pit lane: la sesión con que se construyó no tenía paradas. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas.",
+        "none-valid": "El circuito no tiene pit lane: ninguna de las {stops} paradas de la sesión con que se construyó lo daba sin huecos y por donde van los coches. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
+        "dropped": "El circuito no tiene pit lane: el que tenía no seguía a los coches (lo seguía el {stopShare} % de las paradas) y ninguna parada daba uno bueno. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
+        "other": "El circuito no tiene pit lane: los coches en el pit lane no se dibujan."
+      }
     }
   },
   "controls": {
@@ -182,7 +195,7 @@
     "label": "Línea de tiempo de la sesión",
     "atLap": "Vuelta {lap} · {time}",
     "lapStart": "Inicio de la vuelta {lap}",
-    "pit": "Parada en boxes: {tla}",
+    "pit": "Entrada en el pit lane: {tla}",
     "window": {
       "sc": "Coche de seguridad",
       "vsc": "Coche de seguridad virtual",
@@ -277,7 +290,6 @@
       "unknown": "Sin dato"
     },
     "drsUnavailable": "No disponible en {season}",
-    "drsUnavailableHint": "Desde 2026 no hay DRS: lo sustituyen la aerodinámica activa (modo recta) y el modo adelantamiento, que dirección de carrera habilita para toda la pista.",
     "drsWhy": "¿Por qué?",
     "chartSpeed": "Velocidad en los últimos {s} s",
     "chartPedals": "Pedales en los últimos {s} s",

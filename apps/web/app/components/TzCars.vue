@@ -8,8 +8,9 @@
  *
  * Todo instanciado: la cuña (una instancia por coche, en el orden de los estados), el modelo detallado en
  * tres capas que comparten matrices (solo los coches de cerca, compactados al principio) y un proxy
- * invisible para elegir coche con un clic o un toque. Las matrices se escriben en cada render desde el
- * ReplayModel, sin reactividad. Va dentro de TresCanvas, en el grupo con la escala de altura.
+ * invisible para elegir coche con un clic o un toque. Las matrices se escriben antes de cada render desde el
+ * ReplayModel (`useSceneFrame`; nada en pausa ni con la escena tapada), sin reactividad. Va dentro de TresCanvas, en
+ * el grupo con la escala de altura.
  *
  * Los coches se dibujan siempre por encima de la pista y de las banderas de sector: van en la pasada de
  * transparentes (con opacidad 1), después de las capas de banderas, y antes del primero se borra la
@@ -17,7 +18,7 @@
  * entre sí); el modelo detallado sí (sus piezas y los coches cercanos se tapan bien). Colores sin tone
  * mapping: la carrocería coincide con la franja de la sigla.
  */
-import { useLoop, useTres } from '@tresjs/core'
+import { useTres } from '@tresjs/core'
 import {
   BoxGeometry,
   BufferAttribute,
@@ -32,6 +33,7 @@ import {
   Vector3,
   type WebGLRenderer,
 } from 'three'
+import { useSceneFrame } from '~/composables/useSceneFrame'
 import { useCarTap } from '~/composables/useSceneGestures'
 import { token } from '~/design/tokens'
 import { buildCar, CAR_PARTS, type CarLayerGeometry, type CarPart } from '~/engine/car/carGeometry'
@@ -172,9 +174,8 @@ const pose = { x: 0, y: 0, z: 0 }
 const lod = new Uint8Array(N)
 
 const { sizes } = useTres()
-const { onBeforeRender } = useLoop()
-onBeforeRender(({ camera }) => {
-  const cam = camera.value as PerspectiveCamera | undefined
+useSceneFrame(({ camera }) => {
+  const cam = camera as PerspectiveCamera | undefined
   const yInv = 1 / Math.max(1e-3, props.yScale)
   const projY = cam?.projectionMatrix.elements[5] ?? 1
   const height = sizes.height.value

@@ -22,6 +22,10 @@ Es una app para usar en tu PC (no hay web pública), así que aquí van unas cap
 
 ![Cámara siguiendo a un coche, con su telemetría](docs/img/coche.webp)
 
+**Diseño «Análisis»** (en la cabecera o con la tecla L): la clasificación con la mejor vuelta, la última y las entradas en boxes de cada piloto, la telemetría más grande del coche elegido y, en el mapa, el calor por velocidad de su última vuelta entera (menú «Capas»).
+
+![Diseño «Análisis» con la telemetría grande y el mapa de calor](docs/img/analisis.webp)
+
 **Tablet**: con `pnpm local --lan`, también en el iPad (paneles abajo en vertical).
 
 <img src="docs/img/tablet.webp" alt="Replay en una tablet en vertical" width="384">
@@ -64,6 +68,8 @@ El replay mezcla datos de la fuente con un modelo para dibujarlos. En la app lo 
 - Tiempos de vuelta, neumáticos, telemetría y mensajes de dirección de carrera, del cronometraje.
 
 En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruido: la app lo marca como «Estimado», también en «Cómo se dibuja».
+
+Desde 2026 no hay DRS, y la fuente no trae por coche lo nuevo del reglamento: ni la aerodinámica activa, ni el modo adelantamiento, ni el Boost o la batería. Dirección de carrera solo publica avisos para toda la pista: cuándo habilita el modo adelantamiento y el estado del modo recta. La app lo avisa en los avisos de la sesión.
 
 **Modelo (solo para dibujar)**
 

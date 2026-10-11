@@ -31,11 +31,11 @@
       },
       "estimated": {
         "title": "¿Qué es «Estimado»?",
-        "body": "Lo que Trazada calcula o deduce, y no viene tal cual de la fuente, lleva esta etiqueta con borde discontinuo; púlsala para ver por qué. Lo que falta no se inventa: se muestra «sin dato»."
+        "body": "Lo que Trazada estima o deduce sin que lo dé la fuente lleva esta etiqueta con borde discontinuo; púlsala para ver por qué. Lo que calcula con datos oficiales no la lleva: lo explica su botón de información. Lo que falta no se inventa: se muestra «sin dato»."
       },
       "analysis": {
         "title": "Análisis",
-        "body": "Race trace, ritmo por vuelta, neumáticos y momentos de la sesión, con los tiempos oficiales. «Sin spoilers» enseña solo lo que ya ha pasado en el reproductor."
+        "body": "Race trace, ritmo por vuelta, neumáticos y momentos de la sesión, con los tiempos oficiales (el instante de un adelantamiento se aproxima con el GPS). «Sin spoilers» enseña solo lo que ya ha pasado en el reproductor."
       },
       "palette": {
         "title": "Comandos y esta guía",

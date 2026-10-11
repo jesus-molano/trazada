@@ -1,0 +1,7 @@
+{
+  "regulation": {
+    "title": "2026 regulations",
+    "info": "Information",
+    "body": "There is no DRS from 2026. For now, the public timing data does not include some of the 2026 rule changes per car: each car’s active aerodynamics (straight or corner mode), when each driver uses overtake mode or Boost, and each car’s battery charge or the energy it deploys. Race control only publishes track-wide notices: when it enables or disables overtake mode (“{chip}” in the header and on the timeline) and the straight-mode status (in the race control list, as “{straight}”)."
+  }
+}

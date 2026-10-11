@@ -18,6 +18,6 @@
     "hintZone": "If race control disables a single zone, it only shows in its feed: without the zone geometry there is no way to tell which one it is.",
     "hintSeason": "There is no DRS from 2026: active aerodynamics and overtake mode replace it, enabled track-wide by race control. The source gives neither the zone geometry nor a per-car channel.",
     "hintNoChannel": "Without each car's DRS channel there is no way to know where it was opened, and no source gives the official zone geometry.",
-    "hintInsufficient": "A zone needs at least {passes} passes (one car on one lap) opening in the same place, from at least {cars} cars. In the wet or with few laps there may not be enough."
+    "hintInsufficient": "A zone needs at least {passes} passes (one car on one lap) opening in the same place, from at least {cars} cars (or from the only one that opened it). In the wet or with few laps there may not be enough."
   }
 }

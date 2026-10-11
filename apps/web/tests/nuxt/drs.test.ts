@@ -126,6 +126,8 @@ describe('herramienta de zonas de DRS', () => {
     const hint = few.find('[data-testid="drs-hint-panel"]').text()
     expect(hint).toMatch(/3 (pasadas|passes)/)
     expect(hint).toMatch(/2 (coches|cars)/)
+    // Con un solo coche que lo abra, basta ese (`minCars = min(DRS_MIN_CARS, coches)`): la pista no promete más.
+    expect(hint).toMatch(/(del único que lo abriera|the only one that opened it)/)
     expect(sceneLabels()).toEqual([])
   })
 

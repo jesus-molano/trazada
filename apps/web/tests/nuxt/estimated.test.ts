@@ -59,7 +59,10 @@ function raceRuntime(timeMs: number) {
   })
   usePlaybackStore().attach(withExt({
     session: {
-      manifest: { session: { type: 'race', playback: { startMs: 0, endMs: 300_000, lightsOutMs: 1000 } } },
+      manifest: {
+        session: { type: 'race', playback: { startMs: 0, endMs: 300_000, lightsOutMs: 1000 } },
+        quality: { estimated: [] },
+      },
       timing,
       events: { raceControl: [] },
     },
@@ -122,6 +125,24 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     const w = await mountSuspended(TzTelemetry, { global: { stubs: { TzMiniChart: true } } })
     expect(label(w, 'telemetry').exists()).toBe(true)
     usePlaybackStore().detach()
+    // Sobre el mapa, mientras una capa la pinta (mapa de calor por velocidad): en la fila de etiquetas de la escena,
+    // siempre a la vista (su herramienta va en un menú plegado). Coches 2 y 7: no están en el fixture.
+    const h = heatTestRuntime('race', ['telemetry'])
+    usePlaybackStore().attach(h.rt as never)
+    usePlaybackStore().selectCar('2')
+    h.coarse(h.seen(2, 3))
+    const heat = useHeatStore()
+    heat.setMode('speed')
+    const scene = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: ['telemetry'] } })
+    const row = () => scene.find(`.tz-tools__estimated [data-testid="estimated"][data-field="telemetry"]`)
+    const { t } = useNuxtApp().$i18n
+    expect(row().text()).toContain(t('estimated.fields.telemetry'))
+    expect(row().attributes('title')).toBe(t('estimated.hints.telemetry'))
+    heat.setMode('off')
+    await nextTick()
+    expect(row().exists()).toBe(false)
+    scene.unmount()
+    usePlaybackStore().detach()
   },
   async trackStatus() {
     const rt = await fixtureRuntime(['trackStatus'])
@@ -168,7 +189,8 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     w.unmount()
     usePlaybackStore().detach()
   },
-  // Mapa de calor (ítem 2, D32): ganador de cada minisector, solo en ese modo (la velocidad es dato real). Su
+  // Mapa de calor (ítem 2, D32): ganador de cada minisector, solo en ese modo (la velocidad es dato real, salvo con la
+  // telemetría reconstruida del manifest: ver el caso `telemetry`). Su
   // herramienta va en un menú plegado: mientras se pinta, la etiqueta sale también en la fila de etiquetas de la escena.
   async minisectors() {
     // Coches 2 y 7: no están en el fixture, así el panel de telemetría que dejó montado el caso `telemetry` no se abre.

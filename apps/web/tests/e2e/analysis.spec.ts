@@ -85,8 +85,12 @@ test('abierta tapa la escena: el reloj sigue y no hay renders; Esc la cierra y l
   await page.getByTestId('play-toggle').click()
   const t0 = await page.evaluate(() => window.__trazada!.timeMs)
   const before = await settledRenders(page)
+  // Ni se dibuja ni se prepara (`useSceneFrame`): coches, pista y capas no calculan nada para una escena tapada.
+  const prepared = () => page.evaluate(() => (window.__trazada!.scene.loop as { prepared: number }).prepared)
+  const prep0 = await prepared()
   await page.waitForTimeout(1_000)
   expect(await page.evaluate(() => window.__trazada!.renders)).toBe(before)
+  expect(await prepared()).toBe(prep0)
   expect(await page.evaluate(() => window.__trazada!.timeMs)).toBeGreaterThan(t0)
 
   // Esc la cierra (el foco está en el dock: el atajo global de Esc la atiende primero) y la escena vuelve.

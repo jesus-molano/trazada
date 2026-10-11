@@ -282,7 +282,9 @@ describe('«Seguir viendo» en la portada', () => {
     const clock = formatClock(saved(200_000).clockMs)
     expect(where).toMatch(new RegExp(`(Libres 1 · 2026 en|Practice 1 · 2026 at) ${clock}`))
     expect(link.text()).toMatch(/(hace 2 h|2 hr\. ago)/)
-    expect(link.text()).toMatch(/37\s?%/) // 200 s de 540
+    // Es la posición dentro de la sesión (200 s de 540), no lo que se ha visto.
+    expect(link.text()).toMatch(/(en el 37\s?% de la sesión|at 37\s?% of the session)/)
+    expect(link.text()).not.toMatch(/(visto|watched)/)
   })
 
   it('con el catálogo aún sin cargar, nada', async () => {

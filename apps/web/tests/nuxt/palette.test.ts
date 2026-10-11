@@ -131,6 +131,19 @@ describe('abrir y cerrar', () => {
     expect(analysis).toBe(true)
   })
 
+  it('Ctrl+K mantenido (repetición automática) la deja abierta: no la cierra justo después de abrirla', async () => {
+    await mountBoth()
+    expect(await ctrlK()).toBe(true)
+    for (let i = 0; i < 3; i++) {
+      const held = await press('k', { ctrlKey: true, repeat: true })
+      // Atendida (el navegador no se lleva el Ctrl+K), pero abierta.
+      expect(held.defaultPrevented).toBe(true)
+      expect(dialog()).not.toBeNull()
+    }
+    await press('k', { ctrlKey: true })
+    expect(dialog()).toBeNull()
+  })
+
   it('no se abre encima de otro diálogo modal (la tarjeta de fin de sesión)', async () => {
     await mountBoth()
     const modal = document.createElement('div')

@@ -52,7 +52,8 @@ Los ficheros `.ff1pkl` son *pickles* de Python, y un pickle de origen no confiab
 - Fuente primaria: FastF1 `fastf1/_api.py:1022-1023` lee el canal con `Channels.get("45", 0)` y comenta `# drs is no longer included in 2026`. La 3.8.0 fallaba con KeyError al no encontrarlo y la 3.8.1 lo corrigió.
 - Empírico, fuente A: **390 148 de 390 148 muestras con DRS = 0**, también por encima de 300 km/h (17 998 muestras).
 - Empírico, fuente B: **0 muestras "abiertas"** (crudo 10/12/14) en toda la carrera de Japón (839 450 muestras) ni en una vuelta de cada una de las 91 sesiones de 2026.
-- No hay ningún canal de Overtake Mode ni de aero activa en lo que parsean FastF1 y OpenF1. **Pendiente**: inspeccionar un `CarData.z` crudo de 2026 para descartar canales nuevos que FastF1 ignore. Necesita red.
+- No hay ningún canal de Overtake Mode ni de aero activa en lo que parsean FastF1 y OpenF1. **Pendiente**: inspeccionar un `CarData.z` crudo de 2026 para descartar canales nuevos que FastF1 ignore. Necesita red (IP residencial): lo hace `uv run trazada probe-feed 2026 <ronda> race` (D48), que lista los canales de cada coche y los temas del `Index.json`.
+- Terceros (consultado el 2026-10-11): nadie ha visto canales nuevos en `CarData.z` (undercut-f1 revisó los de la pretemporada; FastF1 y OpenF1 siguen leyendo solo 0, 2, 3, 4, 5 y 45), y el mantenedor de FastF1 dice que F1 ha decidido no publicar la aero activa ni el estado del ERS (2026-03-14). Tampoco hay modo adelantamiento por coche ni Boost o batería. Son informes de quienes leen el feed crudo, no un volcado propio.
 - Race control sí publica el estado global en texto: `OVERTAKE ENABLED` / `OVERTAKE DISABLED` (Japón 2026). Es por pista, no por coche.
 
 ### 6. ¿Trae posiciones GPS la sesión?
@@ -121,7 +122,7 @@ Dimensionado (**Estimado**):
 ## Limitaciones y verificaciones pendientes (necesitan red)
 
 1. Descargar con FastF1 una carrera completa de 2026 desde el archivo oficial. Hacen falta `livetiming.formula1.com` y una IP residencial, porque F1 devuelve 403 a IPs de nube; ver el riesgo R1 en el plan.
-2. Volcar las claves de `Channels` de un `CarData.z` crudo de 2026 para descartar canales nuevos (aero activa, overtake).
+2. Volcar las claves de `Channels` de un `CarData.z` crudo de 2026 para descartar canales nuevos (aero activa, overtake): `uv run trazada probe-feed` (D48), en una IP residencial.
 3. Comparar los números de `Sector` de race control con `marshal_sectors` de MultiViewer (`api.multiviewer.app`).
 4. Medir el peso de una carrera real con el formato definitivo (hito H1 del plan).
 

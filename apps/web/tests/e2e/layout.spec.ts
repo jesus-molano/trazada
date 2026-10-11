@@ -145,12 +145,12 @@ const FLAGS_FROM_MS = 80_000
 const FLAGS_TO_MS = 100_000
 
 /**
- * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
- * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
- * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado). Con `event`, otro nombre de
- * Gran Premio en el título (p. ej. el de Japón, más largo). Con `flags`, entre `FLAGS_FROM_MS` y `FLAGS_TO_MS`, lo de
- * una carrera con el coche de seguridad: dobles amarillas en los sectores 20 y 21 (con la del 7 del fixture) y una
- * amarilla en el 9.
+ * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado (seis en el
+ * botón con el del reglamento de 2026), posiciones, telemetría y estado de pista estimados y sin meteorología
+ * (`channels.weather: absent`; los eventos se vuelven a comprimir sin `weather` y su sha256 se reescribe en el manifest,
+ * que no va firmado). Con `event`, otro nombre de Gran Premio en el título (p. ej. el de Japón, más largo). Con `flags`,
+ * entre `FLAGS_FROM_MS` y `FLAGS_TO_MS`, lo de una carrera con el coche de seguridad: dobles amarillas en los sectores
+ * 20 y 21 (con la del 7 del fixture) y una amarilla en el 9.
  */
 async function serveLikeDevRace(page: Page, options: { event?: string; flags?: boolean } = {}): Promise<void> {
   let patched: Promise<Buffer> | null = null
@@ -215,14 +215,14 @@ for (const vp of [
   test.describe(`${vp.name}: cabecera del replay`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } })
 
-    test('con lo de una carrera dev (5 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
+    test('con lo de una carrera dev (6 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
       await resetStorage(page)
       await serveLikeDevRace(page)
       await open(page)
       const bar = page.locator('.tz-replay__bar')
       // Todo lo que partía la cabecera está ahí: avisos, estado de pista deducido con su bandera, meteorología sin dato,
       // análisis y herramientas de la escena.
-      await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+      await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^6 /)
       await expect(page.getByTestId('track-status').getByTestId('track-sector')).toBeVisible()
       await expect(page.getByTestId('weather')).toBeVisible()
       await expect(page.locator('.tz-weather')).toHaveAttribute('data-state', 'absent')
@@ -526,7 +526,7 @@ test.describe('escritorio 1920×1080: el título de la cabecera tiene prioridad 
     const track = page.getByTestId('track-status').locator('[data-testid="estimated"][data-field="trackStatus"]')
     await expect(track).toBeVisible()
     await expect(track).toContainText(/Estimad[oa]|Estimated/, { useInnerText: true })
-    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^6 /)
     await expect(page.getByTestId('analysis-button')).toHaveAccessibleName(/^(Análisis|Analysis)$/)
   })
 
@@ -631,6 +631,19 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
       await expect(page.getByTestId('leaderboard')).toBeVisible({ timeout: 15_000 })
       await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
       await expect(page.getByTestId('lb-columns')).toBeVisible()
+    })
+
+    test('mantener pulsada la L (repetición automática del teclado) cambia el diseño una sola vez', async ({ page }) => {
+      await open(page)
+      await page.getByTestId('replay-title').click()
+      // Cada `down` de una tecla ya pulsada llega con `repeat`, como al mantenerla. Un número par: si cada repetición
+      // alternara, volvería a «Espectador».
+      for (let i = 0; i < 6; i++) await page.keyboard.down('l')
+      await page.keyboard.up('l')
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))
+      expect(saved).toMatchObject({ preset: 'analysis' })
     })
 
     test('accesible (axe) en «Análisis», con las asas', async ({ page }) => {

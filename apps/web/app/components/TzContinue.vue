@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * «Seguir viendo» en la portada (ítem 13): las 3 sesiones vistas más recientes con una posición guardada, con lo
- * visto, dónde se dejaron y cuándo, y × para olvidarlas. Solo salen las que siguen en el catálogo y se pueden
+ * «Seguir viendo» en la portada (ítem 13): las 3 sesiones vistas más recientes con una posición guardada, con dónde
+ * se dejaron (la barra es esa posición dentro de la sesión, no lo que se ha visto) y cuándo, y × para olvidarlas. Solo salen las que siguen en el catálogo y se pueden
  * reproducir (una sesión borrada no aparece). Lo guardado vive en este navegador (localStorage, D41), así que se lee
  * al montar: la portada se prerenderiza sin la tarjeta.
  */
