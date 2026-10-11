@@ -105,7 +105,8 @@ test('velocidad: la mejor vuelta fuera del extracto es «sin dato»; la última,
   await expect(page.getByTestId('heat-pick-best')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'noData')
   await expect(page.getByTestId('heat-note')).toHaveText(/^(Sin dato|No data):.*12.*GAS$/)
-  expect(await heat(page)).toMatchObject({ mode: 'speed', status: 'noData', car: '10', lap: 12, drawCalls: 0 })
+  // La capa sube la vista nueva en el siguiente render (onBeforeRender), que puede llegar después que el DOM.
+  await expect.poll(() => heat(page)).toMatchObject({ mode: 'speed', status: 'noData', car: '10', lap: 12, drawCalls: 0 })
 
   await page.getByTestId('heat-pick-last').click()
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')

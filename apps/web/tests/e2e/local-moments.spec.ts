@@ -100,7 +100,8 @@ test('los botones del dock con la clase «Adelantamientos» van de uno en uno', 
   await page.getByTestId('analysis-close').click()
 
   const next = page.getByTestId('jump-next')
-  await expect(next).toHaveAccessibleName(/adelantamientos/)
+  // En el idioma del navegador (el de Playwright es inglés; con español, «adelantamientos»).
+  await expect(next).toHaveAccessibleName(/adelantamientos|overtakes/)
   const start = await time(page)
   const expected = overtakes.filter((x) => x > start).slice(0, 3)
   for (const x of expected) {

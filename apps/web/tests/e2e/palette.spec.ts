@@ -60,6 +60,12 @@ test('Ctrl+K la abre; «seguir NOR» lo selecciona y la cámara lo sigue; Esc la
   await page.keyboard.press('Enter')
   await expect(palette(page)).toBeHidden()
   await expect.poll(() => handle(page, (h) => h.selectedCar)).toBe('1')
+  // El replay abre en el inicio del extracto, donde aún ningún coche tiene posición (la primera muestra llega después):
+  // la cámara espera a NOR sin moverse y lo sigue en cuanto se ve.
+  await twoFrames(page)
+  expect(await handle(page, (h) => h.cars().find((c) => c.car === '1')!.visible)).toBe(false)
+  expect(await handle(page, (h) => h.scene.cameraMode)).toBe('to-follow')
+  await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 5_000))
   await expect.poll(() => handle(page, (h) => h.scene.cameraMode), { timeout: 5000 }).toBe('follow')
 
   // Esc con la paleta abierta solo cierra la paleta: el coche sigue seleccionado y seguido.
