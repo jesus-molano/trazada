@@ -1,6 +1,6 @@
 {
   "schema": "trazada.session",
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "minReader": "1.0.0",
   "generatedAt": "2026-10-10T00:00:00Z",
   "pipeline": { "version": "0.1.0", "source": "synthetic" },
@@ -21,7 +21,7 @@
   "drivers": [
     { "number": "1", "tla": "AAA", "first": "Ana", "last": "Ejemplo", "team": "Equipo", "color": "#336699", "finish": null }
   ],
-  "channels": { "drs": "absent", "elevation": "flat", "weather": "present" },
+  "channels": { "drs": "absent", "elevation": "flat", "weather": "present", "radio": "partial" },
   "quality": {
     "coverage": { "1": { "pos": 1, "car": 1 } },
     "estimated": [],

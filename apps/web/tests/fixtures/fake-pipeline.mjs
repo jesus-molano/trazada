@@ -151,6 +151,11 @@ async function main() {
     }
     await sleep(stepMs)
     emit('progress', { pct: 88, phase: 'process', step: 'process' })
+    await sleep(stepMs)
+    emit('progress', { pct: 92, phase: 'radio', step: 'radio' })
+    await sleep(stepMs)
+    // Una fase desconocida no se enseña (se queda la última conocida).
+    emit('progress', { pct: 95, phase: '<img>', step: 'radio' })
     const id = addToCatalog(dataDir, Number(season), Number(round), session)
     emit('result', { session: id, status: 'complete', bytes: 123_456, dev: isDev(Number(round)), warnings: [] })
     return

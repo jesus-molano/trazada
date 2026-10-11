@@ -1,7 +1,7 @@
 # Aviso sobre los datos / Data notice
 
 **ES.** Los datos que muestra Trazada (tiempos, posiciones, telemetría, mensajes de dirección de
-carrera, información de circuito) **no son de Trazada ni se licencian con este repositorio**: sus
+carrera, radio de los equipos, información de circuito) **no son de Trazada ni se licencian con este repositorio**: sus
 derechos pertenecen a sus titulares (Formula One World Championship Limited y empresas
 relacionadas; MultiViewer en el caso de los marcadores de circuito). Trazada los procesa a partir
 del archivo público de live timing (vía FastF1) para un visor **personal y no comercial**: los datos
@@ -14,8 +14,8 @@ Excepción: las miniaturas de trazado de `apps/web/app/assets/circuit-outlines.j
 F1 ni de MultiViewer: proceden de bacinger/f1-circuits (MIT, © Tomislav Bacinger), se versionan con
 su licencia (`circuit-outlines.LICENSE.txt`) y se atribuyen en `NOTICE`.
 
-**EN.** The data shown by Trazada (timing, positions, telemetry, race-control messages, circuit
-information) **is not owned or licensed by Trazada**: rights belong to their respective owners
+**EN.** The data shown by Trazada (timing, positions, telemetry, race-control messages, team radio,
+circuit information) **is not owned or licensed by Trazada**: rights belong to their respective owners
 (Formula One World Championship Limited and related companies; MultiViewer for circuit markers).
 Trazada derives it from the public live-timing archive (via FastF1) for a **personal,
 non-commercial** viewer: the data is generated and used locally, **not published**, and not offered

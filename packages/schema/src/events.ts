@@ -42,6 +42,17 @@ export interface SessionWindow {
  * estación del circuito, en columnas del mismo largo. `null` = sin dato (clave ausente o ilegible en el feed), nunca
  * el 0 con el que rellena FastF1. Sin interpolar: cada valor vale desde su instante hasta la muestra siguiente.
  */
+/**
+ * Un clip de la radio de los equipos (desde 1.2.0). `t` es la hora de publicación en el feed (normalizada como dirección
+ * de carrera): el mensaje pudo decirse unos segundos antes. `file`, relativo al manifest (`radio/<sha256[:16]>.mp3`).
+ */
+export interface RadioClip {
+  t: number
+  car: string
+  file: string
+  bytes: number
+}
+
 export interface SessionWeather {
   /** Instante de cada muestra (ms de sesión), creciente. */
   t: number[]
@@ -69,4 +80,6 @@ export interface SessionEvents {
   windows: SessionWindow[]
   /** Desde 1.1.0; sin él, la sesión no trae meteorología (ver `manifest.channels.weather`). */
   weather?: SessionWeather
+  /** Desde 1.2.0; sin él, la sesión no trae radio (ver `manifest.channels.radio`). */
+  radio?: RadioClip[]
 }

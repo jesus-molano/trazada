@@ -151,7 +151,7 @@ def _pin_to_the_track(data: SessionData, sims: dict[str, CarSim], lead_m: float)
 
 
 def _notes(report: BuildReport) -> list[dict]:
-    return json.loads(report.manifest_path.read_text())["quality"]["notes"]
+    return json.loads(report.manifest_path.read_text(encoding="utf-8"))["quality"]["notes"]
 
 
 def _more_stops(data: SessionData, sims: dict[str, CarSim], n: int = 5) -> None:

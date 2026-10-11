@@ -69,6 +69,9 @@ def build(
     progress: bool = typer.Option(
         False, help="Progreso en líneas `::` para el gestor de datos local (pnpm local)."
     ),
+    no_radio: bool = typer.Option(
+        False, "--no-radio", help="No descarga los clips de la radio de los equipos (D51)."
+    ),
 ) -> None:
     """Descarga (o lee de caché) una sesión con FastF1 y genera sus ficheros."""
     if session not in SESSION_TYPES:
@@ -77,7 +80,11 @@ def build(
     ev: str | int = int(event) if event.isdigit() else event
     cache_dir = cache or (DEFAULT_SANITIZED if offline else DEFAULT_CACHE)
     if not progress:
-        _report(_build(season, ev, session, data, cache_dir, offline, rebuild_circuit, dev_corners))
+        _report(
+            _build(
+                season, ev, session, data, cache_dir, offline, rebuild_circuit, dev_corners, no_radio=no_radio
+            )
+        )
         return
 
     import traceback
@@ -98,6 +105,9 @@ def build(
             rebuild_circuit,
             dev_corners,
             on_loaded=lambda: prog.step(88, "process", "process"),
+            no_radio=no_radio,
+            # La radio, entre el 88 y el 97 %: el gestor enseña el paso «radio» (D51).
+            on_radio=lambda done, total: prog.step(88 + (9 * done) // max(1, total), "radio", "radio"),
         )
     except Exception as exc:
         traceback.print_exc()
@@ -135,6 +145,9 @@ def _build(
     rebuild_circuit: bool,
     dev_corners: Path | None,
     on_loaded: Callable[[], None] | None = None,
+    *,
+    no_radio: bool = False,
+    on_radio: Callable[[int, int], None] | None = None,
 ) -> BuildReport:
     from trazada_pipeline.build import build_session
     from trazada_pipeline.sources.base import QualityNote
@@ -153,7 +166,18 @@ def _build(
         )
     if on_loaded is not None:
         on_loaded()
-    return build_session(sd, data, rebuild_circuit=rebuild_circuit)
+    # Radio (D51): offline no hay red para los clips; con --no-radio, tampoco se piden.
+    from trazada_pipeline import radio
+
+    skipped = "no-radio" if no_radio else "offline" if offline else None
+    return build_session(
+        sd,
+        data,
+        rebuild_circuit=rebuild_circuit,
+        radio_fetch=None if skipped else radio.http_fetch,
+        radio_skipped=skipped,
+        on_radio=on_radio,
+    )
 
 
 @app.command()

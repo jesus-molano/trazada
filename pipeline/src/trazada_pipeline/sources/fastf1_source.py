@@ -375,6 +375,28 @@ def _weather(session: Any, offline: bool) -> pd.DataFrame | None:
     return frame if frame is not None and len(frame) else None
 
 
+def _team_radio(session: Any, t0: pd.Timestamp) -> Any:
+    """Capturas de la radio de los equipos (D51, `radio.py`), o None si el live timing no las da.
+
+    El stream se lee con `fetch_page` (con la caché HTTP de FastF1; offline, solo de ella). Los clips se
+    descargan después, al generar la sesión (`build_session`), y no se descargan offline.
+    """
+    import fastf1._api
+    import fastf1.api
+
+    from trazada_pipeline import radio
+
+    try:
+        raw = fastf1.api.fetch_page(session.api_path, "team_radio")
+    except Exception as exc:  # red, API caída…
+        log.warning("Sin radio del live timing: %s", exc)
+        return None
+    captures = radio.parse_captures(raw, t0)
+    if not captures:
+        return None
+    return radio.RadioSource(captures=captures, base_url=f"{fastf1._api.base_url}{session.api_path}")
+
+
 def load_fastf1(
     season: int,
     event: str | int,
@@ -461,4 +483,5 @@ def load_fastf1(
         source="fastf1-offline-cache" if offline else "fastf1",
         source_versions={"fastf1": fastf1.__version__, "apiCoreVersion": 15},
         weather=_weather(session, offline),
+        radio=_team_radio(session, t0),
     )

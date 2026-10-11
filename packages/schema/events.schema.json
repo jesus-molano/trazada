@@ -87,6 +87,21 @@
           "description": "Dirección del viento (grados desde el norte, como la da el feed)"
         }
       }
+    },
+    "radio": {
+      "type": "array",
+      "description": "Desde 1.2.0, opcional. Radio de los equipos (stream TeamRadio): un clip por mensaje, en orden de t. t es la hora de publicación (Utc del feed, normalizada como dirección de carrera): el mensaje pudo decirse unos segundos antes. Ver docs/DATA_FORMAT.md.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t", "car", "file", "bytes"],
+        "properties": {
+          "t": { "type": "integer", "description": "Hora de publicación (ms de sesión)" },
+          "car": { "type": "string", "pattern": "^[0-9]{1,3}$", "description": "Número del coche (RacingNumber)" },
+          "file": { "type": "string", "pattern": "^radio/[0-9a-f]{16}\\.mp3$", "description": "Ruta del clip relativa al manifest (con el sha256 del contenido)" },
+          "bytes": { "type": "integer", "minimum": 1 }
+        }
+      }
     }
   }
 }

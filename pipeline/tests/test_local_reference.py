@@ -35,7 +35,7 @@ RACE_TYPES = ("race", "sprint")
 
 
 def _manifest(path: Path) -> dict:
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _decode(manifest_path: Path, key: str) -> trzb.Decoded:
@@ -146,10 +146,10 @@ def test_race_laps_and_order(path: Path) -> None:
     if m["pipeline"]["source"] != "tracinginsights-dev" or not TI_ROOT:
         pytest.skip("sin referencia local de clasificación (TRAZADA_TI_ROOT)")
     session_dir = Path(TI_ROOT) / str(m["session"]["season"]) / m["session"]["event"] / m["session"]["name"]
-    drivers = json.loads((session_dir / "drivers.json").read_text())["drivers"]
+    drivers = json.loads((session_dir / "drivers.json").read_text(encoding="utf-8"))["drivers"]
     ref: dict[int, int] = {}
     for d in drivers:
-        lt = json.loads((session_dir / d["driver"] / "laptimes.json").read_text())
+        lt = json.loads((session_dir / d["driver"] / "laptimes.json").read_text(encoding="utf-8"))
         pos = [p for p in lt["pos"] if p not in (None, "None", "nan")]
         if pos:
             ref[int(d["dn"])] = int(float(pos[-1]))
@@ -175,7 +175,7 @@ def test_rebuild_is_deterministic(path: Path, tmp_path: Path) -> None:
     for f in circuit_dir.iterdir():
         (dst / f.name).write_bytes(f.read_bytes())
     report = build_session(data, tmp_path)
-    again = json.loads(report.manifest_path.read_text())["files"]
+    again = json.loads(report.manifest_path.read_text(encoding="utf-8"))["files"]
     assert {k: v["sha256"] for k, v in again.items()} == {k: v["sha256"] for k, v in m["files"].items()}
 
 

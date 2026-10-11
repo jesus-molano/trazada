@@ -48,7 +48,8 @@ export interface Job {
   state: JobState
   /** 0–100 (aproximado: pasos de la descarga de FastF1 y del procesado). */
   pct: number
-  phase: 'download' | 'process' | null
+  /** Lo que hace ahora (la radio de los equipos, D51, va después del procesado). */
+  phase: 'download' | 'process' | 'radio' | null
   error: { code: JobErrorCode; message: string } | null
   /** `dev`: la sesión quedó marcada como de desarrollo (p. ej. su circuito usa fuentes dev). */
   result: { session: string | null; status: string; bytes: number | null; dev: boolean } | null
@@ -265,7 +266,7 @@ export function parseJob(v: unknown): Job | null {
     session: v.session,
     state: v.state as JobState,
     pct: typeof v.pct === 'number' && Number.isFinite(v.pct) ? Math.min(100, Math.max(0, v.pct)) : 0,
-    phase: v.phase === 'download' || v.phase === 'process' ? v.phase : null,
+    phase: v.phase === 'download' || v.phase === 'process' || v.phase === 'radio' ? v.phase : null,
     error: err
       ? {
           code: JOB_ERROR_CODES.includes(err.code as JobErrorCode) ? (err.code as JobErrorCode) : 'failed',

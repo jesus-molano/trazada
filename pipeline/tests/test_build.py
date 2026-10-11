@@ -56,7 +56,7 @@ def _keys(obj: object) -> set[str]:
 
 def test_manifest_and_catalog(built) -> None:
     _, root, report = built
-    manifest = json.loads(report.manifest_path.read_text())
+    manifest = json.loads(report.manifest_path.read_text(encoding="utf-8"))
     schema.validate("manifest", manifest)
     assert report.status == "ok"
     assert manifest["pipeline"]["source"] == "synthetic"
@@ -70,7 +70,7 @@ def test_manifest_and_catalog(built) -> None:
         path = report.manifest_path.parent / f["path"]
         assert path.exists()
         assert len(path.read_bytes()) == f["bytes"]
-    catalog = json.loads((root / "v1" / "catalog.json").read_text())
+    catalog = json.loads((root / "v1" / "catalog.json").read_text(encoding="utf-8"))
     schema.validate("catalog", catalog)
     entry = catalog["seasons"][0]["events"][0]["sessions"][0]
     assert entry["dev"] is True and entry["session"] == "race"
@@ -81,19 +81,19 @@ def test_estimated_fields_come_from_the_source(tmp_path: Path) -> None:
     data, _ = synthetic_session()
     data.estimated = ["trackStatus", "positions", "trackStatus"]
     report = build_session(data, tmp_path)
-    manifest = json.loads(report.manifest_path.read_text())
+    manifest = json.loads(report.manifest_path.read_text(encoding="utf-8"))
     assert manifest["quality"]["estimated"] == ["positions", "trackStatus"]
 
 
 def _events(report: BuildReport) -> dict:
-    ref = json.loads(report.manifest_path.read_text())["files"]["events"]
+    ref = json.loads(report.manifest_path.read_text(encoding="utf-8"))["files"]["events"]
     return json.loads(gzip.decompress((report.manifest_path.parent / ref["path"]).read_bytes()))
 
 
 def test_without_weather_the_channel_is_absent(built) -> None:
     """La fuente no trae meteorología: el manifest lo dice (`absent`) y events.json no la lleva."""
     _, _, report = built
-    assert json.loads(report.manifest_path.read_text())["channels"]["weather"] == "absent"
+    assert json.loads(report.manifest_path.read_text(encoding="utf-8"))["channels"]["weather"] == "absent"
     assert "weather" not in _events(report)
 
 
@@ -120,7 +120,7 @@ def test_weather_reaches_events_cut_to_the_playback(tmp_path: Path) -> None:
     ]
     data.weather = pd.DataFrame(rows, columns=list(WEATHER_COLUMNS), dtype=object)
     report = build_session(data, tmp_path)
-    manifest = json.loads(report.manifest_path.read_text())
+    manifest = json.loads(report.manifest_path.read_text(encoding="utf-8"))
     assert manifest["channels"]["weather"] == "present"
     assert manifest["schemaVersion"] == schema.schema_version()
     assert manifest["minReader"] == "1.0.0"  # cambio aditivo (1.1.0): un lector 1.0.0 lo lee y lo ignora
@@ -136,7 +136,7 @@ def test_weather_reaches_events_cut_to_the_playback(tmp_path: Path) -> None:
 
 def test_files_decode_and_motion_is_monotone(built) -> None:
     _, _, report = built
-    manifest = json.loads(report.manifest_path.read_text())
+    manifest = json.loads(report.manifest_path.read_text(encoding="utf-8"))
     folder = report.manifest_path.parent
     motion = trzb.decode(gzip.decompress((folder / manifest["files"]["motion"]["path"]).read_bytes()))
     cars = motion.tables["cars"]
@@ -154,7 +154,7 @@ def test_files_decode_and_motion_is_monotone(built) -> None:
 def test_no_jolpica_or_photo_fields(built) -> None:
     _, _, report = built
     folder = report.manifest_path.parent
-    manifest = json.loads(report.manifest_path.read_text())
+    manifest = json.loads(report.manifest_path.read_text(encoding="utf-8"))
     events = json.loads(gzip.decompress((folder / manifest["files"]["events"]["path"]).read_bytes()))
     assert not (_keys(manifest) | _keys(events)) & FORBIDDEN_KEYS
     assert all("finish" not in d for d in manifest["drivers"])
@@ -163,8 +163,8 @@ def test_no_jolpica_or_photo_fields(built) -> None:
 def test_build_is_deterministic(built, tmp_path: Path) -> None:
     _, _, report = built
     again = build_session(synthetic_session()[0], tmp_path)
-    a = json.loads(report.manifest_path.read_text())["files"]
-    b = json.loads(again.manifest_path.read_text())["files"]
+    a = json.loads(report.manifest_path.read_text(encoding="utf-8"))["files"]
+    b = json.loads(again.manifest_path.read_text(encoding="utf-8"))["files"]
     assert {k: v["sha256"] for k, v in a.items()} == {k: v["sha256"] for k, v in b.items()}
 
 
@@ -192,7 +192,7 @@ def test_unknown_lights_out_reaches_the_manifest(tmp_path: Path) -> None:
     data, _ = synthetic_session()
     data.laps.loc[data.laps["lap"] == 1, "start_ms"] = -1
     data.session_start_ms = -1
-    manifest = json.loads(build_session(data, tmp_path).manifest_path.read_text())
+    manifest = json.loads(build_session(data, tmp_path).manifest_path.read_text(encoding="utf-8"))
     assert manifest["session"]["playback"]["lightsOutMs"] is None
     assert "lights-out-unknown" in {n["code"] for n in manifest["quality"]["notes"]}
 
@@ -217,7 +217,7 @@ def test_dev_circuit_taints_the_session(tmp_path: Path) -> None:
     )
     data.dev = False
     report = build_session(data, tmp_path)
-    catalog = json.loads((tmp_path / "v1" / "catalog.json").read_text())
+    catalog = json.loads((tmp_path / "v1" / "catalog.json").read_text(encoding="utf-8"))
     entry = catalog["seasons"][0]["events"][0]["sessions"][0]
     assert entry["dev"] is True
     # El informe también (el gestor local lo pasa a la interfaz antes de releer el catálogo).
@@ -237,14 +237,14 @@ def test_old_circuit_with_dev_sources_is_detected(tmp_path: Path) -> None:
 
 
 def _note_codes() -> set[str]:
-    doc = json.loads((schema.schema_dir() / "manifest.schema.json").read_text())
+    doc = json.loads((schema.schema_dir() / "manifest.schema.json").read_text(encoding="utf-8"))
     return set(doc["$defs"]["qualityNote"]["properties"]["code"]["enum"])
 
 
 def test_quality_notes_are_machine_readable(built) -> None:
     """Cada aviso lleva un código estable (la UI lo traduce) y su texto, el mismo que se imprime."""
     _, _, report = built
-    notes = json.loads(report.manifest_path.read_text())["quality"]["notes"]
+    notes = json.loads(report.manifest_path.read_text(encoding="utf-8"))["quality"]["notes"]
     assert notes and all(isinstance(n, dict) and n["code"] in _note_codes() for n in notes)
     assert [n["text"] for n in notes] == report.warnings
     assert "no-corners" in {n["code"] for n in notes}  # la sesión sintética no trae curvas
@@ -267,7 +267,7 @@ def test_finish_line_fallback_is_recorded(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.undo()
     again = build_session(synthetic_session()[0], tmp_path)  # circuito ya guardado: se reutiliza
     for r in (report, again):
-        notes = json.loads(r.manifest_path.read_text())["quality"]["notes"]
+        notes = json.loads(r.manifest_path.read_text(encoding="utf-8"))["quality"]["notes"]
         fallback = [n for n in notes if n["code"] == "finish-line-fallback"]
         assert len(fallback) == 1 and fallback[0]["params"] == {"laps": laps}
         assert fallback[0]["text"] in r.warnings
@@ -284,7 +284,7 @@ def _stretched(data: SessionData, factor: float = 1.1) -> SessionData:
 
 
 def _manifest(report: BuildReport) -> dict:
-    return json.loads(report.manifest_path.read_text())
+    return json.loads(report.manifest_path.read_text(encoding="utf-8"))
 
 
 def _circuit_dirs(root: Path) -> list[str]:
@@ -294,12 +294,12 @@ def _circuit_dirs(root: Path) -> list[str]:
 def test_same_layout_reuses_the_stored_circuit(tmp_path: Path) -> None:
     build_session(synthetic_session()[0], tmp_path)
     pointer = tmp_path / "v1" / "circuits" / "0-synthetic-dev" / "circuit.json"
-    before = pointer.read_text()
+    before = pointer.read_text(encoding="utf-8")
     report = build_session(synthetic_session(seed=7)[0], tmp_path)  # otra sesión, mismo trazado
     m = _manifest(report)
     assert m["session"]["circuit"] == "0-synthetic-dev"
     assert _circuit_dirs(tmp_path) == ["0-synthetic-dev"]
-    assert pointer.read_text() == before
+    assert pointer.read_text(encoding="utf-8") == before
     assert report.quality["fitDevM"] < 1.0
     assert not any("encaja" in n["text"] for n in m["quality"]["notes"])
 

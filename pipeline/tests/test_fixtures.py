@@ -74,13 +74,13 @@ def extract(source: Path, tmp_path_factory: pytest.TempPathFactory) -> tuple[Pat
 
 def _timing(root: Path) -> dict[str, dict[str, np.ndarray]]:
     manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
-    ref = json.loads(manifest_path.read_text())["files"]["timing"]
+    ref = json.loads(manifest_path.read_text(encoding="utf-8"))["files"]["timing"]
     return trzb.decode(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes())).tables
 
 
 def _race_control(root: Path) -> list[dict[str, Any]]:
     manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
-    ref = json.loads(manifest_path.read_text())["files"]["events"]
+    ref = json.loads(manifest_path.read_text(encoding="utf-8"))["files"]["events"]
     return json.loads(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes()))["raceControl"]
 
 
@@ -141,7 +141,7 @@ def test_fixture_tower_and_laps_match_the_full_session(source: Path, extract: tu
 
 def _events(root: Path) -> dict[str, Any]:
     manifest_path = root / "v1" / "sessions" / SESSION / "manifest.json"
-    ref = json.loads(manifest_path.read_text())["files"]["events"]
+    ref = json.loads(manifest_path.read_text(encoding="utf-8"))["files"]["events"]
     return json.loads(gzip.decompress((manifest_path.parent / ref["path"]).read_bytes()))
 
 
@@ -156,13 +156,13 @@ def test_fixture_weather_is_the_window_plus_the_sample_in_force(source: Path, ex
     for key, col in ext.items():
         assert col == [full[key][full["t"].index(t)] for t in ext["t"]], key
     assert ext["trackC"][ext["t"].index(WEATHER_GAP_MS)] is None  # sin dato sigue siendo null
-    manifest = json.loads((out / "v1" / "sessions" / SESSION / "manifest.json").read_text())
+    manifest = json.loads((out / "v1" / "sessions" / SESSION / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["channels"]["weather"] == "present"
 
 
 def test_fixture_variants_are_marked_test_only(source: Path, extract: tuple) -> None:
     out, _ = extract
-    catalog = json.loads((out / "v1" / "catalog.json").read_text())
+    catalog = json.loads((out / "v1" / "catalog.json").read_text(encoding="utf-8"))
     sessions = {s["session"]: s for s in catalog["seasons"][0]["events"][0]["sessions"]}
     assert list(sessions) == ["fp1", "fp2", "fp3", "q", "race"]
     assert all(sessions[k].get("dev") is True for k in ("fp2", "fp3", "q", "race"))
@@ -170,11 +170,11 @@ def test_fixture_variants_are_marked_test_only(source: Path, extract: tuple) -> 
     event = out / "v1" / "sessions" / "2026" / "00-synthetic"
 
     def codes(path: Path) -> set[str]:
-        notes = json.loads(path.read_text())["quality"]["notes"]
+        notes = json.loads(path.read_text(encoding="utf-8"))["quality"]["notes"]
         return {n["code"] for n in notes if isinstance(n, dict)}
 
     for k in ("fp2", "fp3", "q"):
-        assert json.loads((event / k / "manifest.json").read_text())["session"]["type"] == k
+        assert json.loads((event / k / "manifest.json").read_text(encoding="utf-8"))["session"]["type"] == k
         assert "e2e-variant" in codes(event / k / "manifest.json")
     assert "e2e-extract" in codes(event / "fp1" / "manifest.json")
     assert "e2e-variant" not in codes(event / "fp1" / "manifest.json")

@@ -18,6 +18,8 @@ export const SESSION_TYPES = Object.freeze(['fp1', 'fp2', 'fp3', 'sq', 'sprint',
 /** Primera temporada con datos de posición en FastF1. */
 export const MIN_SEASON = 2018
 export const API_HEADER = 'x-trazada'
+/** Fases del progreso que el gestor enseña (la radio de los equipos, D51, va después del procesado). */
+export const PHASES = Object.freeze(new Set(['download', 'process', 'radio']))
 export const ERROR_CODES = Object.freeze([
   'empty',
   'network',
@@ -390,7 +392,7 @@ export function createJobQueue({ pipeline, dataDir, timeoutMs = BUILD_TIMEOUT_MS
         if (ev?.kind === 'progress') {
           const pct = Math.round(Number(ev.payload.pct))
           if (Number.isFinite(pct)) job.pct = Math.max(job.pct, Math.min(99, Math.max(0, pct)))
-          if (ev.payload.phase === 'download' || ev.payload.phase === 'process') job.phase = ev.payload.phase
+          if (PHASES.has(ev.payload.phase)) job.phase = ev.payload.phase
           if (typeof ev.payload.step === 'string' && /^[a-z]{1,16}$/.test(ev.payload.step)) {
             job.step = ev.payload.step
           }

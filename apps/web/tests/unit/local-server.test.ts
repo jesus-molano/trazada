@@ -310,6 +310,12 @@ describe('servidor local con el gestor (pipeline falso)', () => {
       return j && j.state === 'running' && j.pct >= 12 ? j : null
     })
     expect(progressSeen.pct).toBeLessThan(100)
+    // La radio de los equipos (D51) es una fase propia; una fase que no conoce no se enseña.
+    const radio = (await waitFor(async () => {
+      const j = (await jobOf(port, first!.id)) as { phase: string | null; pct: number } | undefined
+      return j && j.pct >= 92 ? j : null
+    })) as unknown as { phase: string | null }
+    expect(radio.phase).toBe('radio')
     const done = (await waitFor(async () => {
       const j = await jobOf(port, second!.id)
       return j?.state === 'done' ? j : null

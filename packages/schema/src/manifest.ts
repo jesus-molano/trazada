@@ -47,6 +47,8 @@ export const QUALITY_NOTE_CODES = [
   'circuit-outdated-kept',
   'position-glitches',
   'pitlane-missing',
+  'radio-partial',
+  'radio-skipped',
 ] as const
 export type QualityNoteCode = (typeof QUALITY_NOTE_CODES)[number]
 
@@ -89,6 +91,11 @@ export interface Manifest {
      * sesión se generó con un pipeline anterior: no se sabe si había meteorología (volver a descargarla).
      */
     weather?: 'present' | 'absent'
+    /**
+     * Desde 1.2.0: radio de los equipos en `events.radio`: todos los clips (`present`), alguno falló o se llegó al tope
+     * (`partial`, con su nota) o ninguno (`absent`). Sin el campo, la sesión se generó antes: hay que volver a descargarla.
+     */
+    radio?: 'present' | 'absent' | 'partial'
   }
   quality: {
     coverage: Record<string, { pos: number; car: number }>

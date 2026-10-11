@@ -10,9 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from trazada_pipeline.radio import RadioSource
 
 SESSION_TYPES = ("fp1", "fp2", "fp3", "sq", "sprint", "q", "race")
 RACE_LIKE = ("race", "sprint")
@@ -120,6 +123,8 @@ class SessionData:
     estimated: list[str] = field(default_factory=list)
     # Meteorología del live timing (WEATHER_COLUMNS, `weather.py`), o None si la fuente no la trae.
     weather: pd.DataFrame | None = None
+    # Radio de los equipos (D51, `radio.py`): capturas del stream TeamRadio, o None si la fuente no la trae.
+    radio: RadioSource | None = None
 
     @property
     def is_race_like(self) -> bool:

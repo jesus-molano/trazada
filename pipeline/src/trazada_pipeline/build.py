@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trazada_pipeline import __version__, schema, weather
+from trazada_pipeline import __version__, radio, schema, weather
 from trazada_pipeline.circuit import registry
 from trazada_pipeline.circuit.build import (
     GEOMETRY_VERSION,
@@ -416,7 +417,20 @@ def session_circuit(
     return circuit_id, notes, {}
 
 
-def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool = False) -> BuildReport:
+def build_session(
+    data: SessionData,
+    data_root: Path,
+    *,
+    rebuild_circuit: bool = False,
+    radio_fetch: radio.Fetch | None = None,
+    radio_skipped: str | None = None,
+    on_radio: Callable[[int, int], None] | None = None,
+) -> BuildReport:
+    """Genera los ficheros de una sesión.
+
+    Radio (D51): con `radio_fetch` se descargan los clips de `data.radio`; sin él no se descarga ninguno y,
+    si la fuente los tenía, una nota lo dice (`radio_skipped`: `no-radio` con --no-radio, `offline` sin red).
+    """
     v1 = data_root / f"v{schema.schema_major()}"
     notes: list[QualityNote] = list(data.notes)
     layout = registry.resolve(data.circuit_key, data.season, data.slug, dev=data.dev)
@@ -512,9 +526,40 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
     weather_events = weather.to_events(weather.window(data.weather, start_ms, end_ms))
     if weather_events is not None:
         events["weather"] = weather_events
+    folder = _session_dir(v1, data)
+    # Radio (D51): los clips de la ventana de reproducción, junto a la sesión; uno que falle se salta y se
+    # avisa.
+    radio_channel = "absent"
+    if data.radio is not None and data.radio.captures:
+        if radio_fetch is None:
+            reason = radio_skipped or "no-radio"
+            notes.append(
+                QualityNote(
+                    "radio-skipped",
+                    "la radio de los equipos no se ha descargado"
+                    + (" (sin red)" if reason == "offline" else " (--no-radio)"),
+                    {"reason": reason},
+                )
+            )
+        else:
+            got = radio.download(
+                data.radio, folder, radio_fetch, start_ms=start_ms, end_ms=end_ms, on_clip=on_radio
+            )
+            radio_channel = got.channel
+            if got.clips:
+                events["radio"] = got.clips
+            if got.failed or got.capped:
+                missing = got.failed + got.capped
+                notes.append(
+                    QualityNote(
+                        "radio-partial",
+                        f"{missing} de {got.total} clips de radio no se pudieron descargar"
+                        + (" (tope por sesión)" if got.capped else ""),
+                        {"missing": missing, "total": got.total},
+                    )
+                )
     schema.validate("events", events)
 
-    folder = _session_dir(v1, data)
     files = {
         "motion": write_hashed(
             folder,
@@ -590,6 +635,7 @@ def build_session(data: SessionData, data_root: Path, *, rebuild_circuit: bool =
             "timingStream": "present" if data.stream is not None and len(data.stream) else "absent",
             "marshalSectors": "present" if circuit.marshal_sectors is not None else "absent",
             "weather": "present" if "weather" in events else "absent",
+            "radio": radio_channel,
         },
         "quality": {
             "coverage": coverage,

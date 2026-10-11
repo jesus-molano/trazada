@@ -66,6 +66,35 @@ describe('JSON Schemas', () => {
     expect(manifest({ ...m, channels: { ...m.channels, weather: 'partial' } })).toBe(false)
   })
 
+  it('radio (1.2.0): opcional en eventos y en el manifest; clips con su ruta por contenido', () => {
+    const events = validator('events.schema.json')
+    const withRadio = read('examples/events.example.json')
+    expect(withRadio.radio).toHaveLength(2)
+    expect(events(withRadio)).toBe(true)
+    // Unos eventos de 1.1.0 (sin radio) siguen siendo válidos.
+    const { radio: _radio, ...old } = withRadio
+    expect(events({ ...old, schemaVersion: '1.1.0' })).toBe(true)
+    const clip = withRadio.radio[0]
+    for (const bad of [
+      { ...clip, file: '../../etc/passwd' },
+      { ...clip, file: 'radio/0123456789ABCDEF.mp3' },
+      { ...clip, file: 'https://example.com/a.mp3' },
+      { ...clip, car: 'HAM' },
+      { ...clip, bytes: 0 },
+      { ...clip, t: 1.5 },
+      { t: clip.t, car: clip.car, file: clip.file },
+    ]) {
+      expect(events({ ...withRadio, radio: [bad] }), JSON.stringify(bad)).toBe(false)
+    }
+
+    const manifest = validator('manifest.schema.json')
+    const m = read('examples/manifest.example.json')
+    for (const radio of ['present', 'absent', 'partial']) expect(manifest({ ...m, channels: { ...m.channels, radio } })).toBe(true)
+    const { radio: _channel, ...oldChannels } = m.channels
+    expect(manifest({ ...m, channels: oldChannels })).toBe(true)
+    expect(manifest({ ...m, channels: { ...m.channels, radio: 'some' } })).toBe(false)
+  })
+
   it('el manifest rechaza el nombre oficial con patrocinadores en campos no previstos', () => {
     const validate = validator('manifest.schema.json')
     const m = read('examples/manifest.example.json')

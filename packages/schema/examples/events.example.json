@@ -1,6 +1,6 @@
 {
   "schema": "trazada.events",
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "raceControl": [
     {
       "t": 1000,
@@ -25,5 +25,9 @@
     "rain": [false, true, null],
     "windMs": [1.5, 2.2, null],
     "windDeg": [330, 317, null]
-  }
+  },
+  "radio": [
+    { "t": 1200, "car": "18", "file": "radio/0123456789abcdef.mp3", "bytes": 48213 },
+    { "t": 5400, "car": "44", "file": "radio/fedcba9876543210.mp3", "bytes": 61022 }
+  ]
 }

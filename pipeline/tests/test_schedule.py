@@ -265,11 +265,13 @@ def _fake_report(data: Path) -> BuildReport:
 def test_build_progress_reports_steps_and_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     seen: dict = {}
 
-    def fake_build(season, event, session, data, *_rest, on_loaded=None):
-        seen.update(season=season, event=event, session=session, data=data)
+    def fake_build(season, event, session, data, *_rest, on_loaded=None, no_radio=False, on_radio=None):
+        seen.update(season=season, event=event, session=session, data=data, no_radio=no_radio)
         logging.getLogger("fastf1.core").info("Fetching car data...")
-        assert on_loaded is not None
+        assert on_loaded is not None and on_radio is not None
         on_loaded()
+        on_radio(1, 2)  # la radio (D51): el gestor enseña su paso
+        on_radio(2, 2)
         return _fake_report(data)
 
     monkeypatch.setattr(cli, "_build", fake_build)
@@ -277,12 +279,14 @@ def test_build_progress_reports_steps_and_result(monkeypatch: pytest.MonkeyPatch
         cli.app, ["build", "2026", "10", "fp2", "--data", str(tmp_path), "--progress"]
     )
     assert result.exit_code == 0, result.output
-    assert seen == {"season": 2026, "event": 10, "session": "fp2", "data": tmp_path}
+    assert seen == {"season": 2026, "event": 10, "session": "fp2", "data": tmp_path, "no_radio": False}
     progress = _lines(result.stdout, "progress")
     assert [(p["pct"], p["phase"], p["step"]) for p in progress] == [
         (1, "download", "start"),
         (40, "download", "car"),
         (88, "process", "process"),
+        (92, "radio", "radio"),
+        (97, "radio", "radio"),
     ]
     assert _lines(result.stdout, "result") == [
         {
@@ -303,7 +307,7 @@ def test_build_progress_result_says_if_the_session_is_dev(
     """Una sesión que queda como dev (p. ej. por su circuito) lo dice en el resultado: la insignia DEV sale
     en el gestor antes de releer el catálogo."""
 
-    def fake_build(_season, _event, _session, data, *_rest, on_loaded=None):
+    def fake_build(_season, _event, _session, data, *_rest, on_loaded=None, **_radio):
         report = _fake_report(data)
         report.dev = True
         return report

@@ -35,7 +35,8 @@
     "phase": {
       "start": "Preparing…",
       "download": "Downloading…",
-      "process": "Processing…"
+      "process": "Processing…",
+      "radio": "Downloading team radio…"
     },
     "progress": "≈{pct}%",
     "progressLabel": "{session} progress",

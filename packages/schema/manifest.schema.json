@@ -88,6 +88,10 @@
         "weather": {
           "enum": ["present", "absent"],
           "description": "Desde 1.1.0: meteorología en events.weather. Sin el campo, la sesión se generó antes (no se sabe si la fuente la tenía)."
+        },
+        "radio": {
+          "enum": ["present", "absent", "partial"],
+          "description": "Desde 1.2.0: radio de los equipos en events.radio (`present`: todos los clips de la sesión; `partial`: falló alguno o se llegó al tope y se avisa en las notas; `absent`: la fuente no la trae, no se descargó o no se pudo descargar ninguno). Sin el campo, la sesión se generó antes."
         }
       }
     },
@@ -157,7 +161,9 @@
             "circuit-rebuilt",
             "circuit-outdated-kept",
             "position-glitches",
-            "pitlane-missing"
+            "pitlane-missing",
+            "radio-partial",
+            "radio-skipped"
           ],
           "description": "Código estable: la UI lo traduce (con params). Ver docs/DATA_FORMAT.md."
         },

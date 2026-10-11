@@ -117,6 +117,10 @@ Cabecera:
   - Solo las muestras del intervalo de reproducción y, delante, la última anterior a su inicio (la vigente al empezar).
   - El lector **no interpola**: muestra el último valor con `t ≤ reloj` y, si tiene más de 150 s (o no hay ninguno), «sin dato».
   - La dirección del viento es respecto al norte: el mapa 3D usa la orientación del mapa oficial, no el norte, así que nunca se dibuja sobre él (solo junto a una referencia orientada al norte).
+- `radio` (desde 1.2.0, opcional; D51): la radio de los equipos (stream `TeamRadio`), un clip por mensaje y en orden de `t`: `{ t, car, file, bytes }`.
+  - `t` es la hora de **publicación** en el feed (`Utc`), en ms de sesión con la misma normalización que dirección de carrera (`Utc − t0`): el mensaje pudo decirse unos segundos antes, y la app lo dice.
+  - `file` es relativo al manifest: `radio/<sha256[:16]>.mp3` (por contenido, inmutable). El pipeline solo guarda un clip si la ruta del feed es relativa y no sale de la sesión, la respuesta es HTTP 200, el tipo es audio u octet-stream (si lo da), empieza como un mp3 (ID3 o trama MPEG) y pesa ≤ 3 MB; con un tope de 300 MB por sesión. Uno que falla se salta (nota `radio-partial`).
+  - Solo los del intervalo de reproducción. Sin transcripción (no se usa IA con datos de F1). Los clips son datos de F1: se quedan en `data/` y nunca van a git (`DATA_NOTICE.md`). `trazada prune` no los toca.
 
 ## Manifest y catálogo
 
@@ -124,6 +128,7 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - `channels.weather` (desde 1.1.0): `present` si `events.weather` trae alguna muestra, `absent` si la fuente no la da (p. ej. TracingInsights o un fallo de descarga). Un manifest sin el campo es de un pipeline anterior: no se sabe si había meteorología, y la app propone volver a descargar la sesión.
+- `channels.radio` (desde 1.2.0): `present` (todos los clips de la reproducción), `partial` (falló alguno o se llegó al tope; nota `radio-partial`) o `absent` (la fuente no la trae o no se bajó ninguno; con `--no-radio` u offline, nota `radio-skipped`). Sin el campo, la sesión es de antes de 1.2.0 y la app propone volver a descargarla.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
 - `quality.notes`: avisos del pipeline al procesar la sesión. El front los muestra en la cabecera del replay (`apps/web/app/data/quality-notes.ts`) y nunca los esconde. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y la UI solo lo enseña si no conoce el código (ver abajo). Un manifest anterior puede traer cadenas sueltas (texto libre, sin código): la UI traduce las que reconoce por patrón (textos antiguos, congelados) y de las demás enseña el texto original. Códigos:
@@ -161,3 +166,4 @@ Historial de versiones:
 |---|---|---|
 | 1.0.0 | 1.0.0 | Esquema v1. |
 | 1.1.0 | 1.0.0 | Meteorología (D36): `events.weather` y `manifest.channels.weather`, opcionales. Aditivo: un lector 1.0.0 lo ignora y los datos 1.0.0 siguen siendo válidos (sin meteorología). Los layouts TRZB no cambian (solo la `schemaVersion` de su cabecera). |
+| 1.2.0 | 1.0.0 | Radio de los equipos (D51): `events.radio`, `manifest.channels.radio` y las notas `radio-partial` y `radio-skipped`, opcionales, más los clips en `sessions/<id>/radio/`. Aditivo: un lector anterior lo ignora. Los layouts TRZB no cambian (solo la `schemaVersion` de su cabecera). |
