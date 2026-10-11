@@ -89,6 +89,17 @@ export const useMomentsStore = defineStore('moments', () => {
     return dir > 0 ? nextMoment(m.moments, nowMs, kindsOf(filter.value)) : prevMoment(m.moments, nowMs, kindsOf(filter.value))
   }
 
+  /**
+   * Adónde saltan ⏮ ⏭ (de la clase elegida), por tiempo: el servicio de momentos de la paleta de comandos (ítem 14),
+   * que así recorre los mismos destinos que los botones del dock.
+   */
+  function targets(): { t: number }[] {
+    const m = model()
+    if (!m) return []
+    const kinds = kindsOf(filter.value)
+    return m.moments.filter((x) => !kinds || kinds.has(x.kind)).map((x) => ({ t: x.seekMs }))
+  }
+
   /** Momentos a los que saltar ahora (con el reloj grueso): para habilitar los botones. */
   const next = computed(() => (playback.attached ? target(1, playback.timeMs) : null))
   const prev = computed(() => (playback.attached ? target(-1, playback.timeMs) : null))
@@ -139,5 +150,5 @@ export const useMomentsStore = defineStore('moments', () => {
     { flush: 'sync' },
   )
 
-  return { filter, next, prev, model, setFilter, jump, go, goToOvertake, goToDuel }
+  return { filter, next, prev, model, targets, setFilter, jump, go, goToOvertake, goToDuel }
 })

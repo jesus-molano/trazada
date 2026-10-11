@@ -8,6 +8,7 @@ import type { TimelineMarkers } from '~/engine/timeline/markers'
 import { TrackState } from '~/engine/trackstate/TrackState'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
+import { testLapTable } from '~/testing/runtime'
 
 const msg = (t: number, kind: string, text: string, lap: number | null = null): RaceControlEvent => ({
   t,
@@ -61,7 +62,9 @@ function fakeRuntime(opts: { markers?: TimelineMarkers; trackState?: TrackState 
     },
     markers: opts.markers ?? markers(),
     drivers: [],
-    model: { states: [] },
+    // Sin vueltas ni posiciones: los carriles que las leen (adelantamientos, ítem 5) no tienen nada que pintar.
+    leaderboard: { lapTable: testLapTable('race') },
+    model: { states: [], tracks: [] },
     circuit: { marshalSectors: [] },
     raceControl: RC,
     trackState,

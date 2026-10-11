@@ -2,19 +2,20 @@
  * Paleta de comandos (ítem 14, D43) sobre el fixture (Spa 2026, libres 1): Ctrl+K y «/» la abren (no encima de otro
  * diálogo modal), el campo es un combobox con `aria-activedescendant` sobre la opción activa, ↑/↓ la mueven, Enter
  * ejecuta (con una acción simulada y con la real), lo deshabilitado no se ejecuta y dice por qué, Tab completa, Esc la
- * cierra y el foco vuelve; ninguna tecla llega a los atajos del replay; el botón de la cabecera (iPad); los huecos.
+ * cierra y el foco vuelve; ninguna tecla llega a los atajos del replay; el botón del dock (iPad); los huecos.
  * Sin bucle de frames (requestAnimationFrame sustituido: el estado grueso llega con los avisos del reloj).
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import TzPaletteButton from '~/components/replay-header/TzPaletteButton.vue'
+import TzPaletteButton from '~/components/replay-dock/TzPaletteButton.vue'
 import TzCommandPalette from '~/components/replay-overlays/TzCommandPalette.vue'
 import type { LoadedSession } from '~/data/types'
 import { registerCommandService } from '~/replay/commands'
 import { ESC_PRIORITY, handleEscape, registerEscape, runShortcut } from '~/replay/keys'
 import { createReplayRuntime, type ReplayRuntime } from '~/replay/runtime'
 import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
+import { REPLAY_DOCK } from '~/slots/replay-dock'
 import { usePlaybackStore } from '~/stores/playback'
 import { recordingServices } from '~/testing/commands'
 import { loadFixture } from '~/testing/fixture'
@@ -130,7 +131,7 @@ describe('abrir y cerrar', () => {
     expect(dialog()).toBeNull()
   })
 
-  it('el botón de la cabecera (iPad) la abre y la cierra, con su nombre accesible', async () => {
+  it('el botón del dock (iPad) la abre y la cierra, con su nombre accesible', async () => {
     await mountBoth()
     const button = $<HTMLButtonElement>('[data-testid="palette-button"]')!
     expect(button.getAttribute('aria-label')).toMatch(/Comandos|Commands/)
@@ -256,11 +257,14 @@ describe('combobox y lista', () => {
 })
 
 describe('huecos', () => {
-  it('la paleta va en los superpuestos (entre la tarjeta de fin y la hoja de análisis) y su botón en la cabecera', () => {
+  it('la paleta va en los superpuestos (entre la tarjeta de fin y la hoja de análisis) y su botón en el dock', () => {
     const overlays = REPLAY_OVERLAYS.map((o) => o.name)
     expect(overlays).toContain('TzCommandPalette')
     expect(overlays.indexOf('TzCommandPalette')).toBeGreaterThan(overlays.indexOf('TzSessionSummary'))
     expect(overlays.indexOf('TzCommandPalette')).toBeLessThan(overlays.indexOf('TzAnalysis'))
-    expect(REPLAY_HEADER.map((h) => h.name)).toContain('TzPaletteButton')
+    // En el dock, detrás de los saltos entre momentos; en la cabecera partía la fila en el iPad.
+    const dock = REPLAY_DOCK.map((d) => d.name)
+    expect(dock.indexOf('TzPaletteButton')).toBeGreaterThan(dock.indexOf('TzJumpButtons'))
+    expect(REPLAY_HEADER.map((h) => h.name)).not.toContain('TzPaletteButton')
   })
 })

@@ -18,6 +18,7 @@ import TzOvertakeLane from '~/components/timeline-lanes/TzOvertakeLane.vue'
 import { useAnalysis } from '~/composables/useAnalysis'
 import type { LoadedSession } from '~/data/types'
 import { JUMP_LEAD_MS } from '~/engine/moments/jumps'
+import { commandServices } from '~/replay/commands'
 import { findShortcut } from '~/replay/keys'
 import { createReplayRuntime, type ReplayRuntime } from '~/replay/runtime'
 import { useCompareStore } from '~/stores/compare'
@@ -233,6 +234,25 @@ describe('botones de saltos (hueco replay-dock)', () => {
     key('.')!(new KeyboardEvent('keydown', { key: '.' }))
     await settle()
     expect(time()).toBe(S + DUEL_START - JUMP_LEAD_MS)
+  })
+
+  it('montados, dan a la paleta de comandos (ítem 14) los mismos destinos que los botones; desmontados, ninguno', async () => {
+    attachRace()
+    expect(commandServices().moments).toBeUndefined()
+    // Sin `mount`: este test lo desmonta él mismo.
+    const w = await mountSuspended(TzJumpButtons, { attachTo: document.body })
+    const service = commandServices().moments!
+    expect(service.list().map((m) => m.t - S)).toEqual([
+      expect.closeTo(PASS_AT - JUMP_LEAD_MS, -2),
+      DUEL_START - JUMP_LEAD_MS,
+      300_000 - JUMP_LEAD_MS,
+      400_000 - JUMP_LEAD_MS,
+    ])
+    // Con una clase elegida en la pestaña, la paleta recorre esa clase, como los botones.
+    useMomentsStore().setFilter('neutralisation')
+    expect(service.list().map((m) => m.t - S)).toEqual([300_000 - JUMP_LEAD_MS])
+    w.unmount()
+    expect(commandServices().moments).toBeUndefined()
   })
 
   it('al cambiar de sesión, la clase vuelve a «todos»', async () => {

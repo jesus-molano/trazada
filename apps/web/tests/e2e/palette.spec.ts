@@ -3,7 +3,8 @@
  * desde el «Started» de la sesión, a 816 881 ms). Ctrl+K y «/» la abren; «seguir NOR» deja NOR seleccionado y la cámara
  * siguiéndolo; «x4» pone ×4; Esc la cierra sin deseleccionar; en libres «vuelta 17» pide piloto y «vuelta 17 de NOR»
  * va al inicio de esa vuelta; lo que no está en los datos sale deshabilitado con su motivo; mientras está abierta, las
- * teclas no llegan al replay; en tablet, el botón de la cabecera la abre; axe sin infracciones serias ni críticas.
+ * teclas no llegan al replay; «siguiente momento» va adonde el botón de salto del dock (ítem 5); en tablet, el botón
+ * del dock la abre; axe sin infracciones serias ni críticas.
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
@@ -145,6 +146,23 @@ test('saltos: la bandera a cuadros, una hora del reloj y la parada de un piloto'
   expect(await handle(page, (h) => h.selectedCar)).toBe('3')
 })
 
+test('«siguiente momento» va adonde lleva el botón del dock (servicio de momentos del ítem 5)', async ({ page }) => {
+  await openReplay(page)
+  // Los destinos de los botones de salto (5 s antes de cada momento); la bandera a cuadros es uno de ellos.
+  const targets = await handle(page, (h) => (h.scene.moments as { targets: { seekMs: number }[] }).targets.map((m) => m.seekMs))
+  expect(targets).toContain(CHEQUERED_MS - 5000)
+  const now = await handle(page, (h) => h.timeMs)
+  // La paleta no cuenta lo que está a menos de medio segundo del reloj (NEAR_MS).
+  const expected = targets.filter((t) => t > now + 500).sort((a, b) => a - b)[0]!
+  await command(page, 'siguiente momento', 'goto.moment.next')
+  await expect(active(page)).toHaveAttribute('data-t', String(expected))
+  await page.keyboard.press('Enter')
+  await twoFrames(page)
+  expect(await handle(page, (h) => h.timeMs)).toBe(expected)
+  // Y «momento anterior» vuelve al de antes, o sale deshabilitado con su motivo si no lo hay.
+  await command(page, 'momento anterior', 'goto.moment.prev')
+})
+
 test('accesibilidad: axe sin infracciones serias ni críticas con la paleta abierta', async ({ page }) => {
   await openReplay(page)
   await command(page, 'vuelta 17 de NOR', 'goto.lap.17.1')
@@ -154,7 +172,7 @@ test('accesibilidad: axe sin infracciones serias ni críticas con la paleta abie
     .analyze()
   const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)
   expect(serious).toEqual([])
-  // Con ratón, el botón de la cabecera no está (la cabecera cabe en una fila; Ctrl+K y «/» bastan).
+  // Con ratón, el botón del dock no está (Ctrl+K y «/» bastan).
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('palette-button')).toBeHidden()
 })
@@ -162,7 +180,7 @@ test('accesibilidad: axe sin infracciones serias ni críticas con la paleta abie
 test.describe('tablet', () => {
   test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true })
 
-  test('el botón de la cabecera la abre y una sugerencia se ejecuta con un toque', async ({ page }) => {
+  test('el botón del dock la abre y una sugerencia se ejecuta con un toque', async ({ page }) => {
     await gotoApp(page, FP1)
     await expect(page.getByTestId('replay-dock')).toBeVisible({ timeout: 15_000 })
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches || matchMedia('(hover: none)').matches)
@@ -176,5 +194,25 @@ test.describe('tablet', () => {
     await page.locator('[data-testid="palette-option"][data-key="playback.rate.2"]').tap()
     await expect(palette(page)).toBeHidden()
     await expect.poll(() => handle(page, (h) => h.rate)).toBe(2)
+  })
+})
+
+test.describe('iPad Air horizontal', () => {
+  test.use({ viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true })
+
+  test('el botón va en el dock: la cabecera táctil sigue en una fila', async ({ page }) => {
+    await gotoApp(page, FP1)
+    await expect(page.getByTestId('replay-dock')).toBeVisible({ timeout: 15_000 })
+    const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches || matchMedia('(hover: none)').matches)
+    test.skip(!coarse, 'esta emulación no informa de puntero grueso ni de hover: none')
+    await expect(page.getByTestId('replay-dock').getByTestId('palette-button')).toBeVisible()
+    // En la cabecera, con el botón de la realización automática, la partía en dos filas (46 px menos de escena).
+    const tops = await page.evaluate(() =>
+      [...document.querySelector('.tz-replay__bar')!.children]
+        .map((c) => c.getBoundingClientRect())
+        .filter((r) => r.height > 0)
+        .map((r) => Math.round(r.top + r.height / 2)),
+    )
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(4)
   })
 })

@@ -13,7 +13,7 @@
  *
  * Arbitraje con los controles del mapa (MapControls, que escuchan `pointermove` en el documento): los punteros que
  * empiezan en la escena se siguen en fase de captura (ver los oyentes). Con dos dedos, sus movimientos se retienen (no
- * les llegan a los controles) hasta saber qué gesto es; si
+ * les llegan a los controles) hasta saber qué gesto es, algo que se decide una vez por frame con los dos dedos al día; si
  * es el reloj, siguen retenidos hasta que se levantan todos los dedos (la cámara no se mueve); si no, pasan. Los
  * `pointerdown`/`pointerup` siempre pasan, para que los controles lleven bien la cuenta de los dedos. Un dedo solo (girar
  * o desplazar el mapa, elegir un coche), el ratón y el teclado no cambian.
@@ -226,22 +226,34 @@ export function useSceneGestures(opts: SceneGestureOptions): { hud: ShallowRef<S
       return
     }
     if (phase === 'pending' && pairDown()) {
-      const kind = classifyTwoFinger(start, read(now))
-      if (kind === null) {
-        e.stopPropagation() // retenido hasta decidir
-        return
-      }
-      phase = kind
-      last = kind
-      if (kind === 'scrub') {
-        e.stopPropagation()
-        startScrub()
-        schedule()
-        return
-      }
-      if (kind === 'pinch' && opts.follow.active()) pinchBase = { distance: opts.follow.distance(), span: fingerSpan(start) }
+      // Retenido hasta decidir. Se decide en el frame, con los dos dedos al día: el navegador entrega el movimiento de
+      // cada dedo en su propio `pointermove`, uno detrás de otro, y decidir con el primero (el otro aún en su sitio
+      // anterior) haría pellizco de un deslizamiento rápido de dos dedos en paralelo.
+      e.stopPropagation()
+      if (!decideRaf) decideRaf = requestAnimationFrame(decide)
+      return
     }
     if (phase === 'pinch') pinchMove()
+  }
+
+  let decideRaf = 0
+  /** Qué gesto es, con lo último de los dos dedos (una vez por frame, mientras no se sabe). */
+  function decide() {
+    decideRaf = 0
+    if (phase !== 'pending' || !pairDown()) return
+    const kind = classifyTwoFinger(start, read(now))
+    if (kind === null) return // aún no se han movido lo bastante: el siguiente movimiento lo vuelve a intentar
+    phase = kind
+    last = kind
+    if (kind === 'scrub') {
+      startScrub()
+      applyScrub()
+      return
+    }
+    if (kind === 'pinch' && opts.follow.active()) {
+      pinchBase = { distance: opts.follow.distance(), span: fingerSpan(start) }
+      pinchMove()
+    }
   }
 
   function onPointerUp(e: PointerEvent) {
@@ -306,6 +318,8 @@ export function useSceneGestures(opts: SceneGestureOptions): { hud: ShallowRef<S
     offStat = registerSceneStat('gestures', () => ({ phase, last, offsetMs: hud.value?.offsetMs ?? null }))
   })
   onBeforeUnmount(() => {
+    cancelAnimationFrame(decideRaf)
+    decideRaf = 0
     el?.removeEventListener('pointerdown', onPointerDown, { capture: true })
     el?.removeEventListener('touchmove', onTouchMove)
     for (const [type, fn] of WINDOW_LISTENERS) window.removeEventListener(type, fn, { capture: true })

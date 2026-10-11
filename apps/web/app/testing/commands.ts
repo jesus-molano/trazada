@@ -146,7 +146,10 @@ export function paletteContext(o: PaletteContextOptions = {}): CommandContext {
   }
 }
 
-/** Los servicios sin el de momentos (ítem 5), como hoy en la app: los comandos de momentos no se ofrecen. */
+/**
+ * Los servicios sin el de momentos (ítem 5; en la app lo registran los botones de salto del dock): los comandos de
+ * momentos no se ofrecen.
+ */
 export function withoutMoments(services: CommandServices): Partial<CommandServices> {
   const { moments: _moments, ...rest } = services
   return rest

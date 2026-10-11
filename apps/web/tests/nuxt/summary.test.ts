@@ -232,7 +232,10 @@ describe('cuándo aparece', () => {
     expect(dockButton()).not.toBeNull()
   })
 
-  it('en el bench no se abre sola (taparía la escena que se mide), pero el botón sí la abre', async () => {
+  // Con `route`, `mountSuspended` navega de verdad a /replay: la primera vez se transforma todo el grafo de módulos de
+  // la página (escena, three.js y lo de cada hueco), 2–3 s solo y más del límite de 5 s con la CPU compartida de la
+  // suite completa. El tiempo es de esa carga, no de lo que se prueba.
+  it('en el bench no se abre sola (taparía la escena que se mide), pero el botón sí la abre', { timeout: 20_000 }, async () => {
     const { summary } = useSessionSummary()
     await mountBoth('/replay?bench=1')
     seek(summary.showMs - 40)

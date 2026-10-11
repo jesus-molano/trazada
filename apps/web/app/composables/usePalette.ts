@@ -1,6 +1,6 @@
 /**
  * Estado de la paleta de comandos (ítem 14, D43), compartido por la paleta (hueco `replay-overlays`) y su botón (hueco
- * `replay-header`): uno por runtime, con `rt.ext`, así que vive y muere con la sesión. Solo si está abierta: lo demás
+ * `replay-dock`): uno por runtime, con `rt.ext`, así que vive y muere con la sesión. Solo si está abierta: lo demás
  * (lo escrito, la sugerencia activa) es de la paleta.
  */
 import { readonly, type Ref, ref } from 'vue'

@@ -4,7 +4,7 @@
  * marcadores (coche de seguridad, banderas, paradas), comparar pilotos y reanudar, escribiendo («seguir VER»,
  * «vuelta 30», «1:02:30», «x4», «siguiente sc», «parada de NOR»). Reglas fijas, sin IA (`engine/commands/`).
  *
- * - Se abre con Ctrl+K (⌘K) o «/» (registro de teclas) y con el botón de la cabecera (iPad); no se abre encima de
+ * - Se abre con Ctrl+K (⌘K) o «/» (registro de teclas) y con el botón del dock (iPad); no se abre encima de
  *   otro diálogo modal. Se cierra con Esc (`ESC_PRIORITY.palette`), con ×, con Ctrl+K o con un clic fuera.
  * - Diálogo modal con un combobox y su lista (patrón de WAI-ARIA con `aria-activedescendant`): el foco se queda en el
  *   campo; ↑/↓ eligen, Enter ejecuta, Tab completa. Mientras está abierta, las teclas no llegan a los atajos del replay.
