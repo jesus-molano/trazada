@@ -77,6 +77,18 @@ def test_decode_z_ilegible(payload: str) -> None:
         decode_z(payload)
 
 
+def test_decode_z_anidado_sin_fin_es_ilegible() -> None:
+    """Dato no fiable: un json anidado sin fin cuenta como ilegible, no tumba la sonda."""
+    deep = base64.b64encode(_deflate(b"[" * 200_000)).decode()
+    with pytest.raises(FeedDecodeError, match="anidado"):
+        decode_z(deep)
+
+
+def _deflate(raw: bytes) -> bytes:
+    c = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    return c.compress(raw) + c.flush()
+
+
 def test_decode_z_con_tope_de_tamano() -> None:
     """Una «bomba» (mucho más grande al descomprimir) no se expande entera: se rechaza."""
     big = z({"x": "0" * 100_000})
@@ -188,6 +200,7 @@ def test_mensajes_de_overtake_y_drs() -> None:
         rc_line("OVERTAKE ENABLED", "GREEN LIGHT - PIT EXIT OPEN"),
         rc_line("OVERTAKE DISABLED", "OVERTAKE ENABLED", as_dict=True),
         rc_line("DRS DISABLED IN ZONE 2"),
+        rc_line("STRAIGHT MODE - LOW GRIP", "STRAIGHT MODE - DISABLED"),
         ["mal", None],
     ]
     counts = scan_race_control(records)
@@ -196,6 +209,7 @@ def test_mensajes_de_overtake_y_drs() -> None:
         "overtake_disabled": 1,
         "drs_enabled": 0,
         "drs_disabled": 1,
+        "straight_mode": 2,
     }
 
 
@@ -283,6 +297,15 @@ def test_cli_probe_feed_sin_cardata_falla(monkeypatch: pytest.MonkeyPatch) -> No
     result = CliRunner().invoke(cli.app, ["probe-feed", "2026", "10", "race"])
     assert result.exit_code == 1
     assert "IP residencial" in result.stderr
+
+
+def test_cli_probe_feed_sin_muestras_legibles_falla(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Si no se pudo leer ninguna muestra, no se puede decir «sin canales nuevos»: sin datos y sale con 1."""
+    _patch_session(monkeypatch, fetcher(car=["00:00:01.000basura"] * 5))
+    result = CliRunner().invoke(cli.app, ["probe-feed", "2026", "10", "race"])
+    assert result.exit_code == 1, result.output
+    assert result.stdout.splitlines()[-1].startswith("resultado: sin datos")
+    assert "ninguna muestra legible" in result.stderr
 
 
 def test_cli_probe_feed_valida_la_sesion() -> None:

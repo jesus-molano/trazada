@@ -69,7 +69,7 @@ const params = (p: Record<string, number | string>) =>
         <TzIcon name="info" size="sm" :label="t('regulation.info')" class="tz-notes__info-icon" />
         <span>{{ t('regulation.title') }}</span>
       </p>
-      <p class="tz-notes__info-body">{{ t('regulation.body', { chip: t('trackStatus.overtake') }) }}</p>
+      <p class="tz-notes__info-body">{{ t('regulation.body', { chip: t('trackStatus.overtake'), straight: t('rc.kind.straight_mode') }) }}</p>
     </div>
   </TzDisclosure>
 </template>

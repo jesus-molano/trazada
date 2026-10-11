@@ -45,7 +45,7 @@ const season = rt.session.manifest.session.season
  * antes, que esta sesión no trae el canal.
  */
 const drsWhyText = computed(() =>
-  hasRegulation2026Notice(season) ? t('regulation.body', { chip: t('trackStatus.overtake') }) : t('drs.noChannel'),
+  hasRegulation2026Notice(season) ? t('regulation.body', { chip: t('trackStatus.overtake'), straight: t('rc.kind.straight_mode') }) : t('drs.noChannel'),
 )
 /** La fuente no trae telemetría tal cual: el panel lo dice (Estimado). */
 const telemetryEstimated = rt.session.manifest.quality.estimated.includes('telemetry')

@@ -261,7 +261,9 @@ def probe_feed(
     session: str = typer.Argument(..., help="fp1|fp2|fp3|sq|sprint|q|race"),
     cache: Path | None = typer.Option(None, help="Caché de FastF1 (por defecto .cache/fastf1, la de build)."),
     offline: bool = typer.Option(
-        False, help="Solo la caché HTTP de FastF1 (una sesión ya descargada con build)."
+        False,
+        help="Solo la caché HTTP de FastF1: tras un build sirven CarData.z y dirección de carrera; "
+        "el Index.json (temas) no lo descarga build.",
     ),
     max_records: int = typer.Option(
         0, min=0, help="Lee solo los N primeros mensajes de CarData.z (0: todos)."
@@ -273,7 +275,7 @@ def probe_feed(
 
     Necesita una IP residencial (F1 da 403 a las de nube), salvo con --offline tras un build.
 
-    Sale con 0 si pudo leer CarData.z, haya o no canales nuevos.
+    Sale con 0 si pudo leer muestras de CarData.z, haya o no canales nuevos; con 1 si no.
     """
     if session not in SESSION_TYPES:
         typer.echo(f"ERROR: sesión desconocida {session!r} (usa {'|'.join(SESSION_TYPES)})", err=True)
@@ -295,6 +297,12 @@ def probe_feed(
         typer.echo(
             "ERROR: no se pudo leer CarData.z. Si estás en una IP de nube, F1 responde 403: "
             "ejecuta la sonda desde una IP residencial (o con --offline tras un build).",
+            err=True,
+        )
+        raise typer.Exit(1)
+    if report.car.samples == 0:
+        typer.echo(
+            "ERROR: CarData.z no tiene ninguna muestra legible: no se puede decir nada de sus canales.",
             err=True,
         )
         raise typer.Exit(1)

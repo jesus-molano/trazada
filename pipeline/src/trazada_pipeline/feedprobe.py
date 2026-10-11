@@ -62,7 +62,7 @@ MAX_DISTINCT_VALUES = 12
 #: Longitud del sello de tiempo de cada línea de un `.jsonStream` (`00:00:00.000`), como en FastF1.
 TIMESTAMP_LEN = 12
 #: Mensajes de dirección de carrera que se cuentan (tipos del parser del pipeline, `racecontrol.parser`).
-RC_KINDS = ("overtake_enabled", "overtake_disabled", "drs_enabled", "drs_disabled")
+RC_KINDS = ("overtake_enabled", "overtake_disabled", "drs_enabled", "drs_disabled", "straight_mode")
 
 Fetcher = Callable[[str], Any]
 """Página de FastF1 (`index`, `car_data`…) → lo que devuelve `fastf1.api.fetch_page` (None si falla)."""
@@ -137,6 +137,9 @@ def decode_z(payload: str, max_bytes: int = MAX_INFLATED_BYTES) -> Any:
         return json.loads(out.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise FeedDecodeError(f"json: {exc}") from None
+    except RecursionError:
+        # Dato no fiable: un json anidado sin fin no puede tumbar la sonda; cuenta como ilegible.
+        raise FeedDecodeError("json: anidado demasiado profundo") from None
 
 
 def value_key(value: object) -> str:
@@ -282,7 +285,10 @@ def _fetch(fetch: Fetcher, name: str, errors: dict[str, str]) -> Any:
         errors[name] = f"{type(exc).__name__}: {safe(str(exc), 200)}"
         return None
     if response is None:
-        errors[name] = "sin respuesta, ni de la caché ni del servidor (404, o 403 a una IP de nube)"
+        errors[name] = (
+            "sin respuesta: no está en la caché (build no descarga el Index.json) y el servidor no respondió "
+            "(404, 403 a una IP de nube, o no se pidió con --offline)"
+        )
     return response
 
 
@@ -339,6 +345,8 @@ def verdict(report: ProbeReport) -> str:
     car = report.car
     if car is None:
         return "resultado: sin datos (no se pudo leer CarData.z)"
+    if car.samples == 0:
+        return "resultado: sin datos (CarData.z sin ninguna muestra legible)"
     new = car.new_channels
     if not new:
         return "resultado: sin canales nuevos"

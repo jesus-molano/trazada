@@ -171,10 +171,13 @@ describe('aviso del reglamento de 2026 (en los avisos de la sesión)', () => {
     expect(body).toMatch(/(modo adelantamiento|overtake mode)/)
     expect(body).toMatch(/Boost/)
     expect(body).toMatch(/(batería|battery)/)
-    expect(body).toMatch(/(para toda la pista|for the whole track)/)
+    expect(body).toMatch(/(para toda la pista|track-wide)/)
     expect(body).toMatch(/(«Overtake activado»|“Overtake enabled”)/)
     expect(body).toMatch(/(línea de tiempo|timeline)/)
-    expect(body).not.toMatch(/\{chip\}/)
+    // Dirección de carrera también publica el estado global del modo recta: el aviso no puede negarlo.
+    expect(body).toMatch(/(«Modo recta»|“Straight mode”)/)
+    expect(body).toMatch(/(lista de dirección de carrera|race control list)/)
+    expect(body).not.toMatch(/\{chip\}|\{straight\}/)
   })
 
   it('una sesión de 2025 no lo muestra (y la cifra no cambia)', async () => {
