@@ -10,7 +10,7 @@ Este documento los explica. Si discrepa de ellos, mandan los ficheros.
 
 ## Rutas
 
-En producción se sirven desde el Worker de datos (`${dataBaseUrl}`). En desarrollo se sirven desde `data/`, montado en `/data`.
+Se sirven en local desde `data/` (D25: no hay despliegue), montado en `/data` (`${dataBaseUrl}`), tanto con `pnpm local` como con `pnpm dev`.
 
 ```
 /v1/catalog.json
@@ -22,8 +22,7 @@ En producción se sirven desde el Worker de datos (`${dataBaseUrl}`). En desarro
 
 - `session ∈ {fp1, fp2, fp3, sq, sprint, q, race}`.
 - Las rutas de `files` en el manifest son relativas al propio manifest.
-- Los ficheros con hash son inmutables (`Cache-Control: immutable`).
-- `manifest.json` y `catalog.json` llevan una caché corta.
+- Los ficheros con hash son inmutables: si el contenido cambia, cambia el nombre. El servidor local los sirve, como todo lo demás, sin caché (`Cache-Control: no-store`), así que una sesión que se vuelve a descargar se ve al recargar.
 
 ## Versionado
 
@@ -125,9 +124,8 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 - Una sesión `no-position` aparece en el catálogo como no disponible.
 - `channels.weather` (desde 1.1.0): `present` si `events.weather` trae alguna muestra, `absent` si la fuente no la da (p. ej. TracingInsights o un fallo de descarga). Un manifest sin el campo es de un pipeline anterior: no se sabe si había meteorología, y la app propone volver a descargar la sesión.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
-- `quality.notes`: avisos del pipeline al procesar la sesión, en texto libre (español). El front los muestra en la cabecera del replay: traduce los que reconoce (`apps/web/app/data/quality-notes.ts`; un test comprueba que esos textos siguen en el código del pipeline) y de los demás enseña el texto original. Nunca se esconden.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
-- `quality.notes`: avisos de calidad que la UI puede mostrar. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y no se muestra en la interfaz. Un manifest anterior puede traer cadenas sueltas (texto libre, sin código). Códigos:
+- `quality.notes`: avisos del pipeline al procesar la sesión. El front los muestra en la cabecera del replay (`apps/web/app/data/quality-notes.ts`) y nunca los esconde. El pipeline escribe objetos `{code, text, params?}`: `code` es estable y la UI lo traduce con `params`; `text` es el mismo aviso en español, para el log y para quien lea el JSON, y la UI solo lo enseña si no conoce el código (ver abajo). Un manifest anterior puede traer cadenas sueltas (texto libre, sin código): la UI traduce las que reconoce por patrón (textos antiguos, congelados) y de las demás enseña el texto original. Códigos:
 
   | `code` | Qué significa | `params` |
   |---|---|---|
@@ -149,11 +147,11 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
   | `circuit-outdated-kept` | El circuito está anticuado pero se reutiliza tal cual (`reason`: `no-corners`, `build-failed`, `would-lose`). | `circuit`, `reason` |
   | `position-glitches` | Más del 1 % de las posiciones de algún coche son «sin dato» por fallos del feed (retrocesos o posición congelada con el coche en marcha). | `cars` |
 
-  Un lector debe tolerar códigos que no conoce (un aviso genérico, nunca el `text` en español). En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
+  Un lector debe tolerar códigos que no conoce (datos de un pipeline más nuevo): enseña su `text` tal cual, marcado como texto original sin traducir («Aviso sin traducir (texto original):»), y nunca lo esconde. En v1, un código nuevo se añade en el sitio, en el `enum` de `manifest.schema.json` y en `QUALITY_NOTE_CODES` de `@trazada/schema` (lo comprueba un test).
 
 ## Estado de la versión 1
 
-La versión 1 del esquema **no se ha publicado todavía**. Hasta el primer deploy de datos (H11), los cambios en v1 se hacen en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. Desde ese deploy rige la política de versiones de arriba.
+La versión 1 del esquema **no se publica** (D25: no hay despliegue; los datos se quedan en `data/` del PC). Mientras no haya datos de usuarios que conservar, los cambios en v1 se pueden hacer en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. En cuanto los haya, rige la política de versiones de arriba. La 1.1.0 (meteorología) ya siguió esa política, como un minor aditivo: los datos 1.0.0 siguen siendo válidos y un lector 1.0.0 lee los 1.1.0.
 
 Historial de versiones:
 

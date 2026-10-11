@@ -10,7 +10,10 @@ import TzSceneTools from '~/components/TzSceneTools.vue'
 import TzSessionNotes from '~/components/TzSessionNotes.vue'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
+import { TRAIL_SPAN_MS } from '~/engine/replay/trail'
+import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { WEATHER_STALE_MS } from '~/engine/weather/weather'
 import type { ReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
@@ -57,7 +60,23 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
       w.findAll('[data-testid="how-drawn-panel"] li').map((li) => [li.attributes('data-item'), li.text()]),
     )
     expect(Object.keys(items).sort()).toEqual(
-      ['car', 'centreLine', 'estimated', 'forward', 'interpolation', 'pit', 'positions', 'timing', 'width'].sort(),
+      [
+        'car',
+        'centreLine',
+        'compare',
+        'drs',
+        'estimated',
+        'forward',
+        'interpolation',
+        'pit',
+        'positions',
+        'sectors',
+        'sky',
+        'timing',
+        'trails',
+        'weather',
+        'width',
+      ].sort(),
     )
     expect(items.positions).toMatch(/4/)
     expect(items.interpolation).toMatch(/(interpola|interpolated)/)
@@ -72,6 +91,18 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
     expect(items.width).toContain(`${TRACK_WIDTH_M} m`)
     expect(items.width).toMatch(/(genérica|generic)/)
     expect(items.car).toMatch(/(genérico|generic)/)
+    // Lo de cada capa o herramienta (lo que el README cuenta como modelo), con las cifras del motor.
+    expect(items.trails).toContain(`${TRAIL_SPAN_MS / 1000} s`)
+    expect(items.trails).toContain(`${MAX_SAMPLE_AGE_MS / 1000} s`)
+    expect(items.trails).toMatch(/(línea central|centre line)/)
+    expect(items.drs).toMatch(/(Estimado|Estimated)/)
+    expect(items.drs).toMatch(/(no son las líneas oficiales|not the official lines)/)
+    expect(items.sectors).toMatch(/(tiempos oficiales|official sector times)/)
+    expect(items.compare).toMatch(/(Estimado|Estimated)/)
+    expect(items.compare).toMatch(/(fantasma|ghost)/)
+    expect(items.weather).toContain(`${WEATHER_STALE_MS / 1000} s`)
+    expect(items.weather).toMatch(/(sin interpolar|not interpolated)/)
+    expect(items.sky).toMatch(/(decorativ)/)
     for (const text of Object.values(items)) expect(text).not.toMatch(/(posición real|real position|anchura real|real width)/)
   })
 })

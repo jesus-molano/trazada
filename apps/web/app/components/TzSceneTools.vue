@@ -20,7 +20,10 @@
 import type { IconName } from '~/design/icons'
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
+import { TRAIL_SPAN_MS } from '~/engine/replay/trail'
+import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
+import { WEATHER_STALE_MS } from '~/engine/weather/weather'
 import { SCENE_TOOLS, type SceneToolGroup } from '~/slots/scene-tools'
 import { useSceneEstimatedStore } from '~/stores/sceneEstimated'
 import { ELEVATION_SCALES, useSettingsStore } from '~/stores/settings'
@@ -34,13 +37,33 @@ const sceneEstimated = useSceneEstimatedStore()
 const yScale = computed(() => (props.flat ? 1 : settings.elevationScale))
 const manifestFields = computed(() => sceneManifestFields(props.estimated))
 
-/** «Cómo se dibuja»: primero lo que viene de la fuente y después lo que pone el modelo. */
+/**
+ * «Cómo se dibuja»: primero lo que viene de la fuente y después lo que pone el modelo, también el de cada capa o
+ * herramienta (estelas, zonas de DRS, colores de sector, comparación y fantasma, meteorología y cielo), la misma lista
+ * que «Qué es dato y qué es modelo» del README. Cada herramienta, además, lleva su ⓘ y su «Estimado».
+ */
 const HOW_DATA = ['positions', 'timing'] as const
-const HOW_MODEL = ['interpolation', 'centreLine', 'pit', 'forward', 'width', 'car', 'estimated'] as const
+const HOW_MODEL = [
+  'interpolation',
+  'centreLine',
+  'pit',
+  'forward',
+  'width',
+  'car',
+  'trails',
+  'drs',
+  'sectors',
+  'compare',
+  'weather',
+  'sky',
+  'estimated',
+] as const
 /** Las cifras salen de las constantes que usa el motor: si cambian allí, el texto no se queda atrás. */
 const HOW_PARAMS: Partial<Record<(typeof HOW_MODEL)[number], Record<string, number>>> = {
   interpolation: { s: SEGMENT_GAP_MS / 1000 },
   width: { m: TRACK_WIDTH_M },
+  trails: { s: TRAIL_SPAN_MS / 1000, age: MAX_SAMPLE_AGE_MS / 1000 },
+  weather: { s: WEATHER_STALE_MS / 1000 },
 }
 /**
  * Lo que el manifest declara estimado en esta sesión (p. ej., posiciones reconstruidas en una sesión dev): la
