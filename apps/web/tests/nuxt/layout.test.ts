@@ -225,6 +225,27 @@ describe('cambio de diseño en la cabecera', () => {
     expect(commandServices().layout).toBeUndefined()
     layout.setPreset('spectator')
   })
+
+  it('forma compacta (táctil por debajo de 1360 px): un botón que alterna, pulsado con «Análisis», con su nombre y la tecla L', async () => {
+    const layout = useLayoutStore()
+    layout.setPreset('spectator')
+    const w = await mountSuspended(TzLayoutSwitch)
+    const toggle = () => w.find('[data-testid="layout-toggle"]')
+    expect(toggle().element.tagName).toBe('BUTTON')
+    expect(toggle().attributes('aria-label')).toMatch(/^(Diseño «Análisis»|“Analysis” layout)$/)
+    expect(toggle().attributes('aria-keyshortcuts')).toBe('L')
+    expect(toggle().attributes('title')).toMatch(/Espectador|Spectator/)
+    expect(toggle().attributes('aria-pressed')).toBe('false')
+    await toggle().trigger('click')
+    expect(layout.preset).toBe('analysis')
+    expect(toggle().attributes('aria-pressed')).toBe('true')
+    // El segmentado y el botón dicen lo mismo (uno de los dos está oculto por CSS según el ancho y el puntero).
+    expect(w.find('[data-testid="layout-analysis"]').attributes('aria-pressed')).toBe('true')
+    await toggle().trigger('click')
+    expect(layout.preset).toBe('spectator')
+    expect(toggle().attributes('aria-pressed')).toBe('false')
+    w.unmount()
+  })
 })
 
 describe('columnas opcionales de la clasificación en «Análisis»', () => {

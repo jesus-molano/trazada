@@ -2,10 +2,11 @@
  * Guía de primer uso (ítem 18) con el fixture (Spa, libres 1), sin marcarla como vista (`gotoApp(…, { tips: true })` y
  * un contexto nuevo por test: almacenamiento vacío). Sale sola tras «listo», sin robar el foco ni el espacio; la 1 de 6
  * junto a la clasificación; «Siguiente» recorre los pasos y cada uno se ancla a lo que existe (centrada si no hay ancla:
- * «Seguir» sin coche elegido); el ejemplo de «Estimado» va rotulado como ejemplo; «Saltar» se recuerda al recargar; el
- * botón «?», la tecla «?» y la paleta («guía») la reabren con el foco dentro y Esc la cierra devolviéndolo; axe sin
- * infracciones serias ni críticas con la burbuja abierta; la cabecera sigue en una fila a 1440 y a 1280 px; en iPad
- * vertical, nada se desborda y la burbuja cabe en la ventana; con movimiento reducido, sin animación.
+ * «Seguir» sin coche elegido); al cambiar al diseño «Análisis» (ítem 15) se recoloca junto a la clasificación; el
+ * ejemplo de «Estimado» va rotulado como ejemplo; «Saltar» se recuerda al recargar; el botón «?», la tecla «?» y la
+ * paleta («guía») la reabren con el foco dentro y Esc la cierra devolviéndolo; axe sin infracciones serias ni críticas
+ * con la burbuja abierta; la cabecera sigue en una fila a 1440 y a 1280 px; en iPad vertical, nada se desborda y la
+ * burbuja cabe en la ventana; con movimiento reducido, sin animación.
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
@@ -120,6 +121,31 @@ test('«Siguiente» recorre los pasos, cada uno junto a su ancla; «Seguir» se 
   await page.getByTestId('tip-next').click()
   await expect(tip(page)).toBeHidden()
   expect(await stored(page)).toEqual({ seen: ['leaderboard', 'follow', 'timeline', 'estimated', 'analysis', 'palette'] })
+})
+
+test('con el diseño «Análisis» (ítem 15: clasificación más ancha), la burbuja se recoloca junto a ella sin taparla', async ({
+  page,
+}) => {
+  await openFresh(page)
+  await expect(tip(page)).toBeVisible({ timeout: 5000 })
+  await expect(tip(page)).toHaveAttribute('data-step', 'leaderboard')
+  const leaderboard = page.getByTestId('leaderboard')
+  const before = (await leaderboard.boundingBox())!.width
+  // La burbuja no es modal: el cambio de diseño de la cabecera sigue a mano y no la cierra.
+  await page.getByTestId('layout-analysis').click()
+  await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+  await expect.poll(async () => (await leaderboard.boundingBox())!.width).toBeGreaterThan(before)
+  await expect(tip(page)).toHaveAttribute('data-step', 'leaderboard')
+  await expect(tip(page)).toHaveAttribute('data-anchored', 'true')
+  await expect(tip(page)).toHaveAttribute('data-side', /^(right|bottom)$/)
+  await expect.poll(async () => overlap((await tip(page).boundingBox())!, (await leaderboard.boundingBox())!)).toBe(false)
+  // Los dos atajos conviven: L cambia el diseño con la burbuja abierta y «?» la salta.
+  await page.getByTestId('replay-title').click()
+  await page.keyboard.press('l')
+  await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'spectator')
+  await expect(tip(page)).toBeVisible()
+  await page.keyboard.press('?')
+  await expect(tip(page)).toBeHidden()
 })
 
 test('a petición: el botón «?», la tecla «?» y la paleta la abren entera con el foco dentro; Esc la cierra y lo devuelve', async ({

@@ -5,7 +5,9 @@
       "spectator": "Espectador",
       "analysis": "Análisis",
       "spectatorHint": "Diseño Espectador: el mapa primero, con los paneles compactos (tecla L)",
-      "analysisHint": "Diseño Análisis: clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande (tecla L)"
+      "analysisHint": "Diseño Análisis: clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande (tecla L)",
+      "toggle": "Diseño «Análisis»",
+      "toggleHint": "Alterna entre los diseños «Análisis» (pulsado) y «Espectador» (tecla L)"
     },
     "resize": {
       "lb": "Ancho de la clasificación",

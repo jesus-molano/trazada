@@ -151,6 +151,13 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 - **Por frame**: nada nuevo en la reactividad de Vue. Los comandos de momentos usan el mismo precálculo que los botones del dock (`rt.ext`) y solo trabajan al teclear.
 - **Al cierre**: el bench en Spa FP1 y Japón a ×1 y ×16 contra la Tanda 4 (para separar el efecto del lienzo más alto) y, **pendiente tuyo**, en el iPad.
 
+**Tanda 6 (H18: diseños «Espectador» y «Análisis» con paneles de ancho ajustable, microinteracciones del replay, prioridad del título y guía de primer uso). Pendiente de medir al cierre (Tanda 6).** Se integró con la verificación ligera, como las Tandas 4 y 5: el bench y la suite de Playwright se pasan al cerrar la tanda y entonces se anotan aquí las cifras. Lo que se sabe sin medir:
+
+- **Escena**: las mismas capas, draw calls y triángulos. «Espectador» conserva los anchos de siempre, así que el encuadre y la captura `@screenshot` no deberían cambiar. «Análisis» deja al mapa algo menos de ancho (nunca menos de max(320 px, 35 %)), y el número de píxeles que se rasterizan es el mismo.
+- **Arrastre de un asa**: durante el arrastre solo se escribe una variable CSS en el DOM, sin reactividad de Vue por movimiento. La escena no reencuadra hasta soltar (`data-resizing`, `tz:layout-settled`) y las gráficas hacen como mucho un `setSize` por frame. Riesgo del plan §5: se mide en el cierre con el e2e de arrastre (que comprueba el encuadre solo al soltar) y con el bench arrastrando en el iPad.
+- **Por frame**: nada nuevo en la reactividad de Vue. La compactación de la cabecera (`useHeaderFit`) mide solo cuando cambia el tamaño de la cabecera o de sus piezas, como mucho una vez por frame. La guía coloca sus burbujas al abrir, al cambiar de paso y al redimensionar. Los destellos de dirección de carrera, del estado de pista y de la clasificación solo van a ≤ ×4 y sin salto del reloj; a ×16 la lista cambia al instante.
+- **Al cierre**: el bench en Spa FP1 y Japón a ×1 y ×16 en «Espectador» y en «Análisis» (con un coche elegido: gráficas más altas y una ventana de 40 s) y, **pendiente tuyo**, en el iPad, también arrastrando un asa.
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.

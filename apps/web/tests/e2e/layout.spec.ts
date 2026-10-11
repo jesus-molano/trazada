@@ -31,16 +31,26 @@ async function open(page: Page) {
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
 }
 
-/** Elementos con contenido más ancho que su caja (scrollWidth > clientWidth), página incluida. */
+/**
+ * Elementos con contenido más ancho que su caja (scrollWidth > clientWidth), página incluida. La página se mide con todo;
+ * los paneles, sin las asas de los anchos (ítem 15): van a caballo del borde que da al mapa a propósito (la mitad sobre
+ * el panel; la de la clasificación, dentro de ella), así que su mitad de fuera no es contenido que se desborde.
+ */
 function overflowing(page: Page) {
   return page.evaluate((selectors) => {
     const out: string[] = []
     const doc = document.documentElement
     if (doc.scrollWidth > doc.clientWidth) out.push(`página ${doc.scrollWidth} > ${doc.clientWidth}`)
-    for (const sel of selectors) {
-      for (const el of document.querySelectorAll(sel)) {
-        if (el.scrollWidth > el.clientWidth) out.push(`${sel} ${el.scrollWidth} > ${el.clientWidth}`)
+    const handles = [...document.querySelectorAll<HTMLElement>('.tz-resize[role="separator"]')]
+    for (const h of handles) h.style.setProperty('display', 'none')
+    try {
+      for (const sel of selectors) {
+        for (const el of document.querySelectorAll(sel)) {
+          if (el.scrollWidth > el.clientWidth) out.push(`${sel} ${el.scrollWidth} > ${el.clientWidth}`)
+        }
       }
+    } finally {
+      for (const h of handles) h.style.removeProperty('display')
     }
     return out
   }, PANELS)
@@ -375,6 +385,25 @@ test.describe('escritorio 1920×1080: el título de la cabecera tiene prioridad 
   })
 })
 
+/**
+ * Elige un diseño con el control de la cabecera: el segmentado o, en táctil por debajo de 1360 px (o con la cabecera
+ * compactada), el botón que alterna (pulsado = «Análisis»). El control queda diciendo el diseño elegido.
+ */
+async function chooseLayout(page: Page, preset: 'spectator' | 'analysis') {
+  const option = page.getByTestId(`layout-${preset}`)
+  if (await option.isVisible()) {
+    await option.click()
+    await expect(option).toHaveAttribute('aria-pressed', 'true')
+  } else {
+    const toggle = page.getByTestId('layout-toggle')
+    const pressed = String(preset === 'analysis')
+    await expect(toggle).toBeVisible()
+    if ((await toggle.getAttribute('aria-pressed')) !== pressed) await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', pressed)
+  }
+  await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', preset)
+}
+
 /** Ancho que deja la página al mapa entre la clasificación y la columna derecha (px). */
 async function sceneGap(page: Page): Promise<number> {
   const lb = (await page.getByTestId('leaderboard').boundingBox())!
@@ -391,9 +420,22 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
         await resetStorage(page)
         await open(page)
         await expect(page.getByTestId('lb-columns')).toHaveCount(0)
-        await page.getByTestId('layout-analysis').click()
-        await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
-        await expect(page.getByTestId('layout-analysis')).toHaveAttribute('aria-pressed', 'true')
+        // En táctil, por debajo de 1360 px, un solo botón que alterna los dos diseños: así la cabecera de la tablet en
+        // horizontal sigue en una fila (con el control segmentado se partía en dos a 1024 px).
+        const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches)
+        if (vp.touch && coarse) {
+          await expect(page.getByTestId('layout-toggle')).toBeVisible()
+          await expect(page.getByTestId('layout-toggle')).toHaveAccessibleName(/^(Diseño «Análisis»|“Analysis” layout)$/)
+          await expect(page.getByTestId('layout-switch')).toBeHidden()
+        } else {
+          await expect(page.getByTestId('layout-switch')).toBeVisible()
+          await expect(page.getByTestId('layout-toggle')).toBeHidden()
+        }
+        if (vp.width > vp.height) {
+          const middles = await barRowMiddles(page)
+          expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+        }
+        await chooseLayout(page, 'analysis')
         await expect(page.getByTestId('lb-columns')).toBeVisible()
         const first = page.locator('[data-testid="leaderboard"] [data-car]').first()
         await expect(first.getByTestId('lb-best')).toBeVisible()
@@ -409,7 +451,7 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
         if (!(vp.width <= 900 && vp.height > vp.width)) expect(await sceneGap(page)).toBeGreaterThanOrEqual(300)
 
         // De vuelta a «Espectador»: la clasificación de siempre.
-        await page.getByTestId('layout-spectator').click()
+        await chooseLayout(page, 'spectator')
         await expect(page.getByTestId('lb-columns')).toHaveCount(0)
         await expect(page.locator('[data-testid="telemetry"] .tz-chart[data-tall]')).toHaveCount(0)
         expect(await overflowing(page)).toEqual([])

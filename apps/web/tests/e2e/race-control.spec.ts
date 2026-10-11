@@ -70,9 +70,11 @@ test('tras un seek la lista cambia al instante: ningún mensaje entra con transi
 
 test('a ×1, el mensaje que llega destella una vez (data-fresh) y luego deja de hacerlo', async ({ page }) => {
   await open(page)
-  const times = await handle(page, (h) => h.raceControlTimes)
-  // Un mensaje sin otro en los 2 s anteriores: se llega reproduciendo desde 1,5 s antes.
-  const target = times.find((t, i) => i > 0 && t - times[i - 1]! > 2_000)!
+  const { startMs, endMs, times } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs, times: h.raceControlTimes }))
+  // Un mensaje sin otro en los 2 s anteriores: se llega reproduciendo desde 1,5 s antes. Dentro del reloj: los mensajes
+  // de antes del inicio (el fixture trae alguno) ya están en la lista al abrir y un seek allí se queda en el inicio.
+  const target = times.find((t, i) => i > 0 && t - 1_500 >= startMs && t < endMs && t - times[i - 1]! > 2_000)!
+  expect(target).toBeDefined()
   await seek(page, target - 1_500)
   await page.getByTestId('rate-1').click()
   await page.getByTestId('replay-title').click()

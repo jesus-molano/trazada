@@ -13,8 +13,8 @@ const tips = useTipsStore()
 </script>
 
 <script lang="ts">
-/** Hueco `replay-header` (D29): el último botón, junto a las herramientas de la escena. */
-export const order = 30
+/** Hueco `replay-header` (D29): el último botón (detrás del cambio de diseño), junto a las herramientas de la escena. */
+export const order = 40
 </script>
 
 <template>
@@ -67,6 +67,16 @@ export const order = 30
 
   .tz-help-btn:hover {
     border-color: var(--tz-accent);
+  }
+}
+
+/*
+ * Por debajo de 1360 px (o antes, con `data-fit="3"`: pages/replay.vue), 24 px de ancho (el mínimo de WCAG 2.2) para
+ * que la cabecera siga en una fila.
+ */
+@media (width < 1360px) {
+  .tz-help-btn {
+    padding-inline: var(--tz-space-1);
   }
 }
 </style>

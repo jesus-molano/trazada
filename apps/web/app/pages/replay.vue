@@ -399,7 +399,8 @@ onBeforeUnmount(() => {
  *   1 → las formas de por debajo de 1920 px (estado sin «Listo», avisos con la cifra, «Cómo se dibuja» y meteorología
  *       sin lo de 1920, «≈ Estimado» corto);
  *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, meteorología solo con el suyo);
- *   3 → las de por debajo de 1360 px («Altura» y «Separar coches» con su icono, huecos más justos).
+ *   3 → las de por debajo de 1360 px («Altura» y «Separar coches» con su icono, huecos más justos y el cambio de
+ *       diseño compacto: en táctil, un solo botón que alterna; con ratón, más estrecho, como el botón «?»).
  * Lo que se acorta sigue en el nombre accesible y en el título de cada control. «Estimado» y las banderas, siempre.
  * Un elemento nuevo de la cabecera (hueco replay-header) se suma sin tocar esto: su texto largo lleva
  * `data-fit-hide="N"` (se oculta desde el nivel N, como con su media query) y su forma corta, si la tiene,
@@ -478,6 +479,34 @@ onBeforeUnmount(() => {
 .tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label-icon),
 .tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-icon) {
   display: inline-block;
+}
+
+/*
+ * El cambio de diseño y el botón «?» (Tanda 6), como por debajo de 1360 px (sus media queries): en táctil, el cambio de
+ * diseño pasa a un solo botón que alterna (con su zona táctil); con ratón, los dos van con botones de 24 px de ancho
+ * (el mínimo de WCAG 2.2).
+ */
+.tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__group) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__toggle) {
+  display: inline-flex;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__group) {
+    display: inline-flex;
+  }
+
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__toggle) {
+    display: none;
+  }
+
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-layout-switch__btn),
+  .tz-replay__bar[data-fit~='3'] :deep(.tz-help-btn) {
+    padding-inline: var(--tz-space-1);
+  }
 }
 
 .tz-replay__tools {

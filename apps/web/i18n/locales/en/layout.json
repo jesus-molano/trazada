@@ -5,7 +5,9 @@
       "spectator": "Spectator",
       "analysis": "Analysis",
       "spectatorHint": "Spectator layout: the map first, with compact panels (L key)",
-      "analysisHint": "Analysis layout: classification with best and last lap and pit lane entries, and bigger telemetry (L key)"
+      "analysisHint": "Analysis layout: classification with best and last lap and pit lane entries, and bigger telemetry (L key)",
+      "toggle": "“Analysis” layout",
+      "toggleHint": "Switches between the “Analysis” (pressed) and “Spectator” layouts (L key)"
     },
     "resize": {
       "lb": "Classification width",
