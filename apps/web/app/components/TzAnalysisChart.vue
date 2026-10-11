@@ -15,8 +15,8 @@
  */
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { type ChartSpec, columnLabelCount, DIM_ALPHA, nearestIndex, seriesEnd } from '~/analysis/chart'
-import { COLUMN_PADDING, columnPlotHeight, drawEndLabels, INLINE_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
+import { type ChartSpec, DIM_ALPHA, nearestIndex, seriesEnd } from '~/analysis/chart'
+import { COLUMN_PADDING, drawEndLabels, INLINE_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
 import { token } from '~/design/tokens'
 
 const props = defineProps<{
@@ -83,6 +83,26 @@ const crossPoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) 
   return { stroke, fill: null, clip }
 }
 
+/**
+ * Cuadrados para el segundo piloto de cada equipo en las gráficas solo de puntos (ritmo por hora), donde no hay línea
+ * discontinua que los distinga: sin esto, dos compañeros de equipo serían el mismo punto del mismo color.
+ */
+const squarePoints: uPlot.Series.Points.PathBuilder = (u, seriesIdx, idx0, idx1) => {
+  const s = u.series[seriesIdx]!
+  const xs = u.data[0]
+  const ys = u.data[seriesIdx]!
+  const h = ((s.points?.size ?? 6) / 2) * uPlot.pxRatio
+  const fill = new Path2D()
+  for (let i = idx0; i <= idx1; i++) {
+    const y = ys[i]
+    if (y === null || y === undefined) continue
+    fill.rect(u.valToPos(xs[i]!, 'x', true) - h, u.valToPos(y, s.scale ?? 'y', true) - h, 2 * h, 2 * h)
+  }
+  const clip = new Path2D()
+  clip.rect(u.bbox.left - h, u.bbox.top - h, u.bbox.width + 2 * h, u.bbox.height + 2 * h)
+  return { stroke: fill, fill, clip }
+}
+
 const noPath: uPlot.Series.PathBuilder = () => null
 
 function seriesOptions(spec: ChartSpec): uPlot.Series[] {
@@ -108,7 +128,11 @@ function seriesOptions(spec: ChartSpec): uPlot.Series[] {
         case 'lineDot':
           return { ...base, ...(g.dash ? { dash: DASH } : {}), points: { show: true, size: 5, width: 1, fill: g.color, stroke: g.color } }
         case 'dot':
-          return { ...base, paths: noPath, points: { show: true, size: 6, width: 1, fill: g.color, stroke: g.color } }
+          return {
+            ...base,
+            paths: noPath,
+            points: { show: true, size: 6, width: 1, fill: g.color, stroke: g.color, ...(g.dash ? { paths: squarePoints } : {}) },
+          }
         case 'hollow':
           return { ...base, paths: noPath, points: { show: true, size: 7, width: 1.5, fill: surface, stroke: g.color } }
         case 'cross':
@@ -124,14 +148,12 @@ function drawLabels(u: uPlot, spec: ChartSpec) {
     u.ctx,
     { r, bbox: u.bbox, xPos: (v) => u.valToPos(v, 'x', true), yPos: (v) => u.valToPos(v, 'y', true) },
     spec,
-    { font: `${10 * r}px ${token('--tz-font-sans')}`, text: token('--tz-text'), connector: token('--tz-text-faint') },
+    { font: `${10 * r}px ${token('--tz-font-sans')}`, text: token('--tz-text'), connector: token('--tz-border-strong') },
   )
 }
 
-/** Con las siglas en el margen, el alto en el que caben todas sin pisarse (si es más que el mínimo de la hoja de estilos). */
-const plotStyle = computed(() =>
-  props.spec.labelColumn ? { '--achart-labels': `${columnPlotHeight(columnLabelCount(props.spec))}px` } : undefined,
-)
+/** Gráfica solo de puntos (ritmo por hora): la muestra de la leyenda es un punto (cuadrado, el segundo piloto). */
+const pointsOnly = computed(() => !props.spec.series.some((s) => s.mark === 'line' || s.mark === 'lineDot'))
 
 function placeCursor() {
   const el = cursorEl
@@ -239,7 +261,7 @@ onBeforeUnmount(() => {
 
 <template>
   <figure class="tz-achart" :data-testid="testid ?? 'analysis-chart'" :data-points="spec.x.length">
-    <div ref="host" class="tz-achart__plot" :style="plotStyle" role="img" :aria-label="label" />
+    <div ref="host" class="tz-achart__plot" role="img" :aria-label="label" />
     <figcaption class="tz-achart__legend" role="group" :aria-label="legendLabel">
       <button
         v-for="g in spec.groups"
@@ -252,7 +274,12 @@ onBeforeUnmount(() => {
         data-testid="analysis-legend-item"
         @click="emit('toggle', g.key)"
       >
-        <span class="tz-achart__swatch" :class="{ 'is-dash': g.dash }" :style="{ '--swatch': g.color }" aria-hidden="true" />
+        <span
+          class="tz-achart__swatch"
+          :class="{ 'is-dash': g.dash, 'is-point': pointsOnly }"
+          :style="{ '--swatch': g.color }"
+          aria-hidden="true"
+        />
         {{ g.label }}
         <span v-if="until.has(g.key)" class="tz-achart__until" data-testid="analysis-legend-until">{{ until.get(g.key) }}</span>
       </button>
@@ -269,11 +296,11 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* La gráfica ocupa el alto que quede (al menos 200 px, o el alto en el que caben las siglas del margen); uPlot va encima, fuera del flujo, y se ajusta al medirla. */
+/* La gráfica ocupa el alto que quede (al menos 200 px); uPlot va encima, fuera del flujo, y se ajusta al medirla. */
 .tz-achart__plot {
   position: relative;
   flex: 1 1 0;
-  min-height: max(200px, var(--achart-labels, 0px));
+  min-height: 200px;
   overflow: hidden;
 }
 
@@ -359,6 +386,21 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
   font-family: var(--tz-font-sans);
   letter-spacing: normal;
+}
+
+/* Gráfica solo de puntos: un punto, o un cuadrado para el segundo piloto (como sus marcadores). */
+.tz-achart__swatch.is-point {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch, var(--tz-team-unknown));
+}
+
+.tz-achart__swatch.is-point.is-dash {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
 }
 
 .tz-achart__key[aria-pressed='false'] .tz-achart__swatch {

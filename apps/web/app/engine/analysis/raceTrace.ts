@@ -96,7 +96,7 @@ export function stoppedCars(table: LapTable, cutoffMs = Infinity): Map<string, n
     for (let k = 0; k < c.lap.length; k++) {
       const lap = c.lap[k]!
       const x = crossing(c.crossMs, k, cutoffMs)
-      // Con dos filas con el mismo número de vuelta, cuenta la primera (como `raceTrace` y `lapIndex`).
+      // Con dos filas con el mismo número de vuelta, cuenta la primera (como la serie de `raceTrace` y `lapIndex`).
       if (lap < 1 || Number.isNaN(x) || seen.has(lap)) continue
       seen.add(lap)
       const best = leader.get(lap)

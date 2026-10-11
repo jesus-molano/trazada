@@ -56,8 +56,8 @@ test('race trace hasta el reloj, con la línea de la vuelta en curso; sin «Sin 
 async function recordLabels(page: Page) {
   await page.addInitScript(() => {
     type Drawn = { text: string; x: number; y: number; align: string; width: number }
-    const byCanvas = new Map<HTMLCanvasElement, Drawn[]>()
-    ;(window as unknown as { __labels: () => Drawn[][] }).__labels = () => [...byCanvas.values()]
+    const byCanvas = new WeakMap<HTMLCanvasElement, Drawn[]>()
+    ;(window as unknown as { __labels: (c: HTMLCanvasElement) => Drawn[] }).__labels = (c) => byCanvas.get(c) ?? []
     const proto = CanvasRenderingContext2D.prototype
     const clear = proto.clearRect
     proto.clearRect = function (...args) {
@@ -76,7 +76,7 @@ async function recordLabels(page: Page) {
   })
 }
 
-test('siglas del race trace: todas en el margen derecho, dentro del lienzo y sin pisarse; los detenidos, «hasta Vn»', async ({ page }) => {
+test('siglas del race trace: en el margen derecho, dentro del lienzo y sin pisarse; los detenidos, «hasta Vn»', async ({ page }) => {
   await recordLabels(page)
   await open(page)
   await page.evaluate(() => window.__trazada!.seek(window.__trazada!.endMs))
@@ -87,19 +87,25 @@ test('siglas del race trace: todas en el margen derecho, dentro del lienzo y sin
   // STR (18) deja de pasar por meta en la vuelta 30 y BEA (87) en la 20: raya y «hasta Vn», sin sigla.
   await expect(chart.locator('[data-car="18"] [data-testid="analysis-legend-until"]')).toHaveText(/hasta V30|to L30/)
   await expect(chart.locator('[data-car="87"] [data-testid="analysis-legend-until"]')).toHaveText(/hasta V20|to L20/)
-  const legend = await chart.getByTestId('analysis-legend-item').count()
+  const canvas = await chart.locator('canvas').elementHandle()
   const geo = await chart.evaluate((el) => {
-    const canvas = el.querySelector('canvas')!
+    const c = el.querySelector('canvas')!
     const over = el.querySelector<HTMLElement>('.u-over')!
-    const dpr = canvas.width / canvas.getBoundingClientRect().width
-    return { w: canvas.width, h: canvas.height, right: (over.offsetLeft + over.offsetWidth) * dpr, dpr }
+    const dpr = c.width / c.getBoundingClientRect().width
+    return { w: c.width, h: c.height, right: (over.offsetLeft + over.offsetWidth) * dpr, dpr }
   })
-  const lists = await page.evaluate(() => (window as unknown as { __labels: () => { text: string; x: number; y: number; align: string; width: number }[][] }).__labels())
-  const labels = lists.find((l) => l.length > 0)!
-  expect(labels.map((l) => l.text)).toContain('ALB')
-  expect(labels.map((l) => l.text)).not.toContain('STR')
-  expect(labels.map((l) => l.text)).not.toContain('BEA')
-  expect(labels).toHaveLength(legend - 2)
+  const labels = await page.evaluate(
+    (c) => (window as unknown as { __labels: (c: HTMLCanvasElement) => { text: string; x: number; y: number; align: string; width: number }[] }).__labels(c!),
+    canvas,
+  )
+  const names = labels.map((l) => l.text)
+  // El ganador y ALB (doblado, solo abajo) llevan sigla; los detenidos, no. En el pelotón no caben todas cerca de su
+  // dato: las que faltan las nombra la leyenda.
+  expect(names).toContain('ANT')
+  expect(names).toContain('ALB')
+  expect(names).not.toContain('STR')
+  expect(names).not.toContain('BEA')
+  expect(new Set(names).size).toBe(names.length)
   for (const l of labels) {
     expect(l.align, l.text).toBe('left')
     expect(l.x, l.text).toBeGreaterThanOrEqual(geo.right)

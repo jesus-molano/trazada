@@ -56,9 +56,8 @@ export interface ChartSpec {
   formatY: (v: number) => string
   /**
    * Siglas en el margen derecho, fuera del área de datos (ejes por vuelta: las series avanzan juntas), cada una a la
-   * altura del último dato de su serie; si hay que separarla de otras, un trazo corto en el margen la une con esa
-   * altura. Nada se dibuja en el área de datos que pueda leerse como dato. Sin margen (eje por hora), cada sigla va
-   * junto a su final.
+   * altura del último dato de su serie o justo al lado (`placeLabels`). Sin margen (eje por hora), junto al final de su
+   * serie.
    */
   labelColumn?: boolean
 }
@@ -163,57 +162,48 @@ export function endPoints(spec: ChartSpec): EndPoint[] {
   return out
 }
 
-/** Siglas que van al margen derecho (para dar a la gráfica el alto en el que caben). */
-export function columnLabelCount(spec: ChartSpec): number {
-  return endPoints(spec).filter((e) => e.place === 'column').length
-}
-
 export interface LabelSpot {
   /** Donde empieza el rótulo (px): el borde del margen o el final de la serie. */
   x: number
-  /** Altura del último dato de la serie (px). */
+  /** Altura de su dato (px): la del último dato de la serie, o el borde si se sale de la escala. */
   y: number
-  /** Ancho del rótulo (px), para saber qué rótulos junto a su final se pisarían. */
+  /** Ancho del rótulo (px). */
   w: number
-  place: 'column' | 'inline'
+  /** El coche destacado: se coloca el primero, así que siempre lleva su sigla. */
+  first: boolean
 }
 
 export interface PlacedLabel {
-  x: number
-  /** Altura del rótulo, separada de las demás. */
+  /** Altura del rótulo. */
   y: number
-  /** Separado de la altura de su dato (más de `moved` px): en el margen, un trazo lo une con ella. */
+  /** Una separación más arriba o más abajo de su dato (en el margen, un trazo corto lo une con él). */
   moved: boolean
 }
 
 /**
- * Posición de cada sigla (en píxeles, en el orden de entrada), siempre dentro de [lo, hi]. Las del margen forman una
- * columna y se separan en vertical sin pisarse (`spreadLabels`). Las que van junto a su final solo se separan de las
- * que se pisarían con ellas (las que se solapan en horizontal): las demás se quedan a la altura de su dato.
+ * Sitio de cada sigla (en el orden de entrada; null si no cabe), siempre dentro de [lo, hi]. Se colocan de una en una,
+ * primero la del coche destacado y luego de arriba abajo: cada una a la altura de su dato; si ahí pisa a otra ya
+ * colocada (a menos de `gap` en vertical y solapadas en horizontal), una separación más abajo o más arriba; y si
+ * tampoco cabe, sin sigla (la leyenda la nombra). Ninguna queda lejos de su dato, que es lo que se lee al mirarla.
  */
-export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number; moved: number }): PlacedLabel[] {
-  const out = new Array<PlacedLabel>(spots.length)
-  const clusters: number[][] = [spots.flatMap((s, i) => (s.place === 'column' ? [i] : []))]
-  // Junto a su final: grupos de rótulos que se solapan en horizontal (ordenados por x).
-  const inline = spots.flatMap((s, i) => (s.place === 'inline' ? [i] : [])).sort((a, b) => spots[a]!.x - spots[b]!.x)
-  let right = -Infinity
-  for (const i of inline) {
+export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number }): (PlacedLabel | null)[] {
+  const order = spots
+    .map((_, i) => i)
+    .sort((a, b) => Number(spots[b]!.first) - Number(spots[a]!.first) || spots[a]!.y - spots[b]!.y)
+  const taken: { x0: number; x1: number; y: number }[] = []
+  const out = new Array<PlacedLabel | null>(spots.length).fill(null)
+  const eps = 1e-6
+  for (const i of order) {
     const s = spots[i]!
-    if (s.x >= right) clusters.push([])
-    clusters[clusters.length - 1]!.push(i)
-    right = Math.max(right, s.x + s.w)
-  }
-  for (const idx of clusters) {
-    const ys = spreadLabels(
-      idx.map((i) => spots[i]!.y),
-      o.gap,
-      o.lo,
-      o.hi,
-    )
-    idx.forEach((i, k) => {
-      const s = spots[i]!
-      out[i] = { x: s.x, y: ys[k]!, moved: Math.abs(ys[k]! - s.y) > o.moved }
-    })
+    const home = Math.min(Math.max(s.y, o.lo), o.hi)
+    for (const dy of [0, o.gap, -o.gap]) {
+      const y = home + dy
+      if (y < o.lo - eps || y > o.hi + eps) continue
+      if (taken.some((t) => t.x0 < s.x + s.w && s.x < t.x1 && Math.abs(t.y - y) < o.gap - eps)) continue
+      taken.push({ x0: s.x, x1: s.x + s.w, y })
+      out[i] = { y, moved: dy !== 0 }
+      break
+    }
   }
   return out
 }

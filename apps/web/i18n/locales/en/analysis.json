@@ -17,8 +17,8 @@
     "until": "to {x}",
     "noLaps": "No data: this session has no timed laps.",
     "nothingYet": "No data up to this moment yet. Move the player forward or turn off «No spoilers».",
-    "identify": "Each series carries its driver's code; the second driver of each team is dashed.",
-    "identifyLap": "Each series carries its driver's code in the right margin, level with its last value (a short line joins it to that height when it has to be moved apart from others); the second driver of each team is dashed. A series ending in a bar belongs to a car that stopped crossing the line (the leader has done three laps since its last crossing): the legend says up to which lap it goes.",
+    "identify": "Each dot is a lap; on their representative laps, the second driver of each team uses squares instead of circles. Each driver's code sits next to their last dot when it fits (otherwise the legend names it); with a triangle, that dot is off the scale.",
+    "identifyLap": "Each series carries its driver's code in the right margin, level with its last value or right next to it (with a short line to that height); when it doesn't fit, the legend names it. The second driver of each team is dashed. With a triangle, the last value is off the scale. A series ending in a bar belongs to a car that stopped crossing the line (the leader has done three laps since its last crossing): the legend says up to which lap it goes.",
     "raceTrace": {
       "chart": "Race trace: gap to the leader at each line crossing, lap by lap",
       "axis": "Gap to the leader at the line (s), per lap",

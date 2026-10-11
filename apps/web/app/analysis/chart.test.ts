@@ -88,21 +88,37 @@ describe('gráficas de análisis', () => {
     expect(ends([group('a', { visible: false }), group('b', { stopped: true, emphasis: true })], true)).toEqual([['b', 1, 2, 'inline']])
   })
 
-  it('siglas: las del margen, en columna sin pisarse; las de junto a su final, solo separadas de las que se pisarían', () => {
+  it('siglas: cada una a la altura de su dato o una separación al lado; si no cabe, sin sigla; la destacada, siempre', () => {
+    const col = (y: number, first = false) => ({ x: 500, y, w: 40, first })
     const placed = placeLabels(
       [
-        { x: 500, y: 100, w: 30, place: 'column' },
-        { x: 500, y: 104, w: 30, place: 'column' },
-        { x: 500, y: 300, w: 30, place: 'column' },
-        { x: 200, y: 102, w: 30, place: 'inline' },
-        { x: 220, y: 104, w: 30, place: 'inline' }, // se solapa con la anterior: se separan
-        { x: 300, y: 103, w: 30, place: 'inline' }, // lejos en horizontal: se queda a su altura
+        col(100), // a su altura
+        col(104), // pisa a la anterior: una separación más abajo (115)
+        col(108), // ni a su altura, ni a 119 (pisa a 115), ni a 97 (pisa a 100): sin sigla
+        col(300), // sola: a su altura
+        { x: 200, y: 102, w: 30, first: false }, // junto a su final, lejos en horizontal: no choca con el margen
+        { x: 220, y: 104, w: 30, first: false }, // se solapa con la anterior: más abajo
       ],
-      { gap: 11, lo: 0, hi: 400, moved: 1.5 },
+      { gap: 11, lo: 0, hi: 400 },
     )
-    expect(placed.map((p) => p.x)).toEqual([500, 500, 500, 200, 220, 300])
-    expect(placed.map((p) => p.y)).toEqual([100, 111, 300, 102, 113, 103])
-    expect(placed.map((p) => p.moved)).toEqual([false, true, false, false, true, false])
+    expect(placed).toEqual([
+      { y: 100, moved: false },
+      { y: 115, moved: true },
+      null,
+      { y: 300, moved: false },
+      { y: 102, moved: false },
+      { y: 115, moved: true },
+    ])
+    // La destacada se coloca la primera: a su altura; la otra, una separación más abajo no cabe (111 la pisa), arriba sí.
+    expect(placeLabels([col(100), col(104, true)], { gap: 11, lo: 0, hi: 400 })).toEqual([
+      { y: 89, moved: true },
+      { y: 104, moved: false },
+    ])
+    // Fuera de [lo, hi]: en el borde, sin contar como separada (no lleva trazo).
+    expect(placeLabels([col(-20), col(450)], { gap: 11, lo: 5, hi: 395 })).toEqual([
+      { y: 5, moved: false },
+      { y: 395, moved: false },
+    ])
   })
 
   it('rótulos siempre dentro de [lo, hi]: si no caben a la separación pedida, se juntan lo justo', () => {
