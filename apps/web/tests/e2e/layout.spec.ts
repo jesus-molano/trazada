@@ -139,10 +139,10 @@ for (const vp of VIEWPORTS) {
 }
 
 /**
- * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
- * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
- * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado). Con `event`, otro nombre de
- * Gran Premio en el título (p. ej. el de Japón, más largo).
+ * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado (seis en el
+ * botón con el del reglamento de 2026), posiciones, telemetría y estado de pista estimados y sin meteorología
+ * (`channels.weather: absent`; los eventos se vuelven a comprimir sin `weather` y su sha256 se reescribe en el manifest,
+ * que no va firmado). Con `event`, otro nombre de Gran Premio en el título (p. ej. el de Japón, más largo).
  */
 async function serveLikeDevRace(page: Page, options: { event?: string } = {}): Promise<void> {
   let patched: Promise<Buffer> | null = null
@@ -199,14 +199,14 @@ for (const vp of [
   test.describe(`${vp.name}: cabecera del replay`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } })
 
-    test('con lo de una carrera dev (5 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
+    test('con lo de una carrera dev (6 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
       await resetStorage(page)
       await serveLikeDevRace(page)
       await open(page)
       const bar = page.locator('.tz-replay__bar')
       // Todo lo que partía la cabecera está ahí: avisos, estado de pista deducido con su bandera, meteorología sin dato,
       // análisis y herramientas de la escena.
-      await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+      await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^6 /)
       await expect(page.getByTestId('track-status').getByTestId('track-sector')).toBeVisible()
       await expect(page.getByTestId('weather')).toBeVisible()
       await expect(page.locator('.tz-weather')).toHaveAttribute('data-state', 'absent')
@@ -370,7 +370,7 @@ test.describe('escritorio 1920×1080: el título de la cabecera tiene prioridad 
     const track = page.getByTestId('track-status').locator('[data-testid="estimated"][data-field="trackStatus"]')
     await expect(track).toBeVisible()
     await expect(track).toContainText(/Estimad[oa]|Estimated/, { useInnerText: true })
-    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^6 /)
     await expect(page.getByTestId('analysis-button')).toHaveAccessibleName(/^(Análisis|Analysis)$/)
   })
 

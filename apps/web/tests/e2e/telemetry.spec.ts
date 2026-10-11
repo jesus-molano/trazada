@@ -64,6 +64,17 @@ test('clic en el coche (raycast): panel de telemetría con DRS "no disponible en
       }),
     )
     .toBeGreaterThan(0.6)
+  // «¿Por qué?»: el aviso del reglamento de 2026 en una pista flotante, sin mover las gráficas; Esc la cierra sin
+  // deseleccionar el coche.
+  const chartY = (await panel.locator('canvas').last().boundingBox())!.y
+  await page.getByTestId('tel-drs-why').click()
+  const why = page.getByTestId('tel-drs-why-panel')
+  await expect(why).toBeVisible()
+  await expect(why).toContainText('Boost')
+  expect((await panel.locator('canvas').last().boundingBox())!.y).toBe(chartY)
+  await page.keyboard.press('Escape')
+  await expect(why).toBeHidden()
+  expect(await page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
 })
 
 test('cabecera del panel: cerrar es un icono con nombre; seguir y comparar, placa maciza cuando están activos', async ({ page }) => {

@@ -65,6 +65,8 @@ El replay mezcla datos de la fuente con un modelo para dibujarlos. En la app lo 
 
 En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruido: la app lo marca como «Estimado», también en «Cómo se dibuja».
 
+Desde 2026 no hay DRS, y la fuente no trae por coche lo nuevo del reglamento: ni la aerodinámica activa, ni el modo adelantamiento, ni el Boost o la batería. Solo dice cuándo dirección de carrera habilita el modo adelantamiento para toda la pista. La app lo avisa en los avisos de la sesión.
+
 **Modelo (solo para dibujar)**
 
 - Entre una posición y la siguiente, el movimiento se interpola. Si pasan más de 2 s sin posición, el coche no se dibuja en ese hueco.

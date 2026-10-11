@@ -9,6 +9,7 @@ import type uPlot from 'uplot'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
+import TzSessionNotes from '~/components/TzSessionNotes.vue'
 import TzTelemetry from '~/components/TzTelemetry.vue'
 import { usePlaybackStore } from '~/stores/playback'
 import { fakeTrzb } from '~/testing/fixture'
@@ -51,12 +52,12 @@ const car = fakeTrzb('car', {
 
 let frame: ((t: number) => void) | null = null
 
-function attach() {
+function attach(drs: 'present' | 'absent' = 'present', season = 2025) {
   const driver = (number: string, tla: string) => ({ number, tla, first: '', last: '', team: '', color: '#3366FF' })
   usePlaybackStore().attach({
     session: {
       car,
-      manifest: { channels: { drs: 'present' }, session: { season: 2025 }, quality: { estimated: [] } },
+      manifest: { channels: { drs }, session: { season }, quality: { estimated: [] } },
     },
     drivers: [driver('1', 'AAA'), driver('2', 'BBB')],
     clock: { timeMs: 0, playing: false },
@@ -141,6 +142,42 @@ describe('TzTelemetry: sin dato, nunca cifras de otro coche u otro instante', ()
     const brake = charts[1]!.series[1]!
     expect(brake.label).toMatch(/(sí\/no|on\/off)/)
     expect(brake.stepped).toBe(true)
+  })
+})
+
+describe('TzTelemetry: DRS que no existe', () => {
+  afterEach(() => {
+    usePlaybackStore().detach()
+    charts.length = 0
+  })
+
+  const mount = async () => {
+    usePlaybackStore().selectCar('1')
+    return mountSuspended(TzTelemetry, { global: { stubs: { TzMiniChart: ChartStub, TzLapInfo: true } } })
+  }
+
+  it('desde 2026, «¿Por qué?» da el aviso del reglamento: el mismo texto que en los avisos de la sesión', async () => {
+    attach('absent', 2026)
+    const w = await mount()
+    expect(w.find('[data-testid="tel-drs"]').exists()).toBe(false)
+    expect(w.find('[data-testid="tel-drs-unavailable"]').text()).toMatch(/(No disponible en|Not available in) 2026/)
+    // Una pista flotante (no empuja las gráficas): botón «¿Por qué?» cerrado al empezar.
+    const trigger = w.find('[data-testid="tel-drs-why"]')
+    expect(trigger.element.tagName).toBe('BUTTON')
+    expect(trigger.text()).toMatch(/^(¿Por qué\?|Why\?)$/)
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    const why = w.find('[data-testid="tel-drs-why-panel"]').text()
+    const notes = await mountSuspended(TzSessionNotes, { props: { notes: [], season: 2026 } })
+    expect(why).toBe(notes.find('[data-testid="regulation-notice"] .tz-notes__info-body').text())
+    expect(why).toMatch(/^(Desde 2026 no hay DRS|There is no DRS from 2026)/)
+  })
+
+  it('antes de 2026 y sin el canal, no habla del reglamento: dice que la sesión no trae el canal', async () => {
+    attach('absent', 2025)
+    const w = await mount()
+    const why = w.find('[data-testid="tel-drs-why-panel"]').text()
+    expect(why).toMatch(/(no trae el canal de DRS|does not include each car's DRS channel)/)
+    expect(why).not.toMatch(/2026/)
   })
 })
 
