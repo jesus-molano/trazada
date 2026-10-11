@@ -1,0 +1,34 @@
+{
+  "heat": {
+    "label": "Heat map",
+    "modes": {
+      "off": "Off",
+      "speed": "Speed",
+      "minisectors": "Minisectors"
+    },
+    "pickLabel": "Which lap",
+    "picks": {
+      "last": "Last",
+      "best": "Best"
+    },
+    "legendLabel": "Heat map legend",
+    "speedRange": "{min}–{max} km/h",
+    "sampling": "sampled at ~4 Hz",
+    "noColor": "no colour: no data",
+    "winner": "{driver}: {n}",
+    "tie": "even (< {ms} ms): {n}",
+    "none": "no data: {n}",
+    "lap": "{driver} · lap {lap} · {time}",
+    "sessionBest": "Fastest of the session: {lap}",
+    "pairLaps": "A: {a} — B: {b}",
+    "notePair": "Compare two drivers to see who wins each minisector: select one and Shift+click another in the standings.",
+    "noLap": "{driver} has no complete valid lap yet",
+    "noLapSession": "There is no complete valid lap in the session yet",
+    "noData": "No data: there are no positions or telemetry for lap {lap} of {driver}",
+    "noDataPair": "No data: there are no positions for those laps ({a}; {b})",
+    "hintLabel": "What the heat map shows",
+    "hint": "Colours the track with one complete lap, the last or the fastest, only if it is valid (no pit entry or exit, no safety car, VSC or red flag, not lap 1 and not deleted) and once it has been seen in full. With no car selected, the fastest of the session up to that moment. Sector flags are always shown on top.",
+    "hintSpeed": "Speed: as measured by the car (sampled at ~4 Hz, one sample every 10–25 m flat out), placed with its GPS position; between two consecutive samples the colour is interpolated. With no sample within {gap} s, that stretch has no colour: it is never filled in. The scale goes from the lowest to the highest speed of the lap.",
+    "hintMinisectors": "Minisectors: the lap split into {n} equal stretches from the finish line; in each one, whoever takes less time according to the GPS wins, comparing each driver’s lap. It is an estimate with a margin of a few hundredths: with less than {tie} ms between them, “even”. A stretch with a position gap for either driver has no colour."
+  }
+}

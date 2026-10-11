@@ -64,7 +64,7 @@ function overlayMaterial(opacity: number, offset: number): MeshBasicMaterial {
 
 const group = new Group()
 const tint = new Mesh(geometry(ribbon.indices), overlayMaterial(0.5, -1))
-tint.renderOrder = 1
+tint.renderOrder = renderOrder
 tint.visible = false
 tint.frustumCulled = false
 group.add(tint)
@@ -72,7 +72,7 @@ group.add(tint)
 const sectors = new Map<number, Mesh<BufferGeometry, MeshBasicMaterial>>()
 for (const ms of props.model.marshalSectors) {
   const mesh = new Mesh(geometry(rangeIndices(props.model.centerline, ms.sStart, ms.sEnd)), overlayMaterial(0.85, -2))
-  mesh.renderOrder = 1
+  mesh.renderOrder = renderOrder
   mesh.visible = false
   mesh.frustumCulled = false
   sectors.set(ms.number, mesh)
@@ -109,6 +109,14 @@ onBeforeUnmount(() => {
   sceneStats.trackTint = null
   sceneStats.sectorOverlays = []
 })
+</script>
+
+<script lang="ts">
+/**
+ * Orden de pintado de las banderas (plan §3): encima de la cinta (0) y de las capas que la colorean (calor 0,5, zonas
+ * de DRS 0,7). Lo comprueba tests/nuxt/heat.test.ts: la seguridad siempre se ve.
+ */
+export const renderOrder = 1
 </script>
 
 <template>
