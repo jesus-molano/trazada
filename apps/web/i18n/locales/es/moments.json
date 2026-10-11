@@ -1,0 +1,66 @@
+{
+  "moments": {
+    "tab": "Momentos",
+    "onlyRace": "Adelantamientos y duelos solo en carrera y sprint: en libres y clasificación cada piloto rueda a su aire y no hay un orden en pista que comparar vuelta a vuelta. Los botones de momentos del reproductor siguen saltando entre neutralizaciones y mensajes de dirección de carrera.",
+    "noLaps": "Sin dato: esta sesión no trae vueltas cronometradas.",
+    "basis": "Un adelantamiento es un cambio del orden oficial en la línea de meta entre dos vueltas seguidas de los dos coches, sin que ninguno entre ni salga de boxes en esas vueltas y a menos de 30 s el uno del otro. Si a uno le falta el paso por meta de una de esas vueltas, ahí no se afirma ninguno. Pasar y volver a pasar dentro de la misma vuelta no se ve.",
+    "lap1": "La vuelta 1 no cuenta: no hay un orden oficial anterior (la parrilla no está en los datos).",
+    "pick": "Pulsa uno para ir 5 s antes y elegir al que adelanta; en un duelo, al que persigue, comparado con el de delante.",
+    "overtakes": {
+      "title": "Adelantamientos",
+      "count": "{n} adelantamiento | {n} adelantamientos",
+      "who": "{passer} adelanta a {passed}",
+      "lap": "V{lap}",
+      "lapLong": "Vuelta {lap}:",
+      "at": "≈ {time}",
+      "atLong": "instante aproximado (GPS)",
+      "atNoData": "momento exacto: sin dato",
+      "atNoDataLong": "se salta al inicio de la vuelta",
+      "approx": "El adelantamiento lo confirma la línea de meta; el instante (≈) sale de las posiciones GPS de los dos coches dentro de esa vuelta.",
+      "none": "Ningún adelantamiento confirmado en la línea de meta.",
+      "nothingYet": "Todavía no hay adelantamientos confirmados hasta este instante. Avanza el reproductor o desactiva «Sin spoilers»."
+    },
+    "duels": {
+      "title": "Duelos a menos de 1 s",
+      "count": "{n} duelo | {n} duelos",
+      "basis": "Dos coches seguidos en la línea a menos de 1 s durante 3 vueltas o más, sin paradas ni SC, VSC o bandera roja en esas vueltas (con neutralización las diferencias se comprimen).",
+      "who": "{chaser} tras {leader}",
+      "laps": "V{from}–V{to}",
+      "lapsLong": "vueltas {from} a {to}",
+      "min": "mín. {gap} s",
+      "open": "en curso",
+      "overtake": "terminó en adelantamiento",
+      "none": "Ningún duelo de 3 vueltas o más a menos de 1 s.",
+      "nothingYet": "Todavía no hay duelos hasta este instante. Avanza el reproductor o desactiva «Sin spoilers».",
+      "noTrackStatus": "Sin dato de estado de pista por vuelta: no se pueden descartar las vueltas con SC o VSC, así que no se buscan duelos."
+    },
+    "jump": {
+      "group": "Saltar entre momentos",
+      "prev": "Momento anterior ({kind})",
+      "next": "Momento siguiente ({kind})",
+      "key": "tecla {key}",
+      "filterLabel": "Saltos del reproductor",
+      "filterHint": "Los botones de momentos del reproductor (y las teclas coma y punto) llegan 5 s antes del momento anterior o siguiente: un adelantamiento, el inicio de un duelo, una neutralización (SC, VSC o bandera roja) o un mensaje destacado de dirección de carrera (luz verde, bandera a cuadros, doble amarilla, coche detenido o trompo, incidente, sanción o bandera negra). Aquí eliges entre cuáles.",
+      "filter": {
+        "all": "Todos",
+        "overtake": "Adelantamientos",
+        "duel": "Duelos",
+        "neutralisation": "Neutralizaciones",
+        "raceControl": "Dirección de carrera"
+      },
+      "kind": {
+        "all": "todos",
+        "overtake": "adelantamientos",
+        "duel": "duelos",
+        "neutralisation": "neutralizaciones",
+        "raceControl": "dirección de carrera"
+      }
+    },
+    "lane": {
+      "title": "Adelantamientos confirmados en la línea: {n}. El instante de cada marca es aproximado (GPS).",
+      "titleSoFar": "Adelantamientos confirmados hasta ahora («Sin spoilers»): {n}. El instante de cada marca es aproximado (GPS).",
+      "tick": "V{lap}: {passer} adelanta a {passed} (instante aproximado, GPS)",
+      "tickNoData": "V{lap}: {passer} adelanta a {passed} (momento exacto: sin dato; marca al inicio de la vuelta)"
+    }
+  }
+}
