@@ -6,6 +6,7 @@
 import type { TresContext } from '@tresjs/core'
 import { type PerspectiveCamera, Vector3, type WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
+import { useSceneGestures } from '~/composables/useSceneGestures'
 import { token } from '~/design/tokens'
 import { QualityGovernor } from '~/engine/perf/QualityGovernor'
 import { cornerAnchor } from '~/engine/track/circuit'
@@ -314,11 +315,10 @@ function trackScreen(stepM: number): TrackScreenSample[] {
  * los controles del mapa). Solo cuando el rig ya gobierna la cámara (desactiva los controles al empezar a
  * seguir; mientras espera a ver el coche, la rueda sigue siendo la del mapa). Escucha en la raíz de la
  * escena: también sobre las siglas, que están encima del lienzo. La distancia se guarda en las preferencias.
+ * El pellizco llega por los gestos de la escena (ítem 17, D43), que lo distinguen de los dos dedos que mueven el reloj.
  */
 const sceneEl = ref<HTMLElement | null>(null)
 const following = () => playback.following && controls?.enabled === false
-let pinch: { distance: number; span: number } | null = null
-const span = (e: TouchEvent) => Math.hypot(e.touches[0]!.clientX - e.touches[1]!.clientX, e.touches[0]!.clientY - e.touches[1]!.clientY)
 function zoomFollow(distance: number) {
   settings.setFollowDistance(distance)
   invalidate()
@@ -329,24 +329,15 @@ function onWheel(e: WheelEvent) {
   const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
   zoomFollow(settings.followDistance * Math.exp(dy * 0.0015))
 }
-function onTouchStart(e: TouchEvent) {
-  pinch = following() && e.touches.length === 2 ? { distance: settings.followDistance, span: span(e) } : null
-}
-function onTouchMove(e: TouchEvent) {
-  if (!pinch || e.touches.length !== 2 || !following()) return
-  e.preventDefault()
-  zoomFollow((pinch.distance * pinch.span) / Math.max(1, span(e)))
-}
-function onTouchEnd(e: TouchEvent) {
-  if (e.touches.length < 2) pinch = null
-}
-const ZOOM_EVENTS = [
-  ['wheel', onWheel],
-  ['touchstart', onTouchStart],
-  ['touchmove', onTouchMove],
-  ['touchend', onTouchEnd],
-  ['touchcancel', onTouchEnd],
-] as const
+
+/**
+ * Gestos táctiles (ítem 17, D43): dos dedos en horizontal mueven el reloj (con la tarjeta de la vista previa del
+ * timeline encima de la escena), el pellizco es el zoom y el doble toque sobre un coche lo sigue.
+ */
+const { hud: scrubHud } = useSceneGestures({
+  root: sceneEl,
+  follow: { active: following, distance: () => settings.followDistance, zoom: zoomFollow },
+})
 
 function detach() {
   resizeObserver?.disconnect()
@@ -456,14 +447,14 @@ onMounted(() => {
     lastFrameAt = measuring ? now : 0
   })
   settings.hydrate()
-  for (const [type, fn] of ZOOM_EVENTS) sceneEl.value?.addEventListener(type, fn as EventListener, { passive: false })
+  sceneEl.value?.addEventListener('wheel', onWheel, { passive: false })
   sceneStats.elevationScale = yScale.value
   sceneStats.ready = false
   supported.value = hasWebGL2()
 })
 onBeforeUnmount(() => {
   offFrames?.()
-  for (const [type, fn] of ZOOM_EVENTS) sceneEl.value?.removeEventListener(type, fn as EventListener)
+  sceneEl.value?.removeEventListener('wheel', onWheel)
   sceneProbe.trackScreen = null
   detach()
   sceneStats.ready = false
@@ -511,6 +502,7 @@ onBeforeUnmount(() => {
 
     <TzSceneLabels v-if="supported" ref="labels" :labels="cornerLabels" kind="corner" />
     <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" :offsets="rt.offsets" />
+    <TzGestureHud v-if="supported && scrubHud" :hud="scrubHud" />
 
     <Teleport defer to="#tz-scene-tools">
       <TzSceneTools v-if="supported" :flat="flat" :estimated="data.manifest.quality.estimated" />
@@ -536,6 +528,12 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: 0;
   z-index: var(--tz-z-canvas);
+  /*
+   * Todo el subárbol (lienzo y siglas): la página no se desplaza ni hace zoom con los dedos (tampoco con el doble toque
+   * de Safari); los gestos son de la escena (ítem 17). `touch-action` no se hereda, pero el navegador aplica la
+   * intersección con la de los antepasados.
+   */
+  touch-action: none;
 }
 
 /* Arriba, bajo la cabecera del replay: el dock de controles ocupa la parte inferior. */

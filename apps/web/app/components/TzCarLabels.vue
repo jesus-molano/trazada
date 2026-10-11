@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Siglas de los coches en DOM, sobre el lienzo. Se reposicionan en cada render con `transform`
- * (sin reactividad por frame). Un clic selecciona el coche.
+ * (sin reactividad por frame). Un clic selecciona el coche; un doble toque o doble clic lo sigue (ítem 17, `useCarTap`).
  *
  * Sin amontonarse: si dos siglas se pisan, se muestra la del coche que va por delante (y siempre la del
  * coche elegido); el coche se sigue dibujando y se puede elegir en la clasificación o con un clic. Con
@@ -9,6 +9,7 @@
  * hueco para volver a mostrarse (si no, en un tren de coches parpadearían en cada frame).
  */
 import { type Camera, Vector3 } from 'three'
+import { useCarTap } from '~/composables/useSceneGestures'
 import { carSizeScale } from '~/engine/car/carLod'
 import type { CarState } from '~/engine/replay/ReplayModel'
 import { carPose } from '~/engine/replay/carPose'
@@ -16,6 +17,10 @@ import { usePlaybackStore } from '~/stores/playback'
 
 const props = defineProps<{ states: CarState[]; offsets: Float32Array }>()
 const playback = usePlaybackStore()
+const carTap = useCarTap()
+/** Un clic sin puntero (teclado, lector de pantalla: `detail` 0) no tiene posición y nunca completa un doble toque. */
+const onTap = (car: string, e: MouseEvent) =>
+  carTap(car, e.detail === 0 ? { x: Number.NaN, y: Number.NaN, t: e.timeStamp } : { x: e.clientX, y: e.clientY, t: e.timeStamp })
 const root = ref<HTMLElement | null>(null)
 const v = new Vector3()
 const corner = new Vector3()
@@ -142,7 +147,7 @@ defineExpose({ update })
       :aria-label="st.driver ? `${st.driver.first} ${st.driver.last}` : st.car"
       :aria-pressed="playback.selectedCar === st.car"
       tabindex="-1"
-      @click="playback.selectCar(playback.selectedCar === st.car ? null : st.car)"
+      @click="onTap(st.car, $event)"
     >
       {{ st.driver?.tla ?? st.car }}
     </button>

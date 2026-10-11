@@ -32,6 +32,7 @@ import {
   Vector3,
   type WebGLRenderer,
 } from 'three'
+import { useCarTap } from '~/composables/useSceneGestures'
 import { token } from '~/design/tokens'
 import { buildCar, CAR_PARTS, type CarLayerGeometry, type CarPart } from '~/engine/car/carGeometry'
 import { carSizeScale, nextDetail, screenLengthPx } from '~/engine/car/carLod'
@@ -231,14 +232,23 @@ onBeforeRender(({ camera }) => {
   proxy.boundingSphere = null
 })
 
-/** Selección con clic o toque sobre el coche (raycast de Tres sobre el proxy). */
-function onClick(event: { instanceId?: number; stopPropagation?: () => void }) {
+/**
+ * Selección con clic o toque sobre el coche (raycast de Tres sobre el proxy, un frame después del evento): lo elige o lo
+ * deja como siempre, salvo que sea el segundo toque de un doble toque, que ya lo sigue (ítem 17, `useCarTap`).
+ */
+const carTap = useCarTap()
+function onClick(event: {
+  instanceId?: number
+  stopPropagation?: () => void
+  nativeEvent?: { clientX?: number; clientY?: number; timeStamp: number }
+}) {
   const i = event.instanceId
   if (i === undefined) return
   const st = states[i]
   if (!st?.visible) return
   event.stopPropagation?.()
-  playback.selectCar(playback.selectedCar === st.car ? null : st.car)
+  const n = event.nativeEvent
+  carTap(st.car, { x: n?.clientX ?? Number.NaN, y: n?.clientY ?? Number.NaN, t: n?.timeStamp ?? performance.now() })
 }
 
 onBeforeUnmount(() => {
