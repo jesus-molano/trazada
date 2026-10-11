@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { MomentsService } from '~/engine/commands/types'
 import { type DuelsResult, type Duel, duels } from '~/engine/moments/duels'
 import {
   buildMoments,
@@ -100,6 +101,22 @@ export const useMomentsStore = defineStore('moments', () => {
     return m.moments.filter((x) => !kinds || kinds.has(x.kind)).map((x) => ({ t: x.seekMs }))
   }
 
+  /**
+   * El servicio de momentos de la paleta de comandos (ítem 14; lo registran los botones del dock): los destinos de
+   * ⏮ ⏭ («siguiente momento») y, para «siguiente adelantamiento», «duelo HAM»…, los adelantamientos y duelos de la
+   * sesión (el mismo precálculo). `noSpoilers`: el «Sin spoilers» de la hoja de análisis, en el momento de leerlo.
+   */
+  function commandService(noSpoilers: () => boolean): MomentsService {
+    return {
+      list: targets,
+      overtakes: () => model()?.overtakes ?? [],
+      duels: () => model()?.duels ?? { status: 'ok', duels: [] },
+      get noSpoilers() {
+        return noSpoilers()
+      },
+    }
+  }
+
   /** Momentos a los que saltar ahora (con el reloj grueso): para habilitar los botones. */
   const next = computed(() => (playback.attached ? target(1, playback.timeMs) : null))
   const prev = computed(() => (playback.attached ? target(-1, playback.timeMs) : null))
@@ -150,5 +167,5 @@ export const useMomentsStore = defineStore('moments', () => {
     { flush: 'sync' },
   )
 
-  return { filter, next, prev, model, targets, setFilter, jump, go, goToOvertake, goToDuel }
+  return { filter, next, prev, model, targets, commandService, setFilter, jump, go, goToOvertake, goToDuel }
 })

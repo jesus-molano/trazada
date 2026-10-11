@@ -268,9 +268,8 @@ describe('siguiente y anterior', () => {
 
   it('momentos: solo con el servicio del ítem 5', () => {
     expect(keys('siguiente momento').some((k) => k.startsWith('goto.moment'))).toBe(false)
-    const rec = recordingServices()
-    const services = { ...rec.services, moments: { list: () => [{ t: 300_000 }] } }
-    const [s] = suggest(BUILTIN_COMMANDS, 'siguiente momento', paletteContext({ services }))
+    const rec = recordingServices({ moments: { list: [{ t: 300_000 }] } })
+    const [s] = suggest(BUILTIN_COMMANDS, 'siguiente momento', paletteContext({ services: rec.services }))
     expect(s!.key).toBe('goto.moment.next')
     expect(s!.seekTo).toBe(300_000)
   })

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 /**
  * Paleta de comandos (ítem 14, D43): seguir o elegir pilotos, ir a una vuelta o a una hora, velocidad, saltos a los
- * marcadores (coche de seguridad, banderas, paradas), comparar pilotos y reanudar, escribiendo («seguir VER»,
- * «vuelta 30», «1:02:30», «x4», «siguiente sc», «parada de NOR»). Reglas fijas, sin IA (`engine/commands/`).
+ * marcadores (coche de seguridad, banderas, paradas) y a los momentos (adelantamientos y duelos, ítem 14b), comparar
+ * pilotos y reanudar, escribiendo («seguir VER», «vuelta 30», «1:02:30», «x4», «siguiente sc», «parada de NOR»,
+ * «adelantamientos de VER»). Reglas fijas, sin IA (`engine/commands/`).
  *
  * - Se abre con Ctrl+K (⌘K) o «/» (registro de teclas) y con el botón del dock (iPad); no se abre encima de
  *   otro diálogo modal. Se cierra con Esc (`ESC_PRIORITY.palette`), con ×, con Ctrl+K o con un clic fuera.
  * - Diálogo modal con un combobox y su lista (patrón de WAI-ARIA con `aria-activedescendant`): el foco se queda en el
  *   campo; ↑/↓ eligen, Enter ejecuta, Tab completa. Mientras está abierta, las teclas no llegan a los atajos del replay.
  * - Cada sugerencia dice qué hará antes de pulsar Enter; lo que no se puede, deshabilitado con su motivo («sin dato»).
+ *   Si el detalle enseña una estimación (el instante GPS de un adelantamiento), lleva su etiqueta «Estimado».
  *   Si lleva a un instante, abajo se ve qué pasaba entonces (la vista previa del timeline, ítem 16).
  * - Nada irreversible: mover el reloj, elegir, seguir o comparar, la velocidad.
  * - Entrada con los tokens de movimiento (nada con movimiento reducido). DOM fuera del bucle de frames: la lista se
@@ -338,6 +340,7 @@ export const order = 15
               <span class="tz-palette__title">{{ tx(s.title) }}</span>
               <span v-if="s.disabled" class="tz-palette__reason" data-testid="palette-reason">{{ tx(s.disabled) }}</span>
               <span v-else-if="s.detail" class="tz-palette__detail">{{ tx(s.detail) }}</span>
+              <TzEstimated v-if="s.estimated && !s.disabled" class="tz-palette__estimated" :field="s.estimated" />
             </span>
           </li>
         </ul>
@@ -518,6 +521,12 @@ export const order = 15
 .tz-palette__reason {
   color: var(--tz-text-muted);
   font-size: var(--tz-text-sm);
+}
+
+/* La etiqueta «Estimado» del detalle, en su propia línea y a su ancho. */
+.tz-palette__estimated {
+  align-self: flex-start;
+  margin-top: var(--tz-space-0-5);
 }
 
 /* «Sin dato» y los motivos: en cursiva, como el resto de huecos sin dato. */

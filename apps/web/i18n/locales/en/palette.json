@@ -8,7 +8,7 @@
     "listLabel": "Suggestions",
     "close": "Close the palette (Esc)",
     "empty": "No command matches “{q}”.",
-    "examples": "Try “follow NOR”, “lap 7 of VER”, “1:02:30”, “x4”, “next sc” or “pit NOR”.",
+    "examples": "Try “follow NOR”, “lap 7 of VER”, “1:02:30”, “x4”, “next sc”, “pit NOR” or “next overtake”.",
     "count": "No suggestions | 1 suggestion | {n} suggestions",
     "rules": "Fixed rules, no AI: understands English and Spanish, ignoring accents and case.",
     "previewLabel": "That moment",
