@@ -5,6 +5,8 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { defineComponent, h } from 'vue'
+import TzCompare from '~/components/TzCompare.vue'
 import TzEstimated from '~/components/TzEstimated.vue'
 import TzLapInfo from '~/components/TzLapInfo.vue'
 import TzSceneTools from '~/components/TzSceneTools.vue'
@@ -16,9 +18,11 @@ import type { DrsZones } from '~/engine/drs/zones'
 import { ESTIMATED_FIELDS, type EstimatedField } from '~/engine/estimated'
 import { createTimelinePreview, PREVIEW_EXT } from '~/engine/timeline/preview'
 import { createReplayRuntime } from '~/replay/runtime'
+import { useCompareStore } from '~/stores/compare'
 import { useDrsStore } from '~/stores/drs'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSettingsStore } from '~/stores/settings'
+import { compareTestRuntime } from '~/testing/compare'
 import { fakeTrzb, loadFixture } from '~/testing/fixture'
 import { testLapTable, withExt } from '~/testing/runtime'
 
@@ -140,8 +144,37 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
     expect(clean.find('[data-testid="estimated"]').exists()).toBe(false)
     usePlaybackStore().detach()
   },
-  // Comparación de dos pilotos (ítem 1, D31): diferencia en vivo con el GPS.
-  lapDelta: () => registeredOnly('lapDelta'),
+  // Comparación de dos pilotos (ítem 1, D31): la diferencia en vivo sale del GPS y va siempre con su etiqueta, también
+  // cuando no hay cifra («sin dato»).
+  async lapDelta() {
+    const { rt, frame } = compareTestRuntime()
+    usePlaybackStore().attach(rt as never)
+    // A = 2 y B = 1: números que no están en el fixture, así el panel de telemetría que dejó montado el caso
+    // `telemetry` (con su runtime del fixture) no se abre con esta selección.
+    usePlaybackStore().selectCar('2')
+    useCompareStore().setCompareCar('1')
+    const chart = defineComponent({
+      setup(_, { expose }) {
+        expose({ setData: () => {}, clear: () => {}, setCursor: () => {} })
+        return () => h('div')
+      },
+    })
+    const w = await mountSuspended(TzCompare, { global: { stubs: { TzDistanceChart: chart } } })
+    frame(90_000)
+    await nextTick()
+    const { t } = useNuxtApp().$i18n
+    expect(w.find('[data-testid="compare-delta"]').attributes('data-state')).toBe('ok')
+    expect(label(w, 'lapDelta').text()).toContain(t('estimated.fields.lapDelta'))
+    expect(label(w, 'lapDelta').attributes('title')).toBe(t('estimated.hints.lapDelta'))
+    useCompareStore().setCompareCar('4')
+    await nextTick()
+    frame(91_000)
+    await nextTick()
+    expect(w.find('[data-testid="compare-delta"]').text()).toBe(t('compare.noData'))
+    expect(label(w, 'lapDelta').exists()).toBe(true)
+    w.unmount()
+    usePlaybackStore().detach()
+  },
   // Mapa de calor (ítem 2, D32): ganador de cada minisector.
   minisectors: () => registeredOnly('minisectors'),
   // Zonas de DRS (ítem 11, D38): deducidas de la telemetría. Su herramienta va en un menú plegado, así que mientras

@@ -67,6 +67,26 @@
           "toMs": { "type": ["integer", "null"] }
         }
       }
+    },
+    "weather": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Desde 1.1.0, opcional. Meteorología del live timing (stream WeatherData, una muestra por minuto de la estación del circuito), en columnas del mismo largo. null = sin dato (clave ausente o ilegible en el feed): nunca el 0 con el que rellena FastF1. Sin interpolar. Ver docs/DATA_FORMAT.md.",
+      "required": ["t", "airC", "trackC", "humidity", "pressureHpa", "rain", "windMs", "windDeg"],
+      "properties": {
+        "t": { "type": "array", "items": { "type": "integer" }, "description": "Instante de cada muestra (ms de sesión), creciente" },
+        "airC": { "type": "array", "items": { "type": ["number", "null"] }, "description": "Temperatura del aire (°C)" },
+        "trackC": { "type": "array", "items": { "type": ["number", "null"] }, "description": "Temperatura de la pista (°C)" },
+        "humidity": { "type": "array", "items": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }, "description": "Humedad relativa (%)" },
+        "pressureHpa": { "type": "array", "items": { "type": ["number", "null"], "exclusiveMinimum": 0 }, "description": "Presión (hPa = mbar)" },
+        "rain": { "type": "array", "items": { "type": ["boolean", "null"] }, "description": "Lluvia sí/no (Rainfall): nunca intensidad ni mm" },
+        "windMs": { "type": "array", "items": { "type": ["number", "null"], "minimum": 0 }, "description": "Velocidad del viento (m/s)" },
+        "windDeg": {
+          "type": "array",
+          "items": { "type": ["integer", "null"], "minimum": 0, "maximum": 359 },
+          "description": "Dirección del viento (grados desde el norte, como la da el feed)"
+        }
+      }
     }
   }
 }

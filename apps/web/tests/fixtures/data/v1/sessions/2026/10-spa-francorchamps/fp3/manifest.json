@@ -210,7 +210,8 @@
     "overtakeWindows": "none",
     "elevation": "real",
     "timingStream": "present",
-    "marshalSectors": "absent"
+    "marshalSectors": "absent",
+    "weather": "present"
   },
   "quality": {
     "coverage": {
@@ -338,30 +339,30 @@
   },
   "files": {
     "motion": {
-      "path": "../fp1/motion.5d3560e9.trzb.gz",
+      "path": "../fp1/motion.601ce1c2.trzb.gz",
       "bytes": 52988,
-      "sha256": "5d3560e91cd320363a6eb08a0261869d644a770128537863a7e6a9f3f6a4ee69",
+      "sha256": "601ce1c26b5c9fde588b7c6bc858aa12aee6584028365a6314d42d2774e82b1a",
       "layout": "motion@1",
       "compression": "gzip"
     },
     "car": {
-      "path": "../fp1/car.89321c5d.trzb.gz",
+      "path": "../fp1/car.ff27c16f.trzb.gz",
       "bytes": 106094,
-      "sha256": "89321c5d9195c8da526921120bba8b2ad09d5e923ba484865f0fe4b58b55a4d7",
+      "sha256": "ff27c16fb648ea1baef7a01a08516687cbe30878f8bde8900922acbae24bbc8d",
       "layout": "car@1",
       "compression": "gzip"
     },
     "timing": {
-      "path": "../fp1/timing.468bb677.trzb.gz",
+      "path": "../fp1/timing.be1be220.trzb.gz",
       "bytes": 8739,
-      "sha256": "468bb67767834a6513d4f8908fabf38e88a8befc36f17d61a7ce40ab6d68955c",
+      "sha256": "be1be2205ad463c3c68a00950e9a3d4f53ab42305f3353b153155c726e9b79d1",
       "layout": "timing@1",
       "compression": "gzip"
     },
     "events": {
-      "path": "../fp1/events.a7ffc28f.json.gz",
-      "bytes": 1734,
-      "sha256": "a7ffc28fa2453b707fac8c1fad2e2e6bdf31226d348c28f60cbd9c6a9a9ef1a1",
+      "path": "../fp1/events.16810940.json.gz",
+      "bytes": 1962,
+      "sha256": "16810940b7cdcd291b5328373d5954754212cb9eb305ceaa3b9ca30bbab44016",
       "layout": "events@1",
       "compression": "gzip"
     },

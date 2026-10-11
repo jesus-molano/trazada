@@ -95,9 +95,20 @@ function layerGeometry(l: CarLayerGeometry): BufferGeometry {
   return g
 }
 
-/** Pasada de transparentes (opacidad 1): después de las capas de banderas de la pista (ver arriba). */
+/**
+ * Pasada de transparentes (opacidad 1): después de las capas de banderas de la pista (ver arriba). Sin la niebla del
+ * ambiente (D37): el color del equipo y el del compuesto no se atenúan con la distancia.
+ */
 const material = (vertexColors: boolean, depth: boolean) =>
-  new MeshBasicMaterial({ color: 0xffffff, vertexColors, toneMapped: false, transparent: true, depthTest: depth, depthWrite: depth })
+  new MeshBasicMaterial({
+    color: 0xffffff,
+    vertexColors,
+    toneMapped: false,
+    transparent: true,
+    depthTest: depth,
+    depthWrite: depth,
+    fog: false,
+  })
 
 // Cuña: una instancia por coche (índice = estado), con el color del equipo.
 // Convexa: sin profundidad, sus caras no se pisan (solo se dibujan las de delante).
@@ -124,7 +135,7 @@ paint.instanceColor = new InstancedBufferAttribute(new Float32Array(N * 3), 3)
 band.instanceColor = new InstancedBufferAttribute(new Float32Array(N * 3), 3)
 
 // Proxy de selección: una caja invisible por coche (no se dibuja, pero sí recibe el clic o el toque).
-const proxy = new InstancedMesh(new BoxGeometry(5.6, 1.2, 2.2).translate(0, 0.6, 0), new MeshBasicMaterial({ visible: false }), N)
+const proxy = new InstancedMesh(new BoxGeometry(5.6, 1.2, 2.2).translate(0, 0.6, 0), new MeshBasicMaterial({ visible: false, fog: false }), N)
 proxy.frustumCulled = false
 
 const teamColor = states.map((st) => new Color(st.driver?.color ?? token('--tz-team-unknown')))

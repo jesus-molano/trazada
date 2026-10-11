@@ -41,6 +41,8 @@ LAP_COLUMNS = (
 )
 STREAM_COLUMNS = ("t_ms", "car", "position", "gap_ms", "interval_ms", "laps_behind")
 RC_COLUMNS = ("t_ms", "lap", "category", "flag", "scope", "sector", "car", "text", "status")
+#: Meteorología (`weather.py`): una fila por muestra; None = sin dato (nunca el 0 de relleno de FastF1).
+WEATHER_COLUMNS = ("t_ms", "air_c", "track_c", "humidity", "pressure_hpa", "rain", "wind_ms", "wind_deg")
 
 
 @dataclass(frozen=True)
@@ -116,6 +118,8 @@ class SessionData:
     # Datos que la fuente no da y se derivan (el front los pinta con la etiqueta "Estimado"):
     # `positions`, `telemetry`, `trackStatus`.
     estimated: list[str] = field(default_factory=list)
+    # Meteorología del live timing (WEATHER_COLUMNS, `weather.py`), o None si la fuente no la trae.
+    weather: pd.DataFrame | None = None
 
     @property
     def is_race_like(self) -> bool:

@@ -100,12 +100,30 @@ Cabecera:
 - `raceControl[]`: todos los mensajes, con `t` en tiempo de sesión (ms) y el **texto original sin modificar**. `parsed` añade `kind`, `cars`, `turn`, `lap`, `outcome`, `s` y `marshalSector`.
 - `sectorFlags[]`: estado ya resuelto de las banderas por sector de pista, listo para pintar el mapa.
 - `windows[]`: intervalos de SC, VSC, roja, amarilla, overtake (2026) y DRS (2023–25).
+- `weather` (desde 1.1.0, opcional; D36): meteorología del live timing (stream `WeatherData`, una muestra por minuto de la estación del circuito), en columnas del mismo largo:
+
+  | Columna | Qué es | Tipo |
+  |---|---|---|
+  | `t` | instante de la muestra (ms de sesión), creciente | entero |
+  | `airC`, `trackC` | temperatura del aire y de la pista (°C) | número o `null` |
+  | `humidity` | humedad relativa (%, 0–100) | número o `null` |
+  | `pressureHpa` | presión (hPa = mbar, > 0) | número o `null` |
+  | `rain` | lluvia sí/no (`Rainfall`): **nunca intensidad ni mm** | booleano o `null` |
+  | `windMs` | velocidad del viento (m/s, ≥ 0) | número o `null` |
+  | `windDeg` | dirección del viento: grados desde el norte (0–359), como la da el feed | entero o `null` |
+
+  - `null` es **sin dato**: la clave faltaba o no se podía leer. FastF1 (`fastf1.api.weather_data`) rellena esos huecos con 0 (y la lluvia con `false`), así que el pipeline no usa su parseo: online lee el stream crudo (`fastf1.api.fetch_page`), y un 0 que manda el feed es un 0 real. Offline, con una caché ya parseada por FastF1, un 0 exacto se trata como sin dato (es el relleno) y una fila toda a 0 queda entera sin dato, también la lluvia.
+  - Cada mensaje del stream es una muestra completa: lo que no trae no se arrastra de la anterior.
+  - Solo las muestras del intervalo de reproducción y, delante, la última anterior a su inicio (la vigente al empezar).
+  - El lector **no interpola**: muestra el último valor con `t ≤ reloj` y, si tiene más de 150 s (o no hay ninguno), «sin dato».
+  - La dirección del viento es respecto al norte: el mapa 3D usa la orientación del mapa oficial, no el norte, así que nunca se dibuja sobre él (solo junto a una referencia orientada al norte).
 
 ## Manifest y catálogo
 
 Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/schema/examples/`.
 
 - Una sesión `no-position` aparece en el catálogo como no disponible.
+- `channels.weather` (desde 1.1.0): `present` si `events.weather` trae alguna muestra, `absent` si la fuente no la da (p. ej. TracingInsights o un fallo de descarga). Un manifest sin el campo es de un pipeline anterior: no se sabe si había meteorología, y la app propone volver a descargar la sesión.
 - `quality.estimated`: lo que la fuente no da y se ha derivado. El front lo pinta con la etiqueta "Estimado". Vocabulario: `positions` (posiciones reconstruidas), `telemetry` (telemetría reconstruida) y `trackStatus` (estado de pista deducido de race control). Un lector más antiguo muestra un valor desconocido con su nombre, también como Estimado.
 - `quality.notes`: avisos del pipeline al procesar la sesión, en texto libre (español). El front los muestra en la cabecera del replay: traduce los que reconoce (`apps/web/app/data/quality-notes.ts`; un test comprueba que esos textos siguen en el código del pipeline) y de los demás enseña el texto original. Nunca se esconden.
 - Una sesión con `dev: true` es de desarrollo (fuente secundaria) y **no se publica**.
@@ -136,3 +154,10 @@ Ver `manifest.schema.json` y `catalog.schema.json`, y los ejemplos de `packages/
 ## Estado de la versión 1
 
 La versión 1 del esquema **no se ha publicado todavía**. Hasta el primer deploy de datos (H11), los cambios en v1 se hacen en el sitio: se regenera `layouts.lock.json` y queda una nota en el registro de decisiones de `docs/BRIEF.md`. Desde ese deploy rige la política de versiones de arriba.
+
+Historial de versiones:
+
+| Versión | `minReader` | Cambio |
+|---|---|---|
+| 1.0.0 | 1.0.0 | Esquema v1. |
+| 1.1.0 | 1.0.0 | Meteorología (D36): `events.weather` y `manifest.channels.weather`, opcionales. Aditivo: un lector 1.0.0 lo ignora y los datos 1.0.0 siguen siendo válidos (sin meteorología). Los layouts TRZB no cambian (solo la `schemaVersion` de su cabecera). |

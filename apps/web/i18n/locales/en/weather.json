@@ -1,0 +1,74 @@
+{
+  "weather": {
+    "title": "Weather",
+    "chip": {
+      "air": "Air {value}",
+      "track": "Track {value}",
+      "rain": "Rain",
+      "noRain": "No rain",
+      "rainNoData": "Rain: no data",
+      "wind": "Wind {value}",
+      "windNoData": "Wind: no data",
+      "noData": "Weather: no data",
+      "name": "{reading} (weather: details)",
+      "nameNoData": "Weather: no data. {reason}"
+    },
+    "unit": {
+      "celsius": "{value} °C",
+      "percent": "{value} %",
+      "hpa": "{value} hPa",
+      "ms": "{value} m/s"
+    },
+    "noData": "no data",
+    "reason": {
+      "outdated": "This session was built before Trazada stored the weather: download it again to see it.",
+      "absent": "The source has no weather for this session.",
+      "stale": "No reading in the last {s} s (or the clock is before the first one): the station gives one per minute and it is missing here."
+    },
+    "field": {
+      "air": "Air",
+      "track": "Track",
+      "humidity": "Humidity",
+      "pressure": "Pressure",
+      "rain": "Rain",
+      "wind": "Wind",
+      "direction": "Wind direction"
+    },
+    "rain": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "age": "Reading from {s} s ago (the station gives one per minute).",
+    "direction": "{deg}° ({point})",
+    "compass": {
+      "label": "North-up compass with the wind direction: {value}",
+      "labelNoData": "North-up compass: wind direction with no data",
+      "north": "N",
+      "outline": "The circuit, also with north up.",
+      "point": {
+        "n": "N",
+        "ne": "NE",
+        "e": "E",
+        "se": "SE",
+        "s": "S",
+        "sw": "SW",
+        "w": "W",
+        "nw": "NW"
+      }
+    },
+    "sessionRain": {
+      "none": "No reading with rain in the session.",
+      "some": "Rain measured in {n} stretch of the session (on the timeline lane). | Rain measured in {n} stretches of the session (on the timeline lane)."
+    },
+    "note": "The circuit weather station (live timing). Not interpolated: the last reading and, if it is more than {s} s old, «no data». Rain is yes or no, with no intensity.",
+    "windNote": "The direction is relative to north, as the feed gives it (the dot on the compass). The 3D map is not north-up, so the wind is not drawn on it.",
+    "lane": {
+      "title": "Weather: track temperature from {min} to {max}. {rain}",
+      "titleNoTemp": "Weather: track temperature with no data. {rain}",
+      "rainNone": "No reading with rain.",
+      "rainSome": "Rain in {n} stretch. | Rain in {n} stretches.",
+      "step": "Track {value}",
+      "rainSpan": "Rain"
+    }
+  }
+}

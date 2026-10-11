@@ -36,11 +36,15 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Al terminar la sesión, un resumen: los tres primeros según el cronometraje, la vuelta rápida y, en carrera, las paradas con su tiempo en el pit lane.
 - Cada sesión se retoma donde la dejaste, con el coche y la velocidad que tenías, y la portada ofrece «Seguir viendo» (se guarda en el navegador de cada dispositivo).
 - Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
+- Comparar dos pilotos (Mayús+clic en la clasificación): la diferencia en vivo a la misma distancia de la vuelta, las trazas de velocidad, acelerador y freno por distancia y un coche fantasma con la vuelta de referencia del otro (la misma, su mejor o su última vuelta). Al cerrar la vuelta, la diferencia oficial del cronometraje.
+- Realización automática (menú «Cámara» o tecla T): la cámara elige sola el duelo más cerrado, con persecución y cámaras fijas en las curvas, y se apaga en cuanto tocas algo.
 - Colores de sector (morado, verde y amarillo) en la clasificación y en el panel del coche, calculados con los tiempos de sector oficiales.
 - Hoja «Análisis» con el race trace, el ritmo vuelta a vuelta y los stints de neumáticos, todo con los tiempos oficiales. Las vueltas con boxes, coche de seguridad o anuladas se marcan, no se quitan, y «Sin spoilers» enseña solo lo que ha pasado hasta el momento del replay.
 - Al pasar el ratón (o el dedo) por el timeline, una tarjeta con la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y lo que pasó cerca de ese instante.
 - Zonas de DRS sobre la pista (menú «Capas»), deducidas de la telemetría, en las temporadas con DRS (hasta 2025).
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
+- Meteorología de la sesión en la cabecera (aire, pista, humedad, presión, lluvia y viento, con una brújula junto al trazado) y una franja con la temperatura de pista y la lluvia en el timeline.
+- Ambiente de la escena (menú «Capas»): el cielo sigue la altura del sol sobre el circuito a esa hora (de día, al atardecer o de noche), con niebla en la parte lejana de la pista. Es decorativo: posición del sol, no el tiempo.
 - Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
 - En español e inglés, tema oscuro, escritorio y tablet.
 
@@ -66,6 +70,9 @@ En una sesión de desarrollo (fuente secundaria) parte de esto está reconstruid
 - Las estelas son los últimos 3 s del mismo movimiento que se dibuja para el coche, así que también van sobre la línea central y se cortan donde el coche no se dibuja. Por velocidad, cada punto lleva la última velocidad medida de hace 2 s como mucho, sin interpolar; si no hay ninguna, gris.
 - Las zonas de DRS se deducen de dónde llevaron los coches el DRS abierto según su telemetría: no son las líneas oficiales, que ninguna fuente da, y llevan «Estimado». En 2026 no hay DRS ni canal por coche, así que no se dibujan.
 - Los colores de sector los calcula Trazada con los tiempos oficiales de cada sector: no son las marcas del cronometraje, que la fuente no trae.
+- Al comparar dos pilotos, la diferencia en vivo sale de la distancia que da el GPS: va en décimas y lleva «Estimado». La exacta es la oficial, al cerrar la vuelta. El fantasma es la posición real del otro coche en su vuelta de referencia, desplazada en el tiempo; donde no hay posición, no se dibuja.
+- La meteorología es la de la estación del circuito, una medida por minuto: se muestra la última, sin interpolar, y a los 150 s sin otra pasa a «sin dato». Lo que la fuente no trae nunca se rellena con 0.
+- El cielo y la niebla son decorativos: salen de la hora de la sesión y la posición del circuito, no del tiempo que hacía.
 - Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
 
 ## Estado

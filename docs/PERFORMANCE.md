@@ -119,6 +119,25 @@ Desde esta tanda, cada capa nueva publica su coste con `registerSceneStat` (`sce
 | Japón 2026 carrera (dev) | ×1 | 117–133 ms | 133 ms | 1,9–2,0 ms | 1,9–2,1 ms | 5,6–6,3 ms | 5,8–6,6 ms |
 | Ídem | ×16 | 133–167 ms | 133–150 ms | 2,0–2,1 ms | 2,0–2,1 ms | 8,3 ms | 8,5–8,8 ms |
 
+**Tanda 3 (H15: comparar dos pilotos, meteorología, realización automática y ambiente).** Se mide la base (Tanda 2) contra la Tanda 3 con lo de por defecto (el ambiente está activo) y con el ambiente apagado, en las mismas condiciones y con tres rondas alternas. Bélgica es la sesión reconstruida con 1.1.0 (con meteorología); las dos versiones leen los mismos ficheros. La comparación y la realización automática están apagadas al abrir el replay, como en el bench.
+
+- **Escena por defecto**: +1 draw call (9) y +992 triángulos (Bélgica 16.284; Japón 14.294): el cielo del ambiente, una esfera alrededor de la cámara. Con el ambiente apagado, la escena es la de la base (8 draw calls; 15.292 y 13.302 triángulos).
+- **Coste del ambiente en el contenedor**: en Bélgica, el p50 sube un escalón de vsync en las tres rondas (83 → 100 ms) y el p95 uno o dos. La tarea del hilo principal por frame sube 0,7–5,8 ms y el JS 0,1–0,8 ms. En Japón queda dentro del ruido. Con el ambiente apagado, la Tanda 3 da lo mismo que la base, salvo en una ronda ruidosa. SwiftShader rasteriza en la CPU, y el cielo es una pasada más a pantalla completa (la niebla añade además cálculo por píxel en la pista). En una GPU de verdad ese coste es mínimo, pero el iPad es el caso que hay que medir. **Pendiente tuyo**: el bench en el iPad y en la máquina de referencia con el ambiente encendido y apagado («Capas → Ambiente», que se recuerda). Si en el iPad se nota, decide si sigue activo por defecto.
+- **Comparar** (solo mientras se compara): el fantasma suma 1 draw call (cuña, o ~1.500 triángulos con el monoplaza de cerca), sin niebla y sin escribir profundidad (`compare.spec.ts`). El cálculo del frame se comparte entre el panel y el fantasma: 0,002 ms con los datos completos; las trazas de una vuelta, 0,1–0,3 ms (`session.local.test.ts`). Por frame solo se escribe en el DOM lo que cambia, sin pasar por la reactividad de Vue.
+- **Meteorología**: nada por frame. El chip solo se repinta al cambiar de muestra (una por minuto) y la franja del timeline no cambia al reproducir. En los datos, `events` de Bélgica pasa de 2 a 3 KB.
+- **Realización automática** (solo encendida): la persecución acerca los coches y saca el modelo detallado de los que tiene cerca. `tv.spec.ts` y `local-tv.spec.ts` comprueban que se queda por debajo de 30 draw calls y 150.000 triángulos y que en pausa no hay renders. Las cámaras de curva se calculan una vez, la primera vez que se enciende (`rt.ext`).
+- **Carga**: de clic a «listo», lo mismo que la base (255–314 ms frente a 296–310 ms con la CPU ×4, sin *long tasks* en 5 rondas alternas). En las dos versiones sale a veces una tarea de 50–63 ms justo en el clic, en el umbral de la prueba. El montaje de la escena tras «listo» pasa de 1,3–1,5 s a 1,6–2,0 s de *long tasks* con la CPU ×4 (unos 80–120 ms reales): son las capas y los programas de shader nuevos (cielo, fantasma y la variante con niebla de la pista).
+- **Peso del JS**: +20 KB con gzip en total (486 → 506 KB, medido igual en los dos builds). El chunk del replay crece 11 KB (comparación, meteorología y realización automática).
+
+| Sesión | Velocidad | p95 base | p95 Tanda 3 | p95 sin ambiente | JS/frame base | JS/frame Tanda 3 | JS/frame sin ambiente | Tarea/frame base | Tarea/frame Tanda 3 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Bélgica 2026 Libres 1 | ×1 | 133 ms | 150–217 ms | 133–150 ms | 1,7–1,9 ms | 1,9–2,6 ms | 1,7–2,0 ms | 6,3–6,7 ms | 7,4–10,0 ms |
+| Ídem | ×16 | 133 ms | 150–283 ms | 133–267 ms¹ | 2,0 ms | 2,2–2,8 ms | 2,0–3,0 ms¹ | 8,7–8,9 ms | 11,2–14,7 ms |
+| Japón 2026 carrera (dev) | ×1 | 117–233 ms | 150–233 ms | 133–200 ms | 1,9–2,3 ms | 2,0–2,2 ms | 1,8–2,3 ms | 5,7–7,0 ms | 6,1–6,5 ms |
+| Ídem | ×16 | 150–217 ms | 167–367 ms¹ | 150–350 ms¹ | 2,0–2,8 ms | 2,3–3,1 ms | 2,2–3,4 ms | 8,5–11,8 ms | 9,6–13,3 ms |
+
+¹ Rondas sueltas con el contenedor cargado. En Japón ×16, una ronda empeoró a la vez la base y las dos variantes de la Tanda 3; sin ella, el ambiente apagado da 150 ms y la base, 150–217 ms. En Bélgica ×16, una ronda del ambiente apagado salió en 267 ms y las otras dos, en 133 y 167 ms.
+
 ## Peso por sesión
 
 Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). Las sesiones dev no se publican.
@@ -126,8 +145,8 @@ Generado desde los manifests con `pnpm perf:table` (datos locales de `data/`). L
 <!-- sizes:start -->
 | Sesión | Fuente | motion (KB) | car (KB) | timing (KB) | events (KB) | circuito (KB) | Total (MiB) | Reproducción (min) | KB/min |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 2026 Japanese Grand Prix · Race | tracinginsights-dev (dev, no publicable) | 542 | 1317 | 15 | 2 | 10 | **1.84** | 100 | 19 |
-| 2026 Belgian Grand Prix · Practice 1 | fastf1-offline-cache | 330 | 640 | 10 | 2 | 11 | **0.97** | 69 | 14 |
+| 2026 Japanese Grand Prix · Race | tracinginsights-dev (dev, no publicable) | 555 | 1317 | 15 | 2 | 10 | **1.85** | 100 | 19 |
+| 2026 Belgian Grand Prix · Practice 1 | fastf1-offline-cache | 331 | 640 | 10 | 3 | 11 | **0.97** | 69 | 14 |
 <!-- sizes:end -->
 
 Referencia (H2): una carrera completa ronda los 2–3 MB en gzip. La de Japón de la fuente dev pesa menos porque sus muestras se reconstruyen desde telemetría por vuelta.

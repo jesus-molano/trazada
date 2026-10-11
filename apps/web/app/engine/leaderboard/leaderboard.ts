@@ -116,6 +116,15 @@ export function compareByBestLap(a: BestLapKey, b: BestLapKey): number {
   return b.seg - a.seg || (a.best === b.best ? 0 : a.best - b.best)
 }
 
+/** Una fila de la torre oficial en un instante (`LeaderboardEngine.towerAt`). */
+export interface TowerEntry {
+  car: string
+  /** 0 = sin dato. */
+  position: number
+  /** ms al coche de delante según la torre; null = sin dato (líder, doblado o sin cifra). */
+  intervalMs: number | null
+}
+
 interface StreamRows {
   t: Float64Array
   position: Uint8Array
@@ -220,6 +229,27 @@ export class LeaderboardEngine {
   /** Tanda de clasificación en curso en t (0 fuera de clasificación). */
   segmentAt(t: number): number {
     return segmentAt(this.lapTable.segments, t)
+  }
+
+  /** ¿Trae la sesión la torre de tiempos oficial (stream del live timing)? */
+  get hasTower(): boolean {
+    return this.hasStream
+  }
+
+  /**
+   * Lo que dice la torre oficial en t, coche a coche (los que tienen alguna fila hasta t): posición (0 = sin dato) e
+   * intervalo con el de delante (null = sin dato). Solo la torre: nada calculado con pasos por meta ni con mejores
+   * vueltas (lo usa la realización automática, ítem 9, cuya cifra solo puede salir de aquí). Vacío sin torre.
+   */
+  towerAt(t: number): TowerEntry[] {
+    const out: TowerEntry[] = []
+    for (const [car, st] of this.stream) {
+      const i = lastAtOrBefore(st.t, t)
+      if (i < 0) continue
+      const interval = st.interval[i]!
+      out.push({ car, position: st.position[i]!, intervalMs: interval >= 0 ? interval : null })
+    }
+    return out
   }
 
   compute(t: number, states: readonly CarState[]): LeaderboardRow[] {

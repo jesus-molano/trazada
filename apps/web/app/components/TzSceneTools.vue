@@ -8,7 +8,8 @@
  *
  * Cada grupo del hueco es un menú (un botón que despliega sus controles): así la cabecera ocupa lo mismo por muchas
  * herramientas que tenga el grupo y sigue cabiendo en una fila a 1280 px (con una cabecera partida, la escena y la
- * telemetría pierden alto).
+ * telemetría pierden alto). Con la meteorología y el grupo «Cámara» (Tanda 3), por debajo de 1600 px esos menús van
+ * solo con su icono y, por debajo de 1360 px, «Altura» y «Separar coches» también (ver los estilos).
  */
 import type { IconName } from '~/design/icons'
 import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
@@ -44,8 +45,9 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
 
 <template>
   <div class="tz-tools" data-testid="scene-tools">
-    <div class="tz-tools__group" role="group" :aria-label="t('scene.elevation')">
+    <div class="tz-tools__group" role="group" :aria-label="t('scene.elevation')" :title="t('scene.elevation')">
       <span class="tz-tools__label">{{ t('scene.elevation') }}</span>
+      <TzIcon name="elevation" size="sm" class="tz-tools__label-icon" />
       <button
         v-for="k in ELEVATION_SCALES"
         :key="k"
@@ -63,21 +65,27 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
       type="button"
       class="tz-tools__btn tz-tools__toggle"
       :aria-pressed="settings.separation"
+      :aria-label="t('scene.separation')"
       :title="t('scene.separationHint')"
       data-testid="toggle-separation"
       @click="settings.setSeparation(!settings.separation)"
     >
-      {{ t('scene.separation') }}
+      <TzIcon name="separation" size="sm" class="tz-tools__toggle-icon" />
+      <span class="tz-tools__toggle-text">{{ t('scene.separation') }}</span>
     </button>
     <span v-if="flat" class="tz-tools__flat" :title="t('scene.flatHint')">{{ t('scene.flat') }}</span>
     <TzDisclosure
       v-for="g in SCENE_TOOLS"
       :key="g.group"
       :label="t(`scene.toolGroups.${g.group}`)"
+      :name="t(`scene.toolGroups.${g.group}`)"
       :icon="GROUP_ICONS[g.group]"
       :testid="`tools-${g.group}`"
       tools
     >
+      <template #label>
+        <span class="tz-tools__menu-text">{{ t(`scene.toolGroups.${g.group}`) }}</span>
+      </template>
       <div
         class="tz-tools__menu"
         role="group"
@@ -138,6 +146,41 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   padding: 0 var(--tz-space-2);
   font-size: var(--tz-text-xs);
   color: var(--tz-text-muted);
+}
+
+.tz-tools__label-icon {
+  display: none;
+  margin: 0 var(--tz-space-1);
+  color: var(--tz-text-muted);
+}
+
+.tz-tools__toggle-icon {
+  display: none;
+  vertical-align: middle;
+}
+
+/*
+ * La cabecera tiene que caber en una fila (si se parte, la escena y la telemetría pierden alto). Por debajo de
+ * 1600 px, los menús «Capas» y «Cámara» solo con su icono, como Análisis y la meteorología (el nombre accesible y el
+ * título siguen ahí); por debajo de 1360 px, «Altura» y «Separar coches» pasan a su icono (el grupo y el botón
+ * conservan su nombre accesible y su título).
+ */
+@media (width < 1600px) {
+  .tz-tools__menu-text {
+    display: none;
+  }
+}
+
+@media (width < 1360px) {
+  .tz-tools__label,
+  .tz-tools__toggle-text {
+    display: none;
+  }
+
+  .tz-tools__label-icon,
+  .tz-tools__toggle-icon {
+    display: inline-block;
+  }
 }
 
 /* Controles de un grupo del hueco, uno por línea dentro de su menú. */

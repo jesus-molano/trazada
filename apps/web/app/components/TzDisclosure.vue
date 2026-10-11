@@ -8,6 +8,8 @@
  * `name`: nombre accesible (y título) más largo que el texto visible, si hace falta ahorrar sitio; debe
  * empezar por el texto visible (WCAG 2.5.3).
  * `icon`: icono del registro en lugar de «ⓘ» (p. ej. `layers` para el menú «Capas» de las herramientas de escena).
+ * Hueco `label` (opcional): el texto visible con marcado propio (p. ej. piezas que se ocultan en pantallas estrechas,
+ * como el chip de meteorología); `name` sigue siendo el nombre accesible y debe empezar por lo que se vea.
  * `tools`: el panel lleva controles, no texto. Su contenido pone su propio rol y nombre (un `role="group"`), así que
  * el panel no es una región ni se enfoca, y mide lo que sus controles.
  */
@@ -88,7 +90,7 @@ onBeforeUnmount(() => {
         <rect x="7.25" y="7" width="1.5" height="4.5" rx="0.75" fill="currentColor" />
         <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
       </svg>
-      <span>{{ label }}</span>
+      <slot name="label"><span>{{ label }}</span></slot>
     </button>
     <div
       v-show="open"

@@ -244,7 +244,12 @@ test('a ×16 la lista se reordena sin deslizarse ni destellar, pero con flechas'
   await page.getByTestId('replay-title').click()
   const watch = await watchRows(page)
   await page.keyboard.press(' ')
-  await page.waitForTimeout(2_000)
+  // Hasta que el reloj deje atrás el adelantamiento, no un tiempo fijo: el reloj avanza como mucho MAX_DELTA_MS ×
+  // velocidad por frame, y con WebGL por software y la CPU compartida con otros tests, 2 s de pared a ×16 a veces no
+  // llegaban a los 10 s de sesión que faltan.
+  await expect
+    .poll(() => page.evaluate(() => window.__trazada!.timeMs), { timeout: 20_000 })
+    .toBeGreaterThan(PASS_MS + 6_000)
   await page.keyboard.press(' ')
   const seen = await watch()
   expect(seen.reorders).toBeGreaterThan(0)

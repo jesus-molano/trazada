@@ -20,8 +20,8 @@ export const sceneStats = {
   /** Color (#RRGGBB) y coche de cada instancia del InstancedMesh, tal y como se subieron a la GPU. */
   instanceColors: [] as string[],
   instanceCars: [] as string[],
-  /** Modo de cámara y posición (three) tras el último render. */
-  cameraMode: 'overview' as 'overview' | 'to-follow' | 'follow' | 'to-overview',
+  /** Modo de cámara (con la realización automática, ítem 9: 'to-tv' y 'tv') y posición (three) tras el último render. */
+  cameraMode: 'overview' as 'overview' | 'to-follow' | 'follow' | 'to-overview' | 'to-tv' | 'tv',
   camera: [0, 0, 0] as [number, number, number],
   /** Lo que la escena pinta del estado de pista en el último render: tinte y sectores con bandera. */
   trackTint: null as string | null,

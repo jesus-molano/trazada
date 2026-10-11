@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRY_ISO, countryLabel, ISO_CODES, isoForCountry } from './countries'
 import { flagSrc, flagSvg } from './flags'
-import { outlineFor } from './outlines'
+import { centerFor, outlineFor } from './outlines'
 
 /** Valores de `Country` que da el calendario de FastF1 (backend 'fastf1') en 2018–2026. */
 const FASTF1_COUNTRIES = [
@@ -87,5 +87,35 @@ describe('miniaturas de trazado', () => {
     expect(outlineFor(2020, 16, 'sakhir')).toBeNull() // GP de Sakhir 2020: trazado exterior
     expect(outlineFor(2026, 1, '__proto__')).toBeNull()
     expect(outlineFor(2026, 1, 'constructor')).toBeNull()
+  })
+})
+
+describe('centros de circuito (ambiente, D37)', () => {
+  it('todos los Grandes Premios 2023–2026 tienen centro, con las mismas reglas que el trazado', () => {
+    const missing = EVENTS.filter(([season, round, slug]) => !centerFor(season, round, slug))
+    expect(missing).toEqual([])
+    expect(centerFor(2025, 8, 'monaco')).toEqual(centerFor(2026, 6, 'monte-carlo'))
+    expect(centerFor(2024, 24, 'yas-island')).toEqual(centerFor(2026, 23, 'yas-marina'))
+  })
+
+  it('cada centro está donde está el circuito (a 0,05°)', () => {
+    const near = (season: number, round: number, slug: string, lat: number, lon: number) => {
+      const c = centerFor(season, round, slug)!
+      expect(Math.abs(c.lat - lat), slug).toBeLessThan(0.05)
+      expect(Math.abs(c.lon - lon), slug).toBeLessThan(0.05)
+    }
+    near(2026, 10, 'spa-francorchamps', 50.437, 5.971)
+    near(2026, 3, 'suzuka', 34.843, 136.541)
+    near(2025, 18, 'marina-bay', 1.291, 103.864)
+    near(2025, 24, 'yas-island', 24.467, 54.603)
+    // GP de Baréin 2026 en Sepang (alias kuala-lumpur): la posición de Sepang, no la de Sakhir.
+    near(2026, 16, 'kuala-lumpur', 2.761, 101.738)
+  })
+
+  it('sede desconocida o con otra configuración: null, nunca la posición de otro circuito', () => {
+    expect(centerFor(2026, 99, 'atlantis')).toBeNull()
+    expect(centerFor(2020, 16, 'sakhir')).toBeNull()
+    expect(centerFor(2026, 1, '__proto__')).toBeNull()
+    expect(centerFor(2026, 1, 'constructor')).toBeNull()
   })
 })
