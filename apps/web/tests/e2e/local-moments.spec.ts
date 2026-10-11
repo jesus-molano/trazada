@@ -109,3 +109,31 @@ test('los botones del dock con la clase «Adelantamientos» van de uno en uno', 
     await expect.poll(() => time(page)).toBe(x)
   }
 })
+
+test.describe('iPad vertical 768×1024', () => {
+  test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true })
+
+  test('un duelo que acabó en adelantamiento sigue diciendo entre quién es; su estado no se sale de la fila', async ({ page }) => {
+    await open(page)
+    await page.getByTestId('analysis-button').click()
+    await page.getByTestId('analysis-tab-moments').click()
+    await page.getByTestId('analysis-spoilers').click()
+    const rows = page.locator('[data-testid="duel-row"]:has(.tz-moments__state)')
+    await expect.poll(() => rows.count()).toBeGreaterThan(0)
+    const boxes = await rows.evaluateAll((els) =>
+      els.map((row) => {
+        const col = row.closest('.tz-moments__col')!.getBoundingClientRect()
+        const r = row.getBoundingClientRect()
+        const who = row.querySelector('.tz-moments__who-text')!.getBoundingClientRect()
+        const state = row.querySelector('.tz-moments__state')!.getBoundingClientRect()
+        return { who: who.width, state: state.right, row: r.right, col: col.right, text: row.textContent }
+      }),
+    )
+    for (const b of boxes) {
+      // Las dos siglas a la vista (no una columna de 0 px); el chip, dentro de la fila, y la fila, dentro de la columna.
+      expect(b.who, b.text!).toBeGreaterThan(40)
+      expect(b.state, b.text!).toBeLessThanOrEqual(b.row + 0.5)
+      expect(b.row, b.text!).toBeLessThanOrEqual(b.col + 0.5)
+    }
+  })
+})
