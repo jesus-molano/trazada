@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Controles del reproductor: reproducir/pausa (placa maciza de pintura, D47), velocidades (la elegida, placa maciza),
- * los botones del hueco `replay-dock` y la lectura de vuelta y reloj. Iconos del registro (D30).
+ * los botones del hueco `replay-dock` y la lectura de vuelta y reloj. Iconos del registro (D30). Al cambiar entre
+ * reproducir y pausa, el icono hace un fundido corto (21b, `tz-swap` de base.css); el reloj nunca se anima.
  */
 import { RATES } from '~/engine/clock/SessionClock'
 import { formatClock } from '~/engine/format/time'
@@ -30,7 +31,10 @@ const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 
       :data-playing="playback.playing"
       @click="playback.toggle()"
     >
-      <TzIcon :name="playback.playing ? 'pause' : 'play'" size="lg" class="tz-control__icon" />
+      <!-- Play ↔ pausa: un icono deja paso al otro con un fundido corto (21b; con reduced motion, al instante). -->
+      <Transition name="tz-swap">
+        <TzIcon :key="playback.playing ? 'pause' : 'play'" :name="playback.playing ? 'pause' : 'play'" size="lg" class="tz-control__icon" />
+      </Transition>
     </button>
 
     <div class="tz-rates" role="group" :aria-label="t('controls.rate')">
@@ -105,6 +109,11 @@ const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 
 
 .tz-control__icon {
   fill: currentColor;
+}
+
+/* Los dos iconos del cambio play ↔ pausa ocupan la misma celda mientras dura (el botón no cambia de tamaño). */
+.tz-control--play > * {
+  grid-area: 1 / 1;
 }
 
 .tz-rates {

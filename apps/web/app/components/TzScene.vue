@@ -15,6 +15,7 @@ import { mapHalfWidth, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { sceneProbe, sceneStats, type TrackScreenSample } from '~/replay/debug'
 import { SCENE_LAYERS } from '~/slots/scene-layers'
+import { LAYOUT_SETTLED_EVENT, RESIZING_ATTR } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 import { useSettingsStore } from '~/stores/settings'
@@ -238,10 +239,15 @@ function layoutKey(el: HTMLCanvasElement): string {
   return `${el.clientWidth}x${el.clientHeight}|${r(i.left)},${r(i.right)},${r(i.bottom)}`
 }
 
-/** El lienzo o los paneles han cambiado de tamaño (p. ej. la clasificación se llena después del primer encuadre). */
+/**
+ * El lienzo o los paneles han cambiado de tamaño (p. ej. la clasificación se llena después del primer encuadre). Mientras
+ * se arrastra el asa de un panel (ítem 15, `RESIZING_ATTR`), no: se reencuadra una vez al soltarla
+ * (`LAYOUT_SETTLED_EVENT`), no en cada frame del arrastre.
+ */
 function onResize() {
   const cam = camera.value
   if (!canvasEl || !cam || !controls) return
+  if (document.querySelector(`[${RESIZING_ATTR}]`)) return
   const key = layoutKey(canvasEl)
   if (key === lastSize) return
   lastSize = key
@@ -343,6 +349,7 @@ const { hud: scrubHud } = useSceneGestures({
 function detach() {
   resizeObserver?.disconnect()
   resizeObserver = null
+  window.removeEventListener(LAYOUT_SETTLED_EVENT, onResize)
   canvasEl?.removeEventListener('webglcontextlost', onLost)
   canvasEl?.removeEventListener('webglcontextrestored', onRestored)
   controls?.dispose()
@@ -379,6 +386,7 @@ function onReady(context: TresContext) {
     resizeObserver = new ResizeObserver(onResize)
     resizeObserver.observe(canvasEl)
     for (const el of document.querySelectorAll(INSET_SOURCES)) resizeObserver.observe(el)
+    window.addEventListener(LAYOUT_SETTLED_EVENT, onResize)
   }
   sceneProbe.trackScreen = trackScreen
   sceneStats.pitLaneLengthM = model.pitlane?.length ?? 0

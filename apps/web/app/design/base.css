@@ -397,3 +397,28 @@ button {
     transform: scale(1.25);
   }
 }
+
+/* Aparición solo con opacidad: para los paneles que mide la escena (un desplazamiento movería su encuadre, D42). */
+@keyframes tz-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Transiciones de Vue comunes (`<Transition name="…">`), con las duraciones y curvas de los tokens (0 con reduced
+ * motion: Vue las resuelve al instante). `tz-swap`: un icono que cambia por otro en el mismo sitio (play ↔ pausa),
+ * con fundido y una escala corta; los dos ocupan la misma celda mientras dura.
+ */
+.tz-swap-enter-active,
+.tz-swap-leave-active {
+  transition:
+    opacity var(--tz-dur-fast) var(--tz-ease-standard),
+    transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+.tz-swap-enter-from,
+.tz-swap-leave-to {
+  opacity: 0;
+  transform: scale(0.6);
+}

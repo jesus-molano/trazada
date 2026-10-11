@@ -50,6 +50,39 @@ test('texto original tal cual y tipo traducido', async ({ page }) => {
   await expect(page.getByTestId('rc-message').first()).toBeHidden()
 })
 
+/*
+ * Microinteracciones (21b, D42): un mensaje que llega con reproducción a ×1 entra con su transición y destella una vez
+ * (`data-fresh`, que se va solo); tras un seek, la lista cambia al instante (ningún elemento `*-enter-active`).
+ */
+test('tras un seek la lista cambia al instante: ningún mensaje entra con transición ni destella', async ({ page }) => {
+  await open(page)
+  const { startMs, endMs, times } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs, times: h.raceControlTimes }))
+  for (const t of [times[3]! + 10, endMs, startMs, times[times.length - 1]! + 10]) {
+    await seek(page, t)
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)))
+    const moving = await page.evaluate(() => ({
+      entering: document.querySelectorAll('[data-testid="race-control"] [class*="-enter-active"]').length,
+      fresh: document.querySelectorAll('[data-testid="rc-message"][data-fresh]').length,
+    }))
+    expect(moving).toEqual({ entering: 0, fresh: 0 })
+  }
+})
+
+test('a ×1, el mensaje que llega destella una vez (data-fresh) y luego deja de hacerlo', async ({ page }) => {
+  await open(page)
+  const times = await handle(page, (h) => h.raceControlTimes)
+  // Un mensaje sin otro en los 2 s anteriores: se llega reproduciendo desde 1,5 s antes.
+  const target = times.find((t, i) => i > 0 && t - times[i - 1]! > 2_000)!
+  await seek(page, target - 1_500)
+  await page.getByTestId('rate-1').click()
+  await page.getByTestId('replay-title').click()
+  await page.keyboard.press(' ')
+  const msg = page.locator(`[data-testid="rc-message"][data-t="${target}"]`)
+  await expect(msg).toHaveAttribute('data-fresh', '', { timeout: 10_000 })
+  await expect(msg).not.toHaveAttribute('data-fresh', { timeout: 5_000 })
+  await page.keyboard.press(' ')
+})
+
 test('banderas por sector en trackState: 1 s después del mensaje y 1 s después del CLEAR', async ({ page }) => {
   await open(page)
   const rc = await page.evaluate(async () => {

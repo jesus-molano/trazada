@@ -13,6 +13,7 @@ import {
 } from '~/replay/resume'
 import { createReplayRuntime, defaultInitialMs } from '~/replay/runtime'
 import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
+import { useLayoutStore } from '~/stores/layout'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 
@@ -23,7 +24,15 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const session = useSessionStore()
 const playback = usePlaybackStore()
+const layout = useLayoutStore()
 useReplayShortcuts()
+
+/**
+ * Diseños y anchos de los paneles (ítem 15): «Espectador» o «Análisis» y los anchos de las asas, recortados para que
+ * el mapa conserve su mínimo; en tablet vertical, sin anchos (la franja de abajo de siempre).
+ */
+const root = ref<HTMLElement | null>(null)
+const { widths, ranges, vars: layoutVars, resizable } = useReplayLayout()
 
 /** Prioridad del título en la cabecera (D44): lo secundario se acorta antes que el título (useHeaderFit). */
 const bar = ref<HTMLElement | null>(null)
@@ -35,7 +44,11 @@ const parsed = computed(() => parseSessionId(id.value))
 
 // La página se prerenderiza sin `?s=`: hasta montar, el título es el genérico (sin desajuste de hidratación).
 const mounted = ref(false)
-onMounted(() => (mounted.value = true))
+onMounted(() => {
+  mounted.value = true
+  // El diseño guardado (por navegador, D41), ya en el cliente: el HTML prerenderizado es el de por defecto.
+  layout.hydrate()
+})
 const title = computed(() => {
   const m = session.manifest
   if (m) return `${m.session.event} · ${t(`session.${m.session.type}`)} · ${m.session.season}`
@@ -136,7 +149,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="tz-replay">
+  <section ref="root" class="tz-replay" :class="`is-${layout.preset}`" :style="layoutVars" :data-layout="layout.preset">
     <LazyTzScene v-if="sceneEnabled" />
 
     <!--
@@ -180,14 +193,52 @@ onBeforeUnmount(() => {
       <TzLoadPanel />
     </div>
 
+    <!--
+      Escenario: la clasificación a la izquierda y la columna derecha, cada una con su asa en el borde que da al mapa
+      (ítem 15; en tablet vertical, sin asas). Al montarse, aparecen escalonados con un fundido (solo opacidad: la escena
+      los mide para encuadrar, D42).
+    -->
     <div v-if="playback.attached" class="tz-replay__stage">
-      <TzLeaderboard :key="`lb-${session.id}`" />
-      <aside class="tz-replay__side">
-        <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" />
+      <TzLeaderboard :key="`lb-${session.id}`" class="tz-replay__lb" :preset="layout.preset">
+        <TzResizeHandle
+          v-if="resizable"
+          class="tz-replay__resize is-lb"
+          panel="lb"
+          edge="end"
+          :value="widths.lb"
+          :min="ranges.lb.min"
+          :max="ranges.lb.max"
+          :label="t('layout.resize.lb')"
+          :hint="t('layout.resize.hint')"
+          controls="tz-leaderboard"
+          :target="root"
+          css-var="--replay-lb-w"
+          @commit="(w: number) => layout.setWidth('lb', w)"
+          @reset="layout.setWidth('lb', null)"
+        />
+      </TzLeaderboard>
+      <aside id="tz-replay-side" class="tz-replay__side">
+        <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" :preset="layout.preset" />
         <TzRaceControl :key="`rc-${session.id}`" />
       </aside>
+      <TzResizeHandle
+        v-if="resizable"
+        class="tz-replay__resize is-side"
+        panel="side"
+        edge="start"
+        :value="widths.side"
+        :min="ranges.side.min"
+        :max="ranges.side.max"
+        :label="t('layout.resize.side')"
+        :hint="t('layout.resize.hint')"
+        controls="tz-replay-side"
+        :target="root"
+        css-var="--replay-side-w"
+        @commit="(w: number) => layout.setWidth('side', w)"
+        @reset="layout.setWidth('side', null)"
+      />
     </div>
-    <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" />
+    <TzReplayDock v-if="playback.attached" :key="session.id ?? undefined" class="tz-replay__dock" />
     <!-- Hojas, tarjetas y avisos de otras funciones (hueco components/replay-overlays/, D29). -->
     <template v-if="playback.attached">
       <component :is="o.component" v-for="o in REPLAY_OVERLAYS" :key="`${o.name}-${session.id}`" />
@@ -199,14 +250,21 @@ onBeforeUnmount(() => {
 <style scoped>
 /*
  * Columna a toda la ventana (layouts/replay.vue): cabecera, escenario (paneles laterales) y dock; la escena 3D ocupa
- * todo el fondo. Anchos de los paneles con los tokens de densidad (D44); las etiquetas «Estimado» de la escena flotan
- * bajo la cabecera, a la izquierda de la columna derecha (`--replay-over-*`, que usa TzSceneTools).
+ * todo el fondo. Anchos de los paneles con los tokens de densidad (D44) o los del diseño y las asas (ítem 15: la página
+ * pone `--replay-lb-w` y `--replay-side-w` en línea, salvo en tablet vertical); las etiquetas «Estimado» de la escena
+ * flotan bajo la cabecera, a la izquierda de la columna derecha (`--replay-over-*`, que usa TzSceneTools).
  */
 .tz-replay {
   --replay-side-w: var(--tz-panel-w);
   --replay-over-right: calc(var(--tz-space-6) + var(--replay-side-w) + var(--tz-space-3));
-  /* Hasta la clasificación (su ancho, más el de las columnas de otras funciones y el margen), sin pisarla. */
-  --replay-over-max: calc(100% - var(--replay-over-right) - var(--tz-panel-w) - var(--tz-space-12) - var(--tz-space-6));
+  /*
+   * Hasta la clasificación (su ancho, más el de sus columnas extra —las de «Análisis», `--replay-lb-more`— y el
+   * margen), sin pisarla.
+   */
+  --replay-over-max: calc(
+    100% - var(--replay-over-right) - var(--replay-lb-w, var(--tz-panel-w)) - var(--replay-lb-more, 0px) - var(--tz-space-12) -
+      var(--tz-space-6)
+  );
   position: relative;
   display: flex;
   flex-direction: column;
@@ -470,6 +528,48 @@ onBeforeUnmount(() => {
   }
 }
 
+/* «Análisis»: con un coche elegido, la dirección de carrera conserva más alto (unos cuantos mensajes a la vista). */
+.tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+  --replay-rc-min: 200px;
+}
+
+@media (height <= 860px) {
+  .tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: 120px;
+  }
+}
+
+/*
+ * Asas de los anchos (ítem 15): sobre el borde que da al mapa, la mitad sobre el panel. La de la clasificación va
+ * dentro de ella (su hueco por defecto); la de la columna derecha, en el escenario, a su izquierda.
+ */
+.tz-replay__resize.is-lb {
+  right: calc(var(--tz-resize-hit) / -2);
+}
+
+.tz-replay__resize.is-side {
+  right: calc(var(--replay-side-w) - var(--tz-resize-hit) / 2);
+}
+
+/*
+ * Al montarse el replay, la clasificación, la columna derecha y el dock aparecen escalonados con un fundido (21b): solo
+ * opacidad, porque la escena los mide para encuadrar (D42). Con reduced motion, la duración y el paso valen 0. Relleno
+ * solo hacia atrás (invisibles mientras esperan su turno): al acabar, la animación no deja nada puesto.
+ */
+.tz-replay__lb,
+.tz-replay__side,
+.tz-replay__dock {
+  animation: tz-fade var(--tz-dur-base) var(--tz-ease-enter) backwards;
+}
+
+.tz-replay__side {
+  animation-delay: var(--tz-stagger);
+}
+
+.tz-replay__dock {
+  animation-delay: calc(2 * var(--tz-stagger));
+}
+
 /* Tablet en horizontal y portátiles pequeños: paneles más estrechos. */
 @media (width <= 1100px) {
   .tz-replay {
@@ -505,6 +605,11 @@ onBeforeUnmount(() => {
     inset: auto;
     width: auto;
     height: 34vh;
+  }
+
+  /* «Análisis» (ítem 15): sin anchos ni asas en vertical; la clasificación, con sus columnas extra, toma más franja. */
+  .tz-replay.is-analysis .tz-replay__stage {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   }
 }
 

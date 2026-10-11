@@ -23,7 +23,7 @@ export default withNuxt(
       // Claves que se usan con nombre dinámico (t(`session.${type}`), etc.).
       '@intlify/vue-i18n/no-unused-keys': [
         'warn',
-        { extensions: ['.ts', '.vue'], ignores: ['/^session\\./', '/^replay\\.stage\\./', '/^replay\\.error\\./', '/^timeline\\.(flag|window)\\./', '/^compound\\./', '/^telemetry\\.drs\\./', '/^rc\\.kind\\./', '/^estimated\\.(fields|hints)\\./', '/^trackStatus\\.(neutral|sector)\\./', '/^manager\\.(phase|error)\\./', '/^howDrawn\\./', '/^sessionNotes\\.note\\./', '/^scene\\.toolGroups\\./'] },
+        { extensions: ['.ts', '.vue'], ignores: ['/^session\\./', '/^replay\\.stage\\./', '/^replay\\.error\\./', '/^timeline\\.(flag|window)\\./', '/^compound\\./', '/^telemetry\\.drs\\./', '/^rc\\.kind\\./', '/^estimated\\.(fields|hints)\\./', '/^trackStatus\\.(neutral|sector)\\./', '/^manager\\.(phase|error)\\./', '/^howDrawn\\./', '/^sessionNotes\\.note\\./', '/^scene\\.toolGroups\\./', '/^layout\\.cells\\.[a-zA-Z]+\\.head$/'] },
       ],
       '@intlify/vue-i18n/no-v-html': 'error',
     },
