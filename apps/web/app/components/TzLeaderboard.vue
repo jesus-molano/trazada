@@ -464,6 +464,17 @@ function compareRole(car: string): 'a' | 'b' | null {
   color: var(--tz-text-faint);
 }
 
+/*
+ * Sobre el tinte de la fila elegida, el texto tenue no llega a 4,5:1 (--tz-text-faint solo va sobre superficies lisas;
+ * lo comprueba design/tokens.test.ts): «sin señal» y las celdas sin dato pasan al texto atenuado. El chip «sin señal»
+ * sigue diciéndolo sin depender del color.
+ */
+.is-selected.is-nosignal .tz-lb__tla,
+.is-selected.is-nosignal .tz-lb__gap,
+.is-selected .tz-lb__btn :deep(.tz-lbcell.is-none) {
+  color: var(--tz-text-muted);
+}
+
 /* Posición en la condensada, como en una torre de tiempos pintada. */
 .tz-lb__pos {
   font-family: var(--tz-font-display);
