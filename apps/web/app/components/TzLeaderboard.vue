@@ -595,7 +595,12 @@ function compareRole(car: string): 'a' | 'b' | null {
   scrollbar-gutter: stable;
 }
 
+/*
+ * No encoge (`flex: none`): con `overflow: hidden` (lo pide `scrollbar-gutter`), su alto mínimo automático sería 0 y, con
+ * la clasificación más baja que su contenido, la columna lo recortaba a la mitad. Lo que falte lo cede la lista.
+ */
 .tz-lb__cols {
+  flex: none;
   overflow: hidden;
   scrollbar-gutter: stable;
   display: grid;

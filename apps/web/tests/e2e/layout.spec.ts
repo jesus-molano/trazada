@@ -2,7 +2,8 @@
  * Escritorio y tablet: sin scroll horizontal en la página ni en los paneles; en tablet (táctil), tocar un
  * coche lo selecciona y arrastrar el timeline con el dedo mueve el reloj. La cabecera del replay va en una sola fila
  * también con todo lo que trae una carrera dev (D44), sin esconder ninguna etiqueta «Estimado»; con muchas banderas, el
- * estado de pista pasa a una fila propia (nunca una columna de chips).
+ * estado de pista pasa a una fila propia (nunca una columna de chips). En el iPad, con un coche elegido, ninguna celda
+ * ni gráfica de la telemetría queda cortada a medias y la columna derecha no se desborda.
  */
 import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -365,6 +366,70 @@ for (const vp of VIEWPORTS) {
       expect(without.level.split(' ')).not.toContain('4')
     })
   })
+}
+
+/*
+ * Telemetría en el iPad (regresión del cierre): el panel cortaba una gráfica a la altura de su primera línea y la
+ * dirección de carrera, reducida a su cabecera, asomaba por debajo de la columna. Ahora cada celda y cada mini gráfica
+ * va entera o no va, y nada se sale de la columna derecha; en «Análisis», los rótulos de las columnas de la
+ * clasificación se ven enteros.
+ */
+for (const vp of VIEWPORTS.filter((v) => v.touch)) {
+  for (const preset of ['spectator', 'analysis'] as const) {
+    test.describe(`${vp.name}, «${preset}»: telemetría con un coche elegido`, () => {
+      test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: true })
+
+      test('ninguna celda ni gráfica cortada a medias; la columna derecha y la dirección de carrera no se desbordan', async ({ page }) => {
+        await resetStorage(page)
+        await page.addInitScript((p) => localStorage.setItem('trazada.layout', JSON.stringify({ _v: 1, preset: p, presets: {} })), preset)
+        // Lo más alto que puede ser la cabecera (banderas en su fila propia) y la telemetría (con «Estimado»).
+        await serveLikeDevRace(page, { event: 'Japanese Grand Prix', flags: true })
+        await open(page)
+        await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', preset)
+        await page.locator('[data-testid="leaderboard"] [data-car]').nth(2).getByRole('button').click()
+        const panel = page.getByTestId('telemetry')
+        await expect(panel).toBeVisible()
+        await expect(panel.locator('[data-testid="estimated"][data-field="telemetry"]')).toBeVisible()
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))))
+        const fit = () =>
+          page.evaluate(() => {
+            const tel = document.querySelector<HTMLElement>('[data-testid="telemetry"]')!
+            const side = document.querySelector<HTMLElement>('.tz-replay__side')!
+            const rc = document.querySelector<HTMLElement>('.tz-rc')!
+            const box = tel.getBoundingClientRect()
+            const parts = [...tel.querySelectorAll('.tz-tel__cell, .tz-chart')].map((el) => {
+              const r = el.getBoundingClientRect()
+              const whole = r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5
+              return {
+                name: el.querySelector('dt')?.textContent ?? el.getAttribute('aria-label'),
+                cell: el.classList.contains('tz-tel__cell'),
+                state: r.height === 0 ? 'hidden' : whole ? 'whole' : 'cut',
+              }
+            })
+            return {
+              cut: parts.filter((p) => p.state === 'cut').map((p) => p.name),
+              cells: parts.filter((p) => p.cell && p.state === 'whole').length,
+              side: side.scrollHeight - side.clientHeight,
+              rc: rc.scrollHeight - rc.clientHeight,
+              rcBottom: rc.getBoundingClientRect().bottom - side.getBoundingClientRect().bottom,
+            }
+          })
+        await expect.poll(async () => (await fit()).cut).toEqual([])
+        const f = await fit()
+        // Las seis celdas (velocidad, marcha, rpm, acelerador, freno y DRS), enteras.
+        expect(f.cells).toBeGreaterThanOrEqual(6)
+        expect(f.side).toBeLessThanOrEqual(0)
+        expect(f.rc).toBeLessThanOrEqual(1)
+        expect(f.rcBottom).toBeLessThanOrEqual(0.5)
+        if (preset === 'analysis') {
+          const cols = page.getByTestId('lb-columns')
+          await expect(cols).toBeVisible()
+          expect(await cols.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0)
+        }
+        expect(await overflowing(page)).toEqual([])
+      })
+    })
+  }
 }
 
 test.describe('girar la tablet', () => {

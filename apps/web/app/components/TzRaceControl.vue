@@ -158,10 +158,12 @@ function tone(kind: string): string {
 </template>
 
 <style scoped>
+/* Nada se pinta fuera de su borde redondeado (con poco alto, la lista asomaba por debajo del panel). */
 .tz-rc {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
@@ -169,9 +171,21 @@ function tone(kind: string): string {
 }
 
 .tz-rc.is-open {
-  /* Ocupa lo que deje la telemetría (base 0): su lista larga no le quita sitio. */
+  /* Ocupa lo que deje la telemetría (base 0): su lista larga no le quita sitio. Su alto no depende de lo que contiene. */
   flex: 1 1 0;
-  min-height: var(--replay-rc-min, 150px);
+  min-height: var(--replay-rc-floor, 150px);
+  container-type: size;
+}
+
+/*
+ * Con sitio solo para la cabecera (un coche elegido en una pantalla baja o en la tablet): la lista no asoma a medias.
+ * 5,5 rem de contenido: la cabecera con su zona táctil (44 px) y un mensaje de una línea; por debajo del mínimo de «un
+ * mensaje» que la telemetría le puede pedir (`--replay-rc-one`, 6 rem con su borde, en pages/replay.vue).
+ */
+@container (height < 5.5rem) {
+  .tz-rc__list {
+    display: none;
+  }
 }
 
 .tz-rc__heading {

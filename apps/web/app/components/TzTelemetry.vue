@@ -14,6 +14,12 @@
  *
  * Diseño «Análisis» (ítem 15): gráficas más altas (`--tz-chart-h-tall`) y con una ventana de 40 s. Al elegir otro coche
  * (o abrir el panel), la cabecera destella una vez (21b): solo su fondo, nunca las cifras ni el texto.
+ *
+ * Sin sitio (tablets, o «Análisis» con sus gráficas altas): una mini gráfica va entera o no va (`fitCharts`). Primero la
+ * dirección de carrera cede alto hasta quedarse con un mensaje; después se quita la gráfica de pedales y luego la de
+ * velocidad (sus cifras siguen en las celdas); y, si ni así caben las celdas, de la dirección de carrera queda solo su
+ * cabecera. Si aun así el panel no cabe, se desplaza y un fundido abajo dice que hay más (en táctil no se ve la barra
+ * de desplazamiento).
  */
 import type uPlot from 'uplot'
 import { token } from '~/design/tokens'
@@ -147,6 +153,71 @@ function drawCharts(car: string, timeMs: number) {
   pedalChart.value?.setData([x, throttle, brake])
 }
 
+/*
+ * Gráficas enteras o ninguna: se mide al cambiar de tamaño el panel, su columna o lo que contiene (como mucho una vez
+ * por frame; nunca en cada frame de la reproducción). Los atributos se escriben directos en el DOM: cada intento se mide
+ * en el mismo frame, sin pintar los intermedios.
+ */
+const panelEl = ref<HTMLElement | null>(null)
+/** La columna en la que va el panel: lo que se le pide a la dirección de carrera va en ella (`--replay-rc-fit`). */
+let fitSide: HTMLElement | null = null
+let fitRaf = 0
+let fitResize: ResizeObserver | null = null
+let fitMutation: MutationObserver | null = null
+
+const overflows = (el: HTMLElement) => el.scrollHeight > el.clientHeight + 1
+
+/** ¿Queda contenido por debajo de lo que se ve? Entonces, el fundido de abajo. */
+function markOverflow() {
+  const el = panelEl.value
+  if (!el) return
+  const more = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+  if (more !== el.hasAttribute('data-overflow')) el.toggleAttribute('data-overflow', more)
+}
+
+/** Lo que la telemetría le pide a la dirección de carrera (pages/replay.vue): nada, un mensaje o solo su cabecera. */
+function askRaceControl(floor: 'one' | 'head' | null) {
+  if (floor) fitSide?.style.setProperty('--replay-rc-fit', `var(--replay-rc-${floor})`)
+  else fitSide?.style.removeProperty('--replay-rc-fit')
+}
+
+function fitCharts() {
+  fitRaf = 0
+  const el = panelEl.value
+  if (!el) return
+  const charts = [...el.querySelectorAll<HTMLElement>(':scope > .tz-chart')]
+  askRaceControl(null)
+  for (const c of charts) c.removeAttribute('data-fit-hidden')
+  // Las gráficas antes que más mensajes de dirección de carrera.
+  if (overflows(el)) askRaceControl('one')
+  // De la última a la primera: los pedales antes que la velocidad.
+  for (let i = charts.length - 1; i >= 0 && overflows(el); i--) charts[i]!.setAttribute('data-fit-hidden', '')
+  // Las celdas, antes que el último mensaje.
+  if (overflows(el)) askRaceControl('head')
+  markOverflow()
+}
+
+function scheduleFit() {
+  if (!fitRaf) fitRaf = requestAnimationFrame(fitCharts)
+}
+
+/** El panel, su columna y cada cosa que contiene (las gráficas se montan de nuevo al cambiar de diseño o de vista). */
+function observeFit() {
+  const el = panelEl.value
+  if (fitSide !== (el?.parentElement ?? null)) {
+    askRaceControl(null)
+    fitSide = el?.parentElement ?? null
+  }
+  if (!fitResize || !el) return
+  fitResize.disconnect()
+  fitResize.observe(el)
+  if (el.parentElement) fitResize.observe(el.parentElement)
+  for (const child of el.children) fitResize.observe(child)
+  fitMutation?.disconnect()
+  fitMutation?.observe(el, { childList: true })
+  scheduleFit()
+}
+
 let off: (() => void) | null = null
 let offEscape: (() => void) | null = null
 onMounted(() => {
@@ -154,10 +225,21 @@ onMounted(() => {
   // Esc cierra antes la comparación que el seguimiento y la selección (ESC_PRIORITY).
   offEscape = registerEscape(ESC_PRIORITY.compare, { active: () => comparing.value, run: () => compare.close() })
   rt.requestFrame()
+  if (typeof ResizeObserver !== 'undefined' && typeof MutationObserver !== 'undefined') {
+    fitResize = new ResizeObserver(scheduleFit)
+    fitMutation = new MutationObserver(observeFit)
+    observeFit()
+  }
 })
+watch(panelEl, observeFit, { flush: 'post' })
 onBeforeUnmount(() => {
   off?.()
   offEscape?.()
+  fitResize?.disconnect()
+  fitMutation?.disconnect()
+  if (fitRaf) cancelAnimationFrame(fitRaf)
+  fitRaf = 0
+  askRaceControl(null)
 })
 watch(
   () => playback.selectedCar,
@@ -187,11 +269,13 @@ watch(
 <template>
   <section
     v-if="driver"
+    ref="panelEl"
     class="tz-tel"
     :aria-label="t('telemetry.title', { tla: driver.tla })"
     :style="{ '--team': driver.color || 'var(--tz-team-unknown)' }"
     data-testid="telemetry"
     :data-car="driver.number"
+    @scroll.passive="markOverflow"
   >
     <header class="tz-tel__head">
       <!-- Destello único del fondo al cambiar de coche (decorativo; por debajo del texto). -->
@@ -306,7 +390,7 @@ watch(
 .tz-tel {
   /* Prioridad sobre la dirección de carrera: la telemetría (con sus gráficas) no encoge; si no cabe, scroll. */
   flex: 0 0 auto;
-  max-height: calc(100% - var(--replay-rc-min, 150px) - var(--tz-panel-gap));
+  max-height: calc(100% - var(--replay-rc-floor, 150px) - var(--tz-panel-gap));
   min-height: 0;
   overflow-y: auto;
   padding: 0 var(--tz-panel-pad) var(--tz-space-3);
@@ -316,6 +400,16 @@ watch(
   background: var(--tz-overlay);
   box-shadow: var(--tz-shadow-panel);
   accent-color: var(--tz-accent);
+}
+
+/* Hay más por debajo (el panel no cabe entero en su columna): un fundido abajo lo dice (con los tokens; solo alfa). */
+.tz-tel[data-overflow] {
+  mask-image: linear-gradient(to bottom, var(--tz-bg) calc(100% - var(--tz-space-8)), transparent);
+}
+
+/* Una mini gráfica que no cabe entera no va (fitCharts): nunca a medias. */
+.tz-tel > .tz-chart[data-fit-hidden] {
+  display: none;
 }
 
 .tz-tel__estimated {

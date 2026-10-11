@@ -554,6 +554,15 @@ onBeforeUnmount(() => {
   gap: var(--tz-panel-gap);
   width: var(--replay-side-w);
   pointer-events: none;
+  /*
+   * Alto mínimo de la dirección de carrera bajo la telemetría (`--replay-rc-floor`, que leen las dos): el del diseño
+   * (`--replay-rc-min`, más abajo) o, si con él no caben enteras las gráficas o las celdas de la telemetría, lo que esta
+   * le pida (`--replay-rc-fit`, TzTelemetry): un mensaje (`--replay-rc-one`; con menos alto, la lista no asoma) o solo
+   * la cabecera (`--replay-rc-head`). Nunca más que el del diseño.
+   */
+  --replay-rc-one: 6rem;
+  --replay-rc-head: 48px;
+  --replay-rc-floor: min(var(--replay-rc-min, 150px), var(--replay-rc-fit, 100vh));
 }
 
 .tz-replay__side > * {
@@ -568,7 +577,7 @@ onBeforeUnmount(() => {
 /* Portátiles bajos (≤ 860 px de alto): con un coche elegido, de la dirección de carrera solo queda su cabecera. */
 @media (height <= 860px) {
   .tz-replay__side:has([data-testid='telemetry']) {
-    --replay-rc-min: 48px;
+    --replay-rc-min: var(--replay-rc-head);
   }
 }
 
@@ -654,6 +663,23 @@ onBeforeUnmount(() => {
   /* «Análisis» (ítem 15): sin anchos ni asas en vertical; la clasificación, con sus columnas extra, toma más franja. */
   .tz-replay.is-analysis .tz-replay__stage {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  /*
+   * Con un coche elegido, la telemetría manda: la franja crece (en 34vh no cabían sus cifras) y de la dirección de
+   * carrera queda al menos su cabecera (también en «Análisis»). Las mini gráficas que no quepan enteras no van.
+   */
+  .tz-replay__stage:has([data-testid='telemetry']) > * {
+    max-height: 46vh;
+  }
+
+  .tz-replay__stage:has([data-testid='telemetry']) > .tz-replay__side {
+    height: 46vh;
+  }
+
+  .tz-replay .tz-replay__side:has([data-testid='telemetry']),
+  .tz-replay.is-analysis .tz-replay__side:has([data-testid='telemetry']) {
+    --replay-rc-min: var(--replay-rc-head);
   }
 }
 
