@@ -171,10 +171,13 @@ onBeforeUnmount(() => {
   white-space: normal;
 }
 
-/* Controles (menú de herramientas): lo que midan, sin recortar las pistas ⓘ que lleven dentro. */
+/*
+ * Controles (menú de herramientas): lo que midan, sin recortar las pistas ⓘ que lleven dentro, y como mucho 560 px: lo
+ * que no quepa (la leyenda del mapa de calor, sus vueltas) pasa a otra línea antes que tapar media pantalla.
+ */
 .tz-disclosure__panel.is-tools {
   width: max-content;
-  max-width: calc(100vw - 2 * var(--tz-space-4));
+  max-width: min(560px, calc(100vw - 2 * var(--tz-space-4)));
   max-height: none;
   overflow: visible;
   padding: var(--tz-space-2) var(--tz-space-3);

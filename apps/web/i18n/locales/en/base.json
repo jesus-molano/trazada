@@ -281,6 +281,7 @@
     "drsWhy": "Why?",
     "chartSpeed": "Speed over the last {s} s",
     "chartPedals": "Pedals over the last {s} s",
+    "chartNoData": "no data",
     "lap": "Lap",
     "lastLap": "Last lap",
     "estimateLap1": "Estimate",

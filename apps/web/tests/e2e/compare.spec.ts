@@ -146,8 +146,20 @@ test('Esc cierra antes la comparación que la selección; el fantasma se apaga y
   await page.waitForTimeout(500)
   expect(await page.evaluate(() => window.__trazada!.renders)).toBe(before)
 
+  // Encendido, el botón del fantasma es una placa maciza de pintura, como todo botón pulsado (D47); apagado, sin placa.
+  const plate = () => page.getByTestId('compare-ghost').evaluate((el) => getComputedStyle(el).backgroundColor)
+  const paint = await page.evaluate(() => {
+    const probe = document.createElement('i')
+    probe.style.background = 'var(--tz-accent)'
+    document.body.append(probe)
+    const bg = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return bg
+  })
+  await expect.poll(plate).toBe(paint)
   await page.getByTestId('compare-ghost').click()
   await expect(page.getByTestId('compare-ghost')).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(plate).not.toBe(paint)
   await expect.poll(async () => (await ghost(page)).drawCalls).toBe(0)
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.compare') ?? 'null'))).toEqual({ showGhost: false, _v: 1 })
   await page.getByTestId('compare-ghost').click()

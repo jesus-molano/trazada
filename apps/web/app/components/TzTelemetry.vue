@@ -280,8 +280,9 @@ watch(
     <header class="tz-tel__head">
       <!-- Destello único del fondo al cambiar de coche (decorativo; por debajo del texto). -->
       <span :key="driver.number" class="tz-tel__flash" aria-hidden="true" />
-      <span class="tz-tel__tla">{{ driver.tla }}</span>
-      <span class="tz-tel__name">{{ driver.first }} {{ driver.last }}</span>
+      <span class="tz-tel__tla" :title="`${driver.first} ${driver.last}`">{{ driver.tla }}</span>
+      <!-- Con poco sitio (tablet), el nombre no va acortado a una o dos letras: solo para lectores de pantalla. -->
+      <span class="tz-tel__name" data-testid="telemetry-name"><span class="tz-tel__name-text">{{ driver.first }} {{ driver.last }}</span></span>
       <!-- «En vivo» / «Comparar»: un conmutador en la cabecera (una fila más no cabría a 1280×800). -->
       <button
         type="button"
@@ -369,6 +370,7 @@ watch(
         :ranges="{ speed: [0, 360] }"
         :window-s="windowS"
         :tall="tall"
+        :no-data-label="t('telemetry.chartNoData')"
       />
       <TzMiniChart
         :key="`pedals-${preset}`"
@@ -381,6 +383,7 @@ watch(
         :ranges="{ pct: [0, 105], onoff: [0, 4] }"
         :window-s="windowS"
         :tall="tall"
+        :no-data-label="t('telemetry.chartNoData')"
       />
     </template>
   </section>
@@ -447,13 +450,29 @@ watch(
 }
 
 .tz-tel__name {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
+  container-type: inline-size;
   color: var(--tz-text-muted);
   font-size: var(--tz-text-xs);
+}
+
+.tz-tel__name-text {
+  display: block;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Menos de unas seis letras («Le…», «Kimi A…» no dicen nada junto a la sigla): fuera de la vista, no del nombre accesible. */
+@container (width < 3.5em) {
+  .tz-tel__name-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 
 .tz-tel__compare,

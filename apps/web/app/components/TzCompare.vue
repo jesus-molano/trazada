@@ -406,9 +406,12 @@ watch(
 }
 
 .tz-cmp__ghost {
+  position: relative;
   display: inline-grid;
   flex: none;
+  align-self: stretch;
   place-items: center;
+  min-width: 28px;
   padding: 2px var(--tz-space-2);
   border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-sm);
@@ -417,9 +420,25 @@ watch(
   cursor: pointer;
 }
 
+/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
+.tz-cmp__ghost::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) min(0px, calc((100% - var(--tz-hit-min)) / 2));
+}
+
+/* Activado: placa maciza de pintura, como todo botón pulsado (D47); el filo de abajo, del color de B (el fantasma es B). */
 .tz-cmp__ghost[aria-pressed='true'] {
-  border-color: var(--tz-compare-b);
-  color: var(--tz-text);
+  border-color: var(--tz-accent);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+  box-shadow: inset 0 -3px 0 var(--tz-compare-b);
+}
+
+@media (hover: hover) {
+  .tz-cmp__ghost:hover:not([aria-pressed='true']) {
+    border-color: var(--tz-accent);
+  }
 }
 
 .tz-cmp__delta {

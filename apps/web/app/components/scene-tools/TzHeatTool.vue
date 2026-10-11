@@ -170,7 +170,9 @@ export const group = 'layers'
   color: var(--tz-text-muted);
 }
 
+/* La leyenda, en su propia línea bajo los selectores (el menú tiene un ancho máximo). */
 .tz-heat__legend {
+  flex: 1 1 100%;
   flex-wrap: wrap;
 }
 
