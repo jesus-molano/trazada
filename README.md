@@ -40,10 +40,14 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Realización automática (menú «Cámara» o tecla T): la cámara elige sola el duelo más cerrado, con persecución y cámaras fijas en las curvas, y se apaga en cuanto tocas algo.
 - Colores de sector (morado, verde y amarillo) en la clasificación y en el panel del coche, calculados con los tiempos de sector oficiales.
 - Hoja «Análisis» con el race trace, el ritmo vuelta a vuelta y los stints de neumáticos, todo con los tiempos oficiales. Las vueltas con boxes, coche de seguridad o anuladas se marcan, no se quitan, y «Sin spoilers» enseña solo lo que ha pasado hasta el momento del replay.
+- Momentos: adelantamientos confirmados por el orden oficial en la línea de meta (con su instante aproximado por GPS, marcado «Estimado») y duelos a menos de 1 s, en la pestaña «Momentos» y como marcas en el timeline. Los botones del reproductor (o las teclas coma y punto) saltan al momento anterior o al siguiente: adelantamientos, duelos, coches de seguridad y mensajes destacados de dirección de carrera.
 - Al pasar el ratón (o el dedo) por el timeline, una tarjeta con la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y lo que pasó cerca de ese instante.
 - Zonas de DRS sobre la pista (menú «Capas»), deducidas de la telemetría, en las temporadas con DRS (hasta 2025).
+- Mapa de calor de la pista (menú «Capas»): la velocidad que midió el coche elegido en una vuelta completa, o, al comparar dos pilotos, quién gana cada uno de los 25 minisectores. Los minisectores salen del GPS y llevan «Estimado», con empate por debajo de 50 ms; donde no hay muestra, la pista queda sin color.
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
 - Meteorología de la sesión en la cabecera (aire, pista, humedad, presión, lluvia y viento, con una brújula junto al trazado) y una franja con la temperatura de pista y la lluvia en el timeline.
+- Paleta de comandos (Ctrl+K o «/»; en tablet, un botón en el reproductor): escribe en español o en inglés «seguir VER», «vuelta 30 de NOR», «x4», «siguiente momento» o una hora del reloj. Lo que no está en los datos sale deshabilitado con su motivo.
+- Gestos en tablet: dos dedos en horizontal mueven el reloj (todo el ancho de la escena son 2 minutos), el pellizco hace zoom y un doble toque sobre un coche lo sigue (en escritorio, doble clic).
 - Ambiente de la escena (menú «Capas»): el cielo sigue la altura del sol sobre el circuito a esa hora (de día, al atardecer o de noche), con niebla en la parte lejana de la pista. Es decorativo: posición del sol, no el tiempo.
 - Datos honestos: lo que se estima se marca como «Estimado» y lo que falta se muestra como «sin dato».
 - En español e inglés, tema oscuro, escritorio y tablet.
