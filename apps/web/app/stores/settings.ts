@@ -13,7 +13,7 @@ interface SavedSettings {
   elevationScale: ElevationScale
   showBlueFlags: boolean
   gapMode: GapMode
-  /** Separación lateral solo visual de coches solapados (Estimado). Apagada por defecto. */
+  /** Separación lateral solo visual de coches solapados (Estimado). Activada por defecto desde D54. */
   separation: boolean
   /** Estimar el tiempo de la vuelta 1 en carrera (Estimado). Apagado por defecto. */
   estimateLap1: boolean
@@ -29,7 +29,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const elevationScale = ref<ElevationScale>(1)
   const showBlueFlags = ref(true)
   const gapMode = ref<GapMode>('leader')
-  const separation = ref(false)
+  // Activada por defecto (D54). Solo se guarda al cambiarla a mano: lo que ya guardó un navegador manda.
+  const separation = ref(true)
   const estimateLap1 = ref(false)
   const followDistance = ref(FOLLOW_DISTANCE_M)
   let hydrated = false

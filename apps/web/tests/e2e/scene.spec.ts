@@ -101,11 +101,13 @@ test('circuito: pit lane a ±10 % de las muestras y exageración marcada como Es
   expect(Math.abs(s.pitLaneLengthM - s.pitSamplesLengthM) / s.pitSamplesLengthM).toBeLessThanOrEqual(0.1)
 
   await expect(page.getByTestId('elevation-1')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('estimated')).toHaveCount(0)
+  // La de la altura (la de «Separar coches» está por defecto desde D54).
+  const elevation = page.locator('[data-testid="estimated"][data-field="elevation"]')
+  await expect(elevation).toHaveCount(0)
   const renders = await page.evaluate(() => window.__trazada!.renders)
   await page.getByTestId('elevation-3').click()
-  await expect(page.getByTestId('estimated')).toBeVisible()
-  await expect(page.getByTestId('estimated')).toContainText('×3')
+  await expect(elevation).toBeVisible()
+  await expect(elevation).toContainText('×3')
   await expect.poll(() => page.evaluate(() => window.__trazada!.renders)).toBeGreaterThan(renders)
   expect((await scene(page)).elevationScale).toBe(3)
 
@@ -113,7 +115,7 @@ test('circuito: pit lane a ±10 % de las muestras y exageración marcada como Es
   await openScene(page)
   await expect(page.getByTestId('elevation-3')).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('elevation-1').click()
-  await expect(page.getByTestId('estimated')).toHaveCount(0)
+  await expect(elevation).toHaveCount(0)
 })
 
 test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }) => {

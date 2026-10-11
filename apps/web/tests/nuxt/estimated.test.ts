@@ -94,11 +94,13 @@ const CASES: Record<EstimatedField, () => Promise<void>> = {
   async separation() {
     const settings = useSettingsStore()
     const w = await mountSuspended(TzSceneTools, { props: { flat: false, estimated: [] } })
-    expect(label(w, 'separation').exists()).toBe(false)
-    await w.find('[data-testid="toggle-separation"]').trigger('click')
+    // Activada por defecto (D54): con su etiqueta; al apagarla, sin ella.
     expect(settings.separation).toBe(true)
     expect(label(w, 'separation').exists()).toBe(true)
-    settings.setSeparation(false)
+    await w.find('[data-testid="toggle-separation"]').trigger('click')
+    expect(settings.separation).toBe(false)
+    expect(label(w, 'separation').exists()).toBe(false)
+    settings.setSeparation(true)
   },
   async lap1() {
     raceRuntime(100_000)

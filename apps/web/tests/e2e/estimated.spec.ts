@@ -23,18 +23,21 @@ test.beforeEach(async ({ page }) => {
 
 test('exageración de altura y separación visual: Estimado mientras están activas', async ({ page }) => {
   await open(page)
-  await expect(page.getByTestId('estimated')).toHaveCount(0)
+  // La separación visual está activada por defecto (D54): su etiqueta es la única al abrir.
+  await expect(page.getByTestId('toggle-separation')).toHaveAttribute('aria-pressed', 'true')
+  await expectLabel(page, 'separation')
+  await expect(page.getByTestId('estimated')).toHaveCount(1)
   await page.getByTestId('elevation-3').click()
   await expectLabel(page, 'elevation')
   await page.getByTestId('elevation-1').click()
   await expect(page.locator('[data-field="elevation"]')).toHaveCount(0)
 
   await page.getByTestId('toggle-separation').click()
-  await expect(page.getByTestId('toggle-separation')).toHaveAttribute('aria-pressed', 'true')
-  await expectLabel(page, 'separation')
-  await page.getByTestId('toggle-separation').click()
+  await expect(page.getByTestId('toggle-separation')).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('[data-field="separation"]')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => window.__trazada!.separatedCars)).toBe(0)
+  await page.getByTestId('toggle-separation').click()
+  await expectLabel(page, 'separation')
 })
 
 test('campos que el manifest declara estimados: posiciones, telemetría y estado de pista', async ({ page }) => {

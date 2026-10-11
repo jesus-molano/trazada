@@ -9,7 +9,7 @@ import { type ClockEvent, type Rate, SessionClock } from '~/engine/clock/Session
 import { LeaderboardEngine } from '~/engine/leaderboard/leaderboard'
 import { carTracks } from '~/engine/replay/motion'
 import { ReplayModel } from '~/engine/replay/ReplayModel'
-import { lateralOffsets } from '~/engine/replay/separation'
+import { LaneOffsets } from '~/engine/replay/separation'
 import { buildTimelineMarkers, type TimelineMarkers } from '~/engine/timeline/markers'
 import { TrackState } from '~/engine/trackstate/TrackState'
 import { type CircuitModel, circuitModel } from '~/engine/track/circuit'
@@ -37,13 +37,19 @@ export interface ReplayRuntime {
   readonly trackState: TrackState
   /** Mensajes de race control ordenados por t (el texto original, sin tocar). */
   readonly raceControl: readonly RaceControlEvent[]
-  /** Separación lateral solo visual (m, + izquierda) por coche, en el orden de `model.states`. */
+  /**
+   * Separación lateral solo visual (m, + izquierda) por coche, en el orden de `model.states`: la que se dibuja, que sigue
+   * al hueco de cada coche amortiguada en tiempo real (D54); tras un seek, directa.
+   */
   readonly offsets: Float32Array
   /** Activa la separación visual (opción del usuario, marcada como Estimado). */
   setSeparation(on: boolean): void
   /** Coches desplazados en el último frame. */
   readonly separatedCars: number
-  /** Se llama en cada frame con reproducción, y una vez tras cada seek/cambio en pausa. */
+  /**
+   * Se llama en cada frame con reproducción, una vez tras cada seek/cambio en pausa y, en pausa, mientras algún coche
+   * termina de cambiar de carril.
+   */
   onFrame(cb: (timeMs: number) => void): () => void
   onCoarse(cb: (state: CoarseState) => void): () => void
   /** La escena registra aquí su `invalidate` (modo on-demand). */
@@ -90,9 +96,10 @@ export function createReplayRuntime(session: LoadedSession, options: ReplayRunti
   const leaderboard = new LeaderboardEngine(type, session.timing, session.events, session.manifest.drivers)
   const trackState = new TrackState(session.events, playback.endMs)
   const raceControl = [...session.events.raceControl].sort((a, b) => a.t - b.t)
-  const offsets = new Float32Array(model.states.length)
+  /** Separación visual (D54): el hueco de cada coche y lo que se dibuja, que lo sigue amortiguado en tiempo real. */
+  const lanes = new LaneOffsets(model.states.length)
+  const offsets = lanes.current
   let separation = false
-  let separatedCars = 0
   let sceneHidden = false
   /** Extensiones de `ext`; `PENDING` mientras se crea una (para detectar una que se pide a sí misma). */
   const exts = new Map<string, unknown>()
@@ -118,6 +125,7 @@ export function createReplayRuntime(session: LoadedSession, options: ReplayRunti
     dirty = true
     pushCoarse()
     if (event === 'play') last = -1
+    if (event === 'seek') lanes.snap() // tras un salto, cada coche directo a su hueco: sin barrer la pista
   })
 
   const loop = (now: number) => {
@@ -125,13 +133,14 @@ export function createReplayRuntime(session: LoadedSession, options: ReplayRunti
     const delta = last < 0 ? 0 : now - last
     last = now
     clock.tick(delta)
-    if (clock.playing || dirty) {
+    // En pausa también, mientras algún coche termina de cambiar de carril.
+    if (clock.playing || dirty || lanes.moving) {
       dirty = false
       frames++
       const t = clock.timeMs
       model.update(t)
       trackState.update(t)
-      if (separation) separatedCars = lateralOffsets(model.states, circuit.centerline.length, offsets)
+      lanes.update(model.states, circuit.centerline.length, separation, delta)
       for (const l of frameListeners) l(t)
       if (!sceneHidden) invalidate?.()
       if (clock.playing && now - lastCoarse >= COARSE_INTERVAL_MS) {
@@ -155,15 +164,12 @@ export function createReplayRuntime(session: LoadedSession, options: ReplayRunti
     raceControl,
     offsets,
     setSeparation(on) {
+      // Al encenderla o apagarla, los coches se abren o se juntan con el mismo amortiguamiento.
       separation = on
-      if (!on) {
-        offsets.fill(0)
-        separatedCars = 0
-      }
       dirty = true
     },
     get separatedCars() {
-      return separatedCars
+      return lanes.separated
     },
     onFrame(cb) {
       frameListeners.add(cb)

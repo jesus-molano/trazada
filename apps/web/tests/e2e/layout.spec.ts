@@ -94,8 +94,8 @@ for (const vp of VIEWPORTS) {
       expect(await overflowing(page)).toEqual([])
       await page.locator('[data-testid="leaderboard"] [data-car]').nth(9).getByRole('button').click()
       await expect(page.getByTestId('telemetry')).toBeVisible()
+      // La separación visual ya está activada por defecto (D54): con la altura, dos etiquetas «Estimado».
       await page.getByTestId('elevation-3').click()
-      await page.getByTestId('toggle-separation').click()
       await expect(page.locator('[data-testid="estimated"]')).toHaveCount(2)
       expect(await overflowing(page)).toEqual([])
     })
