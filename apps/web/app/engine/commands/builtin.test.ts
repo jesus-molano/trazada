@@ -182,6 +182,35 @@ describe('ambigüedad, dorsales y vueltas', () => {
   })
 })
 
+describe('comparar no se cuela en los otros comandos', () => {
+  const compareKeys = (input: string, o?: PaletteContextOptions) => keys(input, o).filter((k) => k.startsWith('compare.'))
+
+  it('«seguir ver»: ni «Comparar con «seguir»» ni comparar con VER («ver» es VER, no el principio de «versus»)', () => {
+    // Antes: «ver» a medio escribir encajaba con «versus», el verbo de comparar, y «seguir» quedaba como un piloto
+    // desconocido: «Comparar con «seguir» — Sin dato: ningún piloto «seguir» en esta sesión».
+    expect(compareKeys('seguir ver')).toEqual([])
+    expect(compareKeys('seguir ver', { state: { selectedCar: '1' } })).toEqual([])
+    expect(compareKeys('sigue a vers')).toEqual([])
+    expect(top('seguir ver').key).toBe('drivers.follow.3')
+  })
+
+  it('«Comparar con «X»» sin piloto X solo cuando la consulta empieza por un verbo de comparar', () => {
+    expect(top('comparar xyz').key).toBe('compare.unknown')
+    expect(top('comparar xyz').disabled).toEqual({ key: 'palette.cmd.driverUnknown', params: { q: 'xyz' } })
+    expect(compareKeys('xyz vs')).toEqual([])
+    expect(compareKeys('parada vs')).toEqual([])
+  })
+
+  it('una sigla que también es el principio de un verbo es antes un piloto', () => {
+    // «ver nor»: VER y NOR, no «versus NOR».
+    expect(compareKeys('ver nor', { state: { selectedCar: '81' } })).toEqual([])
+    // Con el verbo escrito, «ver» es el piloto A.
+    expect(top('comparar ver y nor').key).toBe('compare.3.1')
+    expect(top('ver vs nor').key).toBe('compare.3.1')
+    expect(top('vs nor', { state: { selectedCar: '81' } }).key).toBe('compare.81.1')
+  })
+})
+
 describe('libres y clasificación: cada piloto lleva sus vueltas', () => {
   const fp = { type: 'fp1' } as const
 
