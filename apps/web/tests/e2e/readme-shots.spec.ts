@@ -5,7 +5,8 @@
  *
  * Muestran los datos de fixture (el extracto de test de Spa 2026, ver DATA_NOTICE.md); la portada, además, el
  * calendario real de la temporada (`trazada schedule`, de la caché de FastF1 o con red: hace falta
- * `cd pipeline && uv sync`). En español, a 1440×900 (y una de tablet).
+ * `cd pipeline && uv sync`). En español, a 1440×900 (y una de tablet). La portada levanta su propio servidor (el de
+ * `pnpm local`, con el gestor) en el puerto 4390, o en `README_PORT` si ese está ocupado.
  */
 import { type ChildProcess, spawn } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -57,6 +58,10 @@ async function openReplay(page: Page, baseURL: string, settings: object = {}) {
   await page.waitForTimeout(800)
 }
 
+/** Draw calls del mapa de calor (1 si está pintado). */
+const heatDrawCalls = (page: Page) =>
+  page.evaluate(() => (window.__trazada!.scene.heat as { drawCalls: number } | undefined)?.drawCalls ?? 0)
+
 /** Sigue a un coche por su número: quién va primero depende de la torre de tiempos del fixture, no de la escena. */
 async function follow(page: Page, car: string) {
   await page.locator(`[data-testid="leaderboard"] [data-car="${car}"]`).getByRole('button').click()
@@ -68,7 +73,7 @@ async function follow(page: Page, car: string) {
 test('portada: calendario de la temporada con banderas, trazados y descargas', async ({ page }) => {
   const dataDir = join(mkdtempSync(join(tmpdir(), 'trazada-readme-')), 'data')
   cpSync(resolve(here, '../fixtures/data'), dataDir, { recursive: true })
-  const port = 4390
+  const port = Number(process.env.README_PORT ?? 4390)
   const base = `http://127.0.0.1:${port}`
   const server: ChildProcess = spawn(process.execPath, [resolve(here, 'readme-server.mjs'), '--port', String(port), '--data', dataDir], { stdio: 'ignore' })
   try {
@@ -101,6 +106,30 @@ test('siguiendo a un coche: modelo 3D, telemetría y gráficas', async ({ page, 
   await page.evaluate((at) => window.__trazada!.seek(window.__trazada!.startMs + at), AT_MS + 15_000)
   await page.waitForTimeout(800)
   await shot(page, 'coche')
+})
+
+test('diseño «Análisis»: columnas de la clasificación, telemetría grande y mapa de calor', async ({ page, baseURL }) => {
+  await openReplay(page, baseURL!)
+  // A mitad de la vuelta 23 de GAS, en pista: ya cerró la 22 (entera dentro del extracto, con posiciones), que el
+  // mapa de calor pinta por velocidad (la última; su mejor vuelta es de antes del extracto y sería «sin dato»).
+  await page.evaluate(() => window.__trazada!.seek(4_590_000))
+  await page.getByTestId('layout-analysis').click()
+  await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
+  await expect(page.getByTestId('lb-columns')).toBeVisible()
+  await page.locator('[data-testid="leaderboard"] [data-car="10"]').getByRole('button').click()
+  await expect(page.getByTestId('telemetry')).toHaveAttribute('data-car', '10')
+  await page.getByTestId('tools-layers').click()
+  await page.getByTestId('heat-speed').click()
+  await page.getByTestId('heat-pick-last').click()
+  await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
+  await expect.poll(() => heatDrawCalls(page)).toBe(1)
+  // El menú «Capas» se cierra con un clic fuera (en el título, no en el lienzo) para que no tape el mapa; el calor
+  // sigue pintado.
+  await page.getByTestId('replay-title').click()
+  await expect(page.getByTestId('heat-tool')).toBeHidden()
+  await expect.poll(() => heatDrawCalls(page)).toBe(1)
+  await page.waitForTimeout(800)
+  await shot(page, 'analisis')
 })
 
 test('tablet en vertical', async ({ browser, baseURL }) => {
