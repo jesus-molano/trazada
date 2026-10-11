@@ -5,23 +5,35 @@
  * Identidad «Asfalto y pintura» (D47): superficies de asfalto (grises carbón neutros, algo cálidos, sin el azul
  * de pizarra), texto y acento de pintura de pista (blanco hueso), un único color de señal (amarillo-verde de alta
  * visibilidad) solo para el foco, la selección de texto y la traza de velocidad, y el motivo de piano (rojo/blanco)
- * solo bajo la marca y en la pestaña activa. Placa de pintura maciza = activado. El amarillo de seguridad queda
- * para las banderas y avisos.
+ * solo bajo la marca. Placa de pintura maciza = activado. El amarillo de seguridad queda para las banderas y avisos.
+ *
+ * «Herramienta pro» (D50, sobre D47): la interfaz es un marco continuo de cromo (cabecera, columnas y dock) con el mapa
+ * en una ventana redondeada; elevación por tono (más claro = más alto), sin sombras de tarjeta; casi sin bordes (solo
+ * filetes entre filas y el contorno de los popovers); radios de herramienta actual; caja de frase en la interfaz.
  */
 :root {
   color-scheme: dark;
 
-  /* Superficies: asfalto */
-  --tz-bg: #121211;
-  --tz-surface-1: #1a1a18;
-  --tz-surface-2: #21211e;
-  --tz-surface-3: #2b2a27;
-  /* Fondo de paneles sobre la escena. Sin backdrop-filter: desenfocar un lienzo animado cuesta en cada frame. */
-  --tz-overlay: rgb(18 18 17 / 0.9);
-  --tz-border: #363530;
-  --tz-border-strong: #57554c;
+  /*
+   * Superficies: asfalto, por tono (D50). `--tz-bg` es el cromo: cabecera, columnas y dock forman una sola pieza; el
+   * lienzo (`--tz-scene-bg`) es más hondo. surface-1: secciones elevadas (hoja de análisis, panel de sesiones, tarjetas,
+   * fondo de las gráficas); surface-2: pista de los segmentados y hover; surface-3: fila elegida, menús y popovers.
+   */
+  --tz-bg: #171716;
+  --tz-surface-1: #1d1d1c;
+  --tz-surface-2: #252524;
+  --tz-surface-3: #2e2e2c;
+  /* Fondo de los paneles: el cromo, opaco (ya no flotan). Sin backdrop-filter: desenfocar un lienzo animado cuesta. */
+  --tz-overlay: #171716;
+  /* Filetes entre filas y secciones; el fuerte, solo para el contorno de los popovers (D50). */
+  --tz-border: rgb(242 238 227 / 0.07);
+  --tz-border-strong: rgb(242 238 227 / 0.16);
+  /* Filete de las filas de las hojas de tiempos (clasificación), algo más tenue que --tz-border. */
+  --tz-row-rule: rgb(242 238 227 / 0.055);
+  /* Filo de 1 px de la ventana del mapa (decorativo: 1,04:1 frente al cromo). */
+  --tz-canvas-edge: rgb(242 238 227 / 0.08);
   /* Fondo de las etiquetas sobre la escena (siglas y curvas) */
-  --tz-label-bg: rgb(22 22 20 / 0.86);
+  --tz-label-bg: rgb(23 23 22 / 0.9);
   --tz-label-bg-soft: rgb(22 22 20 / 0.72);
 
   /* Texto: pintura de pista */
@@ -185,13 +197,17 @@
   --tz-space-12: 48px;
 
   /*
-   * Radios: cantos casi vivos, como una placa o una franja pintada. «pill» deja de ser una cápsula: las
-   * etiquetas y barras son rectángulos (los círculos de verdad usan 50 % en el componente).
+   * Radios de herramienta actual (D50; sustituye a los «cantos casi vivos» de D47): md para los botones de 32 px y las
+   * pistas de los segmentados, lg para tarjetas y popovers, pill para placas de estado y el botón interior del
+   * segmentado, xl para la ventana del mapa y la hoja de análisis. Los círculos de verdad usan 50 % en el componente.
    */
-  --tz-radius-sm: 1px;
-  --tz-radius-md: 2px;
-  --tz-radius-lg: 3px;
-  --tz-radius-pill: 2px;
+  --tz-radius-sm: 4px;
+  --tz-radius-md: 8px;
+  --tz-radius-lg: 12px;
+  --tz-radius-pill: 6px;
+  --tz-radius-xl: 18px;
+  /* El panel de sesiones de la portada. */
+  --tz-radius-sheet: 16px;
 
   /*
    * Tipografía (OFL-1.1, autoalojadas, D47): Barlow, de rotulación vial, para leer (cifras tabulares en toda la
@@ -209,8 +225,8 @@
   --tz-text-2xs: 11px;
   --tz-text-xs: 12px;
   --tz-text-sm: 13px;
-  --tz-text-md: 15px;
-  --tz-text-lg: 17px;
+  --tz-text-md: 14px;
+  --tz-text-lg: 16px;
   --tz-text-xl: 20px;
   --tz-text-2xl: 28px;
   /* Titular de portada: condensada y grande, como un cartel */
@@ -226,13 +242,14 @@
   /* Cifras destacadas (muestra cruda vigente: su valor nunca se anima) */
   --tz-text-num-md: 18px;
   --tz-text-num-lg: 24px;
-  --tz-text-num-xl: 36px;
-  /* Espaciado entre letras: rótulos en mayúsculas, siglas en monoespaciada y cifras grandes */
-  --tz-tracking-caps: 0.08em;
+  /* Velocidad y marcha de la telemetría: 58 px en Barlow Condensed 800 (D50, de «Grafismo de TV»). */
+  --tz-text-num-xl: 58px;
+  /* Espaciado entre letras: rótulos (casi sin mayúsculas desde D50), siglas en monoespaciada y cifras grandes */
+  --tz-tracking-caps: 0.02em;
   --tz-tracking-mono: 0.02em;
   --tz-tracking-num: 0;
-  /* Rótulos condensados en mayúsculas (títulos, botones): algo de aire, como la rotulación pintada */
-  --tz-tracking-display: 0.04em;
+  /* Condensada (marca, cifras grandes, rótulos SC/VSC/PIT) */
+  --tz-tracking-display: 0.01em;
 
   /* Iconos (Lucide, trazo con el color del texto) */
   --tz-icon-sm: 14px;
@@ -265,8 +282,9 @@
   --tz-z-overlay: 100;
   --tz-z-toast: 1000;
 
-  /* Sombras: canto superior con un filo de luz (placa) y una sombra corta y dura, sin difuminados grandes */
-  --tz-shadow-panel: inset 0 1px 0 rgb(242 238 227 / 0.05), 0 2px 0 rgb(0 0 0 / 0.45);
+  /* Sin sombras de tarjeta (D50): la elevación es el tono. Los popovers llevan un anillo oscuro de 1 px. */
+  --tz-shadow-panel: none;
+  --tz-pop-ring: 0 0 0 1px rgb(0 0 0 / 0.55);
 
   /* Movimiento: duraciones y curvas (Material-like, sobrias) */
   --tz-dur-fast: 120ms;
@@ -289,7 +307,7 @@
   :root {
     --tz-panel-pad: var(--tz-space-3);
     --tz-row-h: 24px;
-    --tz-text-num-xl: 30px;
+    --tz-text-num-xl: 50px;
     /* Gráficas de telemetría algo más bajas: en 800 px de alto caben enteras con los sectores de la vuelta. */
     --tz-chart-h: 54px;
     --tz-chart-h-tall: 80px;

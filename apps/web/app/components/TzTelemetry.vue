@@ -335,11 +335,11 @@ watch(
       <dl class="tz-tel__grid" :class="{ 'is-stale': !hasSample }">
         <div class="tz-tel__cell tz-tel__cell--big tz-tel__cell--wide">
           <dt>{{ t('telemetry.speed') }}</dt>
-          <dd><span ref="speedEl" class="tz-num tz-num--xl" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
+          <dd><span ref="speedEl" class="tz-num tz-num--xl tz-num--display" data-testid="tel-speed">—</span> <small>{{ t('telemetry.kmh') }}</small></dd>
         </div>
         <div class="tz-tel__cell tz-tel__cell--big">
           <dt>{{ t('telemetry.gear') }}</dt>
-          <dd><span ref="gearEl" class="tz-num tz-num--xl" data-testid="tel-gear">—</span></dd>
+          <dd><span ref="gearEl" class="tz-num tz-num--xl tz-num--display" data-testid="tel-gear">—</span></dd>
         </div>
         <div class="tz-tel__cell">
           <dt>{{ t('telemetry.rpm') }}</dt>

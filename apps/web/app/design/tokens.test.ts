@@ -224,7 +224,7 @@ describe('tokens de diseño', () => {
     const low = mediaRoot('max-height: 860px')
     expect(declared(low, '--tz-panel-pad')).toBe('var(--tz-space-3)')
     expect(declared(low, '--tz-row-h')).toBe('24px')
-    expect(declared(low, '--tz-text-num-xl')).toBe('30px')
+    expect(declared(low, '--tz-text-num-xl')).toBe('50px')
     expect(declared(low, '--tz-chart-h')).toBe('54px')
     expect(declared(low, '--tz-chart-h-tall')).toBe('80px')
     expect(declared(mediaRoot('pointer: coarse'), '--tz-hit-min')).toBe('44px')

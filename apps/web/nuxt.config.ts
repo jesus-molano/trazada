@@ -24,6 +24,8 @@ export default defineNuxtConfig({
     '@fontsource/barlow-condensed/500.css',
     '@fontsource/barlow-condensed/600.css',
     '@fontsource/barlow-condensed/700.css',
+    // Cifras grandes de la telemetría (D50, de «Grafismo de TV»).
+    '@fontsource/barlow-condensed/800.css',
     '@fontsource/ibm-plex-mono/400.css',
     '@fontsource/ibm-plex-mono/500.css',
     '@fontsource/ibm-plex-mono/600.css',

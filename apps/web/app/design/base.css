@@ -43,21 +43,23 @@ body {
   min-height: 100%;
 }
 
-/* Rótulos: condensada en mayúsculas, como la rotulación pintada de un muro de boxes o un programa de carrera. */
+/*
+ * Rótulos en Barlow y en caja de frase (D50): la condensada queda para la marca, las cifras grandes y los rótulos
+ * SC/VSC/PIT. Seminegrita y sin espaciado extra.
+ */
 h1,
 h2,
 h3 {
-  font-family: var(--tz-font-display);
-  letter-spacing: var(--tz-tracking-display);
-  text-transform: uppercase;
+  font-family: var(--tz-font-sans);
+  font-weight: var(--tz-weight-semibold);
+  letter-spacing: 0;
 }
 
-/* Etiquetas de los pares dato/valor (telemetría, vuelta, meteorología, bench): rótulo condensado en mayúsculas. */
+/* Etiquetas de los pares dato/valor (telemetría, vuelta, meteorología, bench): rótulo secundario en caja de frase. */
 dt {
-  font-family: var(--tz-font-display);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: var(--tz-tracking-caps);
-  text-transform: uppercase;
+  font-family: var(--tz-font-sans);
+  font-weight: var(--tz-weight-medium);
+  color: var(--tz-text-muted);
 }
 
 a {
@@ -114,28 +116,27 @@ button {
   border: 0;
 }
 
-/* Botón de acción común (reintentar, recuperar…): una placa maciza de pintura con el rótulo en condensada. */
+/* Botón de acción común (reintentar, recuperar…): una placa maciza de pintura, Barlow 13/500 en caja de frase. */
 .tz-button {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-2);
-  padding: var(--tz-space-2) var(--tz-space-4);
-  border: 1px solid var(--tz-accent);
+  min-height: var(--tz-space-8);
+  padding: var(--tz-space-1) var(--tz-space-4);
+  border: 0;
   border-radius: var(--tz-radius-md);
   background: var(--tz-accent);
   color: var(--tz-accent-on);
-  font-family: var(--tz-font-display);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: var(--tz-tracking-display);
-  text-transform: uppercase;
+  font-family: var(--tz-font-sans);
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-medium);
   cursor: pointer;
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-/* Botón secundario: solo el contorno (la placa maciza queda para la acción principal). */
+/* Botón secundario: sobre tono, sin contorno (la placa maciza queda para la acción principal). */
 .tz-button--quiet {
-  border-color: var(--tz-border-strong);
-  background: transparent;
+  background: var(--tz-surface-3);
   color: var(--tz-text);
 }
 
@@ -145,9 +146,10 @@ button {
     text-decoration: none;
   }
 
-  /* El secundario no se vuelve placa al pasar por encima: el texto claro no se leería sobre la pintura. */
+  /* El secundario pasa a placa de pintura al pasar por encima, con su texto oscuro (D50). */
   .tz-button--quiet:hover {
-    background: var(--tz-accent-soft-hover);
+    background: var(--tz-accent);
+    color: var(--tz-accent-on);
   }
 }
 
@@ -156,14 +158,14 @@ button {
  * ya existen se migran en su propia tanda, así que nada de esto cambia todavía cómo se ve la app.
  */
 
-/* Panel: superficie, borde, radio y aire. Los controles nativos de dentro (casillas, radios) usan el acento. */
+/* Panel: el cromo, sin caja ni sombra (D50); radio y aire. Los controles nativos de dentro usan el acento. */
 .tz-panel {
   display: flex;
   flex-direction: column;
   gap: var(--tz-panel-gap);
   min-width: 0;
   padding: var(--tz-panel-pad);
-  border: 1px solid var(--tz-border);
+  border: 0;
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
   box-shadow: var(--tz-shadow-panel);
@@ -180,20 +182,18 @@ button {
   border-bottom: 1px solid var(--tz-border);
 }
 
-/* Título de panel: una sola línea con elipsis (no se parte en dos en tablet), en condensada. */
+/* Título de panel: una sola línea con elipsis (no se parte en dos en tablet), Barlow 13/600 en caja de frase (D50). */
 .tz-panel-title {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-family: var(--tz-font-display);
+  font-family: var(--tz-font-sans);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
   line-height: var(--tz-leading-tight);
-  letter-spacing: var(--tz-tracking-caps);
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
-  color: var(--tz-text-muted);
+  color: var(--tz-text);
 }
 
 /*
@@ -220,13 +220,20 @@ button {
   font-size: var(--tz-text-num-xl);
 }
 
+/* Cifras grandes de la telemetría (velocidad y marcha, D50 de «Grafismo de TV»): condensada 800. */
+.tz-num--display {
+  font-family: var(--tz-font-display);
+  font-weight: 800;
+  letter-spacing: var(--tz-tracking-display);
+}
+
 /* Chip de estado: el texto va siempre; el color solo lo acompaña. */
 .tz-chip {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
   padding: var(--tz-space-0-5) var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
+  border: 0;
   border-radius: var(--tz-radius-pill);
   background: var(--tz-surface-2);
   color: var(--tz-text);
@@ -236,14 +243,14 @@ button {
   white-space: nowrap;
 }
 
-/* Control segmentado: botones con aria-pressed (o aria-checked) dentro de un grupo con nombre. */
+/* Control segmentado: botones con aria-pressed (o aria-checked) dentro de un grupo con nombre; pista de tono. */
 .tz-segmented {
   display: inline-flex;
   gap: var(--tz-space-0-5);
   padding: var(--tz-space-0-5);
-  border: 1px solid var(--tz-border);
+  border: 0;
   border-radius: var(--tz-radius-md);
-  background: var(--tz-surface-1);
+  background: var(--tz-surface-2);
 }
 
 .tz-segmented > button {
@@ -251,7 +258,7 @@ button {
   min-width: 0;
   padding: var(--tz-space-0-5) var(--tz-space-2);
   border: 1px solid transparent;
-  border-radius: var(--tz-radius-sm);
+  border-radius: var(--tz-radius-pill);
   background: transparent;
   color: var(--tz-text-muted);
   font-size: var(--tz-text-xs);
@@ -329,9 +336,9 @@ button {
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2));
 }
 
-/* Desplegado (abre algo) no es lo mismo que activado: relleno suave con borde de pintura. */
+/* Desplegado (abre algo) no es lo mismo que activado: relleno suave, sin contorno (D50). */
 .tz-iconbtn[aria-expanded='true'] {
-  border-color: var(--tz-accent);
+  border-color: transparent;
   background: var(--tz-accent-soft);
   color: var(--tz-accent-strong);
 }
@@ -358,9 +365,9 @@ button {
     color: var(--tz-text);
   }
 
+  /* Fantasma: tono al pasar por encima, sin contorno (D50). */
   .tz-iconbtn:hover:not(:disabled, [aria-expanded='true'], [aria-pressed='true']) {
-    border-color: var(--tz-border-strong);
-    background: var(--tz-surface-3);
+    background: var(--tz-surface-2);
     color: var(--tz-text);
   }
 }
