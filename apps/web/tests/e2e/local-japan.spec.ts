@@ -85,3 +85,25 @@ test('separación visual en la salida: los coches juntos se abren y se marca com
   // Japón (fuente dev) declara posiciones, telemetría y estado de pista como estimados.
   for (const f of ['positions', 'trackStatus']) await expect(page.locator(`[data-field="${f}"]`)).toBeVisible()
 })
+
+test('telemetría reconstruida: el mapa de calor y las estelas por velocidad la marcan «Estimado» en la fila de la escena, una vez', async ({
+  page,
+}) => {
+  await resetStorage(page)
+  await open(page)
+  // A mitad de carrera: ya hay vueltas válidas completas que pintar.
+  const t = await handle(page, (h) => h.markers.laps.find((l) => l.lap === 10)!.t + 20_000)
+  await page.evaluate((x) => window.__trazada!.seek(x), t)
+  const label = page.locator('[data-testid="scene-estimated"] [data-testid="estimated"][data-field="telemetry"]')
+  await expect(label).toHaveCount(0)
+  await page.getByTestId('tools-layers').click()
+  await page.getByTestId('heat-speed').click()
+  await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
+  await expect(label).toBeVisible()
+  await page.getByTestId('trails-speed').click()
+  await expect(label).toHaveCount(1)
+  await page.getByTestId('heat-off').click()
+  await expect(label).toBeVisible()
+  await page.getByTestId('trails-team').click()
+  await expect(label).toHaveCount(0)
+})

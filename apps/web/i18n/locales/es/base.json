@@ -182,7 +182,7 @@
     "label": "Línea de tiempo de la sesión",
     "atLap": "Vuelta {lap} · {time}",
     "lapStart": "Inicio de la vuelta {lap}",
-    "pit": "Parada en boxes: {tla}",
+    "pit": "Entrada en el pit lane: {tla}",
     "window": {
       "sc": "Coche de seguridad",
       "vsc": "Coche de seguridad virtual",

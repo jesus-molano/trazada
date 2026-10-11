@@ -4,8 +4,10 @@
  * la vuelta que se pinta («Última / Mejor»), su leyenda y la explicación «ⓘ». Apagado por defecto; el modo se recuerda
  * por navegador (`stores/heat.ts`).
  *
- * - Velocidad (dato real): la escala de la vuelta en km/h, «muestreo ~4 Hz» y que sin color es «sin dato». Sin
- *   etiqueta «Estimado».
+ * - Velocidad: la escala de la vuelta en km/h, «muestreo ~4 Hz» y que sin color es «sin dato». Es dato real, sin
+ *   etiqueta «Estimado», salvo cuando el manifest declara la telemetría reconstruida (`quality.estimated` con
+ *   `telemetry`, fuentes dev): entonces lleva la etiqueta `telemetry` junto a la leyenda y en la fila de la escena, y
+ *   la explicación lo dice.
  * - Minisectores: cuántos gana cada uno de los dos pilotos de la comparación (colores A y B de la comparación, con su
  *   sigla: no solo color), cuántos son «igual» (< 50 ms) y cuántos «sin dato», con la etiqueta «Estimado»
  *   (`minisectors`). Mientras se pintan, la etiqueta sale también en la fila de etiquetas de la escena
@@ -26,6 +28,8 @@ const sceneEstimated = useSceneEstimatedStore()
 
 // Pilotos de la sesión (fijos mientras vive la escena, que se monta de nuevo con cada sesión).
 const drivers = getRuntime()?.drivers ?? []
+/** ¿Declara el manifest la telemetría reconstruida? Entonces la velocidad que se pinta es una estimación. */
+const telemetryEstimated = getRuntime()?.session.manifest.quality.estimated.includes('telemetry') ?? false
 const driverName = (car: string | null) => (car === null ? '' : (drivers.find((d) => d.number === car)?.tla ?? car))
 
 onMounted(() => heat.hydrate())
@@ -47,7 +51,13 @@ const minisectorsOn = computed(() => painting.value && view.value?.mode === 'min
 /** La vuelta solo se elige con un coche: sin él, la velocidad es la vuelta más rápida de la sesión. */
 const showPick = computed(() => view.value !== null && (view.value.mode === 'minisectors' || playback.selectedCar !== null))
 
-watch(minisectorsOn, (on) => sceneEstimated.set('heat', on ? { field: 'minisectors' } : null), { immediate: true })
+// Un dueño, una etiqueta: los dos modos nunca se pintan a la vez.
+watch(
+  [minisectorsOn, speedOn],
+  ([ms, sp]) =>
+    sceneEstimated.set('heat', ms ? { field: 'minisectors' } : sp && telemetryEstimated ? { field: 'telemetry' } : null),
+  { immediate: true },
+)
 onBeforeUnmount(() => sceneEstimated.set('heat', null))
 
 const lapText = (info: HeatLapInfo) =>
@@ -81,7 +91,9 @@ const note = computed(() => {
 const hint = computed(() =>
   [
     t('heat.hint'),
-    t('heat.hintSpeed', { gap: HEAT_GAP_MS / 1000 }),
+    telemetryEstimated
+      ? t('heat.hintSpeedEstimated', { gap: HEAT_GAP_MS / 1000 })
+      : t('heat.hintSpeed', { gap: HEAT_GAP_MS / 1000 }),
     t('heat.hintMinisectors', { n: HEAT_MINISECTORS, tie: HEAT_TIE_MS }),
   ].join(' '),
 )
@@ -150,6 +162,7 @@ export const group = 'layers'
     </span>
     <span v-if="painting && laps" class="tz-heat__note" data-testid="heat-laps">{{ laps }}</span>
     <TzEstimated v-if="minisectorsOn" field="minisectors" />
+    <TzEstimated v-if="speedOn && telemetryEstimated" field="telemetry" />
     <span v-if="note" class="tz-heat__note" data-testid="heat-note">{{ note }}</span>
     <TzHint :label="t('heat.hintLabel')" :text="hint" testid="heat-hint" align="end" />
   </span>

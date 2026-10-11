@@ -22,6 +22,7 @@
     "tyresNoData": "Tyres: no data",
     "compoundNoData": "Compound: no data",
     "stops": "No stops | {n} stop | {n} stops",
+    "stopsAtLeast": "At least {n} stop | At least {n} stops",
     "stopsNoData": "Stops: no data",
     "pitLane": "Pit lane",
     "pitLaneHint": "Time in the pit lane, from entry to exit: it is not the stationary time in the box, which is not in the data. It only counts as a stop if the tyres change.",

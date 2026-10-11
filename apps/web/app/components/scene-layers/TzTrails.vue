@@ -5,10 +5,13 @@
  * movimiento y la misma pose que el coche (`carPose`, con su separación visual si está activa), así que la punta
  * es el coche y la estela va sobre la línea central como él. Se corta en los huecos de posición.
  *
- * Color del equipo (manifest) o de la última velocidad medida de hace ≤ 2 s en cada punto (sin interpolar; gris sin
- * muestra), con los tokens `--tz-trail-*`. Una sola malla para todos los coches (1 draw call), con color y opacidad
- * por vértice, anchura «de mapa» (2,5 m de cerca y un mínimo en pantalla de lejos), sin niebla y sin escribir
- * profundidad. Apagada, no se dibuja (0 draw calls) ni calcula nada.
+ * Color del equipo (manifest) o de la última muestra de velocidad de hace ≤ 2 s en cada punto (sin interpolar; gris sin
+ * muestra), con los tokens `--tz-trail-*`. La velocidad es la de la telemetría de la sesión: medida, o reconstruida si
+ * el manifest la declara estimada (la herramienta, TzTrailsTool, pone entonces su «Estimado» a la vista).
+ *
+ * Una sola malla para todos los coches (1 draw call), con color y opacidad por vértice, anchura «de mapa» (2,5 m de
+ * cerca y un mínimo en pantalla de lejos), sin niebla y sin escribir profundidad. Apagada, no se dibuja (0 draw
+ * calls) ni calcula nada.
  */
 import { useLoop } from '@tresjs/core'
 import {

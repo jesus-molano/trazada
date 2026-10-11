@@ -81,6 +81,15 @@ const tyresText = (r: SummaryRow) => t('summary.tyres', { list: r.stints.map(com
 const stopsOf = (r: SummaryRow) => (r.pits ?? []).filter((v) => v.kind === 'stop')
 const passesOf = (r: SummaryRow) => (r.pits ?? []).filter((v) => v.kind === 'pass')
 const unknownOf = (r: SummaryRow) => (r.pits ?? []).filter((v) => v.kind === 'unknown')
+/**
+ * Cuántas paradas: un paso por el pit lane sin dato de neumáticos puede ser una parada, así que con alguno nunca se
+ * dice «Sin paradas» ni una cifra cerrada: «sin dato» si no hay ninguna segura y «al menos N» si las hay.
+ */
+function stopCount(r: SummaryRow): Shown {
+  const n = stopsOf(r).length
+  if (unknownOf(r).length === 0) return value(t('summary.stops', { n }, n))
+  return n === 0 ? missing(t('summary.stopsNoData')) : value(t('summary.stopsAtLeast', { n }, n))
+}
 function visitText(v: PitVisit): Shown {
   return v.pitLaneMs === null
     ? missing(t('summary.pitLaneNoTime', { lap: v.lap }))
@@ -243,7 +252,7 @@ export const order = 10
                 </template>
               </span>
               <span v-else class="is-missing">{{ t('summary.tyresNoData') }}</span>
-              <span v-if="r.pits" data-testid="summary-stop-count">{{ t('summary.stops', { n: stopsOf(r).length }, stopsOf(r).length) }}</span>
+              <span v-if="r.pits" :class="{ 'is-missing': stopCount(r).missing }" data-testid="summary-stop-count">{{ stopCount(r).text }}</span>
               <span v-else class="is-missing">{{ t('summary.stopsNoData') }}</span>
             </p>
             <p v-if="stopsOf(r).length" class="tz-summary__detail tz-summary__pits">

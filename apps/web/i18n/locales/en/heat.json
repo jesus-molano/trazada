@@ -29,6 +29,7 @@
     "hintLabel": "What the heat map shows",
     "hint": "Colours the track with one complete lap, the last or the fastest, only if it is valid (no pit entry or exit, no safety car, VSC or red flag, not lap 1 and not deleted) and once it has been seen in full. With no car selected, the fastest of the session up to that moment. Sector flags are always shown on top.",
     "hintSpeed": "Speed: as measured by the car (sampled at ~4 Hz, one sample every 10–25 m flat out), placed with its GPS position; between two consecutive samples the colour is interpolated. With no sample within {gap} s, that stretch has no colour: it is never filled in. The scale goes from the lowest to the highest speed of the lap.",
+    "hintSpeedEstimated": "Speed: from this session’s reconstructed telemetry (Estimated: it does not come as is from the source), placed with its position; between two consecutive samples the colour is interpolated. With no sample within {gap} s, that stretch has no colour: it is never filled in. The scale goes from the lowest to the highest speed of the lap.",
     "hintMinisectors": "Minisectors: the lap split into {n} equal stretches from the finish line; in each one, whoever takes less time according to the GPS wins, comparing each driver’s lap. It is an estimate with a margin of a few hundredths: with less than {tie} ms between them, “even”. A stretch with a position gap for either driver has no colour."
   }
 }

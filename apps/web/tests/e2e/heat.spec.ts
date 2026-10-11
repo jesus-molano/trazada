@@ -169,6 +169,39 @@ test('minisectores: sin comparación lo dice; GAS frente a HAM, 25 tramos con «
   await expect(page.locator('.tz-tools__estimated [data-testid="estimated"][data-field="minisectors"]')).toBeVisible()
 })
 
+test.describe('tablet 1024×768', () => {
+  test.use({ viewport: { width: 1024, height: 768 } })
+
+  test('el menú «Capas» crece con el menú abierto (estelas, minisectores y su «Estimado») y sigue dentro de la ventana', async ({
+    page,
+  }) => {
+    await openScene(page)
+    await selectCar(page, '10')
+    await row(page, '44').getByRole('button').click({ modifiers: ['Shift'] })
+    await expect(page.getByTestId('compare-toggle')).toHaveAttribute('aria-pressed', 'true')
+    await openLayers(page)
+    const panel = page.getByTestId('tools-layers-panel')
+    const closedWidth = (await panel.boundingBox())!.width
+    await page.getByTestId('trails-speed').click()
+    await page.getByTestId('heat-minisectors').click()
+    await page.getByTestId('heat-pick-last').click()
+    await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
+    await expect(page.locator('[data-testid="heat-tool"] [data-testid="estimated"][data-field="minisectors"]')).toBeVisible()
+    // Ha crecido sin cerrarse…
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(closedWidth)
+    // …y se vuelve a encajar: entero dentro de la ventana, sin scroll horizontal.
+    await expect
+      .poll(async () => {
+        const b = (await panel.boundingBox())!
+        return b.x >= 0 && b.x + b.width <= 1024
+      })
+      .toBe(true)
+    await expect(page.getByTestId('heat-off')).toBeInViewport({ ratio: 1 })
+    await expect(page.getByTestId('trails-off')).toBeInViewport({ ratio: 1 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  })
+})
+
 test('en pausa no se renderiza en bucle ni se vuelven a subir colores; al cambiar de vuelta, sí', async ({ page }) => {
   await openScene(page)
   await selectCar(page, '10')

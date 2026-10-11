@@ -31,11 +31,11 @@
       },
       "estimated": {
         "title": "What does “Estimated” mean?",
-        "body": "Anything Trazada computes or infers, rather than taking it as is from the source, carries this label with a dashed border; press it to see why. Missing data is never made up: it shows “no data”."
+        "body": "Anything Trazada estimates or infers without the source giving it carries this label with a dashed border; press it to see why. What it computes from official data does not: its info button explains it. Missing data is never made up: it shows “no data”."
       },
       "analysis": {
         "title": "Analysis",
-        "body": "Race trace, lap pace, tyres and moments of the session, from official timing. “No spoilers” only shows what has already happened in the player."
+        "body": "Race trace, lap pace, tyres and moments of the session, from official timing (the moment of an overtake is approximated from GPS). “No spoilers” only shows what has already happened in the player."
       },
       "palette": {
         "title": "Commands and this guide",
