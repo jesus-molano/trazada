@@ -1,23 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import type { ChartGroup, ChartSpec } from './chart'
-import { COLUMN, CURSOR_REACH, drawEndLabels, LABEL_GAP, LABEL_PADDING, type LabelFrame } from './endLabels'
+import { DIM_ALPHA } from './chart'
+import { COLUMN, CURSOR_REACH, drawEndLabels, drawPreviewLine, LABEL_GAP, LABEL_PADDING, type LabelFrame, PREVIEW_WIDTH } from './endLabels'
 
 type Pt = { x: number; y: number }
 
 /** Lienzo 2D que graba lo que se dibuja (con la alineación del texto en cada `fillText`). */
 function recorder() {
   const log = {
-    text: [] as { text: string; x: number; y: number; align: string; baseline: string }[],
-    rects: [] as { x: number; y: number; w: number; h: number; fill: string }[],
-    /** Trazos (`stroke`): la polilínea y su color. */
-    strokes: [] as { pts: Pt[]; color: string }[],
+    text: [] as { text: string; x: number; y: number; align: string; baseline: string; alpha: number }[],
+    rects: [] as { x: number; y: number; w: number; h: number; fill: string; alpha: number }[],
+    /** Trazos (`stroke`): la polilínea, su color, su grosor, su discontinuo y si iba recortado. */
+    strokes: [] as { pts: Pt[]; color: string; width: number; dash: number[]; clipped: boolean }[],
     /** Rellenos de un camino (`fill`): sus puntos (los arcos, por su centro) y su color. */
     fills: [] as { pts: Pt[]; arcs: number; color: string }[],
     saves: 0,
     restores: 0,
+    clips: 0,
   }
   let path: Pt[] = []
   let arcs = 0
+  let dash: number[] = []
+  let clipped = false
   const ctx = {
     // Lo que dejaría uPlot tras dibujar su eje y.
     textAlign: 'right',
@@ -27,15 +31,26 @@ function recorder() {
     fillStyle: '',
     strokeStyle: '',
     lineWidth: 1,
+    lineJoin: 'miter',
     save: () => log.saves++,
-    restore: () => log.restores++,
+    restore: () => {
+      log.restores++
+      clipped = false
+      dash = []
+    },
     measureText: (s: string) => ({ width: s.length * 6 }),
     fillText(text: string, x: number, y: number) {
-      log.text.push({ text, x, y, align: this.textAlign, baseline: this.textBaseline })
+      log.text.push({ text, x, y, align: this.textAlign, baseline: this.textBaseline, alpha: this.globalAlpha })
     },
     fillRect(x: number, y: number, w: number, h: number) {
-      log.rects.push({ x, y, w, h, fill: this.fillStyle })
+      log.rects.push({ x, y, w, h, fill: this.fillStyle, alpha: this.globalAlpha })
     },
+    rect: (x: number, y: number, w: number, h: number) => path.push({ x, y }, { x: x + w, y: y + h }),
+    clip: () => {
+      log.clips++
+      clipped = true
+    },
+    setLineDash: (d: number[]) => (dash = [...d]),
     beginPath: () => {
       path = []
       arcs = 0
@@ -48,7 +63,7 @@ function recorder() {
     },
     closePath: () => {},
     stroke() {
-      log.strokes.push({ pts: [...path], color: this.strokeStyle })
+      log.strokes.push({ pts: [...path], color: this.strokeStyle, width: this.lineWidth, dash: [...dash], clipped })
     },
     fill() {
       log.fills.push({ pts: [...path], arcs, color: this.fillStyle })
@@ -318,5 +333,98 @@ describe('siglas de las gráficas de análisis', () => {
     const alb = log.text.find((t) => t.text === 'ALB')!
     expect(alb.x).toBeCloseTo(f.xPos(51) + 14)
     expect(triangles(log).some((t) => Math.abs(t.pts[0]!.x - (f.xPos(51) + 6)) < 1e-6)).toBe(true)
+  })
+
+  it('resaltada (D49): su sigla a la altura exacta de su dato, opaca, y el resto atenuado; la que choca pierde su sitio', () => {
+    const { ctx, log } = recorder()
+    const f = frame()
+    // CH queda en medio del pelotón (sin resaltar, no lleva sigla) y CA sí la lleva.
+    const spec = race()
+    const rects = drawEndLabels(ctx, f, spec, style, 'CH')
+    const ch = log.text.find((t) => t.text === 'CH')!
+    expect(ch.y).toBeCloseTo(home(f, 7))
+    expect(ch.alpha).toBe(1)
+    for (const t of log.text.filter((t) => t.text !== 'CH')) expect(t.alpha, t.text).toBe(DIM_ALPHA)
+    // CA (a 0 s) queda a menos de 11 px de CH (a 7 s): pierde su sitio.
+    expect(log.text.some((t) => t.text === 'CA')).toBe(false)
+    expect(rects.map((r) => r.key)).toContain('CH')
+  })
+
+  it('resaltado un detenido: su sigla después de su raya, a su altura; la raya, opaca', () => {
+    const { ctx, log } = recorder()
+    const f = frame()
+    drawEndLabels(ctx, f, race(), style, 'STR')
+    const str = log.text.find((t) => t.text === 'STR')!
+    expect(str.x).toBeCloseTo(f.xPos(30) + 6 + 7)
+    expect(str.y).toBeCloseTo(f.yPos(40))
+    const bar = log.rects.find((r) => r.x < f.right && r.h === 10)!
+    expect(bar.alpha).toBe(1)
+  })
+
+  it('el coche elegido conserva su sigla pero se atenúa si se resalta otro', () => {
+    const { ctx, log } = recorder()
+    drawEndLabels(ctx, frame(), race({ ALB: { emphasis: true } }), style, 'BOT')
+    expect(log.text.find((t) => t.text === 'ALB')!.alpha).toBe(DIM_ALPHA)
+    expect(log.text.find((t) => t.text === 'BOT')!.alpha).toBe(1)
+  })
+
+  it('los rótulos devueltos (px CSS) son los del texto dibujado', () => {
+    for (const r of [1, 2]) {
+      const { ctx, log } = recorder()
+      const f = frame()
+      const scaled: LabelFrame = {
+        r,
+        bbox: { left: f.bbox.left * r, top: f.bbox.top * r, width: f.bbox.width * r, height: f.bbox.height * r },
+        xPos: (v) => f.xPos(v) * r,
+        yPos: (v) => f.yPos(v) * r,
+      }
+      const rects = drawEndLabels(ctx, scaled, race(), style)
+      expect(rects.map((x) => x.key).sort()).toEqual(log.text.map((t) => t.text).sort())
+      for (const t of log.text) {
+        const rect = rects.find((x) => x.key === t.text)!
+        // El texto (en px del lienzo) cae dentro de su rótulo (en px CSS), y el rótulo empieza en su marca.
+        expect(t.x / r).toBeGreaterThan(rect.x0)
+        expect(t.x / r + (t.text.length * 6) / r).toBeLessThanOrEqual(rect.x1 + 1e-9)
+        expect(t.y / r).toBeGreaterThan(rect.y0)
+        expect(t.y / r).toBeLessThan(rect.y1)
+      }
+    }
+  })
+
+  it('la serie resaltada se vuelve a trazar exactamente por sus puntos, sin unir huecos, recortada; nada más', () => {
+    const { ctx, log } = recorder()
+    const f = frame()
+    // Una serie con un hueco (vueltas 1–3 y 5–6) y un punto suelto (vuelta 9), del segundo piloto de su equipo.
+    const values = [1, 2, 3, null, 5, 6, null, null, 9, ...Array.from({ length: LAPS - 9 }, () => null)]
+    const spec: ChartSpec = {
+      ...race(),
+      series: [...race().series, { group: 'GAP', mark: 'line', values }],
+      groups: [...race().groups, group('GAP', { dash: true })],
+    }
+    drawPreviewLine(ctx, f, spec, 'GAP')
+    expect(log.clips).toBe(1)
+    expect(log.strokes).toHaveLength(2)
+    expect(log.strokes[0]!.pts).toEqual([1, 2, 3].map((v) => ({ x: f.xPos(v), y: f.yPos(v) })))
+    expect(log.strokes[1]!.pts).toEqual([5, 6].map((v) => ({ x: f.xPos(v), y: f.yPos(v) })))
+    for (const st of log.strokes) {
+      expect(st.width).toBe(PREVIEW_WIDTH)
+      expect(st.dash).toEqual([6, 4])
+      expect(st.clipped).toBe(true)
+      expect(st.color).toBe(color('GAP'))
+    }
+    // El punto suelto, relleno en su sitio (un cuadrado: segundo piloto).
+    expect(log.fills).toHaveLength(1)
+    expect(log.fills[0]!.pts[0]!.x).toBeCloseTo(f.xPos(9) - 3)
+    expect(log.fills[0]!.pts[1]!.y).toBeCloseTo(f.yPos(9) + 3)
+    expect(log.text).toHaveLength(0)
+    expect(log.saves).toBe(log.restores)
+
+    // Sin resaltar, oculta o de puntos: nada.
+    const { ctx: c2, log: l2 } = recorder()
+    drawPreviewLine(c2, f, spec, null)
+    drawPreviewLine(c2, f, { ...spec, groups: spec.groups.map((g) => ({ ...g, visible: g.key !== 'GAP' })) }, 'GAP')
+    drawPreviewLine(c2, f, race({}, { mark: 'dot', labelColumn: false }), 'ALB')
+    expect(l2.strokes).toHaveLength(0)
+    expect(l2.fills).toHaveLength(0)
   })
 })

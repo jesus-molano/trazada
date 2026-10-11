@@ -1,24 +1,31 @@
 <script setup lang="ts">
 /**
- * Momentos (ítem 5, D35; hueco `analysis-tabs`): adelantamientos confirmados por el orden oficial en la línea de meta y
- * duelos a menos de 1 s (`engine/moments/`), con «Sin spoilers» (solo lo confirmado hasta el instante del reloj).
- * Pulsar uno salta 5 s antes y elige al que adelanta; en un duelo, al perseguidor, comparado con el de delante
- * (ítem 1). El instante de un adelantamiento sale del GPS: lleva «Estimado» (`overtakeTime`) y, si no se puede situar,
- * «momento exacto: sin dato».
+ * Momentos (ítem 5, D35; hueco `analysis-tabs`): adelantamientos confirmados por el orden oficial en la línea de meta,
+ * duelos a menos de 1 s (`engine/moments/`) y, desde D49, las neutralizaciones y los mensajes destacados de dirección
+ * de carrera entre los que también saltan los botones del dock, con «Sin spoilers» (solo lo confirmado hasta el
+ * instante del reloj). Pulsar uno salta 5 s antes y, en un adelantamiento, elige al que adelanta; en un duelo, al
+ * perseguidor, comparado con el de delante (ítem 1). El instante de un adelantamiento sale del GPS: lleva «Estimado»
+ * (`overtakeTime`) y, si no se puede situar, «momento exacto: sin dato».
  *
- * Arriba, entre qué momentos saltan los botones del dock (`stores/moments.ts`): esto vale en cualquier sesión. Las
- * listas, solo en carrera y sprint (en libres y clasificación, su estado vacío lo explica).
+ * Arriba, «Ver y saltar entre» (`stores/moments.ts`): elige qué listas se ven aquí y entre qué momentos saltan los
+ * botones del dock (D49; antes solo lo segundo, y parecía roto). Adelantamientos y duelos, solo en carrera y sprint (en
+ * libres y clasificación, su estado vacío lo explica); las neutralizaciones y los mensajes, en cualquier sesión.
+ *
+ * Las filas se parten en líneas cuando no caben (el chip «terminó en adelantamiento» baja bajo los nombres): nada se
+ * corta con «…» salvo el texto de un mensaje, que se limita a dos líneas con el texto entero en su título.
  */
-import { crossingTimes } from '~/engine/analysis/raceTrace'
+import { crossingTimes, leaderLapAt } from '~/engine/analysis/raceTrace'
 import { formatClock } from '~/engine/format/time'
 import type { Duel } from '~/engine/moments/duels'
 import { duels } from '~/engine/moments/duels'
+import type { Moment, MomentKind } from '~/engine/moments/jumps'
 import type { Overtake } from '~/engine/moments/overtakes'
 import { clockOrigin } from '~/engine/timeline/markers'
+import { rcTone } from '~/replay/rcKinds'
 import { JUMP_FILTERS, type JumpFilter, useMomentsStore } from '~/stores/moments'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const rt = getRuntime()!
 const playback = usePlaybackStore()
 const moments = useMomentsStore()
@@ -30,6 +37,8 @@ const origin = clockOrigin(type, rt.session.timing, pb)
 const drivers = new Map(rt.drivers.map((d) => [d.number, d]))
 const name = (car: string) => drivers.get(car)?.tla ?? car
 const color = (car: string) => drivers.get(car)?.color || null
+/** Estado de pista deducido (fuentes dev): las neutralizaciones llevan «Estimado». */
+const trackInferred = rt.session.manifest.quality.estimated.includes('trackStatus')
 
 const FILTER_TEXT: Record<JumpFilter, () => string> = {
   all: () => t('moments.jump.filter.all'),
@@ -40,6 +49,14 @@ const FILTER_TEXT: Record<JumpFilter, () => string> = {
 }
 /** Clases sin ningún momento en esta sesión: su botón, deshabilitado. */
 const available = (f: JumpFilter) => f === 'all' || model.kinds.has(f)
+
+/** Qué listas se ven con la clase elegida (la misma que recorren los botones del dock). */
+const showOvertakes = computed(() => moments.filter === 'all' || moments.filter === 'overtake')
+const showDuels = computed(() => moments.filter === 'all' || moments.filter === 'duel')
+const showOthers = computed(() => moments.filter === 'all' || moments.filter === 'neutralisation' || moments.filter === 'raceControl')
+/** Adelantamientos y duelos solo con datos de carrera; si no, su nota los sustituye. */
+const raceLists = computed(() => model.race && table.cars.size > 0)
+const sections = computed(() => (raceLists.value ? Number(showOvertakes.value) + Number(showDuels.value) : 0) + Number(showOthers.value))
 
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
@@ -105,9 +122,83 @@ const duelRows = computed<DuelRow[]>(() =>
   })),
 )
 
+/**
+ * Neutralizaciones y mensajes destacados de dirección de carrera: exactamente los destinos de los botones del dock
+ * (`model.moments`, con los mensajes de una misma clase a menos de 30 s ya juntados). Lo que no depende del reloj se
+ * calcula una vez: la vuelta (en carrera y sprint, la del mensaje o, sin ella, la vuelta en curso del primero) y el
+ * texto.
+ */
+interface OtherMoment {
+  m: Moment
+  /** Clase concreta: sc, vsc o red; o la del mensaje (`parsed.kind`). */
+  sub: string
+  lap: number | null
+  text: string | null
+  cars: readonly string[]
+}
+
+const OTHER_KINDS: readonly MomentKind[] = ['neutralisation', 'raceControl']
+const others: OtherMoment[] = model.moments
+  .filter((m) => OTHER_KINDS.includes(m.kind))
+  .map((m): OtherMoment => {
+    if (m.kind === 'neutralisation') {
+      const w = rt.session.events.windows[m.index]!
+      return { m, sub: w.kind, lap: model.race ? leaderLapAt(table, w.fromMs) : null, text: null, cars: [] }
+    }
+    const e = rt.raceControl[m.index]!
+    return { m, sub: e.parsed.kind, lap: model.race ? (e.lap ?? leaderLapAt(table, e.t)) : null, text: e.text, cars: e.parsed.cars }
+  })
+const otherCutoff = useEffectiveCutoff(Float64Array.from(others.map((o) => o.m.t)).sort(), st.cutoffMs)
+/** Clases de la lista con la clase elegida. */
+const otherKinds = computed<readonly MomentKind[]>(() =>
+  moments.filter === 'neutralisation' || moments.filter === 'raceControl' ? [moments.filter] : OTHER_KINDS,
+)
+const othersInSession = computed(() => others.filter((o) => otherKinds.value.includes(o.m.kind)))
+
+function otherLabel(o: OtherMoment): string {
+  if (o.m.kind === 'neutralisation') return t(`trackStatus.neutral.${o.sub}`)
+  const key = `rc.kind.${o.sub}`
+  return te(key) ? t(key) : t('rc.kind.other')
+}
+
+interface OtherRow {
+  key: string
+  o: OtherMoment
+  lap: string | null
+  lapLong: string | null
+  label: string
+  tone: string
+  time: string
+  involved: boolean
+}
+
+const otherRows = computed<OtherRow[]>(() =>
+  othersInSession.value
+    .filter((o) => o.m.t <= otherCutoff.value)
+    .map((o) => ({
+      key: `${o.m.kind}-${o.m.index}`,
+      o,
+      lap: o.lap !== null ? t('moments.overtakes.lap', { lap: o.lap }) : null,
+      lapLong: o.lap !== null ? t('moments.overtakes.lapLong', { lap: o.lap }) : null,
+      label: otherLabel(o),
+      tone: o.m.kind === 'neutralisation' ? 'is-neutral' : rcTone(o.sub),
+      time: formatClock(o.m.t - origin),
+      involved: playback.selectedCar !== null && o.cars.includes(playback.selectedCar),
+    })),
+)
+const othersEstimated = computed(() => trackInferred && otherRows.value.some((r) => r.o.m.kind === 'neutralisation'))
+const othersTitle = computed(() =>
+  moments.filter === 'neutralisation'
+    ? t('moments.others.title.neutralisation')
+    : moments.filter === 'raceControl'
+      ? t('moments.others.title.raceControl')
+      : t('moments.others.title.all'),
+)
+
 const ids = useId()
 const overtakesId = `${ids}-overtakes`
 const duelsId = `${ids}-duels`
+const othersId = `${ids}-others`
 </script>
 
 <script lang="ts">
@@ -119,9 +210,15 @@ export const raceOnly = true
 </script>
 
 <template>
-  <div class="tz-atab tz-moments" data-testid="moments" :data-race="model.race">
+  <div class="tz-atab tz-moments" data-testid="moments" :data-race="model.race" :data-filter="moments.filter">
     <div class="tz-moments__jumps">
-      <span class="tz-moments__jumps-label">{{ t('moments.jump.filterLabel') }}</span>
+      <span class="tz-moments__jumps-label">
+        <span class="tz-moments__jumps-icons" aria-hidden="true">
+          <TzIcon name="jumpBack" size="sm" />
+          <TzIcon name="jumpForward" size="sm" />
+        </span>
+        {{ t('moments.jump.filterLabel') }}
+      </span>
       <div class="tz-segmented" role="group" :aria-label="t('moments.jump.filterLabel')" data-testid="moments-filter">
         <button
           v-for="f in JUMP_FILTERS"
@@ -138,78 +235,82 @@ export const raceOnly = true
       <TzHint :label="t('moments.jump.filterLabel')" :text="t('moments.jump.filterHint')" testid="moments-filter-hint" />
     </div>
 
-    <p v-if="!model.race" class="tz-atab__empty" data-testid="moments-only-race">{{ t('moments.onlyRace') }}</p>
-    <p v-else-if="table.cars.size === 0" class="tz-atab__empty" data-testid="moments-no-laps">{{ t('moments.noLaps') }}</p>
-    <template v-else>
-      <p class="tz-atab__note">{{ t('moments.basis') }} {{ t('moments.lap1') }}</p>
-      <p class="tz-atab__note">{{ t('moments.pick') }}</p>
+    <template v-if="showOvertakes || showDuels">
+      <p v-if="!model.race" class="tz-atab__empty" data-testid="moments-only-race">{{ t('moments.onlyRace') }}</p>
+      <p v-else-if="table.cars.size === 0" class="tz-atab__empty" data-testid="moments-no-laps">{{ t('moments.noLaps') }}</p>
+      <p v-else-if="showOvertakes" class="tz-atab__note">{{ t('moments.basis') }} {{ t('moments.lap1') }}</p>
+    </template>
+    <p class="tz-atab__note">{{ t('moments.pick') }}</p>
 
-      <div class="tz-moments__cols">
-        <section class="tz-moments__col" :aria-labelledby="overtakesId" data-testid="moments-overtakes">
-          <h3 :id="overtakesId" class="tz-moments__title">
-            {{ t('moments.overtakes.title') }}
-            <span class="tz-moments__count tz-tabular">{{ t('moments.overtakes.count', { n: overtakeRows.length }, overtakeRows.length) }}</span>
-          </h3>
-          <p v-if="anyLocated" class="tz-moments__approx">
-            <TzEstimated field="overtakeTime" />
-            <span>{{ t('moments.overtakes.approx') }}</span>
-          </p>
-          <p v-if="model.overtakes.length === 0" class="tz-moments__empty" data-testid="overtakes-none">{{ t('moments.overtakes.none') }}</p>
-          <p v-else-if="overtakeRows.length === 0" class="tz-moments__empty" data-testid="overtakes-nothing-yet">
-            {{ t('moments.overtakes.nothingYet') }}
-          </p>
-          <ul v-else class="tz-moments__list">
-            <li v-for="r in overtakeRows" :key="r.key">
-              <button
-                type="button"
-                class="tz-moments__row"
-                :class="{ 'is-involved': r.involved }"
-                data-testid="overtake-row"
-                :data-passer="r.o.passer"
-                :data-passed="r.o.passed"
-                :data-lap="r.o.lap"
-                :data-located="r.o.atMs !== null"
-                @click="moments.goToOvertake(r.o)"
-              >
-                <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.lap }}</span>
-                <span class="tz-visually-hidden">{{ r.lapLong }}</span>
+    <div class="tz-moments__cols" :class="{ 'is-single': sections === 1 }" data-testid="moments-cols">
+      <section v-if="raceLists && showOvertakes" class="tz-moments__col" :aria-labelledby="overtakesId" data-testid="moments-overtakes">
+        <h3 :id="overtakesId" class="tz-moments__title">
+          {{ t('moments.overtakes.title') }}
+          <span class="tz-moments__count tz-tabular">{{ t('moments.overtakes.count', { n: overtakeRows.length }, overtakeRows.length) }}</span>
+        </h3>
+        <p v-if="anyLocated" class="tz-moments__approx">
+          <TzEstimated field="overtakeTime" />
+          <span>{{ t('moments.overtakes.approx') }}</span>
+        </p>
+        <p v-if="model.overtakes.length === 0" class="tz-moments__empty" data-testid="overtakes-none">{{ t('moments.overtakes.none') }}</p>
+        <p v-else-if="overtakeRows.length === 0" class="tz-moments__empty" data-testid="overtakes-nothing-yet">
+          {{ t('moments.overtakes.nothingYet') }}
+        </p>
+        <ul v-else class="tz-moments__list">
+          <li v-for="r in overtakeRows" :key="r.key">
+            <button
+              type="button"
+              class="tz-moments__row"
+              :class="{ 'is-involved': r.involved }"
+              data-testid="overtake-row"
+              :data-passer="r.o.passer"
+              :data-passed="r.o.passed"
+              :data-lap="r.o.lap"
+              :data-located="r.o.atMs !== null"
+              @click="moments.goToOvertake(r.o)"
+            >
+              <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.lap }}</span>
+              <span class="tz-visually-hidden">{{ r.lapLong }}</span>
+              <span class="tz-moments__body">
                 <span class="tz-moments__who">
                   <span class="tz-moments__team" :style="r.color ? { background: r.color } : undefined" aria-hidden="true" />
                   <span class="tz-moments__who-text">{{ r.who }}</span>
                 </span>
                 <span class="tz-moments__when tz-tabular" :class="{ 'is-nodata': r.o.atMs === null }">{{ r.when }}</span>
                 <span class="tz-visually-hidden">, {{ r.whenLong }}</span>
-              </button>
-            </li>
-          </ul>
-        </section>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </section>
 
-        <section class="tz-moments__col" :aria-labelledby="duelsId" data-testid="moments-duels">
-          <h3 :id="duelsId" class="tz-moments__title">
-            {{ t('moments.duels.title') }}
-            <span class="tz-moments__count tz-tabular">{{ t('moments.duels.count', { n: duelRows.length }, duelRows.length) }}</span>
-          </h3>
-          <p class="tz-moments__approx">{{ t('moments.duels.basis') }}</p>
-          <p v-if="model.duels.status === 'noTrackStatus'" class="tz-moments__empty" data-testid="duels-no-track-status">
-            {{ t('moments.duels.noTrackStatus') }}
-          </p>
-          <p v-else-if="model.duels.duels.length === 0" class="tz-moments__empty" data-testid="duels-none">{{ t('moments.duels.none') }}</p>
-          <p v-else-if="duelRows.length === 0" class="tz-moments__empty" data-testid="duels-nothing-yet">{{ t('moments.duels.nothingYet') }}</p>
-          <ul v-else class="tz-moments__list">
-            <li v-for="r in duelRows" :key="r.key">
-              <button
-                type="button"
-                class="tz-moments__row"
-                :class="{ 'is-involved': r.involved, 'has-state': !!r.state }"
-                data-testid="duel-row"
-                :data-leader="r.d.leader"
-                :data-chaser="r.d.chaser"
-                :data-first-lap="r.d.firstLap"
-                :data-last-lap="r.d.lastLap"
-                :data-open="r.d.open"
-                @click="moments.goToDuel(r.d, { compare: true })"
-              >
-                <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.laps }}</span>
+      <section v-if="raceLists && showDuels" class="tz-moments__col" :aria-labelledby="duelsId" data-testid="moments-duels">
+        <h3 :id="duelsId" class="tz-moments__title">
+          {{ t('moments.duels.title') }}
+          <span class="tz-moments__count tz-tabular">{{ t('moments.duels.count', { n: duelRows.length }, duelRows.length) }}</span>
+        </h3>
+        <p class="tz-moments__approx">{{ t('moments.duels.basis') }}</p>
+        <p v-if="model.duels.status === 'noTrackStatus'" class="tz-moments__empty" data-testid="duels-no-track-status">
+          {{ t('moments.duels.noTrackStatus') }}
+        </p>
+        <p v-else-if="model.duels.duels.length === 0" class="tz-moments__empty" data-testid="duels-none">{{ t('moments.duels.none') }}</p>
+        <p v-else-if="duelRows.length === 0" class="tz-moments__empty" data-testid="duels-nothing-yet">{{ t('moments.duels.nothingYet') }}</p>
+        <ul v-else class="tz-moments__list">
+          <li v-for="r in duelRows" :key="r.key">
+            <button
+              type="button"
+              class="tz-moments__row"
+              :class="{ 'is-involved': r.involved }"
+              data-testid="duel-row"
+              :data-leader="r.d.leader"
+              :data-chaser="r.d.chaser"
+              :data-first-lap="r.d.firstLap"
+              :data-last-lap="r.d.lastLap"
+              :data-open="r.d.open"
+              @click="moments.goToDuel(r.d, { compare: true })"
+            >
+              <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.laps }}</span>
+              <span class="tz-moments__body">
                 <span class="tz-moments__who">
                   <span class="tz-moments__team" :style="r.color ? { background: r.color } : undefined" aria-hidden="true" />
                   <span class="tz-moments__who-text">{{ r.who }}</span>
@@ -217,12 +318,49 @@ export const raceOnly = true
                 <span class="tz-visually-hidden">, {{ r.lapsLong }},</span>
                 <span class="tz-moments__when tz-tabular">{{ r.min }}</span>
                 <span v-if="r.state" class="tz-chip tz-moments__state">{{ r.state }}</span>
-              </button>
-            </li>
-          </ul>
-        </section>
-      </div>
-    </template>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section v-if="showOthers" class="tz-moments__col" :aria-labelledby="othersId" data-testid="moments-others">
+        <h3 :id="othersId" class="tz-moments__title">
+          {{ othersTitle }}
+          <span class="tz-moments__count tz-tabular">{{ t('moments.others.count', { n: otherRows.length }, otherRows.length) }}</span>
+        </h3>
+        <p v-if="othersEstimated" class="tz-moments__approx">
+          <TzEstimated field="trackStatus" />
+        </p>
+        <p class="tz-moments__approx">{{ t('moments.others.basis') }}</p>
+        <p v-if="othersInSession.length === 0" class="tz-moments__empty" data-testid="others-none">{{ t('moments.others.none') }}</p>
+        <p v-else-if="otherRows.length === 0" class="tz-moments__empty" data-testid="others-nothing-yet">{{ t('moments.others.nothingYet') }}</p>
+        <ul v-else class="tz-moments__list">
+          <li v-for="r in otherRows" :key="r.key">
+            <button
+              type="button"
+              class="tz-moments__row"
+              :class="{ 'is-involved': r.involved, 'no-lap': !model.race }"
+              data-testid="other-row"
+              :data-kind="r.o.m.kind"
+              :data-sub="r.o.sub"
+              :data-t="r.o.m.t"
+              @click="moments.go(r.o.m)"
+            >
+              <template v-if="model.race">
+                <span class="tz-moments__lap tz-tabular" aria-hidden="true">{{ r.lap }}</span>
+                <span v-if="r.lapLong" class="tz-visually-hidden">{{ r.lapLong }}</span>
+              </template>
+              <span class="tz-moments__body">
+                <span class="tz-chip tz-moments__kind" :class="r.tone" data-testid="other-kind">{{ r.label }}</span>
+                <span v-if="r.o.text" class="tz-moments__rc" lang="en" :title="r.o.text" data-testid="other-text">{{ r.o.text }}</span>
+                <span class="tz-moments__when tz-tabular">{{ r.time }}</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -251,7 +389,7 @@ export const raceOnly = true
   color: var(--tz-text-muted);
 }
 
-/* Entre qué saltan los botones del dock: el grupo puede pasar a otra línea en pantallas estrechas. */
+/* Qué se ve y entre qué saltan los botones del dock: el grupo puede pasar a otra línea en pantallas estrechas. */
 .tz-moments__jumps {
   display: flex;
   flex-wrap: wrap;
@@ -260,8 +398,17 @@ export const raceOnly = true
 }
 
 .tz-moments__jumps-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
   font-size: var(--tz-text-xs);
   font-weight: var(--tz-weight-semibold);
+  color: var(--tz-text-muted);
+}
+
+/* Los iconos de ⏮ ⏭ del dock: lo une a esos botones. */
+.tz-moments__jumps-icons {
+  display: inline-flex;
   color: var(--tz-text-muted);
 }
 
@@ -274,7 +421,7 @@ export const raceOnly = true
   cursor: default;
 }
 
-/* Dos columnas si caben (adelantamientos y duelos); si no, una debajo de otra. */
+/* Hasta tres columnas si caben (adelantamientos, duelos y el resto); si no, una debajo de otra. */
 .tz-moments__cols {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
@@ -282,13 +429,16 @@ export const raceOnly = true
   align-items: start;
 }
 
-/* Contenedor de sus filas: con la columna estrecha, el estado de un duelo pasa a su propia línea (más abajo). */
+/* Una sola lista (una clase elegida): no se estira a todo el ancho. */
+.tz-moments__cols.is-single {
+  grid-template-columns: minmax(0, 48rem);
+}
+
 .tz-moments__col {
   display: flex;
   flex-direction: column;
   gap: var(--tz-space-1);
   min-width: 0;
-  container-type: inline-size;
 }
 
 .tz-moments__title {
@@ -333,18 +483,18 @@ export const raceOnly = true
 }
 
 /*
- * Fila pulsable: vuelta, quién y cuándo; 44 px con puntero grueso (--tz-hit-min). Quién tiene un mínimo de verdad (las
- * dos siglas): lo que va detrás no se lo come.
+ * Fila pulsable: la vuelta y el cuerpo; 44 px con puntero grueso (--tz-hit-min). El cuerpo se parte en líneas cuando
+ * sus partes no caben (D49): el chip de un duelo y luego «mín.» bajan bajo los nombres en vez de cortarse con «…».
  */
 .tz-moments__row {
   position: relative;
   display: grid;
-  grid-template-columns: 64px minmax(min(7.5em, 100%), 1fr) auto auto;
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
-  gap: var(--tz-space-2);
+  column-gap: var(--tz-space-2);
   width: 100%;
   min-height: max(28px, var(--tz-hit-min));
-  padding: 0 var(--tz-space-2);
+  padding: var(--tz-space-1) var(--tz-space-2);
   border: 1px solid transparent;
   border-radius: var(--tz-radius-sm);
   background: var(--tz-surface-2);
@@ -354,6 +504,11 @@ export const raceOnly = true
   transition:
     border-color var(--tz-dur-fast) var(--tz-ease-standard),
     transform var(--tz-dur-fast) var(--tz-ease-standard);
+}
+
+/* Sin vuelta (libres y clasificación): solo el cuerpo. */
+.tz-moments__row.no-lap {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .tz-moments__row:active {
@@ -372,15 +527,27 @@ export const raceOnly = true
   color: var(--tz-text-muted);
 }
 
+.tz-moments__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--tz-space-2);
+  row-gap: var(--tz-space-1);
+  min-width: 0;
+}
+
+/* Quién: crece y nunca cede por debajo de lo que ocupa (las dos siglas); lo que no quepa detrás baja de línea. */
 .tz-moments__who {
   display: inline-flex;
+  flex: 1 0 auto;
   align-items: center;
   gap: var(--tz-space-2);
-  min-width: 0;
+  min-width: min(7.5em, 100%);
+  max-width: 100%;
   overflow: hidden;
 }
 
-/* El texto, en un bloque propio: así el «…» funciona (un texto suelto en un flex no se acorta). */
+/* El texto, en un bloque propio (solo en una columna más estrecha que dos siglas llegaría a acortarse). */
 .tz-moments__who-text {
   min-width: 0;
   overflow: hidden;
@@ -397,6 +564,8 @@ export const raceOnly = true
 }
 
 .tz-moments__when {
+  flex: none;
+  margin-left: auto;
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-xs);
   white-space: nowrap;
@@ -408,31 +577,48 @@ export const raceOnly = true
   color: var(--tz-text-faint);
 }
 
-/* Un bloque (no el inline-flex de .tz-chip, que no acorta su texto): si ni en su línea cabe, «…». */
 .tz-moments__state {
-  display: block;
-  justify-self: end;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: none;
 }
 
-/*
- * Columna estrecha (iPad en vertical): el estado del duelo («terminó en adelantamiento») baja a su propia línea, bajo
- * quién; nunca se come los nombres ni se sale de la fila.
- */
-@container (max-width: 26rem) {
-  .tz-moments__row.has-state {
-    grid-template-columns: 64px minmax(0, 1fr) auto;
-    row-gap: var(--tz-space-1);
-    padding-block: var(--tz-space-1);
-  }
+/* Clase de una neutralización o de un mensaje: chip con la franja de su tono (como en dirección de carrera). */
+.tz-moments__kind {
+  flex: none;
+  border-left: 3px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-sm);
+}
 
-  .tz-moments__row.has-state .tz-moments__state {
-    grid-column: 2 / -1;
-    justify-self: start;
-  }
+.tz-moments__kind.is-neutral {
+  border-left-color: var(--tz-sc);
+}
+
+.tz-moments__kind.is-yellow {
+  border-left-color: var(--tz-flag-yellow);
+}
+
+.tz-moments__kind.is-flag {
+  border-left-color: var(--tz-flag-green);
+}
+
+/* Comisarios: franja de pintura de pista (categoría), no el acento de los controles (D47). */
+.tz-moments__kind.is-stewards {
+  border-left-color: var(--tz-paint);
+}
+
+/* Texto original del mensaje: dos líneas como mucho (el entero, en el título). */
+.tz-moments__rc {
+  display: -webkit-box;
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--tz-font-mono);
+  font-size: var(--tz-text-xs);
+  font-weight: var(--tz-weight-regular);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 @media (hover: hover) {

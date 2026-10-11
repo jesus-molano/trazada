@@ -4,9 +4,13 @@
  * (`engine/analysis/raceTrace.ts`), con los tiempos oficiales de paso por la línea; sin corrección de combustible ni
  * suavizado. Solo en carrera y sprint (en libres y clasificación, su estado vacío lo explica). Todos los pilotos
  * visibles por defecto; el coche elegido, destacado. Un clic en una vuelta salta a su inicio.
+ *
+ * De quién es cada línea (D49): la leyenda va por grupos (los que siguen, en el orden en que acaban las líneas de arriba
+ * abajo; los que dejaron de pasar por meta, como la clasificación; y los pilotos del manifest sin vueltas en los datos)
+ * y cada serie tiene su ficha al pasar el ratón o tocarla (`TzRaceTraceCard`).
  */
-import { type ChartGroup, type ChartSpec, driverStyles, LAP_INCRS } from '~/analysis/chart'
-import { crossingTimes, lapStartMs, leaderLapAt, raceTrace, stoppedCars } from '~/engine/analysis/raceTrace'
+import { type ChartGroup, type ChartNoLaps, type ChartSpec, driverStyles, LAP_INCRS } from '~/analysis/chart'
+import { crossingTimes, lapStartMs, lastCrossings, leaderLapAt, legendOrder, raceTrace, stoppedCars } from '~/engine/analysis/raceTrace'
 import { token } from '~/design/tokens'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -20,12 +24,22 @@ const styles = driverStyles(rt.drivers)
 const unknownColor = token('--tz-team-unknown')
 /** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
 const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
+/** Nombre completo de cada piloto del manifest (cabecera de la ficha). */
+const names = new Map(rt.drivers.map((d) => [d.number, `${d.first} ${d.last}`.trim()]))
+/** Pilotos del manifest sin ninguna vuelta en los datos: la leyenda los nombra aparte (antes desaparecían sin decirlo). */
+const noLaps: ChartNoLaps[] = rt.drivers
+  .filter((d) => !table.cars.has(d.number))
+  .map((d) => {
+    const style = styles.get(d.number)
+    return { key: d.number, label: style?.label ?? d.number, color: style?.color ?? unknownColor, dash: style?.dash ?? false }
+  })
 
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const trace = computed(() => markRaw(raceTrace(table, cutoff.value)))
 /** Coches que dejaron de pasar por meta: su serie acaba antes (sin sigla suelta a media gráfica). */
 const stopped = computed(() => stoppedCars(table, cutoff.value))
+const legend = computed(() => legendOrder(trace.value, stopped.value, lastCrossings(table, cutoff.value), cars))
 const visible = computed(() => new Set(st.shown.value[TAB] ?? cars))
 
 function toggle(car: string) {
@@ -48,6 +62,7 @@ const spec = computed<ChartSpec>(() => {
     return {
       key: car,
       label: style?.label ?? car,
+      name: names.get(car) || undefined,
       color: style?.color ?? unknownColor,
       dash: style?.dash ?? false,
       visible: visible.value.has(car),
@@ -75,8 +90,15 @@ const spec = computed<ChartSpec>(() => {
     formatX: (v: number) => t('analysis.lapShort', { lap: v }),
     formatY: (v: number) => (v === 0 ? '0' : `+${secFmt.value.format(v)}`),
     labelColumn: true,
+    legend: { running: legend.value.running, stopped: legend.value.stopped, noLaps },
   })
 })
+
+/** Pie de la ficha: «Clic: ir al inicio de la V10» y el botón de la ficha fijada. */
+function pickLabel(i: number) {
+  const x = spec.value.formatX(spec.value.x[i]!)
+  return { click: t('analysis.card.click', { x }), button: t('analysis.card.go', { x }) }
+}
 
 const cursorX = leadLap
 
@@ -109,9 +131,14 @@ export const raceOnly = true
         :label="t('analysis.raceTrace.chart')"
         :legend-label="t('analysis.legend')"
         testid="race-trace-chart"
+        :pick-label="pickLabel"
         @pick="pick"
         @toggle="toggle"
-      />
+      >
+        <template #card="{ hit }">
+          <TzRaceTraceCard :car="hit.key" :index="hit.index" :cutoff-ms="cutoff" :trace="trace" :stopped="stopped.has(hit.key)" />
+        </template>
+      </TzAnalysisChart>
       <p class="tz-atab__note">{{ t('analysis.raceTrace.basis') }}</p>
       <p class="tz-atab__note">{{ t('analysis.identifyLap') }}</p>
     </template>

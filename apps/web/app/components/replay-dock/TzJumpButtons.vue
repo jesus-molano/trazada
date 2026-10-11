@@ -4,6 +4,8 @@
  * mensajes destacados de dirección de carrera (`stores/moments.ts`), o solo la clase elegida en la pestaña «Momentos».
  * Cada salto llega 5 s antes del momento. Teclas: coma (anterior) y punto (siguiente). Sin momento hacia ese lado, el
  * botón se deshabilita. El nombre accesible dice hacia dónde y entre cuáles; nunca qué pasa (sin spoilers).
+ * Con una sola clase elegida (D49), un chip «Solo duelos ×» lo recuerda junto a los botones; su × vuelve a «todos». Solo
+ * aparece o desaparece por una acción del usuario (la pestaña o su ×), nunca a mitad de un arrastre del timeline (D44).
  * Mientras están montados, la paleta de comandos (ítem 14) ofrece «siguiente/anterior momento» con los mismos destinos
  * y, con el mismo precálculo, «siguiente adelantamiento», «duelo HAM»… (ítem 14b), sin spoilers si la hoja de análisis
  * tiene «Sin spoilers».
@@ -28,6 +30,7 @@ const PREV_KEY = ','
 const NEXT_KEY = '.'
 
 const kind = computed(() => KIND_TEXT[moments.filter]())
+const only = computed(() => (moments.filter === 'all' ? null : kind.value))
 const prevLabel = computed(() => t('moments.jump.prev', { kind: kind.value }))
 const nextLabel = computed(() => t('moments.jump.next', { kind: kind.value }))
 const keyHint = (key: string) => t('moments.jump.key', { key })
@@ -81,12 +84,25 @@ export const order = 10
     >
       <TzIcon name="jumpForward" size="sm" />
     </button>
+    <span v-if="only" class="tz-chip tz-jumps__only" data-testid="jump-filter-chip" :title="t('moments.jump.onlyTitle', { kind: only })">
+      {{ t('moments.jump.only', { kind: only }) }}
+      <button
+        type="button"
+        class="tz-jumps__clear"
+        :aria-label="t('moments.jump.clear')"
+        data-testid="jump-filter-clear"
+        @click="moments.setFilter('all')"
+      >
+        <TzIcon name="close" size="sm" />
+      </button>
+    </span>
   </div>
 </template>
 
 <style scoped>
 .tz-jumps {
   display: inline-flex;
+  align-items: center;
   gap: var(--tz-space-1);
 }
 
@@ -123,9 +139,41 @@ export const order = 10
   cursor: default;
 }
 
+/* «Solo duelos ×»: un chip (nunca la placa de pintura, que es «activado»), con su × de 20 px. */
+.tz-jumps__only {
+  height: 24px;
+  padding-right: var(--tz-space-0-5);
+  animation: tz-enter var(--tz-dur-fast) var(--tz-ease-enter) both;
+}
+
+.tz-jumps__clear {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--tz-radius-pill);
+  background: transparent;
+  color: var(--tz-text-muted);
+  cursor: pointer;
+}
+
+.tz-jumps__clear::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2));
+}
+
 @media (hover: hover) {
   .tz-jumps__btn:hover:not(:disabled) {
     border-color: var(--tz-accent);
+  }
+
+  .tz-jumps__clear:hover {
+    background: var(--tz-surface-3);
+    color: var(--tz-text);
   }
 }
 </style>

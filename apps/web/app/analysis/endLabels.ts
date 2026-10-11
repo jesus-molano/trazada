@@ -18,9 +18,14 @@
  * - Serie de un coche que dejó de pasar por meta (`ChartGroup.stopped`): una raya justo después de su último dato, sin
  *   sigla (la leyenda dice hasta qué vuelta llega), salvo destacada: entonces, el texto después de la raya.
  *
- * Todo en píxeles del lienzo (`r` por píxel CSS).
+ * - Serie resaltada (`preview`: ratón, foco o toque, D49): la suya se coloca la primera, exactamente a la altura de su
+ *   dato (o tras su raya, si se detuvo), con opacidad completa y el resto atenuado (también el coche elegido, que
+ *   conserva su grosor). `drawPreviewLine` la vuelve a trazar por encima, por sus mismos puntos.
+ *
+ * Todo en píxeles del lienzo (`r` por píxel CSS); los rótulos dibujados se devuelven en px CSS (`LabelRect`), para que
+ * pasar el ratón por una sigla resalte su serie.
  */
-import { type ChartSpec, DIM_ALPHA, endPoints, type LabelSpot, placeLabels } from './chart'
+import { type ChartSpec, DIM_ALPHA, endPoints, type LabelRect, type LabelSpot, placeLabels } from './chart'
 
 /** Hueco arriba del área de datos (px CSS; `padding` de uPlot). */
 export const PLOT_PAD_TOP = 8
@@ -63,6 +68,7 @@ export interface LabelStyle {
 }
 
 interface Label {
+  key: string
   text: string
   color: string
   dash: boolean
@@ -93,12 +99,25 @@ function columnMark(ctx: CanvasRenderingContext2D, l: Label, x: number, y: numbe
   } else ctx.fillRect(x, y - r, 6 * r, 2 * r)
 }
 
-export function drawEndLabels(ctx: CanvasRenderingContext2D, frame: LabelFrame, spec: ChartSpec, style: LabelStyle): void {
+/**
+ * Dibuja las siglas y las rayas de fin. `preview`: la serie resaltada (o null). Devuelve los rótulos dibujados, en px
+ * CSS del lienzo.
+ */
+export function drawEndLabels(
+  ctx: CanvasRenderingContext2D,
+  frame: LabelFrame,
+  spec: ChartSpec,
+  style: LabelStyle,
+  preview: string | null = null,
+): LabelRect[] {
   const { r, bbox } = frame
+  const previewed = preview !== null && spec.groups.some((g) => g.visible && g.key === preview) ? preview : null
   const dimmed = spec.groups.some((g) => g.visible && g.emphasis)
+  const alphaOf = (key: string, emphasis: boolean) =>
+    previewed !== null ? (key === previewed ? 1 : DIM_ALPHA) : dimmed && !emphasis ? DIM_ALPHA : 1
   const lo = bbox.top + LABEL_INSET * r
   const hi = bbox.top + bbox.height - LABEL_INSET * r
-  const ends = endPoints(spec)
+  const ends = endPoints(spec, previewed)
   ctx.save()
   // Explícitos: uPlot deja el estado de su último eje (el y, alineado a la derecha).
   ctx.font = style.font
@@ -123,7 +142,7 @@ export function drawEndLabels(ctx: CanvasRenderingContext2D, frame: LabelFrame, 
     const y = frame.yPos(e.value)
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue
     const off = y < bbox.top ? -1 : y > bbox.top + bbox.height ? 1 : 0
-    const alpha = dimmed && !e.group.emphasis ? DIM_ALPHA : 1
+    const alpha = alphaOf(e.group.key, e.group.emphasis)
     const stopped = !!e.group.stopped
     // La raya, solo si se ve su último dato (fuera de la escala no hay dónde ponerla).
     if (stopped && off === 0) {
@@ -137,23 +156,31 @@ export function drawEndLabels(ctx: CanvasRenderingContext2D, frame: LabelFrame, 
     const sx = column ? colX : x + (stopped ? BAR.offset * r : 0)
     const lead = column ? COLUMN.text : off !== 0 ? INLINE.offScaleText : INLINE.text
     labels.push({
+      key: e.group.key,
       text: e.group.label,
       color: e.group.color,
       dash: e.group.dash,
       alpha,
       column,
       off,
-      spot: { x: sx, y: Math.min(Math.max(y, lo), hi), w: lead * r + textW, first: e.group.emphasis },
+      spot: {
+        x: sx,
+        y: Math.min(Math.max(y, lo), hi),
+        w: lead * r + textW,
+        rank: e.group.key === previewed ? 0 : e.group.emphasis ? 1 : 2,
+      },
     })
   }
   const placed = placeLabels(
     labels.map((l) => l.spot),
     { gap: LABEL_GAP * r, lo, hi },
   )
+  const rects: LabelRect[] = []
   labels.forEach((l, k) => {
     const y = placed[k]
     if (y === null || y === undefined) return
     ctx.globalAlpha = l.alpha
+    rects.push({ key: l.key, x0: l.spot.x / r, x1: (l.spot.x + l.spot.w) / r, y0: y / r - LABEL_GAP / 2, y1: y / r + LABEL_GAP / 2 })
     if (l.column) {
       columnMark(ctx, l, l.spot.x + COLUMN.mark * r, y, r)
       ctx.fillStyle = style.text
@@ -167,5 +194,68 @@ export function drawEndLabels(ctx: CanvasRenderingContext2D, frame: LabelFrame, 
     ctx.fillStyle = style.text
     ctx.fillText(l.text, l.spot.x + (l.off !== 0 ? INLINE.offScaleText : INLINE.text) * r, y)
   })
+  ctx.restore()
+  return rects
+}
+
+/** Ancho del trazo de la serie resaltada (px CSS), como el del coche elegido. */
+export const PREVIEW_WIDTH = 2.5
+/** Radio del punto suelto de la serie resaltada (px CSS). */
+const PREVIEW_DOT = 3
+const PREVIEW_DASH = [6, 4]
+
+/**
+ * Vuelve a trazar la serie resaltada (D49) por encima de las demás, para que no quede enterrada: solo sus series de
+ * línea, exactamente por sus puntos (sin unir huecos), con el grosor del coche elegido y discontinua si lo es la suya;
+ * un punto suelto, como un punto (un cuadrado para el segundo piloto, como sus marcadores). Recortado al área de datos.
+ * Nada más: ni guías ni marcas nuevas.
+ */
+export function drawPreviewLine(ctx: CanvasRenderingContext2D, frame: LabelFrame, spec: ChartSpec, preview: string | null): void {
+  const group = preview === null ? undefined : spec.groups.find((g) => g.key === preview && g.visible)
+  if (!group) return
+  const { r, bbox } = frame
+  const lists = spec.series.filter((s) => s.group === group.key && (s.mark === 'line' || s.mark === 'lineDot')).map((s) => s.values)
+  if (!lists.length) return
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(bbox.left, bbox.top, bbox.width, bbox.height)
+  ctx.clip()
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = group.color
+  ctx.fillStyle = group.color
+  ctx.lineWidth = PREVIEW_WIDTH * r
+  ctx.lineJoin = 'round'
+  ctx.setLineDash(group.dash ? PREVIEW_DASH.map((d) => d * r) : [])
+  const has = (v: number | null | undefined): v is number => v !== null && v !== undefined
+  for (const v of lists) {
+    let i = 0
+    while (i < v.length) {
+      if (!has(v[i])) {
+        i++
+        continue
+      }
+      let j = i
+      while (j + 1 < v.length && has(v[j + 1])) j++
+      if (j === i) {
+        const x = frame.xPos(spec.x[i]!)
+        const y = frame.yPos(v[i]!)
+        const h = PREVIEW_DOT * r
+        ctx.beginPath()
+        if (group.dash) ctx.rect(x - h, y - h, 2 * h, 2 * h)
+        else ctx.arc(x, y, h, 0, 2 * Math.PI)
+        ctx.fill()
+      } else {
+        ctx.beginPath()
+        for (let k = i; k <= j; k++) {
+          const x = frame.xPos(spec.x[k]!)
+          const y = frame.yPos(v[k]!)
+          if (k === i) ctx.moveTo(x, y)
+          else ctx.lineTo(x, y)
+        }
+        ctx.stroke()
+      }
+      i = j + 1
+    }
+  }
   ctx.restore()
 }

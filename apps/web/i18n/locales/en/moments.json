@@ -1,11 +1,11 @@
 {
   "moments": {
     "tab": "Moments",
-    "onlyRace": "Overtakes and battles only in races and sprints: in practice and qualifying each driver runs on their own and there is no on-track order to compare lap by lap. The player's moment buttons still jump between neutralisations and race control messages.",
+    "onlyRace": "Overtakes and battles only in races and sprints: in practice and qualifying each driver runs on their own and there is no on-track order to compare lap by lap. Below, the neutralisations and notable race control messages, which the player's moment buttons also jump between.",
     "noLaps": "No data: this session has no timed laps.",
     "basis": "An overtake is a change in the official order at the finish line between two consecutive laps of both cars, with neither entering or leaving the pits on those laps and less than 30 s apart. If either car lacks the line crossing of one of those laps, no overtake is claimed there. Passing and being re-passed within the same lap cannot be seen.",
     "lap1": "Lap 1 does not count: there is no earlier official order (the grid is not in the data).",
-    "pick": "Click one to go 5 s before it and select the driver who overtakes; for a battle, the chasing driver, compared with the one ahead.",
+    "pick": "Click one to go 5 s before it. For an overtake, the overtaking driver is selected; for a battle, the chasing driver, compared with the one ahead.",
     "overtakes": {
       "title": "Overtakes",
       "count": "{n} overtake | {n} overtakes",
@@ -34,13 +34,27 @@
       "nothingYet": "No battles up to this moment yet. Move the player forward or turn off «No spoilers».",
       "noTrackStatus": "No per-lap track status data: laps under SC or VSC cannot be ruled out, so no battles are searched for."
     },
+    "others": {
+      "title": {
+        "all": "Neutralisations and race control",
+        "neutralisation": "Neutralisations",
+        "raceControl": "Race control"
+      },
+      "count": "{n} moment | {n} moments",
+      "basis": "The start of each SC, VSC or red flag and notable race control messages: green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag (several of the same kind less than 30 s apart count as one; the first is shown). The text is the original, in English; the time is the player's clock.",
+      "none": "No neutralisations or notable race control messages in this session.",
+      "nothingYet": "None up to this moment yet. Move the player forward or turn off «No spoilers»."
+    },
     "jump": {
       "group": "Jump between moments",
       "prev": "Previous moment ({kind})",
       "next": "Next moment ({kind})",
       "key": "{key} key",
-      "filterLabel": "Jump to",
-      "filterHint": "The player's moment buttons (and the comma and full stop keys) land 5 s before the previous or next moment: an overtake, the start of a battle, a neutralisation (SC, VSC or red flag) or a notable race control message (green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag). Choose which ones here.",
+      "filterLabel": "Show and jump between",
+      "filterHint": "Choose which moments this tab shows and which ones the player's «Previous moment» and «Next moment» buttons (and the comma and full stop keys) jump between, landing 5 s before: overtakes, battle starts, neutralisations (SC, VSC or red flag) and notable race control messages (green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag). With a single kind chosen, the player shows it next to those buttons.",
+      "only": "Only {kind}",
+      "onlyTitle": "The moment buttons only jump between {kind}. Choose in the analysis sheet's «Moments» tab.",
+      "clear": "Jump between all moments",
       "filter": {
         "all": "All",
         "overtake": "Overtakes",

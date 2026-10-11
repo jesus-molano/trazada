@@ -19,6 +19,8 @@ export interface ChartGroup {
   key: string
   /** Sigla (o el número si no hay piloto en el manifest). */
   label: string
+  /** Nombre completo del manifest («Alexander Albon»), para la cabecera de la ficha (D49); sin piloto, nada. */
+  name?: string
   /** Color de equipo (#rrggbb) o el de «equipo desconocido». */
   color: string
   /** Segundo piloto de su equipo: discontinuo. */
@@ -27,8 +29,10 @@ export interface ChartGroup {
   /** Destacado (coche elegido); con alguno destacado, el resto se atenúa. */
   emphasis: boolean
   /**
-   * El coche dejó de pasar por meta antes del corte (`stoppedCars`): su serie acaba antes que las demás. Su sigla no
-   * se queda a media gráfica (salvo si está destacado): una marca de fin, y en la leyenda «hasta V30».
+   * El coche dejó de pasar por meta antes del corte (`stoppedCars`): el primero dio tres vueltas más sin que él cruzara
+   * o, con todos los pasos a la vista, su último paso es anterior al último del primero (D49). Su serie acaba antes
+   * que las demás y su sigla no se queda a media gráfica (salvo destacado o resaltado): una marca de fin, y en la
+   * leyenda «hasta V30». La fuente no dice por qué.
    */
   stopped?: boolean
 }
@@ -59,6 +63,28 @@ export interface ChartSpec {
    * altura del último dato de su serie (`placeLabels`). Sin columna (eje por hora), junto al final de su serie.
    */
   labelColumn?: boolean
+  /**
+   * Leyenda por grupos (race trace, D49): los que siguen, de arriba abajo (`legendOrder`); los que dejaron de pasar
+   * por meta; y los pilotos del manifest sin ninguna vuelta en los datos (sin serie: solo su nombre). Sin ella, la
+   * leyenda sigue el orden de `groups`.
+   */
+  legend?: ChartLegend
+}
+
+/** Un piloto del manifest sin vueltas en los datos: en la leyenda, sin botón. */
+export interface ChartNoLaps {
+  key: string
+  label: string
+  color: string
+  dash: boolean
+}
+
+export interface ChartLegend {
+  /** Claves de `groups`, en orden. */
+  running: readonly string[]
+  /** Claves de `groups`, en orden. */
+  stopped: readonly string[]
+  noLaps: readonly ChartNoLaps[]
 }
 
 /** Marcas del eje x por vuelta: vueltas enteras. */
@@ -146,16 +172,17 @@ export interface EndPoint extends SeriesEnd {
 
 /**
  * Final de cada serie visible, y dónde va su sigla: una serie que acaba antes (`ChartGroup.stopped`) solo lleva la
- * marca de fin, salvo destacada (entonces, junto a su final: con el resto atenuado no hay confusión); las demás, en el
- * margen (`ChartSpec.labelColumn`) o junto a su final.
+ * marca de fin, salvo destacada o resaltada (`preview`, D49): entonces, junto a su final (con el resto atenuado no hay
+ * confusión); las demás, en el margen (`ChartSpec.labelColumn`) o junto a su final.
  */
-export function endPoints(spec: ChartSpec): EndPoint[] {
+export function endPoints(spec: ChartSpec, preview: string | null = null): EndPoint[] {
   const out: EndPoint[] = []
   for (const group of spec.groups) {
     if (!group.visible) continue
     const end = seriesEnd(spec, group.key)
     if (!end) continue
-    const place: LabelPlace = group.stopped ? (group.emphasis ? 'inline' : 'none') : spec.labelColumn ? 'column' : 'inline'
+    const shown = group.emphasis || group.key === preview
+    const place: LabelPlace = group.stopped ? (shown ? 'inline' : 'none') : spec.labelColumn ? 'column' : 'inline'
     out.push({ ...end, group, place })
   }
   return out
@@ -168,20 +195,24 @@ export interface LabelSpot {
   y: number
   /** Ancho del rótulo (px). */
   w: number
-  /** El coche destacado: se coloca el primero, así que siempre lleva su sigla. */
-  first: boolean
+  /**
+   * Orden de colocación: 0 la serie resaltada (ratón, foco o toque, D49), 1 el coche destacado (elegido), 2 el resto.
+   * Las de rango menor se colocan antes, así que siempre llevan su sigla.
+   */
+  rank: 0 | 1 | 2
 }
 
 /**
  * Altura de cada sigla (en el orden de entrada), o null si no lleva: cada una va exactamente a la altura de su dato (dentro
  * de [lo, hi]) o no va, porque una sigla movida acaba a la altura de otra serie y se lee como suya. Se colocan de una en
- * una, primero la del coche destacado (siempre lleva) y luego de arriba abajo; una que pisaría a otra ya colocada (a
- * menos de `gap` en vertical y solapadas en horizontal) se queda sin sigla: la leyenda la nombra.
+ * una por rango (la resaltada, la del coche destacado y luego las demás) y, a igual rango, de arriba abajo; una que
+ * pisaría a otra ya colocada (a menos de `gap` en vertical y solapadas en horizontal) se queda sin sigla: la leyenda la
+ * nombra.
  */
 export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: number; hi: number }): (number | null)[] {
   const order = spots
     .map((_, i) => i)
-    .sort((a, b) => Number(spots[b]!.first) - Number(spots[a]!.first) || spots[a]!.y - spots[b]!.y)
+    .sort((a, b) => spots[a]!.rank - spots[b]!.rank || spots[a]!.y - spots[b]!.y)
   const taken: { x0: number; x1: number; y: number }[] = []
   const out = new Array<number | null>(spots.length).fill(null)
   for (const i of order) {
@@ -192,6 +223,124 @@ export function placeLabels(spots: readonly LabelSpot[], o: { gap: number; lo: n
     out[i] = y
   }
   return out
+}
+
+/** Rótulo dibujado (px CSS del lienzo): para que pasar el ratón por una sigla resalte su serie. */
+export interface LabelRect {
+  key: string
+  x0: number
+  x1: number
+  y0: number
+  y1: number
+}
+
+/** Distancia máxima (px CSS) para que el puntero «toque» una serie: ratón o lápiz, y dedo (la mitad de --tz-hit-min). */
+export const HIT_PX = { fine: 12, coarse: 22 } as const
+/** Lo que se alarga el final de un coche detenido hacia la derecha para tocarlo (cubre su raya, px CSS). */
+export const STOPPED_HIT_EXTRA = 8
+
+/** Geometría de la gráfica en px CSS del lienzo (origen: su esquina superior izquierda). */
+export interface HitFrame {
+  /** Área de datos. */
+  bbox: { left: number; top: number; width: number; height: number }
+  xPos(v: number): number
+  yPos(v: number): number
+  /** Inversa de `xPos`. */
+  xVal(px: number): number
+}
+
+/** Lo que toca el puntero: el grupo y el índice del eje x. */
+export interface ChartHit {
+  key: string
+  index: number
+}
+
+/**
+ * Serie resaltada con su ficha (D49): al pasar el ratón o el lápiz (`hover`), con el foco o el ratón en su nombre de la
+ * leyenda (`legend`) o fijada con un toque (`pinned`).
+ */
+export interface ChartPreview extends ChartHit {
+  mode: 'hover' | 'legend' | 'pinned'
+}
+
+const LINE_MARKS = new Set<ChartMark>(['line', 'lineDot'])
+
+/**
+ * Serie que toca el puntero (px CSS), solo entre las visibles (D49):
+ *
+ * 1. Una sigla dibujada que lo contiene gana (índice: el final de su serie, que es lo que rotula).
+ * 2. Series de línea: la distancia vertical a la recta entre dos puntos seguidos con valor que rodean al puntero; los
+ *    puntos (sueltos, finales) por distancia euclídea; el final de un detenido se alarga `STOPPED_HIT_EXTRA` px a la
+ *    derecha para cubrir su raya.
+ * 3. Puntos, huecos y aspas: distancia euclídea a cada punto.
+ *
+ * Gana la menor si no pasa de `maxPx` (a igual distancia, la destacada y luego la primera de `groups`). Lo que queda
+ * fuera del área de datos (recortado) no cuenta. Índice: el del eje x más cercano al puntero (el mismo que elige un
+ * clic) si la serie tiene ahí un valor; si no (gráficas por hora, con un x por vuelta de cualquier coche), el del
+ * punto tocado.
+ */
+export function hitTest(
+  spec: ChartSpec,
+  frame: HitFrame,
+  px: number,
+  py: number,
+  maxPx: number,
+  labelRects: readonly LabelRect[] = [],
+): ChartHit | null {
+  const visible = new Map(spec.groups.filter((g) => g.visible).map((g) => [g.key, g]))
+  for (const r of labelRects) {
+    if (!visible.has(r.key) || px < r.x0 || px > r.x1 || py < r.y0 || py > r.y1) continue
+    const end = seriesEnd(spec, r.key)
+    if (end) return { key: r.key, index: end.index }
+  }
+  const { bbox } = frame
+  const top = bbox.top - 0.5
+  const bottom = bbox.top + bbox.height + 0.5
+  const inY = (y: number) => y >= top && y <= bottom
+  const inX = (x: number) => x >= bbox.left - 0.5 && x <= bbox.left + bbox.width + 0.5
+  let best: { key: string; d: number; point: number; rank: number } | null = null
+  const order = new Map(spec.groups.map((g, i) => [g.key, i]))
+  const consider = (key: string, d: number, point: number) => {
+    if (d > maxPx) return
+    const g = visible.get(key)!
+    const rank = (g.emphasis ? 0 : 1) * 1e6 + order.get(key)!
+    if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) <= 1e-9 && rank < best.rank)) best = { key, d, point, rank }
+  }
+  for (const s of spec.series) {
+    const g = visible.get(s.group)
+    if (!g) continue
+    const v = s.values
+    const xs = spec.x
+    const isLine = LINE_MARKS.has(s.mark)
+    let lastIdx = -1
+    for (let i = 0; i < v.length; i++) {
+      const y = v[i]
+      if (y === null || y === undefined) continue
+      lastIdx = i
+      const X = frame.xPos(xs[i]!)
+      const Y = frame.yPos(y)
+      if (inX(X) && inY(Y)) consider(s.group, Math.hypot(px - X, py - Y), i)
+      if (!isLine) continue
+      const next = v[i + 1]
+      if (next === null || next === undefined) continue
+      const X2 = frame.xPos(xs[i + 1]!)
+      if (px < Math.min(X, X2) || px > Math.max(X, X2) || X2 === X) continue
+      const Y2 = frame.yPos(next)
+      const yAt = Y + ((Y2 - Y) * (px - X)) / (X2 - X)
+      if (inY(yAt)) consider(s.group, Math.abs(py - yAt), Math.abs(px - X) <= Math.abs(px - X2) ? i : i + 1)
+    }
+    // El final de un detenido llega hasta su raya.
+    if (isLine && g.stopped && lastIdx >= 0) {
+      const X = frame.xPos(xs[lastIdx]!)
+      const Y = frame.yPos(v[lastIdx]!)
+      if (px >= X && px <= X + STOPPED_HIT_EXTRA && inY(Y)) consider(s.group, Math.abs(py - Y), lastIdx)
+    }
+  }
+  const hit = best as { key: string; d: number; point: number } | null
+  if (!hit) return null
+  const near = nearestIndex(spec.x, frame.xVal(px))
+  const hasValue = near >= 0 && spec.series.some((s) => s.group === hit.key && s.values[near] !== null && s.values[near] !== undefined)
+  return { key: hit.key, index: hasValue ? near : hit.point }
 }
 
 /** Último índice con valor en alguna de las listas (−1 si ninguno). */

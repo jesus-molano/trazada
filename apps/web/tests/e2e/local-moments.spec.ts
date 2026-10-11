@@ -2,6 +2,7 @@
  * Momentos (ítem 5, D35) con la carrera de Japón 2026 (datos completos de data/; fuente dev, nunca en un fixture):
  * adelantamientos confirmados en la línea y situados con el GPS, duelos a menos de 1 s, «Sin spoilers», el salto al
  * pulsar uno, el carril del timeline (sin crecer el timeline) y los botones del dock con la clase «Adelantamientos».
+ * Las filas de duelo nunca se cortan (D49): un barrido de anchos en español y en inglés.
  * Solo en local, con un servidor aparte:
  *   E2E_DATA_DIR=../../data node tests/e2e/serve.mjs --port 4199
  *   E2E_LOCAL_URL=http://127.0.0.1:4199 pnpm e2e local-moments
@@ -137,3 +138,53 @@ test.describe('iPad vertical 768×1024', () => {
     }
   })
 })
+
+/**
+ * D49: entre 932 y 995 px el chip «terminó en adelantamiento» salía cortado («terminó en adelanta…»). Ahora el cuerpo de
+ * la fila se parte en líneas: en cada ancho, ni el chip, ni los nombres, ni «mín.» se cortan; todo queda dentro de su
+ * fila, la fila dentro de su columna y la página sin scroll horizontal.
+ */
+for (const lang of ['es', 'en'] as const) {
+  for (const vp of [
+    { width: 768, height: 1024, touch: true },
+    { width: 932, height: 990, touch: false },
+    { width: 960, height: 990, touch: false },
+    { width: 996, height: 990, touch: false },
+    { width: 1024, height: 768, touch: false },
+    { width: 1280, height: 800, touch: false },
+    { width: 1440, height: 900, touch: false },
+    { width: 1760, height: 990, touch: false },
+    { width: 1920, height: 1080, touch: false },
+  ]) {
+    test.describe(`filas de duelo a ${vp.width} px${vp.touch ? ' táctil' : ''} (${lang})`, () => {
+      test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch })
+
+      test('nada se corta ni se sale de su fila', async ({ page }) => {
+        await page.context().addCookies([{ name: 'trazada_lang', value: lang, url: BASE! }])
+        await open(page)
+        await page.getByTestId('analysis-button').click()
+        await page.getByTestId('analysis-tab-moments').click()
+        await page.getByTestId('analysis-spoilers').click()
+        const rows = page.locator('[data-testid="duel-row"]:has(.tz-moments__state)')
+        await expect.poll(() => rows.count()).toBeGreaterThan(0)
+        const bad = await page.evaluate(() => {
+          const out: string[] = []
+          for (const row of document.querySelectorAll<HTMLElement>('[data-testid="duel-row"]')) {
+            const r = row.getBoundingClientRect()
+            const col = row.closest('.tz-moments__col')!.getBoundingClientRect()
+            if (r.right > col.right + 0.5) out.push(`fila fuera de su columna: ${row.textContent}`)
+            for (const el of row.querySelectorAll<HTMLElement>('.tz-moments__who-text, .tz-moments__when, .tz-moments__state, .tz-moments__lap')) {
+              const e = el.getBoundingClientRect()
+              if (el.scrollWidth > el.clientWidth + 1) out.push(`cortado: ${el.textContent}`)
+              if (e.right > r.right + 0.5 || e.left < r.left - 0.5) out.push(`fuera de la fila: ${el.textContent}`)
+            }
+          }
+          const doc = document.documentElement
+          if (doc.scrollWidth > doc.clientWidth) out.push('scroll horizontal')
+          return out
+        })
+        expect(bad).toEqual([])
+      })
+    })
+  }
+}

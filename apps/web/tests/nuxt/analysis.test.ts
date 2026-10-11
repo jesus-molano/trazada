@@ -9,7 +9,7 @@
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import TzAnalysisChart from '~/components/TzAnalysisChart.vue'
 import TzAnalysisButton from '~/components/replay-header/TzAnalysisButton.vue'
 import TzAnalysis from '~/components/replay-overlays/TzAnalysis.vue'
@@ -25,7 +25,9 @@ import { ANALYSIS_TABS, analysisTabs, defaultTab } from '~/slots/analysis-tabs'
 import { collectSlot } from '~/slots/collect'
 import { usePlaybackStore } from '~/stores/playback'
 import { loadFixture } from '~/testing/fixture'
-import { timingBuilder } from '~/testing/laps'
+import { rcMessage, timingBuilder } from '~/testing/laps'
+import { raceSession as momentsRace } from '~/testing/moments'
+import { useReplayShortcuts } from '~/composables/useReplayShortcuts'
 
 /** Callbacks de requestAnimationFrame: nunca se ejecutan (el bucle del runtime no hace falta: el reloj avisa solo). */
 let pending: FrameRequestCallback[] = []
@@ -178,6 +180,120 @@ describe('abrir y cerrar', () => {
     await settle()
     expect(sheetEl()!.dataset.tab).toBe(order[order.length - 1])
     expect(tablist.querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1)
+  })
+})
+
+describe('coche elegido en la hoja (D49)', () => {
+  const chip = () => $('[data-testid="analysis-selection"]')
+  const clear = () => $<HTMLButtonElement>('[data-testid="analysis-selection-clear"]')!
+
+  it('el chip dice qué coche está elegido y si la cámara lo sigue; su × lo quita sin cerrar la hoja y lleva el foco a «Sin spoilers»', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    await mountBoth()
+    await openSheet()
+    expect(chip()).toBeNull()
+
+    playback.selectCar('16')
+    await settle()
+    expect(chip()!.getAttribute('role')).toBe('group')
+    expect(chip()!.getAttribute('aria-label')).toMatch(/Coche elegido: LEC|Selected car: LEC/)
+    expect(chip()!.querySelector('.tz-aselect__label')!.textContent).toMatch(/^(Elegido|Selected)$/)
+    expect(chip()!.querySelector('.tz-aselect__tla')!.textContent).toBe('LEC')
+    expect(chip()!.querySelector('.tz-aselect__follow')).toBeNull()
+    expect(chip()!.dataset.following).toBe('false')
+    expect(clear().getAttribute('aria-label')).toMatch(/^(Quitar la selección de LEC|Clear the selection of LEC)$/)
+
+    playback.setFollowing(true)
+    await settle()
+    expect(chip()!.dataset.following).toBe('true')
+    expect(chip()!.textContent).toMatch(/la cámara lo sigue|camera following/)
+    expect(clear().getAttribute('aria-label')).toMatch(/y dejar de seguirlo|and stop following it/)
+
+    clear().click()
+    await settle()
+    expect(playback.selectedCar).toBeNull()
+    expect(playback.following).toBe(false)
+    expect(sheetEl()).not.toBeNull()
+    expect(chip()).toBeNull()
+    expect(document.activeElement).toBe($('[data-testid="analysis-spoilers"]'))
+  })
+
+  it('en todas las pestañas', async () => {
+    attach()
+    usePlaybackStore().selectCar('16')
+    await mountBoth()
+    await openSheet()
+    for (const tab of ANALYSIS_TABS.map((x) => x.tab)) {
+      await selectTab(tab)
+      expect(chip(), tab).not.toBeNull()
+    }
+  })
+
+  it('Esc sigue cerrando primero la hoja; luego deja de seguir y después quita la selección', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    playback.selectCar('16')
+    playback.setFollowing(true)
+    // Los Esc del replay (useReplayShortcuts): seguimiento y selección.
+    offs.push(registerEscape(ESC_PRIORITY.follow, { active: () => playback.following, run: () => playback.setFollowing(false) }))
+    offs.push(registerEscape(ESC_PRIORITY.selection, { active: () => playback.selectedCar !== null, run: () => playback.selectCar(null) }))
+    await mountBoth()
+    await openSheet()
+    expect(handleEscape()).toBe(true)
+    await settle()
+    expect(sheetEl()).toBeNull()
+    expect(playback.following).toBe(true)
+    handleEscape()
+    expect(playback.following).toBe(false)
+    expect(playback.selectedCar).toBe('16')
+    handleEscape()
+    expect(playback.selectedCar).toBeNull()
+  })
+
+  it('en «Ritmo», al quitarlo, sigue dibujado sin destacar (se congelan los visibles)', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    const withLaps = playback.order.filter((c) => rt.leaderboard.lapTable.cars.has(c))
+    const other = withLaps[10]!
+    playback.selectCar(other)
+    const { sheet } = await mountBoth()
+    await openSheet()
+    await selectTab('pace')
+    const pressed = () =>
+      new Set($$('[data-testid="pace-chart"] [data-testid="analysis-legend-item"][aria-pressed="true"]').map((b) => b.dataset.car))
+    const before = pressed()
+    expect(before.has(other)).toBe(true)
+    expect($(`[data-testid="pace-chart"] [data-car="${other}"]`)!.classList).toContain('is-emphasis')
+    clear().click()
+    await settle()
+    expect(pressed()).toEqual(before)
+    expect($(`[data-testid="pace-chart"] [data-car="${other}"]`)!.classList).not.toContain('is-emphasis')
+    const spec = sheet.findComponent(TzAnalysisChart).props('spec') as ChartSpec
+    expect(spec.groups.some((g) => g.emphasis)).toBe(false)
+  })
+
+  it('también si se quita desde otra pestaña («Ritmo» sin montar); con la hoja cerrada, «Ritmo» sigue a la selección', async () => {
+    attach()
+    const playback = usePlaybackStore()
+    const withLaps = playback.order.filter((c) => rt.leaderboard.lapTable.cars.has(c))
+    const [a, b] = [withLaps[10]!, withLaps[12]!]
+    const pressed = () =>
+      new Set($$('[data-testid="pace-chart"] [data-testid="analysis-legend-item"][aria-pressed="true"]').map((x) => x.dataset.car))
+    // Con la hoja cerrada, quitar la selección no congela nada.
+    playback.selectCar(b)
+    playback.selectCar(null)
+    expect(useAnalysis().shown.value.pace).toBeUndefined()
+
+    playback.selectCar(a)
+    await mountBoth()
+    await openSheet()
+    await selectTab('stints')
+    clear().click()
+    await settle()
+    await selectTab('pace')
+    expect(pressed().has(a)).toBe(true)
+    expect($(`[data-testid="pace-chart"] [data-car="${a}"]`)!.classList).not.toContain('is-emphasis')
   })
 })
 
@@ -431,3 +547,125 @@ describe('honestidad', () => {
   })
 })
 
+describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () => {
+  /** NOR y VER acaban; ALB deja de cruzar tras la 3 y BOR y PER tras la 2 (BOR antes). El resto del manifest, sin vueltas. */
+  function groupsRace(): LoadedSession {
+    const S = fixture.manifest.session.playback.startMs
+    return momentsRace(
+      fixture,
+      [
+        { car: 1, lapMs: [60_000, 60_000, 60_000, 60_000, 60_000] },
+        { car: 3, lapMs: [61_200, 60_000, 60_000, 60_000, 60_000] },
+        { car: 23, lapMs: [62_000, 60_000, 60_000] },
+        { car: 5, lapMs: [63_000, 60_000] },
+        { car: 11, lapMs: [64_000, 60_000] },
+      ],
+      { raceControl: [rcMessage(S + 100_000, 'incident', 'TURN 1 INCIDENT INVOLVING CAR 23 (ALB) NOTED', ['23'])] },
+    )
+  }
+
+  async function withShortcuts() {
+    const Shortcuts = defineComponent({
+      setup() {
+        useReplayShortcuts()
+        return () => null
+      },
+    })
+    const w = await mountSuspended(Shortcuts, { attachTo: document.body })
+    unmounts.push(() => w.unmount())
+  }
+
+  const groups = () => $$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-group"]')
+  const keysOf = (group: string) =>
+    $$(`[data-testid="analysis-legend-group"][data-group="${group}"] [data-testid="analysis-legend-item"]`).map((b) => b.dataset.car)
+
+  it('tres grupos con su rótulo: de arriba abajo, los que dejaron de pasar por meta y los que no tienen vueltas', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    await mountBoth()
+    await openSheet()
+    expect(groups().map((g) => g.dataset.group)).toEqual(['running', 'stopped', 'noLaps'])
+    for (const g of groups()) {
+      const label = document.getElementById(g.getAttribute('aria-labelledby')!)!
+      expect(g.getAttribute('role')).toBe('group')
+      expect(g.contains(label)).toBe(true)
+    }
+    expect(groups().map((g) => document.getElementById(g.getAttribute('aria-labelledby')!)!.textContent)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/De arriba abajo|Top to bottom/)]),
+    )
+    expect(keysOf('running')).toEqual(['1', '3'])
+    // Por última vuelta y luego por su último paso: ALB (V3), BOR y PER (V2; BOR cruzó antes).
+    expect(keysOf('stopped')).toEqual(['23', '5', '11'])
+    expect($$('[data-group="stopped"] [data-testid="analysis-legend-until"]').map((u) => u.textContent)).toEqual([
+      expect.stringMatching(/[VL]3$/),
+      expect.stringMatching(/[VL]2$/),
+      expect.stringMatching(/[VL]2$/),
+    ])
+    // Los del manifest sin vueltas: con su nombre, sin botón (no hay serie que mostrar u ocultar).
+    const nodata = $$('[data-testid="analysis-legend-nodata"]')
+    expect(nodata).toHaveLength(rt.drivers.length - 5)
+    expect(nodata.every((n) => n.tagName === 'SPAN')).toBe(true)
+    expect($('[data-testid="analysis-legend-nodata"][data-car="18"]')!.textContent!.trim()).toBe('STR')
+    // Todos nombrados: tantos nombres como pilotos en el manifest.
+    expect(keysOf('running').length + keysOf('stopped').length + nodata.length).toBe(rt.drivers.length)
+  })
+
+  it('el coche elegido conserva su entrada destacada en su grupo', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    usePlaybackStore().selectCar('23')
+    await mountBoth()
+    await openSheet()
+    expect($('[data-group="stopped"] [data-car="23"]')!.classList).toContain('is-emphasis')
+  })
+
+  it('con el foco del teclado en un nombre: resalta su serie y enseña su ficha (tooltip descrito por el nombre); Esc la oculta y otro Esc cierra la hoja', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    await withShortcuts()
+    await mountBoth()
+    await openSheet()
+    const chart = $('[data-testid="race-trace-chart"]')!
+    const card = $('[data-testid="analysis-card"]')!
+    expect(card.dataset.shown).toBe('false')
+    const key = $<HTMLButtonElement>('[data-group="stopped"] [data-car="23"]')!
+    key.focus()
+    await settle()
+    expect(chart.dataset.preview).toBe('23')
+    expect(card.dataset.shown).toBe('true')
+    expect(card.dataset.mode).toBe('legend')
+    expect(card.getAttribute('role')).toBe('tooltip')
+    expect(key.getAttribute('aria-describedby')).toBe(card.id)
+    expect(card.textContent).toMatch(/ALB/)
+
+    const esc = () => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      document.activeElement!.dispatchEvent(event)
+      return event
+    }
+    expect(esc().defaultPrevented).toBe(true)
+    await settle()
+    expect(card.dataset.shown).toBe('false')
+    expect(chart.dataset.preview).toBeUndefined()
+    expect(key.getAttribute('aria-describedby')).toBeNull()
+    expect(sheetEl()).not.toBeNull()
+    esc()
+    await settle()
+    expect(sheetEl()).toBeNull()
+  })
+
+  it('al perder el foco, la ficha se va', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    await mountBoth()
+    await openSheet()
+    const card = $('[data-testid="analysis-card"]')!
+    const key = $<HTMLButtonElement>('[data-group="running"] [data-car="3"]')!
+    key.focus()
+    await settle()
+    expect(card.dataset.shown).toBe('true')
+    key.blur()
+    await settle()
+    expect(card.dataset.shown).toBe('false')
+  })
+})
