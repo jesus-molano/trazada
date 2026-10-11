@@ -642,11 +642,21 @@ onBeforeUnmount(() => {
   }
 }
 
+/*
+ * Carga y error: el panel, centrado en toda la página. La capa la cubre entera (cabecera incluida) y va después en el
+ * DOM, así que solo el panel recibe el puntero: la marca (volver al selector) y el cambio de idioma de la cabecera
+ * siguen pulsándose mientras se carga o con el error a la vista.
+ */
 .tz-replay__center {
   position: absolute;
   inset: 0;
   z-index: var(--tz-z-panels);
   display: grid;
   place-items: center;
+  pointer-events: none;
+}
+
+.tz-replay__center > * {
+  pointer-events: auto;
 }
 </style>
