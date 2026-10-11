@@ -373,6 +373,9 @@ function onReady(context: TresContext) {
   ctx = context
   canvasEl = context.renderer.instance.domElement as HTMLCanvasElement
   offSceneFrames = sceneFrames.attach(context)
+  // TresCanvas monta siempre su muestreo para las devtools de TresJS (también en producción): en cada frame recorre la
+  // escena entera para estimar la memoria, aunque no haya nada que pintar. Sin su mensajero, ese bucle no hace nada.
+  if (!import.meta.dev) Reflect.deleteProperty(window, '__TRES__DEVTOOLS__')
   canvasEl.addEventListener('webglcontextlost', onLost)
   canvasEl.addEventListener('webglcontextrestored', onRestored)
   // Modo on-demand: el runtime pide un frame en cada tick con reproducción y tras cada seek.

@@ -126,6 +126,8 @@ test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; fr
         fog: (s.ambience as { computes: number }).computes,
       }
     })
+  // Sin el mensajero de las devtools de TresJS, su muestreo no recorre la escena en cada frame (build de producción).
+  expect(await page.evaluate(() => '__TRES__DEVTOOLS__' in window)).toBe(false)
   const before = await settledRenders(page)
   const paused = await idle()
   await page.waitForTimeout(1000)
