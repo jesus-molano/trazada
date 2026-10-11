@@ -57,6 +57,12 @@ const showOthers = computed(() => moments.filter === 'all' || moments.filter ===
 /** Adelantamientos y duelos solo con datos de carrera; si no, su nota los sustituye. */
 const raceLists = computed(() => model.race && table.cars.size > 0)
 const sections = computed(() => (raceLists.value ? Number(showOvertakes.value) + Number(showDuels.value) : 0) + Number(showOthers.value))
+/** Qué se elige al pulsar, solo de las listas que se ven (sin adelantamientos ni duelos, solo «Pulsa uno…»). */
+const pickWho = computed(() => {
+  const o = raceLists.value && showOvertakes.value
+  const d = raceLists.value && showDuels.value
+  return o && d ? t('moments.pickWho.both') : o ? t('moments.pickWho.overtake') : d ? t('moments.pickWho.duel') : null
+})
 
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
@@ -187,12 +193,14 @@ const otherRows = computed<OtherRow[]>(() =>
     })),
 )
 const othersEstimated = computed(() => trackInferred && otherRows.value.some((r) => r.o.m.kind === 'neutralisation'))
-const othersTitle = computed(() =>
-  moments.filter === 'neutralisation'
-    ? t('moments.others.title.neutralisation')
-    : moments.filter === 'raceControl'
-      ? t('moments.others.title.raceControl')
-      : t('moments.others.title.all'),
+/** Título y explicación de la lista de abajo: solo neutralizaciones, solo mensajes o las dos. */
+const OTHERS_TEXT = {
+  all: () => ({ title: t('moments.others.title.all'), basis: t('moments.others.basis.all') }),
+  neutralisation: () => ({ title: t('moments.others.title.neutralisation'), basis: t('moments.others.basis.neutralisation') }),
+  raceControl: () => ({ title: t('moments.others.title.raceControl'), basis: t('moments.others.basis.raceControl') }),
+}
+const othersText = computed(() =>
+  OTHERS_TEXT[moments.filter === 'neutralisation' || moments.filter === 'raceControl' ? moments.filter : 'all'](),
 )
 
 const ids = useId()
@@ -240,7 +248,9 @@ export const raceOnly = true
       <p v-else-if="table.cars.size === 0" class="tz-atab__empty" data-testid="moments-no-laps">{{ t('moments.noLaps') }}</p>
       <p v-else-if="showOvertakes" class="tz-atab__note">{{ t('moments.basis') }} {{ t('moments.lap1') }}</p>
     </template>
-    <p class="tz-atab__note">{{ t('moments.pick') }}</p>
+    <p class="tz-atab__note" data-testid="moments-pick">
+      {{ t('moments.pick') }}<template v-if="pickWho"> {{ pickWho }}</template>
+    </p>
 
     <div class="tz-moments__cols" :class="{ 'is-single': sections === 1 }" data-testid="moments-cols">
       <section v-if="raceLists && showOvertakes" class="tz-moments__col" :aria-labelledby="overtakesId" data-testid="moments-overtakes">
@@ -326,13 +336,13 @@ export const raceOnly = true
 
       <section v-if="showOthers" class="tz-moments__col" :aria-labelledby="othersId" data-testid="moments-others">
         <h3 :id="othersId" class="tz-moments__title">
-          {{ othersTitle }}
+          {{ othersText.title }}
           <span class="tz-moments__count tz-tabular">{{ t('moments.others.count', { n: otherRows.length }, otherRows.length) }}</span>
         </h3>
         <p v-if="othersEstimated" class="tz-moments__approx">
           <TzEstimated field="trackStatus" />
         </p>
-        <p class="tz-moments__approx">{{ t('moments.others.basis') }}</p>
+        <p class="tz-moments__approx" data-testid="others-basis">{{ othersText.basis }}</p>
         <p v-if="othersInSession.length === 0" class="tz-moments__empty" data-testid="others-none">{{ t('moments.others.none') }}</p>
         <p v-else-if="otherRows.length === 0" class="tz-moments__empty" data-testid="others-nothing-yet">{{ t('moments.others.nothingYet') }}</p>
         <ul v-else class="tz-moments__list">

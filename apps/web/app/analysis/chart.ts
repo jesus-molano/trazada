@@ -343,6 +343,88 @@ export function hitTest(
   return { key: hit.key, index: hasValue ? near : hit.point }
 }
 
+/** Rectángulo en px CSS (x0 < x1, y0 < y1). */
+export interface Rect {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** Paso (px CSS) entre las muestras de una línea para colocar la ficha (`seriesSamples`). */
+export const SAMPLE_STEP_PX = 6
+
+/**
+ * Puntos por los que pasa lo que se dibuja de un grupo (px CSS del lienzo, dentro del área de datos): sus puntos y, en
+ * las series de línea, muestras cada `step` px entre dos puntos seguidos con valor. Para que la ficha no tape la serie
+ * que describe (`chooseCardSpot`).
+ */
+export function seriesSamples(spec: ChartSpec, frame: HitFrame, key: string, step = SAMPLE_STEP_PX): { x: number; y: number }[] {
+  const { bbox } = frame
+  const clampY = (y: number) => Math.min(Math.max(y, bbox.top), bbox.top + bbox.height)
+  const out: { x: number; y: number }[] = []
+  for (const s of spec.series) {
+    if (s.group !== key) continue
+    const isLine = LINE_MARKS.has(s.mark)
+    const v = s.values
+    for (let i = 0; i < v.length; i++) {
+      const y = v[i]
+      if (y === null || y === undefined) continue
+      const X = frame.xPos(spec.x[i]!)
+      const Y = clampY(frame.yPos(y))
+      out.push({ x: X, y: Y })
+      const next = v[i + 1]
+      if (!isLine || next === null || next === undefined) continue
+      const X2 = frame.xPos(spec.x[i + 1]!)
+      const Y2 = clampY(frame.yPos(next))
+      const n = Math.floor(Math.hypot(X2 - X, Y2 - Y) / step)
+      for (let k = 1; k < n; k++) out.push({ x: X + ((X2 - X) * k) / n, y: Y + ((Y2 - Y) * k) / n })
+    }
+  }
+  return out
+}
+
+/** Lo que pesa tapar algo que debe verse (el dato señalado, el final de la serie y su sigla) frente a una muestra. */
+const KEEP_WEIGHT = 1000
+
+/**
+ * Dónde va la ficha de una serie (D49): de los sitios candidatos (en orden de preferencia), el que menos tapa de esa
+ * serie. Cada candidato se ajusta antes al contenedor ([0, W − w] × [0, H − h]). Coste: cada rectángulo de `keep` que
+ * pisa (el dato señalado, el final de la serie, su sigla, el nombre de la leyenda) pesa `KEEP_WEIGHT`; cada muestra de
+ * la línea (`seriesSamples`) que queda debajo, 1. A igual coste, el primero. Así, si la serie sigue a la derecha del
+ * dato, la ficha va a la izquierda o a una esquina libre, y una ficha más alta que el área de datos no tapa el final
+ * de la serie ni su sigla.
+ */
+export function chooseCardSpot(o: {
+  w: number
+  h: number
+  W: number
+  H: number
+  candidates: readonly { left: number; top: number }[]
+  samples: readonly { x: number; y: number }[]
+  keep: readonly Rect[]
+}): { left: number; top: number } {
+  const fit = (c: { left: number; top: number }) => ({
+    left: Math.min(Math.max(0, c.left), Math.max(0, o.W - o.w)),
+    top: Math.min(Math.max(0, c.top), Math.max(0, o.H - o.h)),
+  })
+  let best: { left: number; top: number } | null = null
+  let bestCost = Infinity
+  for (const c of o.candidates) {
+    const at = fit(c)
+    const x1 = at.left + o.w
+    const y1 = at.top + o.h
+    let cost = 0
+    for (const r of o.keep) if (r.x0 < x1 && at.left < r.x1 && r.y0 < y1 && at.top < r.y1) cost += KEEP_WEIGHT
+    for (const p of o.samples) if (p.x >= at.left && p.x <= x1 && p.y >= at.top && p.y <= y1) cost++
+    if (cost < bestCost) {
+      best = at
+      bestCost = cost
+    }
+  }
+  return best ?? fit({ left: 0, top: 0 })
+}
+
 /** Último índice con valor en alguna de las listas (−1 si ninguno). */
 export function lastValueIndex(lists: readonly (readonly (number | null)[])[]): number {
   let last = -1

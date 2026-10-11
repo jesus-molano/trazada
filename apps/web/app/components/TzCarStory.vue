@@ -6,21 +6,22 @@
  * - Si dejó de pasar por meta (`stopped`): su último paso, la entrada al pit lane en esa vuelta si la hubo y que
  *   después no hay más pasos en los datos, sin decir por qué (la fuente no lo dice).
  * - Hasta dos mensajes de dirección de carrera que lo nombran (incidente, coche detenido, trompo, sanción, banderas
- *   negras), con su texto original en inglés y su clase, del más reciente al más antiguo, y cuántos más hay.
+ *   negras), con su texto original en inglés y su clase, del más reciente al más antiguo, y cuántos más hay. En la
+ *   forma corta de la ficha (`compact`: no cabe en el alto de la gráfica), solo el más reciente.
  *
  * Va dentro de la ficha (un `role="tooltip"` con el ratón): sin controles.
  */
 import type { RaceControlEvent } from '@trazada/schema'
-import { carStory } from '~/engine/analysis/carStory'
+import { CAR_STORY_MAX, carStory } from '~/engine/analysis/carStory'
 import { rcTone } from '~/replay/rcKinds'
 import { getRuntime } from '~/stores/playback'
 
-const props = defineProps<{ car: string; cutoffMs: number; stopped: boolean }>()
+const props = defineProps<{ car: string; cutoffMs: number; stopped: boolean; compact?: boolean }>()
 
 const { t, te } = useI18n()
 const rt = getRuntime()!
 const st = useAnalysis()
-const story = computed(() => carStory(st.table, rt.raceControl, props.car, props.cutoffMs))
+const story = computed(() => carStory(st.table, rt.raceControl, props.car, props.cutoffMs, props.compact ? 1 : CAR_STORY_MAX))
 const lapText = (lap: number) => t('analysis.lapShort', { lap })
 
 function kindLabel(e: RaceControlEvent): string {

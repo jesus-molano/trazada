@@ -5,7 +5,12 @@
     "noLaps": "No data: this session has no timed laps.",
     "basis": "An overtake is a change in the official order at the finish line between two consecutive laps of both cars, with neither entering or leaving the pits on those laps and less than 30 s apart. If either car lacks the line crossing of one of those laps, no overtake is claimed there. Passing and being re-passed within the same lap cannot be seen.",
     "lap1": "Lap 1 does not count: there is no earlier official order (the grid is not in the data).",
-    "pick": "Click one to go 5 s before it. For an overtake, the overtaking driver is selected; for a battle, the chasing driver, compared with the one ahead.",
+    "pick": "Click one to go 5 s before it.",
+    "pickWho": {
+      "both": "For an overtake, the overtaking driver is selected; for a battle, the chasing driver, compared with the one ahead.",
+      "overtake": "The overtaking driver is selected.",
+      "duel": "The chasing driver is selected, compared with the one ahead."
+    },
     "overtakes": {
       "title": "Overtakes",
       "count": "{n} overtake | {n} overtakes",
@@ -41,7 +46,11 @@
         "raceControl": "Race control"
       },
       "count": "{n} moment | {n} moments",
-      "basis": "The start of each SC, VSC or red flag and notable race control messages: green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag (several of the same kind less than 30 s apart count as one; the first is shown). The text is the original, in English; the time is the player's clock.",
+      "basis": {
+        "all": "The start of each SC, VSC or red flag and notable race control messages: green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag (several of the same kind less than 30 s apart count as one; the first is shown). The text is the original, in English; the time is the player's clock.",
+        "neutralisation": "The start of each SC, VSC or red flag, with the time on the player's clock.",
+        "raceControl": "Notable race control messages: green light, chequered flag, double yellow, stopped or spun car, incident, penalty or black flag (several of the same kind less than 30 s apart count as one; the first is shown). The text is the original, in English; the time is the player's clock."
+      },
       "none": "No neutralisations or notable race control messages in this session.",
       "nothingYet": "None up to this moment yet. Move the player forward or turn off «No spoilers»."
     },

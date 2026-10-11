@@ -19,6 +19,8 @@ export const ESC_PRIORITY = {
   palette: 95,
   /** Pistas de primer uso (ítem 18). */
   tips: 90,
+  /** Ficha de una serie de las gráficas de análisis (D49): se oculta y la hoja sigue abierta. */
+  analysisCard: 85,
   /** Hoja de análisis (ítem 3). */
   analysis: 80,
   /** Realización automática (ítem 9). */

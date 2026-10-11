@@ -14,11 +14,15 @@
  * De quién es cada serie (D49): al pasar el ratón o el lápiz por una línea, por un punto o por una sigla
  * (`hitTest`, como mucho una vez por frame de pantalla), o con el ratón o el foco del teclado en su nombre de la
  * leyenda, la serie se resalta (encima, con el resto atenuado y su sigla a la altura exacta de su último dato) y una
- * ficha cuenta lo que dicen los datos de ella (hueco `card`; sin él, «{x}: {y}»). Con el dedo, un toque fija la ficha
- * con un botón para ir a esa vuelta (el toque nunca salta en el tiempo); con el ratón, el clic sigue saltando. Esc
- * oculta la ficha sin cerrar la hoja. El resaltado cambia las opacidades de uPlot y redibuja sin rehacer los caminos:
- * nunca el foco de series de uPlot, que al soltar pone todas a 1 (y borraría el atenuado del coche elegido). La ficha
- * se coloca escribiendo su estilo, sin reactividad; su estado solo cambia cuando cambian la serie, la vuelta o el modo.
+ * ficha cuenta lo que dicen los datos de ella (hueco `card`; sin él, «{x}: {y}»). Con el dedo, un toque en una línea
+ * (o mantener pulsado su nombre de la leyenda, cuyo toque corto la muestra u oculta) fija la ficha con un botón para ir
+ * a esa vuelta (el toque nunca salta en el tiempo); con el ratón, el clic sigue saltando. Esc oculta la ficha sin cerrar
+ * la hoja (registro de Esc, `ESC_PRIORITY.analysisCard`: por debajo de las pistas y la paleta). El resaltado cambia las
+ * opacidades de uPlot y redibuja sin rehacer los caminos: nunca el foco de series de uPlot, que al soltar pone todas a
+ * 1 (y borraría el atenuado del coche elegido). La ficha se coloca escribiendo su estilo, sin reactividad, donde menos
+ * tapa de su serie (`chooseCardSpot`: nunca el dato señalado, el final ni su sigla); si es más alta que el área de
+ * datos, pasa a su forma corta (`compact`, un solo mensaje). Su estado solo cambia cuando cambian la serie, la vuelta o
+ * el modo.
  *
  * Leyenda: en el orden de `groups` o, con `spec.legend` (race trace), por grupos con su rótulo. Mientras el puntero
  * está encima, su orden no cambia (se aplica el último al salir, como el timeline del dock, D44).
@@ -33,16 +37,20 @@ import {
   type ChartNoLaps,
   type ChartPreview,
   type ChartSpec,
+  chooseCardSpot,
   DIM_ALPHA,
   HIT_PX,
   type HitFrame,
   hitTest,
   type LabelRect,
   nearestIndex,
+  type Rect,
   seriesEnd,
+  seriesSamples,
 } from '~/analysis/chart'
 import { drawEndLabels, drawPreviewLine, LABEL_PADDING, PLOT_PAD_TOP, X_AXIS_SIZE } from '~/analysis/endLabels'
 import { token } from '~/design/tokens'
+import { ESC_PRIORITY, registerEscape } from '~/replay/keys'
 
 const props = defineProps<{
   spec: ChartSpec
@@ -58,7 +66,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ pick: [index: number]; toggle: [key: string] }>()
-defineSlots<{ card?(props: { hit: ChartPreview }): unknown }>()
+/** `compact`: la ficha no cabe en el alto del área de datos; el hueco enseña su forma corta (un solo mensaje). */
+defineSlots<{ card?(props: { hit: ChartPreview; compact: boolean }): unknown }>()
 
 const { t } = useI18n()
 /** «hasta V30» de las series que acaban antes (ver `ChartGroup.stopped`), por grupo. */
@@ -267,6 +276,8 @@ function onPick(event: MouseEvent) {
 const preview = shallowRef<ChartPreview | null>(null)
 /** Lo último que enseñó la ficha: su contenido se queda mientras se desvanece. */
 const shown = shallowRef<ChartPreview | null>(null)
+/** Forma corta de la ficha (ver `placeCard`): se decide al medirla y vale mientras sea la del mismo piloto. */
+const compact = shallowRef(false)
 /** Grupo resaltado en el lienzo (solo si su serie se ve); lo leen el dibujo y las opacidades. */
 let previewKey: string | null = null
 /** Siglas dibujadas (px CSS del lienzo), del último dibujo. */
@@ -338,6 +349,7 @@ function applyAlphas() {
 function setPreview(next: ChartPreview | null) {
   const cur = preview.value
   if (cur?.key === next?.key && cur?.index === next?.index && cur?.mode === next?.mode) return
+  if (next && next.key !== shown.value?.key) compact.value = false
   preview.value = next
   if (next) shown.value = next
   const key = next && props.spec.groups.some((g) => g.key === next.key && g.visible) ? next.key : null
@@ -422,6 +434,54 @@ function onKeyEnter(event: PointerEvent, key: string) {
   if (event.pointerType !== 'touch') showFromLegend(key)
 }
 
+/** Lo que hay que mantener pulsado un nombre de la leyenda (con el dedo) para fijar su ficha en vez de mostrar u ocultar. */
+const LONG_PRESS_MS = 500
+/** Lo que se puede mover el dedo sin que deje de ser una pulsación larga (px CSS). */
+const LONG_PRESS_SLOP = 10
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+let pressFrom: { x: number; y: number } | null = null
+/** Nombre cuya pulsación larga ya fijó la ficha: su clic no la muestra ni la oculta. */
+let pressed: string | null = null
+
+function cancelPress() {
+  if (pressTimer !== null) clearTimeout(pressTimer)
+  pressTimer = null
+  pressFrom = null
+}
+
+/** Con el dedo en un nombre de la leyenda: si se queda quieto `LONG_PRESS_MS`, fija la ficha de su serie. */
+function onKeyDown(event: PointerEvent, key: string) {
+  pressed = null
+  cancelPress()
+  if (event.pointerType !== 'touch') return
+  pressFrom = { x: event.clientX, y: event.clientY }
+  pressTimer = setTimeout(() => {
+    pressTimer = null
+    pressFrom = null
+    pressed = key
+    const end = seriesEnd(props.spec, key)
+    setPreview({ key, index: end?.index ?? Math.max(0, props.spec.x.length - 1), mode: 'pinned' })
+  }, LONG_PRESS_MS)
+}
+
+function onKeyMove(event: PointerEvent) {
+  if (pressFrom && Math.hypot(event.clientX - pressFrom.x, event.clientY - pressFrom.y) > LONG_PRESS_SLOP) cancelPress()
+}
+
+/** Clic en un nombre: muestra u oculta su serie, salvo justo después de una pulsación larga (ya fijó la ficha). */
+function onKeyClick(key: string) {
+  if (pressed === key) {
+    pressed = null
+    return
+  }
+  emit('toggle', key)
+}
+
+/** El menú del navegador de una pulsación larga, no (la pulsación ya fija la ficha). */
+function onKeyContext(event: Event) {
+  if (pressed !== null || pressTimer !== null) event.preventDefault()
+}
+
 function onKeyLeave(event: PointerEvent, key: string) {
   if (event.pointerType !== 'touch') hideLegend(key)
 }
@@ -450,13 +510,6 @@ function goFromCard() {
   setPreview(null)
 }
 
-/** Esc con una ficha a la vista: la oculta, y la hoja sigue abierta (los atajos ignoran un Esc ya atendido). */
-function onEscape(event: KeyboardEvent) {
-  if (event.key !== 'Escape' || !preview.value || event.defaultPrevented) return
-  event.preventDefault()
-  setPreview(null)
-}
-
 /**
  * Con la ficha del ratón a la vista, un movimiento fuera de la gráfica la quita. Respaldo de `pointerleave`, que puede no
  * llegar si la gráfica se rehace bajo el puntero (un clic que salta en el tiempo con «Sin spoilers» cambia los datos).
@@ -472,25 +525,15 @@ function onOutside(event: PointerEvent) {
   if (!figure.value?.contains(event.target as Node)) setPreview(null)
 }
 
-let escapeOn = false
 let outsideOn = false
 let moveOn = false
-/**
- * Escuchas solo mientras hacen falta: Esc con una ficha a la vista, un movimiento fuera con la del ratón y un toque
- * fuera con la fijada.
- */
+/** Escuchas solo mientras hacen falta: un movimiento fuera con la ficha del ratón y un toque fuera con la fijada. */
 function listen(p: ChartPreview | null) {
   const wantMove = p?.mode === 'hover'
   if (wantMove !== moveOn) {
     moveOn = wantMove
     if (wantMove) window.addEventListener('pointermove', onMoveOutside, true)
     else window.removeEventListener('pointermove', onMoveOutside, true)
-  }
-  const wantEscape = p !== null
-  if (wantEscape !== escapeOn) {
-    escapeOn = wantEscape
-    if (wantEscape) window.addEventListener('keydown', onEscape, true)
-    else window.removeEventListener('keydown', onEscape, true)
   }
   const wantOutside = p?.mode === 'pinned'
   if (wantOutside !== outsideOn) {
@@ -501,11 +544,19 @@ function listen(p: ChartPreview | null) {
 }
 
 const CARD_GAP = 12
+/** Lo que se agranda alrededor de lo que la ficha no debe tapar (px CSS): el dato señalado, el final y la sigla. */
+const KEEP_PAD = 10
+
+/** Un rectángulo de px CSS alrededor de un punto. */
+const around = (x: number, y: number, pad: number): Rect => ({ x0: x - pad, y0: y - pad, x1: x + pad, y1: y + pad })
 
 /**
- * Coloca la ficha (estilo escrito en el elemento, sin reactividad): junto al dato, a la derecha si cabe (si no, a la
- * izquierda), debajo si el dato está en la mitad de arriba del área de datos (si no, encima), dentro de la figura;
- * desde la leyenda, encima de su nombre.
+ * Coloca la ficha (estilo escrito en el elemento, sin reactividad; coordenadas de la figura) donde menos tape de su
+ * serie (`chooseCardSpot`). Candidatos, en orden: junto al dato (a la derecha y a la izquierda; debajo si el dato está
+ * en la mitad de arriba del área de datos, si no encima), arriba o abajo del área de datos a esos dos lados, y en las
+ * esquinas (el margen derecho de las siglas y el principio del eje); desde la leyenda, antes, encima o debajo de su
+ * nombre. Nunca tapa el dato señalado, el final de la serie, su raya ni su sigla (ni el nombre de la leyenda). Más alta
+ * que el área de datos, pasa antes a su forma corta (`compact`) y se vuelve a medir.
  */
 function placeCard() {
   const card = cardEl.value
@@ -517,27 +568,55 @@ function placeCard() {
   const H = fig.clientHeight
   const cw = card.offsetWidth
   const ch = card.offsetHeight
-  let left: number
-  let top: number
-  if (p.mode === 'legend' || !plot) {
-    const key = [...fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"]')].find((el) => el.dataset.car === p.key)
-    const kr = key?.getBoundingClientRect()
+  const candidates: { left: number; top: number }[] = []
+  const keep: Rect[] = []
+  let samples: { x: number; y: number }[] = []
+  if (p.mode === 'legend') {
+    const el = [...fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"]')].find((e) => e.dataset.car === p.key)
+    const kr = el?.getBoundingClientRect()
     if (!kr) return
-    left = kr.left - fr.left
-    top = kr.top - fr.top - ch - CARD_GAP / 2
-    if (top < 0) top = kr.bottom - fr.top + CARD_GAP / 2
-  } else {
-    const cr = plot.ctx.canvas.getBoundingClientRect()
-    const frame = hitFrame(plot)
-    const { top: bt, height: bh } = frame.bbox
-    const v = p.index < props.spec.x.length ? valueAt(props.spec, p.key, p.index) : null
-    const ax = cr.left - fr.left + (v !== null ? frame.xPos(props.spec.x[p.index]!) : pointerAt.x)
-    const ay = cr.top - fr.top + (v !== null ? Math.min(Math.max(frame.yPos(v), bt), bt + bh) : pointerAt.y)
-    left = ax + CARD_GAP + cw <= W ? ax + CARD_GAP : ax - CARD_GAP - cw
-    top = ay < cr.top - fr.top + bt + bh / 2 ? ay + CARD_GAP : ay - CARD_GAP - ch
+    const key: Rect = { x0: kr.left - fr.left, y0: kr.top - fr.top, x1: kr.right - fr.left, y1: kr.bottom - fr.top }
+    keep.push(key)
+    for (const top of [key.y0 - ch - CARD_GAP / 2, key.y1 + CARD_GAP / 2]) candidates.push({ left: key.x0, top }, { left: key.x1 - cw, top })
   }
-  card.style.left = `${Math.min(Math.max(0, left), Math.max(0, W - cw))}px`
-  card.style.top = `${Math.min(Math.max(0, top), Math.max(0, H - ch))}px`
+  if (plot) {
+    const frame = hitFrame(plot)
+    const { left: bl, top: bt, width: bw, height: bh } = frame.bbox
+    if (!compact.value && ch > bh) {
+      compact.value = true
+      void nextTick(placeCard)
+      return
+    }
+    const cr = plot.ctx.canvas.getBoundingClientRect()
+    const ox = cr.left - fr.left
+    const oy = cr.top - fr.top
+    const spec = props.spec
+    const clampY = (y: number) => Math.min(Math.max(y, bt), bt + bh)
+    const end = seriesEnd(spec, p.key)
+    if (end) {
+      // El último dato y, pasado él, la raya de un detenido.
+      const ex = ox + frame.xPos(spec.x[end.index]!)
+      const ey = oy + clampY(frame.yPos(end.value))
+      keep.push({ x0: ex - KEEP_PAD, y0: ey - KEEP_PAD, x1: ex + 2 * KEEP_PAD, y1: ey + KEEP_PAD })
+    }
+    for (const r of labelRects) if (r.key === p.key) keep.push({ x0: ox + r.x0 - 4, y0: oy + r.y0 - 4, x1: ox + r.x1 + 4, y1: oy + r.y1 + 4 })
+    samples = seriesSamples(spec, frame, p.key).map((q) => ({ x: ox + q.x, y: oy + q.y }))
+    const sides: number[] = []
+    let tops: number[] = [oy + bt, oy + bt + bh - ch]
+    if (p.mode !== 'legend') {
+      const v = p.index < spec.x.length ? valueAt(spec, p.key, p.index) : null
+      const ax = ox + (v !== null ? frame.xPos(spec.x[p.index]!) : pointerAt.x)
+      const ay = oy + (v !== null ? clampY(frame.yPos(v)) : pointerAt.y)
+      keep.push(around(ax, ay, KEEP_PAD))
+      sides.push(ax + CARD_GAP, ax - CARD_GAP - cw)
+      tops = [ay < oy + bt + bh / 2 ? ay + CARD_GAP : ay - CARD_GAP - ch, ...tops]
+    }
+    for (const top of tops) for (const left of [...sides, W - cw, ox + bl + bw - cw, ox + bl]) candidates.push({ left, top })
+  }
+  if (!candidates.length) return
+  const at = chooseCardSpot({ w: cw, h: ch, W, H, candidates, samples, keep })
+  card.style.left = `${at.left}px`
+  card.style.top = `${at.top}px`
 }
 
 /** Al cambiar la descripción: la ficha sigue si su serie sigue (visible, salvo desde la leyenda) y su vuelta existe. */
@@ -594,6 +673,8 @@ function onLegendEnter() {
 function onLegendLeave() {
   frozenLegend.value = null
 }
+
+let offEscape: (() => void) | null = null
 
 function build() {
   destroy()
@@ -663,6 +744,8 @@ watch(
 watch(() => props.cursorX, placeCursor)
 
 onMounted(() => {
+  // Esc con una ficha a la vista la oculta y la hoja sigue abierta; con una pista o la paleta encima, antes ellas.
+  offEscape = registerEscape(ESC_PRIORITY.analysisCard, { active: () => preview.value !== null, run: () => setPreview(null) })
   build()
   if (typeof ResizeObserver !== 'undefined' && host.value) {
     ro = new ResizeObserver(resize)
@@ -673,6 +756,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
   cancelAnimationFrame(moveRaf)
+  cancelPress()
+  offEscape?.()
   listen(null)
   ro?.disconnect()
   destroy()
@@ -718,9 +803,14 @@ onBeforeUnmount(() => {
           :aria-describedby="preview?.key === g.key ? cardId : undefined"
           :data-car="g.key"
           data-testid="analysis-legend-item"
-          @click="emit('toggle', g.key)"
+          @click="onKeyClick(g.key)"
           @pointerenter="onKeyEnter($event, g.key)"
           @pointerleave="onKeyLeave($event, g.key)"
+          @pointerdown="onKeyDown($event, g.key)"
+          @pointermove="onKeyMove"
+          @pointerup="cancelPress"
+          @pointercancel="cancelPress"
+          @contextmenu="onKeyContext"
           @focus="onKeyFocus($event, g.key)"
           @blur="hideLegend(g.key)"
         >
@@ -772,7 +862,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div class="tz-achart__card-body">
-          <slot name="card" :hit="shown">
+          <slot name="card" :hit="shown" :compact="compact">
             <p>{{ defaultBody }}</p>
           </slot>
         </div>
@@ -871,6 +961,9 @@ onBeforeUnmount(() => {
   font-size: var(--tz-text-xs);
   letter-spacing: var(--tz-tracking-mono);
   cursor: pointer;
+  /* Mantener pulsado (con el dedo) fija la ficha: sin el menú ni la selección de texto del navegador. */
+  -webkit-touch-callout: none;
+  user-select: none;
   transition:
     border-color var(--tz-dur-fast) var(--tz-ease-standard),
     color var(--tz-dur-fast) var(--tz-ease-standard);

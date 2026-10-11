@@ -4,8 +4,8 @@
  * combustible ni suavizado. Las vueltas que no sirven para comparar ritmo se marcan y no se quitan: entrada o salida
  * de boxes, SC/VSC/roja y vuelta 1 con punto hueco; anuladas con aspa (desde su mensaje); sin tiempo oficial, contadas
  * debajo. En carrera y sprint, por vuelta; en libres y clasificación, por el momento de la sesión en que acaba cada
- * vuelta. Por defecto, el coche elegido y los cinco primeros de la clasificación al abrir la pestaña; la leyenda
- * muestra u oculta cada piloto.
+ * vuelta. Por defecto, el coche elegido y los cinco primeros de la clasificación al abrir la pestaña (y el que se quitó
+ * de la selección con la hoja abierta, D49); la leyenda muestra u oculta cada piloto.
  *
  * La escala del eje y encuadra las vueltas representativas; las que quedan fuera se cuentan y «Ver todas» las
  * enseña (nada desaparece en silencio). Un clic en una vuelta salta a su inicio.
@@ -40,14 +40,17 @@ const origin = clockOrigin(rt.session.manifest.session.type, rt.session.timing, 
 const names = new Map(rt.drivers.map((d) => [d.number, `${d.first} ${d.last}`.trim()]))
 /** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
 const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
-/** Por defecto: el coche elegido y los cinco primeros de la clasificación al abrir la pestaña. */
+/**
+ * Por defecto: el coche elegido, los cinco primeros de la clasificación al abrir la pestaña y los que se quitaron de la
+ * selección con la hoja abierta (`paceKept`, D49).
+ */
 const top5 = playback.order.filter((c) => table.cars.has(c)).slice(0, 5)
-// Con ellos se congelan los visibles al quitar la selección (`useAnalysis`, D49).
-st.setPaceTop(top5)
 
 const times = rt.ext('analysis:paceTimes', (r) => paceEventTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const chart = computed(() => markRaw(paceChart(pace(table, cars, cutoff.value), axis)))
+/** Sin corte («Sin spoilers» desactivado o el reloj al final de la reproducción); cambia poco (no con cada aviso del reloj). */
+const uncut = computed(() => cutoff.value === Infinity)
 /** Por vuelta (carrera y sprint): coches que dejaron de pasar por meta, con la serie más corta (sin sigla suelta). */
 const stopped = computed(() => (axis === 'lap' ? stoppedCars(table, cutoff.value) : new Map<string, number>()))
 
@@ -55,7 +58,8 @@ const visibleList = computed<readonly string[]>(() => {
   const chosen = st.shown.value[TAB]
   if (chosen) return chosen
   const sel = playback.selectedCar
-  return cars.filter((c) => c === sel || top5.includes(c))
+  const kept = st.paceKept.value
+  return cars.filter((c) => c === sel || top5.includes(c) || kept.includes(c))
 })
 const visible = computed(() => new Set(visibleList.value))
 
@@ -103,7 +107,7 @@ const spec = computed<ChartSpec>(() => {
   } else {
     // La sesión entera (su duración no es un spoiler); sin corte, también lo que acabe después de la reproducción.
     const lo = Math.min(playStart, c.x[0] ?? playStart)
-    const hi = Math.max(playEnd, st.noSpoilers.value ? playEnd : (c.x[c.x.length - 1] ?? playEnd))
+    const hi = Math.max(playEnd, uncut.value ? (c.x[c.x.length - 1] ?? playEnd) : playEnd)
     xRange = [lo - origin, (hi > lo ? hi : lo + 1) - origin]
   }
   return markRaw({
@@ -177,14 +181,14 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
         @pick="pick"
         @toggle="toggle"
       >
-        <template #card="{ hit }">
+        <template #card="{ hit, compact }">
           <template v-for="(line, k) in [cardLine(hit.key, hit.index)]" :key="k">
             <template v-if="line">
               <p data-testid="analysis-card-value">{{ line.value }}</p>
               <p v-if="line.mark" class="tz-atab__card-mark" data-testid="analysis-card-mark">{{ line.mark }}</p>
             </template>
           </template>
-          <TzCarStory :car="hit.key" :cutoff-ms="cutoff" :stopped="stopped.has(hit.key)" />
+          <TzCarStory :car="hit.key" :cutoff-ms="cutoff" :stopped="stopped.has(hit.key)" :compact="compact" />
         </template>
       </TzAnalysisChart>
       <p v-if="chart.x.length > 0 && visibleList.length === 0" class="tz-atab__note" data-testid="pace-nothing-shown">

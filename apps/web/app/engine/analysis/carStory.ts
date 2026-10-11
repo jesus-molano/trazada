@@ -36,13 +36,20 @@ export interface CarStory {
   lastLap: number | null
   /** Entró en el pit lane (hasta el corte) en la vuelta de su último paso. */
   pitInOnLastLap: boolean
-  /** Mensajes que lo nombran, del más reciente al más antiguo (`CAR_STORY_MAX` como mucho). */
+  /** Mensajes que lo nombran, del más reciente al más antiguo (`max`, por defecto `CAR_STORY_MAX`, como mucho). */
   rc: RaceControlEvent[]
   /** Cuántos más hay de esas clases hasta el corte. */
   rcMore: number
 }
 
-export function carStory(table: LapTable, raceControl: readonly RaceControlEvent[], car: string, cutoffMs = Infinity): CarStory {
+/** `max`: cuántos mensajes lista como mucho (la ficha corta, uno). */
+export function carStory(
+  table: LapTable,
+  raceControl: readonly RaceControlEvent[],
+  car: string,
+  cutoffMs = Infinity,
+  max = CAR_STORY_MAX,
+): CarStory {
   const last = lastCrossings(table, cutoffMs).get(car)
   const laps = table.cars.get(car)
   let pitInOnLastLap = false
@@ -57,7 +64,7 @@ export function carStory(table: LapTable, raceControl: readonly RaceControlEvent
   return {
     lastLap: last?.lap ?? null,
     pitInOnLastLap,
-    rc: named.slice(0, CAR_STORY_MAX),
-    rcMore: Math.max(0, named.length - CAR_STORY_MAX),
+    rc: named.slice(0, max),
+    rcMore: Math.max(0, named.length - max),
   }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { timingBuilder } from '../../testing/laps'
 import { buildLapTable } from './lapTable'
 import {
+  allCrossingsVisible,
   countUpTo,
   crossingTimes,
   lapStartMs,
@@ -222,13 +223,13 @@ describe('orden de la leyenda del race trace (D49)', () => {
     const trace = raceTrace(table)
     const order = legendOrder(trace, stoppedCars(table), lastCrossings(table))
     // 44 acaba a 0, 1 a +2 s y 63 (doblado) a +100 s; 16 dejó de cruzar tras la 2.
-    expect(order).toEqual({ running: ['44', '1', '63'], stopped: ['16'] })
+    expect(order).toEqual({ running: ['44', '1', '63'], stopped: ['16'], none: [] })
   })
 
   it('los que aún no tienen ningún paso, detrás y en el orden dado', () => {
     const at = (cutoff: number, order?: string[]) => legendOrder(raceTrace(table, cutoff), stoppedCars(table, cutoff), lastCrossings(table, cutoff), order)
-    expect(at(101_000)).toEqual({ running: ['1', '44', '16', '63'], stopped: [] })
-    expect(at(101_000, ['63', '16', '44', '1'])).toEqual({ running: ['1', '63', '16', '44'], stopped: [] })
+    expect(at(101_000)).toEqual({ running: ['1', '44', '16', '63'], stopped: [], none: [] })
+    expect(at(101_000, ['63', '16', '44', '1'])).toEqual({ running: ['1', '63', '16', '44'], stopped: [], none: [] })
     expect(at(50_000, ['63', '16', '44', '1']).running).toEqual(['63', '16', '44', '1'])
   })
 
@@ -264,6 +265,27 @@ describe('orden de la leyenda del race trace (D49)', () => {
       [],
     )
     const order = legendOrder(raceTrace(t), stoppedCars(t), lastCrossings(t), ['9', '7', '8', '1'])
-    expect(order).toEqual({ running: ['1'], stopped: ['8', '7', '9'] })
+    expect(order).toEqual({ running: ['1'], stopped: ['8', '7', '9'], none: [] })
+  })
+
+  it('sin ningún paso por meta en los datos: aparte solo con todos los pasos a la vista; con corte, detrás de los que siguen', () => {
+    // 5 tiene una fila sin paso por meta (registro residual) y 99 solo está en el orden dado (el manifest), sin filas.
+    const t = buildLapTable(
+      'race',
+      timingBuilder()
+        .run(1, 0, [100_000, 90_000, 90_000], { lap1NoTime: true })
+        .run(3, 0, [101_000, 90_000, 90_000], { lap1NoTime: true })
+        .run(5, 0, [20_000], { lap1NoTime: true, each: () => ({ endMs: -1 }) })
+        .build(),
+      [],
+    )
+    const times = crossingTimes(t)
+    const at = (cutoff: number) =>
+      legendOrder(raceTrace(t, cutoff), stoppedCars(t, cutoff), lastCrossings(t, cutoff), ['99', '5', '3', '1'], allCrossingsVisible(times, cutoff))
+    expect(allCrossingsVisible(times, 200_000)).toBe(false)
+    expect(at(200_000)).toEqual({ running: ['1', '3', '99', '5'], stopped: [], none: [] })
+    expect(allCrossingsVisible(times, Infinity)).toBe(true)
+    expect(allCrossingsVisible(times, times[times.length - 1]!)).toBe(true)
+    expect(at(Infinity)).toEqual({ running: ['1', '3'], stopped: [], none: ['99', '5'] })
   })
 })

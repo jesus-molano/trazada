@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type ChartGroup,
   type ChartSpec,
+  chooseCardSpot,
   driverStyles,
   endPoints,
   HIT_PX,
@@ -11,6 +12,8 @@ import {
   lastValueIndex,
   nearestIndex,
   placeLabels,
+  SAMPLE_STEP_PX,
+  seriesSamples,
   spreadLabels,
 } from './chart'
 
@@ -240,6 +243,9 @@ describe('qué serie toca el puntero (D49)', () => {
     expect(hitTest(spec, frame, 66, 99, HIT_PX.fine)).toEqual({ key: 'COL', index: 0 })
     // BOT acaba en la vuelta 4 (x 214, y 68): su raya va 6 px a la derecha.
     expect(hitTest(spec, frame, 220, 69, HIT_PX.fine)).toEqual({ key: 'BOT', index: 3 })
+    // Sobre la raya pero a casi 13 px del último dato (8 px a la derecha, 10 abajo): solo la raya lo toca.
+    expect(Math.hypot(8, 10)).toBeGreaterThan(HIT_PX.fine)
+    expect(hitTest(spec, frame, 222, 78, HIT_PX.fine)).toEqual({ key: 'BOT', index: 3 })
     // Más allá de la raya y de 12 px, nada.
     expect(hitTest(spec, frame, 240, 69, HIT_PX.fine)).toBeNull()
   })
@@ -266,6 +272,43 @@ describe('qué serie toca el puntero (D49)', () => {
     // La sigla de una serie oculta, no.
     const hidden = { ...spec, groups: spec.groups.map((g) => (g.key === 'BOT' ? { ...g, visible: false } : g)) }
     expect(hitTest(hidden, frame, 339, 18, HIT_PX.fine, rects)?.key).toBe('NOR')
+  })
+
+  it('muestras de una serie (para colocar su ficha): sus puntos y, en las de línea, cada pocos px entre dos seguidos', () => {
+    // ALB: de la vuelta 1 a la 8 (x 64 a 414), con la caída de la 6 a la 7.
+    const alb = seriesSamples(spec, frame, 'ALB')
+    expect(alb[0]).toEqual({ x: 64, y: 28 })
+    expect(alb.at(-1)).toEqual({ x: 414, y: 68 })
+    expect(Math.min(...alb.map((q) => q.x))).toBe(64)
+    // Ningún hueco mayor que el paso a lo largo de la línea.
+    for (let i = 1; i < alb.length; i++) expect(Math.hypot(alb[i]!.x - alb[i - 1]!.x, alb[i]!.y - alb[i - 1]!.y)).toBeLessThanOrEqual(SAMPLE_STEP_PX * 2)
+    // Un punto suelto: solo él. Los de fuera de la escala, en el borde del área de datos.
+    expect(seriesSamples(spec, frame, 'COL')).toEqual([{ x: 64, y: 98 }])
+    const off = { ...spec, series: [{ group: 'X', mark: 'line' as const, values: [500, null, null, null, null, null, null, null, null, null] }] }
+    expect(seriesSamples(off, frame, 'X')).toEqual([{ x: 64, y: 108 }])
+  })
+
+  it('ficha: el sitio que menos tapa de su serie; nunca el dato señalado, el final ni la sigla', () => {
+    // Una serie que sigue a la derecha del punto (x 300 a 500, y 50): a la derecha la taparía.
+    const samples = Array.from({ length: 41 }, (_, i) => ({ x: 300 + i * 5, y: 50 }))
+    const keep = [
+      { x0: 290, y0: 40, x1: 310, y1: 60 }, // el dato señalado
+      { x0: 490, y0: 40, x1: 520, y1: 60 }, // el final y su raya
+      { x0: 522, y0: 44, x1: 548, y1: 56 }, // la sigla
+    ]
+    const box = { w: 150, h: 120, W: 600, H: 140 }
+    const right = { left: 312, top: 62 }
+    const left = { left: 138, top: 62 }
+    expect(chooseCardSpot({ ...box, candidates: [right, left], samples, keep })).toEqual({ left: 138, top: 20 })
+    // Más alta que el contenedor que queda: se ajusta dentro ([0, W − w] × [0, H − h]).
+    expect(chooseCardSpot({ ...box, candidates: [{ left: 700, top: -30 }], samples: [], keep: [] })).toEqual({ left: 450, top: 0 })
+    // A igual coste, el primero.
+    expect(chooseCardSpot({ ...box, candidates: [left, { left: 0, top: 0 }], samples: [], keep: [] })).toEqual({ left: 138, top: 20 })
+    // Tapar algo de `keep` pesa más que cualquier trozo de línea.
+    const onEnd = { left: 400, top: 0 }
+    const onLine = { left: 300, top: 0 }
+    const many = Array.from({ length: 200 }, (_, i) => ({ x: 310 + (i % 40), y: 10 + Math.floor(i / 40) }))
+    expect(chooseCardSpot({ ...box, candidates: [onEnd, onLine], samples: many, keep: [keep[1]!] })).toEqual({ left: 300, top: 0 })
   })
 
   it('gráficas de puntos: el punto más cercano; el índice, el suyo si en el x más cercano no tiene valor', () => {

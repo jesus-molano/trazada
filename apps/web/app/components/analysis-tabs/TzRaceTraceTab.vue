@@ -6,11 +6,22 @@
  * visibles por defecto; el coche elegido, destacado. Un clic en una vuelta salta a su inicio.
  *
  * De quién es cada línea (D49): la leyenda va por grupos (los que siguen, en el orden en que acaban las líneas de arriba
- * abajo; los que dejaron de pasar por meta, como la clasificación; y los pilotos del manifest sin vueltas en los datos)
- * y cada serie tiene su ficha al pasar el ratón o tocarla (`TzRaceTraceCard`).
+ * abajo; los que dejaron de pasar por meta, como la clasificación; y, con todos los pasos por meta a la vista, los
+ * pilotos sin ninguno en los datos) y cada serie tiene su ficha al pasar el ratón o tocarla (`TzRaceTraceCard`). Con
+ * corte, un piloto sin pasos por meta va al final de «De arriba abajo», como uno que aún no ha cruzado la línea: decir
+ * que no tiene vueltas en los datos adelantaría que no va a completar ninguna.
  */
 import { type ChartGroup, type ChartNoLaps, type ChartSpec, driverStyles, LAP_INCRS } from '~/analysis/chart'
-import { crossingTimes, lapStartMs, lastCrossings, leaderLapAt, legendOrder, raceTrace, stoppedCars } from '~/engine/analysis/raceTrace'
+import {
+  allCrossingsVisible,
+  crossingTimes,
+  lapStartMs,
+  lastCrossings,
+  leaderLapAt,
+  legendOrder,
+  raceTrace,
+  stoppedCars,
+} from '~/engine/analysis/raceTrace'
 import { token } from '~/design/tokens'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -22,24 +33,27 @@ const st = useAnalysis()
 const table = st.table
 const styles = driverStyles(rt.drivers)
 const unknownColor = token('--tz-team-unknown')
-/** Coches en el orden del manifest (los que solo están en la tabla de vueltas, después). */
-const cars = [...rt.drivers.map((d) => d.number).filter((c) => table.cars.has(c)), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
+/**
+ * Todos los pilotos, en el orden del manifest (los que solo están en la tabla de vueltas, después). Los del manifest sin
+ * vueltas en los datos también (su serie, vacía): antes desaparecían sin decirlo.
+ */
+const cars = [...rt.drivers.map((d) => d.number), ...[...table.cars.keys()].filter((c) => !styles.has(c))]
 /** Nombre completo de cada piloto del manifest (cabecera de la ficha). */
 const names = new Map(rt.drivers.map((d) => [d.number, `${d.first} ${d.last}`.trim()]))
-/** Pilotos del manifest sin ninguna vuelta en los datos: la leyenda los nombra aparte (antes desaparecían sin decirlo). */
-const noLaps: ChartNoLaps[] = rt.drivers
-  .filter((d) => !table.cars.has(d.number))
-  .map((d) => {
-    const style = styles.get(d.number)
-    return { key: d.number, label: style?.label ?? d.number, color: style?.color ?? unknownColor, dash: style?.dash ?? false }
-  })
+/** Un piloto sin pasos por meta en los datos, en la leyenda (sin botón: no hay serie que mostrar u ocultar). */
+function noLapsEntry(car: string): ChartNoLaps {
+  const style = styles.get(car)
+  return { key: car, label: style?.label ?? car, color: style?.color ?? unknownColor, dash: style?.dash ?? false }
+}
 
 const times = rt.ext('analysis:crossings', (r) => crossingTimes(r.leaderboard.lapTable))
 const cutoff = useEffectiveCutoff(times, st.cutoffMs)
 const trace = computed(() => markRaw(raceTrace(table, cutoff.value)))
 /** Coches que dejaron de pasar por meta: su serie acaba antes (sin sigla suelta a media gráfica). */
 const stopped = computed(() => stoppedCars(table, cutoff.value))
-const legend = computed(() => legendOrder(trace.value, stopped.value, lastCrossings(table, cutoff.value), cars))
+const legend = computed(() =>
+  legendOrder(trace.value, stopped.value, lastCrossings(table, cutoff.value), cars, allCrossingsVisible(times, cutoff.value)),
+)
 const visible = computed(() => new Set(st.shown.value[TAB] ?? cars))
 
 function toggle(car: string) {
@@ -90,7 +104,7 @@ const spec = computed<ChartSpec>(() => {
     formatX: (v: number) => t('analysis.lapShort', { lap: v }),
     formatY: (v: number) => (v === 0 ? '0' : `+${secFmt.value.format(v)}`),
     labelColumn: true,
-    legend: { running: legend.value.running, stopped: legend.value.stopped, noLaps },
+    legend: { running: legend.value.running, stopped: legend.value.stopped, noLaps: legend.value.none.map(noLapsEntry) },
   })
 })
 
@@ -135,8 +149,15 @@ export const raceOnly = true
         @pick="pick"
         @toggle="toggle"
       >
-        <template #card="{ hit }">
-          <TzRaceTraceCard :car="hit.key" :index="hit.index" :cutoff-ms="cutoff" :trace="trace" :stopped="stopped.has(hit.key)" />
+        <template #card="{ hit, compact }">
+          <TzRaceTraceCard
+            :car="hit.key"
+            :index="hit.index"
+            :cutoff-ms="cutoff"
+            :trace="trace"
+            :stopped="stopped.has(hit.key)"
+            :compact="compact"
+          />
         </template>
       </TzAnalysisChart>
       <p class="tz-atab__note">{{ t('analysis.raceTrace.basis') }}</p>
