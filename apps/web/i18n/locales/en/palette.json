@@ -1,0 +1,171 @@
+{
+  "palette": {
+    "button": "Commands",
+    "buttonHint": "Command palette (Ctrl+K or ⌘K, or the / key)",
+    "title": "Command palette",
+    "inputLabel": "Command",
+    "placeholder": "Type a command: follow VER, lap 30, x4…",
+    "listLabel": "Suggestions",
+    "close": "Close the palette (Esc)",
+    "empty": "No command matches “{q}”.",
+    "examples": "Try “follow NOR”, “lap 7 of VER”, “1:02:30”, “x4”, “next sc” or “pit NOR”.",
+    "count": "No suggestions | 1 suggestion | {n} suggestions",
+    "rules": "Fixed rules, no AI: understands English and Spanish, ignoring accents and case.",
+    "previewLabel": "That moment",
+    "keys": {
+      "move": "↑↓ choose",
+      "run": "Enter run",
+      "complete": "Tab complete",
+      "close": "Esc close"
+    },
+    "group": {
+      "drivers": "Drivers",
+      "goto": "Go to",
+      "playback": "Playback",
+      "compare": "Compare",
+      "layout": "Layout",
+      "help": "Help"
+    },
+    "cmd": {
+      "driverUnknown": "No data: no driver “{q}” in this session",
+      "play": {
+        "title": "Play",
+        "detail": "Starts playback at {rate}",
+        "already": "Already playing"
+      },
+      "pause": {
+        "title": "Pause",
+        "detail": "Stops playback at the current moment",
+        "already": "Already paused"
+      },
+      "rate": {
+        "title": "Speed {rate}",
+        "detail": "Plays at {rate}",
+        "already": "Already at {rate}",
+        "invalid": "Not available: speeds are {rates}"
+      },
+      "time": {
+        "title": "Go to {clock}",
+        "detail": "Moves playback to {clock} on the session clock",
+        "outside": "Outside the session: the clock runs from {from} to {to}"
+      },
+      "relative": {
+        "forward": "Forward {amount}",
+        "back": "Back {amount}",
+        "detail": "To clock {clock}",
+        "atEnd": "Already at the end of the session",
+        "atStart": "Already at the start of the session"
+      },
+      "follow": {
+        "title": "Follow {driver}",
+        "titleUnknown": "Follow “{q}”",
+        "detail": "{name} · follow camera",
+        "already": "Already following"
+      },
+      "select": {
+        "title": "Select {driver}",
+        "titleUnknown": "Select “{q}”",
+        "detail": "{name} · telemetry in the panel, camera unchanged",
+        "already": "Already selected"
+      },
+      "overview": {
+        "title": "Overview",
+        "detail": "Stops following the car; it stays selected",
+        "already": "Already in the overview"
+      },
+      "clear": {
+        "title": "Clear selection",
+        "detail": "Deselects {driver}",
+        "none": "No car is selected"
+      },
+      "jump": {
+        "noneAfter": "None after clock {clock}",
+        "noneBefore": "None before clock {clock}",
+        "pitDetail": "{driver} enters the pit lane (clock {clock}) and gets selected",
+        "sectorDetail": "Sector {sector} · clock {clock}",
+        "atDetail": "Clock {clock}",
+        "sc": {
+          "next": "Next safety car",
+          "prev": "Previous safety car",
+          "none": "No data: no safety car in this session"
+        },
+        "vsc": {
+          "next": "Next virtual safety car",
+          "prev": "Previous virtual safety car",
+          "none": "No data: no virtual safety car in this session"
+        },
+        "red": {
+          "next": "Next red flag",
+          "prev": "Previous red flag",
+          "none": "No data: no red flag in this session"
+        },
+        "yellow": {
+          "next": "Next yellow flag",
+          "prev": "Previous yellow flag",
+          "none": "No data: no yellow flag in this session"
+        },
+        "chequered": {
+          "next": "Chequered flag",
+          "prev": "Chequered flag (already passed)",
+          "none": "No data: no chequered flag in this session"
+        },
+        "pit": {
+          "next": "Next pit stop",
+          "prev": "Previous pit stop",
+          "none": "No data: no pit stop in this session",
+          "nextCar": "Next pit stop of {driver}",
+          "prevCar": "Previous pit stop of {driver}",
+          "noneCar": "No data: no pit stop of {driver} in this session"
+        },
+        "moment": {
+          "next": "Next moment",
+          "prev": "Previous moment",
+          "none": "No data: no moment in this session"
+        }
+      },
+      "lap": {
+        "title": "Go to lap {lap}",
+        "detail": "The leader starts lap {lap} (clock {clock})",
+        "fromOne": "Laps start at 1",
+        "beyondTotal": "No data: the race has {total} laps",
+        "noData": "No data: no leader laps in this session",
+        "noDataMax": "No data: leader laps go up to {max}",
+        "carTitle": "Lap {lap} of {driver}",
+        "carDetail": "{name} starts lap {lap} (clock {clock}) and gets selected",
+        "carOutside": "No data: lap {lap} of {driver} starts outside what can be played",
+        "carNoStart": "No data: unknown start of lap {lap} of {driver}",
+        "carNoLaps": "No data: {driver} has no laps in this session",
+        "carNoLap": "No data: {driver} has laps up to {last}",
+        "needsDriver": "In practice and qualifying each driver has their own laps: type “lap {lap} of VER”",
+        "next": "Next lap",
+        "prev": "Previous lap",
+        "stepNeedsDriver": "In practice and qualifying each driver has their own laps: select one or type it (“next lap of VER”)",
+        "leaderStep": "Leader’s lap {lap} (clock {clock})",
+        "carStep": "Lap {lap} of {driver} (clock {clock})"
+      },
+      "compare": {
+        "title": "Compare {a} with {b}",
+        "detail": "Selects {a} and opens “Compare” with {b}",
+        "same": "Choose two different drivers",
+        "already": "Already comparing them",
+        "withTitle": "Compare with {b}",
+        "needsA": "Select a driver first or type both: “compare NOR and PIA”",
+        "titleUnknown": "Compare with “{q}”",
+        "hintTitle": "Compare two drivers",
+        "needsTwo": "Type both: “compare NOR and PIA”",
+        "close": "Close the comparison",
+        "closeDetail": "Back to live telemetry",
+        "notOpen": "No comparison is open"
+      },
+      "resume": {
+        "back": "Back to where you left off",
+        "backDetail": "To the moment resumed when the session opened (clock {clock})",
+        "nothing": "No position was resumed when this session opened",
+        "restart": "Start from the beginning",
+        "restartDetail": "To the start of the session (clock {clock})",
+        "restartRace": "Just before the start (clock {clock})",
+        "atStart": "Already at the start"
+      }
+    }
+  }
+}

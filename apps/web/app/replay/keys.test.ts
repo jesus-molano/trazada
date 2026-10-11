@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('registro de Esc', () => {
   it('las prioridades fijas van de lo que está más encima a la selección', () => {
-    const order = ['summary', 'tips', 'analysis', 'tv', 'compare', 'follow', 'selection'] as const
+    const order = ['summary', 'palette', 'tips', 'analysis', 'tv', 'compare', 'follow', 'selection'] as const
     const values = order.map((k) => ESC_PRIORITY[k])
     expect([...values].sort((a, b) => b - a)).toEqual(values)
     expect(new Set(values).size).toBe(values.length)
