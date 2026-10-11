@@ -80,8 +80,13 @@ export interface ShortcutSpec {
 }
 
 export interface ShortcutOptions {
-  /** También con el foco en un campo de texto o un control que usa el teclado (p. ej. Ctrl+K). */
+  /** También con el foco en un campo de texto o un control en el que se elige tecleando (p. ej. Ctrl+K). */
   inEditable?: boolean
+  /**
+   * También se repite con la tecla mantenida (repetición automática del teclado), como un salto. Por defecto no: un
+   * conmutador (L, T, ?) cambiaría sin parar. La repetición queda atendida igualmente (no llega al navegador).
+   */
+  repeat?: boolean
   /** Solo cuando devuelve true (si no, la tecla sigue su camino). */
   when?: () => boolean
 }
@@ -152,26 +157,35 @@ function matches(entry: ShortcutEntry, event: KeyboardEvent): boolean {
   return !(isLetter(entry.key) && event.shiftKey)
 }
 
-/**
- * Atajo registrado para este evento (el último que encaje y esté activo), o null. `editable`: el foco está en un
- * control que usa el teclado por sí mismo (solo valen los atajos con `inEditable`).
- */
-export function findShortcut(event: KeyboardEvent, editable: boolean): ((event: KeyboardEvent) => void) | null {
+function findEntry(event: KeyboardEvent, editable: boolean): ShortcutEntry | null {
   for (let i = shortcuts.length - 1; i >= 0; i--) {
     const entry = shortcuts[i]!
     if (!matches(entry, event)) continue
     if (editable && !entry.options.inEditable) continue
     if (entry.options.when && !entry.options.when()) continue
-    return entry.run
+    return entry
   }
   return null
 }
 
-/** Ejecuta el atajo registrado para el evento, si lo hay, y cancela la acción por defecto. ¿Lo había? */
+/**
+ * Atajo registrado para este evento (el último que encaje y esté activo), o null. `editable`: el foco está en un
+ * control en el que se escribe o se elige tecleando (solo valen los atajos con `inEditable`). No mira la repetición
+ * automática: eso lo decide `runShortcut`.
+ */
+export function findShortcut(event: KeyboardEvent, editable: boolean): ((event: KeyboardEvent) => void) | null {
+  return findEntry(event, editable)?.run ?? null
+}
+
+/**
+ * Ejecuta el atajo registrado para el evento, si lo hay, y cancela la acción por defecto. ¿Lo había? Con la tecla
+ * mantenida (`event.repeat`), solo se ejecuta si el atajo lo admite (`repeat`); si no, la repetición se da por atendida
+ * sin hacer nada.
+ */
 export function runShortcut(event: KeyboardEvent, editable: boolean): boolean {
-  const run = findShortcut(event, editable)
-  if (!run) return false
+  const entry = findEntry(event, editable)
+  if (!entry) return false
   event.preventDefault()
-  run(event)
+  if (!event.repeat || entry.options.repeat) entry.run(event)
   return true
 }

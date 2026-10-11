@@ -61,7 +61,7 @@ test.describe('atajos de teclado', () => {
     expect(await handle(page, (h) => h.selectedCar)).toBe(order[0])
   })
 
-  test('no se disparan con el foco en un input o en el slider', async ({ page }) => {
+  test('no se disparan con el foco en un campo de texto; en el slider, sus flechas son suyas y el resto siguen', async ({ page }) => {
     await openReplay(page)
     await page.evaluate(() => {
       const input = document.createElement('input')
@@ -73,13 +73,20 @@ test.describe('atajos de teclado', () => {
     for (const key of [' ', '3', 'ArrowRight', 'ArrowDown']) await page.keyboard.press(key)
     expect(await handle(page, (h) => [h.playing, h.rate, h.timeMs, h.selectedCar])).toEqual([false, 1, t0, null])
 
-    // En el slider: sus flechas mueven el tiempo una sola vez y el espacio no reproduce.
+    // En el slider: sus flechas mueven el tiempo una sola vez (↓ es retroceder, no cambiar de coche)...
     await page.getByTestId('timeline').focus()
     await page.keyboard.press('ArrowRight')
     expect(await handle(page, (h) => h.timeMs)).toBe(t0 + 5000)
+    await page.keyboard.press('ArrowDown')
+    expect(await handle(page, (h) => [h.timeMs, h.selectedCar])).toEqual([t0, null])
+    // ...y las teclas que no usa siguen siendo del replay: el espacio reproduce y pausa, el 4 pone ×8.
     await page.keyboard.press(' ')
+    await expect.poll(() => handle(page, (h) => h.playing)).toBe(true)
+    await page.keyboard.press(' ')
+    await expect.poll(() => handle(page, (h) => h.playing)).toBe(false)
     await page.keyboard.press('4')
-    expect(await handle(page, (h) => [h.playing, h.rate])).toEqual([false, 1])
+    await expect.poll(() => handle(page, (h) => h.rate)).toBe(8)
+    await expect(page.getByTestId('timeline')).toBeFocused()
   })
 })
 
