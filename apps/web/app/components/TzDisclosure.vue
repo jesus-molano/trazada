@@ -4,7 +4,9 @@
  * se abre y se cierra con clic, Enter o espacio. Esc lo cierra y devuelve el foco al botón (sin que llegue al
  * atajo global de Esc). Un clic fuera también lo cierra. El panel no atrapa el foco: es texto para leer, pero
  * se puede enfocar (tabindex 0) para desplazarlo con el teclado cuando no cabe en su altura máxima.
- * Si no cabe en la ventana (tablet, cabecera partida), se desplaza en horizontal hasta que quepa.
+ * Si no cabe en la ventana (tablet, cabecera partida), se desplaza en horizontal hasta que quepa: al abrirse, al
+ * cambiar el tamaño de la ventana y al cambiar el suyo con el panel abierto (un menú de herramientas crece al
+ * activar una capa: leyenda, nota, etiqueta «Estimado»…).
  * `name`: nombre accesible (y título) más largo que el texto visible, si hace falta ahorrar sitio; debe
  * empezar por el texto visible (WCAG 2.5.3).
  * `icon`: icono del registro (por defecto, `info`: «ⓘ»; p. ej. `layers` para el menú «Capas» de las herramientas de
@@ -62,13 +64,22 @@ function onPointerDown(event: PointerEvent) {
   if (open.value && root.value && !root.value.contains(event.target as Node | null)) open.value = false
 }
 
+/** El panel cambia de tamaño (abierto, al cambiar lo que lleva dentro): se vuelve a encajar. */
+let resizeObserver: ResizeObserver | null = null
+
 onMounted(() => {
   document.addEventListener('pointerdown', onPointerDown, true)
   window.addEventListener('resize', fit)
+  if (typeof ResizeObserver !== 'undefined' && panel.value) {
+    resizeObserver = new ResizeObserver(() => fit())
+    resizeObserver.observe(panel.value)
+  }
 })
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onPointerDown, true)
   window.removeEventListener('resize', fit)
+  resizeObserver?.disconnect()
+  resizeObserver = null
 })
 </script>
 
