@@ -1,0 +1,24 @@
+{
+  "radio": {
+    "kind": "Radio",
+    "play": "Listen to {who}’s radio ({when})",
+    "pause": "Pause {who}’s radio ({when})",
+    "progress": "Progress of {who}’s radio",
+    "published": "Publication time: the message may have been said a few seconds earlier",
+    "live": "Listen live",
+    "liveHint": "At ×1 or ×2, each clip plays when the clock reaches it: the selected car’s or, with no car, all of them. It stops on a jump, a pause or a faster speed.",
+    "empty": "No team radio yet at this point of the session.",
+    "outdated": "This session was downloaded before Trazada read team radio: download it again to get it.",
+    "filter": {
+      "label": "What to show",
+      "all": "All",
+      "rc": "Race control",
+      "radio": "Radio"
+    },
+    "car": {
+      "title": "Radio",
+      "empty": "No radio from this car yet."
+    },
+    "lane": "Team radio: {n} clip so far | Team radio: {n} clips so far"
+  }
+}

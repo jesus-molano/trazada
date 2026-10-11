@@ -1,0 +1,24 @@
+{
+  "radio": {
+    "kind": "Radio",
+    "play": "Escuchar la radio de {who} ({when})",
+    "pause": "Pausar la radio de {who} ({when})",
+    "progress": "Progreso de la radio de {who}",
+    "published": "Hora de publicación: el mensaje pudo decirse unos segundos antes",
+    "live": "Escuchar en directo",
+    "liveHint": "A ×1 o ×2, cada clip suena cuando el reloj llega a él: los del coche elegido o, sin coche, todos. Se para al saltar, pausar o ir más deprisa.",
+    "empty": "Aún no hay radio en este punto de la sesión.",
+    "outdated": "Esta sesión se descargó antes de que Trazada leyera la radio: vuelve a descargarla para tenerla.",
+    "filter": {
+      "label": "Qué mostrar",
+      "all": "Todo",
+      "rc": "Dirección de carrera",
+      "radio": "Radio"
+    },
+    "car": {
+      "title": "Radio",
+      "empty": "Aún no hay radio de este coche."
+    },
+    "lane": "Radio de los equipos: {n} clip hasta ahora | Radio de los equipos: {n} clips hasta ahora"
+  }
+}

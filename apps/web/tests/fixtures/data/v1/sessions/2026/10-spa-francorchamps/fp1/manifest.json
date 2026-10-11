@@ -211,7 +211,8 @@
     "elevation": "real",
     "timingStream": "present",
     "marshalSectors": "absent",
-    "weather": "present"
+    "weather": "present",
+    "radio": "absent"
   },
   "quality": {
     "coverage": {

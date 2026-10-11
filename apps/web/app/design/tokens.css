@@ -134,6 +134,9 @@
   /* Zonas de DRS deducidas de la telemetría (Estimado) */
   --tz-drs: #7dd3fc;
 
+  /* Radio de los equipos (D51): filas del panel, marcas del timeline y progreso del clip */
+  --tz-radio: #c4a7f5;
+
   /* Escena 3D y gráficas (three.js y uPlot los leen con token() de tokens.ts) */
   /* La pista es asfalto (gris neutro, más claro con la altura) con el borde de pintura blanca. */
   --tz-scene-bg: #121211;

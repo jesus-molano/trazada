@@ -135,6 +135,8 @@ describe('tokens de diseño', () => {
       '--tz-gain', '--tz-loss', '--tz-dur-flash', '--tz-best',
       // DRS
       '--tz-drs',
+      // radio de los equipos
+      '--tz-radio',
       // iconos
       '--tz-icon-sm', '--tz-icon-md', '--tz-icon-lg', '--tz-icon-stroke',
       // paneles, densidad y cifras

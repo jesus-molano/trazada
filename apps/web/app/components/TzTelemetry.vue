@@ -396,6 +396,7 @@ watch(
         :no-data-label="t('telemetry.chartNoData')"
       />
     </template>
+    <TzCarRadio :car="driver.number" />
   </section>
 </template>
 

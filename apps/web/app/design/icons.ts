@@ -45,6 +45,7 @@ import {
   PanelsTopLeft,
   Pause,
   Play,
+  Radio,
   RotateCcw,
   Scan,
   Search,
@@ -99,6 +100,7 @@ export const ICONS = {
   elevation: Mountain,
   separation: MoveHorizontal,
   // Carrera y análisis
+  radio: Radio,
   flag: Flag,
   gain: ArrowUp,
   loss: ArrowDown,

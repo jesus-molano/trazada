@@ -52,6 +52,8 @@ const TYPES = {
   '.json': 'application/json; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
   '.gz': 'application/gzip',
+  // Clips de la radio de los equipos (D51), junto a cada sesión.
+  '.mp3': 'audio/mpeg',
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
   '.svg': 'image/svg+xml',

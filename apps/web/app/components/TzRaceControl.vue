@@ -9,15 +9,25 @@
  * Microinteracciones (21b, D42): un mensaje nuevo entra desde arriba con un fundido y destella una vez (`data-fresh`)
  * solo con reproducción a ≤ ×4, si entran como mucho LIST_MOTION_MAX_CHANGES a la vez y sin salto del reloj; tras un
  * seek, en pausa, con reduced motion o a ×8/×16, la lista cambia al instante. El texto nunca se anima: solo la entrada.
+ *
+ * Radio de los equipos (D51): «Todo / Dirección de carrera / Radio» elige qué se lista; los clips van mezclados por hora
+ * con los mensajes, también solo hasta el instante del reloj (nunca uno del futuro), con reproducir, pausa y progreso
+ * (suena uno a la vez). Su hora es la de publicación: el mensaje pudo decirse unos segundos antes. «Escuchar en directo»
+ * (apagado por defecto): a ×1 o ×2, cada clip suena cuando el reloj llega a él (los del coche elegido o, sin coche,
+ * todos); se para al saltar, pausar o subir de ×2. Sin radio en la sesión no hay filtro ni nada que ocupe alto; de una
+ * sesión de antes de 1.2.0, una línea pide volver a descargarla. Nada de transcripción.
  */
-import type { RaceControlEvent } from '@trazada/schema'
+import type { RaceControlEvent, RadioClip } from '@trazada/schema'
+import { manifestPath } from '~/data/session-id'
 import { duration, LIST_MOTION_MAX_CHANGES, LIST_MOTION_MAX_RATE, useReducedMotion } from '~/design/motion'
 import { formatClock } from '~/engine/format/time'
+import { clipsUpTo, clipUrl, LIVE_MAX_RATE, liveClip, radioClips, radioStatus } from '~/engine/radio/radio'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { visibleCount } from '~/engine/trackstate/TrackState'
 import { rcTone } from '~/replay/rcKinds'
 import { useLayoutStore } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
+import { type RadioFilter, useRadioStore } from '~/stores/radio'
 
 const { t, te } = useI18n()
 const playback = usePlaybackStore()
@@ -28,13 +38,54 @@ const { playback: pb, type } = rt.session.manifest.session
 const origin = clockOrigin(type, rt.session.timing, pb)
 const events = rt.raceControl
 const times = events.map((e) => e.t)
+const radio = useRadioStore()
+const player = useRadioPlayer()
+const dataUrl = useDataUrl()
+const status = radioStatus(rt.session.manifest)
+const clips = radioClips(rt.session.events)
+const clipTimes = clips.map((c) => c.t)
+const drivers = new Map(rt.drivers.map((d) => [d.number, d]))
+const FILTERS: readonly RadioFilter[] = ['all', 'rc', 'radio']
+const filterLabel = computed<Record<RadioFilter, string>>(() => ({
+  all: t('radio.filter.all'),
+  rc: t('radio.filter.rc'),
+  radio: t('radio.filter.radio'),
+}))
 
 const open = computed({
   get: () => layout.current.rcOpen,
   set: (value: boolean) => layout.setRcOpen(value),
 })
 const count = ref(visibleCount(times, playback.timeMs))
-const visible = computed(() => events.slice(0, count.value).reverse())
+const radioCount = ref(clipsUpTo(clipTimes, playback.timeMs))
+
+type Row = { kind: 'rc'; i: number; e: RaceControlEvent } | { kind: 'radio'; i: number; c: RadioClip }
+/** Lo que se lista, del más reciente al más antiguo: mensajes y clips mezclados por hora, según el filtro. */
+const visible = computed<Row[]>(() => {
+  const rows: Row[] = []
+  const withRc = filter.value !== 'radio'
+  const withRadio = filter.value !== 'rc'
+  let a = withRc ? count.value - 1 : -1
+  let b = withRadio ? radioCount.value - 1 : -1
+  while (a >= 0 || b >= 0) {
+    // A igual hora, el clip va encima (se publica después de lo que comenta).
+    if (b >= 0 && (a < 0 || clips[b]!.t >= events[a]!.t)) {
+      rows.push({ kind: 'radio', i: b, c: clips[b]! })
+      b--
+    } else {
+      rows.push({ kind: 'rc', i: a, e: events[a]! })
+      a--
+    }
+  }
+  return rows
+})
+
+const who = (car: string) => drivers.get(car)?.tla ?? `#${car}`
+const teamMark = (car: string) => ({ background: drivers.get(car)?.color || 'var(--tz-team-unknown)' })
+const hasRadio = status === 'present' || status === 'partial'
+// Sin radio no hay filtro: siempre se ve todo (lo que haya de dirección de carrera).
+const filter = computed<RadioFilter>(() => (hasRadio ? radio.filter : 'all'))
+const emptyText = computed(() => (filter.value === 'radio' ? t('radio.empty') : t('rc.empty')))
 
 /** ¿Se anima la última entrada de mensajes? Y el índice del mensaje que destella (null: ninguno). */
 const animate = ref(false)
@@ -65,8 +116,11 @@ watch(
   (t) => {
     const now = performance.now()
     const jump = jumped(t - lastT, now - lastWall)
+    const prevT = lastT
     lastT = t
     lastWall = now
+    listenLive(prevT, t, jump)
+    radioCount.value = clipsUpTo(clipTimes, t)
     const next = visibleCount(times, t)
     const added = next - count.value
     if (added === 0) return
@@ -81,7 +135,34 @@ watch(
     }
   },
 )
-onBeforeUnmount(clearFresh)
+/**
+ * Escuchar en directo: con reproducción a ×1 o ×2 y sin salto, el clip más reciente publicado desde la última
+ * actualización (del coche elegido o, sin coche, de todos). Lo que puso el directo se para al saltar, pausar o subir de ×2.
+ */
+function listenLive(from: number, to: number, jump: boolean) {
+  if (!radio.live) return
+  if (jump || !playback.playing || playback.rate > LIVE_MAX_RATE) {
+    stopLive()
+    return
+  }
+  const i = liveClip(clips, clipTimes, from, to, playback.selectedCar)
+  const url = i >= 0 ? clipUrl(dataUrl(manifestPath(rt.session.id)), clips[i]!) : null
+  if (url) player.play(url, clips[i]!.file, true)
+}
+function stopLive() {
+  if (player.now.value?.live) player.stop()
+}
+watch(
+  () => [playback.playing, playback.rate, radio.live] as const,
+  ([playing, rate, live]) => {
+    if (!playing || rate > LIVE_MAX_RATE || !live) stopLive()
+  },
+)
+
+onBeforeUnmount(() => {
+  clearFresh()
+  player.stop()
+})
 
 function kindLabel(e: RaceControlEvent): string {
   const key = `rc.kind.${e.parsed.kind}`
@@ -103,12 +184,39 @@ function kindLabel(e: RaceControlEvent): string {
         @click="open = !open"
       >
         <span class="tz-panel-title tz-rc__title">{{ t('rc.title') }}</span>
-        <span class="tz-rc__count tz-tabular" data-testid="rc-count">{{ t('rc.count', count) }}</span>
+        <span class="tz-rc__count tz-tabular" data-testid="rc-count">{{ t('rc.count', visible.length) }}</span>
         <TzIcon name="chevron" size="sm" class="tz-rc__chevron" />
       </button>
     </h2>
+    <!-- Solo con radio (D51): una sesión sin ella no pierde alto; una de antes de 1.2.0 lo dice en una línea. -->
+    <p v-if="open && status === 'outdated'" class="tz-rc__radio-note" data-testid="radio-outdated">{{ t('radio.outdated') }}</p>
+    <div v-if="hasRadio" v-show="open" class="tz-rc__tools" data-testid="rc-tools">
+      <span class="tz-segmented tz-rc__filter" role="group" :aria-label="t('radio.filter.label')">
+        <button
+          v-for="f in FILTERS"
+          :key="f"
+          type="button"
+          :aria-pressed="radio.filter === f"
+          :data-testid="`rc-filter-${f}`"
+          @click="radio.filter = f"
+        >
+          {{ filterLabel[f] }}
+        </button>
+      </span>
+      <button
+        type="button"
+        class="tz-rc__live"
+        :aria-pressed="radio.live"
+        :disabled="!hasRadio"
+        :title="t('radio.liveHint')"
+        data-testid="radio-live"
+        @click="radio.live = !radio.live"
+      >
+        <TzIcon name="radio" size="sm" />{{ t('radio.live') }}
+      </button>
+    </div>
     <!--
-      Región con scroll y sin controles dentro: enfocable para poder desplazarla con el teclado. Sin animación (css y
+      Región con scroll: enfocable para poder desplazarla con el teclado (las filas de radio llevan su botón). Sin animación (css y
       move-class sin transición), los mensajes entran y salen al instante.
     -->
     <TransitionGroup
@@ -124,24 +232,33 @@ function kindLabel(e: RaceControlEvent): string {
       :move-class="animate ? 'tz-rc-move' : 'tz-rc-still'"
       data-testid="rc-list"
     >
-      <li v-if="!visible.length" key="empty" class="tz-rc__empty">{{ t('rc.empty') }}</li>
-      <li
-        v-for="(e, i) in visible"
-        :key="count - 1 - i"
-        class="tz-rc__item"
-        :class="rcTone(e.parsed.kind)"
-        :data-t="e.t"
-        :data-kind="e.parsed.kind"
-        :data-fresh="fresh === count - 1 - i ? '' : undefined"
-        data-testid="rc-message"
-      >
-        <div class="tz-rc__meta">
-          <span class="tz-rc__time tz-tabular">{{ formatClock(e.t - origin) }}</span>
-          <span v-if="e.lap" class="tz-rc__lap tz-tabular">{{ t('rc.lap', { lap: e.lap }) }}</span>
-          <span class="tz-rc__kind" data-testid="rc-kind">{{ kindLabel(e) }}</span>
-        </div>
-        <p class="tz-rc__text" lang="en" :title="t('rc.original')" data-testid="rc-text">{{ e.text }}</p>
-      </li>
+      <li v-if="!visible.length" key="empty" class="tz-rc__empty" data-testid="rc-empty">{{ emptyText }}</li>
+      <template v-for="row in visible" :key="`${row.kind}-${row.i}`">
+        <li
+          v-if="row.kind === 'rc'"
+          class="tz-rc__item"
+          :class="rcTone(row.e.parsed.kind)"
+          :data-t="row.e.t"
+          :data-kind="row.e.parsed.kind"
+          :data-fresh="fresh === row.i ? '' : undefined"
+          data-testid="rc-message"
+        >
+          <div class="tz-rc__meta">
+            <span class="tz-rc__time tz-tabular">{{ formatClock(row.e.t - origin) }}</span>
+            <span v-if="row.e.lap" class="tz-rc__lap tz-tabular">{{ t('rc.lap', { lap: row.e.lap }) }}</span>
+            <span class="tz-rc__kind" data-testid="rc-kind">{{ kindLabel(row.e) }}</span>
+          </div>
+          <p class="tz-rc__text" lang="en" :title="t('rc.original')" data-testid="rc-text">{{ row.e.text }}</p>
+        </li>
+        <li v-else class="tz-rc__item is-radio" :data-t="row.c.t" :data-car="row.c.car" data-testid="rc-radio">
+          <div class="tz-rc__meta">
+            <span class="tz-rc__time tz-tabular" :title="t('radio.published')">{{ formatClock(row.c.t - origin) }}</span>
+            <span class="tz-rc__who"><span class="tz-rc__team" :style="teamMark(row.c.car)" />{{ who(row.c.car) }}</span>
+            <span class="tz-rc__kind">{{ t('radio.kind') }}</span>
+          </div>
+          <TzRadioClip :clip="row.c" :who="who(row.c.car)" :when="formatClock(row.c.t - origin)" />
+        </li>
+      </template>
     </TransitionGroup>
   </section>
 </template>
@@ -297,6 +414,66 @@ function kindLabel(e: RaceControlEvent): string {
   margin-left: auto;
   font-weight: var(--tz-weight-semibold);
   color: var(--tz-text);
+}
+
+/* Filtro y «Escuchar en directo», bajo la cabecera. */
+.tz-rc__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-2);
+  padding: 0 var(--tz-panel-pad) var(--tz-space-2);
+}
+
+.tz-rc__radio-note {
+  margin: 0;
+  padding: 0 var(--tz-panel-pad) var(--tz-space-2);
+  font-size: var(--tz-text-2xs);
+  color: var(--tz-text-muted);
+}
+
+.tz-rc__live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  min-height: var(--tz-hit-min);
+  padding: 0 var(--tz-space-2);
+  border: 1px solid var(--tz-border);
+  border-radius: var(--tz-radius-sm);
+  background: transparent;
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-2xs);
+  cursor: pointer;
+}
+
+/* Activado: la placa maciza de pintura (D47). */
+.tz-rc__live[aria-pressed='true'] {
+  border-color: var(--tz-accent);
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
+}
+
+.tz-rc__live:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tz-rc__item.is-radio {
+  border-left-color: var(--tz-radio);
+}
+
+.tz-rc__who {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  font-family: var(--tz-font-mono);
+  color: var(--tz-text);
+}
+
+.tz-rc__team {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
 }
 
 .tz-rc__text {

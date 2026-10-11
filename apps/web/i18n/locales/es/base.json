@@ -178,6 +178,12 @@
         "none-valid": "El circuito no tiene pit lane: ninguna de las {stops} paradas de la sesión con que se construyó lo daba sin huecos y por donde van los coches. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
         "dropped": "El circuito no tiene pit lane: el que tenía no seguía a los coches (lo seguía el {stopShare} % de las paradas) y ninguna parada daba uno bueno. Los coches en el pit lane no se dibujan; se añadirá al descargar una sesión con paradas que lo dé.",
         "other": "El circuito no tiene pit lane: los coches en el pit lane no se dibujan."
+      },
+      "radio-partial": "Faltan {missing} de los {total} clips de la radio de los equipos: no se pudieron descargar.",
+      "radio-skipped": {
+        "no-radio": "La radio de los equipos no se ha descargado (se pidió sin ella).",
+        "offline": "La radio de los equipos no se ha descargado: la sesión se generó sin red.",
+        "other": "La radio de los equipos no se ha descargado."
       }
     }
   },

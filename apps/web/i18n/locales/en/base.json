@@ -178,6 +178,12 @@
         "none-valid": "The circuit has no pit lane: none of the {stops} pit stops of the session it was built from gave one without gaps that the cars follow. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
         "dropped": "The circuit has no pit lane: the one it had did not follow the cars ({stopShare}% of the pit stops followed it) and no pit stop gave a good one. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
         "other": "The circuit has no pit lane: cars in the pit lane are not drawn."
+      },
+      "radio-partial": "{missing} of the {total} team radio clips are missing: they could not be downloaded.",
+      "radio-skipped": {
+        "no-radio": "Team radio was not downloaded (it was asked for without it).",
+        "offline": "Team radio was not downloaded: the session was generated offline.",
+        "other": "Team radio was not downloaded."
       }
     }
   },

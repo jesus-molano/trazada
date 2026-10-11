@@ -195,6 +195,8 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     mkdirSync(cache)
     writeFileSync(join(app, 'index.html'), '<!doctype html><title>Trazada</title>')
     writeFileSync(join(root, 'secret.txt'), 'no')
+    mkdirSync(join(data, 'v1', 'radio-test'), { recursive: true })
+    writeFileSync(join(data, 'v1', 'radio-test', '0123456789abcdef.mp3'), Buffer.from('ID3'))
     process.env.FAKE_STEP_MS = '40'
     server = createLocalServer({
       appDir: app,
@@ -222,6 +224,10 @@ describe('servidor local con el gestor (pipeline falso)', () => {
     const catalog = await call(port, '/data/v1/catalog.json', { api: false })
     expect(catalog.status).toBe(200)
     expect(catalog.headers['content-type']).toContain('application/json')
+    // Los clips de la radio (D51), como audio.
+    const clip = await call(port, '/data/v1/radio-test/0123456789abcdef.mp3', { api: false })
+    expect(clip.status).toBe(200)
+    expect(clip.headers['content-type']).toBe('audio/mpeg')
     expect((await call(port, '/data/../secret.txt', { api: false })).status).toBe(404)
     expect((await call(port, '/%2e%2e/secret.txt', { api: false })).status).toBe(404)
     expect((await call(port, '/data/%2e%2e/%2e%2e/secret.txt', { api: false })).status).toBe(404)
