@@ -3,9 +3,23 @@
  * «comparar con PIA» (con el seleccionado) y cerrar la comparación. Selecciona a A y abre «Comparar» con B en el panel
  * del coche; la diferencia en vivo lleva allí su «Estimado» (D31). Sin dos pilotos distintos, deshabilitado y con lo
  * que falta.
+ *
+ * El verbo no se confunde con lo que escriben los otros comandos: una palabra que es antes un piloto que el principio
+ * de un verbo («ver» es VER, no «versus») no es el verbo, y «Comparar con «X»» sin un piloto X solo sale si la consulta
+ * empieza por el verbo (en «seguir ver», «seguir» no es un piloto por comparar: es otro comando).
  */
 import { carsInOrder, driverParams, tlaOf } from '../context'
-import { allTokens, completion, findDrivers, findPhrase, penalize, phrases, unexplained, without } from '../match'
+import {
+  allTokens,
+  completion,
+  findDrivers,
+  findPhrase,
+  type PhraseMatch,
+  penalize,
+  phrases,
+  unexplained,
+  without,
+} from '../match'
 import type { Query } from '../parse'
 import { type CommandContext, type CommandDef, type Suggestion, t } from '../types'
 
@@ -18,6 +32,22 @@ const CLOSE = phrases(
   'close comparison',
   'stop comparing',
 )
+
+/**
+ * El verbo de comparar entre los tokens, sin tomar por verbo a un piloto: si la palabra que encaja con un verbo encaja
+ * igual o mejor con un piloto («ver» con VER frente a «versus», a medio escribir), es el piloto y se busca el verbo en
+ * las demás.
+ */
+function findVerb(q: Query, ctx: CommandContext): PhraseMatch | null {
+  let free = allTokens(q.tokens)
+  for (;;) {
+    const m = findPhrase(q.tokens, COMPARE, free)
+    if (!m) return null
+    const [driver] = findDrivers(q.tokens, ctx.session.drivers, new Set(m.used), 1)
+    if (!driver || driver.candidates[0]!.score < m.score) return m
+    free = without(free, m.used)
+  }
+}
 
 /** Rivales que se listan tras «comparar» sin nombre (el resto, escribiendo). */
 const LIST_MAX = 6
@@ -52,7 +82,7 @@ const pair: CommandDef = {
   suggest(q: Query, ctx) {
     if (q.empty) return []
     const free = allTokens(q.tokens)
-    const m = findPhrase(q.tokens, COMPARE)
+    const m = findVerb(q, ctx)
     if (!m) return []
     const rest = without(free, m.used)
     const refs = findDrivers(q.tokens, ctx.session.drivers, rest, 2)
@@ -90,6 +120,9 @@ const pair: CommandDef = {
       })
     }
     if (left > 0) {
+      // «Comparar con «xyz»» (ningún piloto así) solo si se empezó por el verbo: si no, lo escrito es otro comando
+      // («seguir ver», «parada vs»…).
+      if (m.used[0] !== 0) return []
       const text = [...rest].map((i) => q.tokens[i]!.text).join(' ')
       return [
         {

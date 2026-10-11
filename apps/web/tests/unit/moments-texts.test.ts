@@ -1,6 +1,7 @@
 /**
- * Momentos (ítem 5, D35): las cifras de los textos que explican qué es un adelantamiento, un duelo y un salto son las
- * del motor. Si cambian allí, este test avisa (un texto que afirma otra regla sería un dato falso).
+ * Momentos (ítem 5, D35): las cifras de los textos que explican qué es un adelantamiento, un duelo y un salto (también
+ * los de los comandos de la paleta, ítem 14b) son las del motor. Si cambian allí, este test avisa (un texto que afirma
+ * otra regla sería un dato falso).
  */
 import { describe, expect, it } from 'vitest'
 import { DUEL_MAX_GAP_MS, DUEL_MIN_LAPS } from '../../app/engine/moments/duels'
@@ -21,5 +22,11 @@ describe('textos de los momentos: cifras del motor', () => {
     expect(text(m, 'duels.title')).toContain(`${DUEL_MAX_GAP_MS / 1000} s`)
     expect(text(m, 'pick')).toContain(`${JUMP_LEAD_MS / 1000} s`)
     expect(text(m, 'jump.filterHint')).toContain(`${JUMP_LEAD_MS / 1000} s`)
+    // Comandos de la paleta (ítem 14b).
+    for (const key of ['cmd.duel.none', 'cmd.duel.noneCar', 'cmd.duel.nonePair']) {
+      expect(text(m, key)).toContain(`${DUEL_MAX_GAP_MS / 1000} s`)
+      expect(text(m, key)).toContain(`${DUEL_MIN_LAPS} `)
+    }
+    for (const key of ['cmd.duel.detail', 'cmd.duel.detailNoCompare']) expect(text(m, key)).toContain(`${DUEL_MAX_GAP_MS / 1000} s`)
   })
 })

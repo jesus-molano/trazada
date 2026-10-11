@@ -3,22 +3,33 @@
  * diálogo modal), el campo es un combobox con `aria-activedescendant` sobre la opción activa, ↑/↓ la mueven, Enter
  * ejecuta (con una acción simulada y con la real), lo deshabilitado no se ejecuta y dice por qué, Tab completa, Esc la
  * cierra y el foco vuelve; ninguna tecla llega a los atajos del replay; el botón del dock (iPad); los huecos.
+ * Momentos (ítem 14b) con una carrera sintética sobre el fixture y los botones de salto del dock montados (su servicio):
+ * «siguiente adelantamiento» llega 5 s antes y elige al que adelanta, con «Estimado» y sin spoilers; «siguiente duelo»
+ * compara al perseguidor con el de delante. «seguir ver» no ofrece «Comparar con «seguir»».
  * Sin bucle de frames (requestAnimationFrame sustituido: el estado grueso llega con los avisos del reloj).
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+// El hueco de pestañas antes que los botones de salto: estos leen «Sin spoilers» de la hoja (useAnalysis), que importa
+// las pestañas, y cada pestaña usa la hoja.
+import '~/slots/analysis-tabs'
+import TzJumpButtons from '~/components/replay-dock/TzJumpButtons.vue'
 import TzPaletteButton from '~/components/replay-dock/TzPaletteButton.vue'
 import TzCommandPalette from '~/components/replay-overlays/TzCommandPalette.vue'
+import { useAnalysis } from '~/composables/useAnalysis'
 import type { LoadedSession } from '~/data/types'
+import { JUMP_LEAD_MS } from '~/engine/moments/jumps'
 import { registerCommandService } from '~/replay/commands'
 import { ESC_PRIORITY, handleEscape, registerEscape, runShortcut } from '~/replay/keys'
 import { createReplayRuntime, type ReplayRuntime } from '~/replay/runtime'
 import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
 import { REPLAY_DOCK } from '~/slots/replay-dock'
+import { useCompareStore } from '~/stores/compare'
 import { usePlaybackStore } from '~/stores/playback'
 import { recordingServices } from '~/testing/commands'
 import { loadFixture } from '~/testing/fixture'
+import { type RaceCar, raceSession } from '~/testing/moments'
 
 let fixture: LoadedSession
 let rt: ReplayRuntime
@@ -253,6 +264,108 @@ describe('combobox y lista', () => {
     await press('ArrowLeft')
     await press(' ')
     expect(seen).toEqual([])
+  })
+})
+
+describe('«seguir ver» (fallo visto en las capturas de la Tanda 4)', () => {
+  it('solo ofrece seguir a VER: ni «Comparar con «seguir»» ni otra comparación', async () => {
+    await mountBoth()
+    await ctrlK()
+    await type('seguir ver')
+    expect(activeOption()!.dataset.key).toBe('drivers.follow.3')
+    const keys = $$('[role="option"]').map((o) => o.dataset.key!)
+    expect(keys.filter((k) => k.startsWith('compare.'))).toEqual([])
+    expect($('[role="listbox"]')!.textContent).not.toMatch(/«seguir»|“seguir”/)
+  })
+})
+
+describe('momentos (ítem 14b): adelantamientos y duelos', () => {
+  /**
+   * Como en tests/nuxt/moments.test.ts: VER (3) adelanta a NOR (1) en la vuelta 2 (cruce GPS a S + 90 s, confirmado
+   * en la línea a S + 120 s) y desde ahí NOR le sigue a 0,5 s (duelo desde S + 119,5 s, duelo a la tercera vuelta).
+   */
+  const NOR: RaceCar = { car: 1, lapMs: [60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000] }
+  const VER: RaceCar = { car: 3, lapMs: [60_500, 59_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000] }
+  const PASS_AT = 90_000
+  const CONFIRMED = 120_000
+  const DUEL_START = 119_500
+  let S = 0
+
+  async function mountRace() {
+    usePlaybackStore().detach()
+    rt = createReplayRuntime(raceSession(fixture, [NOR, VER]))
+    usePlaybackStore().attach(rt)
+    S = rt.clock.startMs
+    await mountBoth()
+    const jumps = await mountSuspended(TzJumpButtons, { attachTo: document.body })
+    unmounts.push(() => jumps.unmount())
+  }
+  const time = () => usePlaybackStore().timeMs
+
+  it('«siguiente adelantamiento»: 5 s antes de su instante GPS, con «Estimado», sin decir quién; Enter elige al que adelanta', async () => {
+    await mountRace()
+    await ctrlK()
+    await type('siguiente adelantamiento')
+    const opt = activeOption()!
+    expect(opt.dataset.key).toBe('moments.overtake.next')
+    expect(Math.abs(Number(opt.dataset.t) - (S + PASS_AT - JUMP_LEAD_MS))).toBeLessThan(300)
+    // «Sin spoilers» (por defecto): la línea aún no lo ha confirmado, así que no dice quién ni a quién.
+    expect(opt.textContent).toMatch(/sin spoilers|no spoilers/)
+    expect(opt.textContent).not.toMatch(/VER|NOR/)
+    expect(opt.querySelector('[data-testid="estimated"][data-field="overtakeTime"]')).not.toBeNull()
+    expect(opt.querySelector('.tz-palette__team')).toBeNull()
+
+    await press('Enter')
+    expect(dialog()).toBeNull()
+    expect(Math.abs(time() - (S + PASS_AT - JUMP_LEAD_MS))).toBeLessThan(300)
+    expect(usePlaybackStore().selectedCar).toBe('3')
+  })
+
+  it('ya confirmado en la línea (o sin «Sin spoilers»), con nombres', async () => {
+    await mountRace()
+    rt.clock.seek(S + CONFIRMED + 10_000)
+    await settle()
+    await ctrlK()
+    await type('adelantamiento anterior')
+    expect(activeOption()!.dataset.key).toBe('moments.overtake.prev')
+    expect(activeOption()!.textContent).toMatch(/V2: VER adelanta a NOR|L2: VER passes NOR/)
+
+    rt.clock.seek(S)
+    await settle()
+    await type('adelantamientos de NOR')
+    expect(activeOption()!.dataset.key).toBe('moments.overtake.next.1')
+    expect(activeOption()!.textContent).not.toMatch(/VER adelanta|VER passes/)
+    useAnalysis().noSpoilers.value = false
+    await settle()
+    await type('adelantamientos de nor')
+    expect(activeOption()!.textContent).toMatch(/VER adelanta a NOR|VER passes NOR/)
+    // Con el piloto escrito, queda elegido ese piloto.
+    await press('Enter')
+    expect(usePlaybackStore().selectedCar).toBe('1')
+  })
+
+  it('«siguiente duelo»: al inicio del duelo (5 s antes), el perseguidor comparado con el de delante', async () => {
+    await mountRace()
+    await ctrlK()
+    await type('siguiente duelo')
+    expect(activeOption()!.dataset.key).toBe('moments.duel.next')
+    await press('Enter')
+    expect(time()).toBe(S + DUEL_START - JUMP_LEAD_MS)
+    expect(usePlaybackStore().selectedCar).toBe('1')
+    expect(useCompareStore().compareCar).toBe('3')
+    expect(useCompareStore().comparing).toBe(true)
+  })
+
+  it('en libres (el fixture), deshabilitado: solo en carrera y sprint', async () => {
+    await mountBoth()
+    const jumps = await mountSuspended(TzJumpButtons, { attachTo: document.body })
+    unmounts.push(() => jumps.unmount())
+    await ctrlK()
+    await type('siguiente adelantamiento')
+    const opt = activeOption()!
+    expect(opt.dataset.key).toBe('moments.overtake.next')
+    expect(opt.getAttribute('aria-disabled')).toBe('true')
+    expect(opt.querySelector('[data-testid="palette-reason"]')!.textContent).toMatch(/carrera y sprint|Races and sprints/)
   })
 })
 

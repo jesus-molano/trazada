@@ -10,6 +10,7 @@
  */
 import { leaderLapAt } from '../../timeline/markers'
 import { carLapStart, carLapStarts, clockAt, driverParams, inSession, NEAR_MS, tlaOf } from '../context'
+import { type Dir, findDir } from '../direction'
 import {
   allTokens,
   completion,
@@ -26,11 +27,8 @@ import {
 import type { Query } from '../parse'
 import { type CommandContext, type CommandDef, type Suggestion, type Text, t } from '../types'
 
-const NEXT = phrases('siguiente', 'proximo', 'proxima', 'despues', 'next')
-const PREV = phrases('anterior', 'previo', 'previa', 'antes', 'ultimo', 'ultima', 'previous', 'prev', 'last')
 const LAP = phrases('vuelta', 'lap')
 
-type Dir = 'next' | 'prev'
 type MarkerTarget = 'sc' | 'vsc' | 'red' | 'yellow' | 'chequered' | 'pit' | 'moment'
 
 const TARGET_WORDS: Readonly<Record<MarkerTarget, readonly Phrase[]>> = {
@@ -119,14 +117,6 @@ function pick<T extends { t: number }>(list: readonly T[], now: number, dir: Dir
   if (dir === 'next') return list.find((m) => m.t > now + NEAR_MS)
   for (let i = list.length - 1; i >= 0; i--) if (list[i]!.t < now - NEAR_MS) return list[i]
   return undefined
-}
-
-/** Dirección escrita (si la hay) y lo que consumió. */
-function findDir(q: Query, free: ReadonlySet<number>): { dir: Dir; m: PhraseMatch } | null {
-  const n = findPhrase(q.tokens, NEXT, free)
-  const p = findPhrase(q.tokens, PREV, free)
-  if (n && (!p || n.score >= p.score)) return { dir: 'next', m: n }
-  return p ? { dir: 'prev', m: p } : null
 }
 
 function markSuggestions(

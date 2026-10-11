@@ -61,6 +61,39 @@
       "titleSoFar": "Overtakes confirmed so far («No spoilers»): {n}. The time of each mark is approximate (GPS).",
       "tick": "L{lap}: {passer} passes {passed} (approximate time, GPS)",
       "tickNoData": "L{lap}: {passer} passes {passed} (exact moment: no data; marked at the start of the lap)"
+    },
+    "cmd": {
+      "onlyRace": "Races and sprints only: in practice and qualifying there is no on-track order to compare lap by lap",
+      "overtake": {
+        "next": "Next overtake",
+        "prev": "Previous overtake",
+        "nextCar": "Next overtake involving {driver}",
+        "prevCar": "Previous overtake involving {driver}",
+        "nextPair": "Next overtake between {a} and {b}",
+        "prevPair": "Previous overtake between {a} and {b}",
+        "none": "No data: no overtakes confirmed at the finish line in this session (lap 1 does not count)",
+        "noneCar": "No data: no overtakes involving {driver} confirmed at the finish line in this session (lap 1 does not count)",
+        "nonePair": "No data: no overtakes between {a} and {b} confirmed at the finish line in this session (lap 1 does not count)",
+        "detail": "L{lap}: {passer} passes {passed} (≈ clock {clock}) · selects {select}",
+        "detailNoTime": "L{lap}: {passer} passes {passed} · exact moment: no data, start of the lap (clock {clock}) · selects {select}",
+        "hidden": "L{lap} (≈ clock {clock}) · no spoilers: who, once you get there",
+        "hiddenNoTime": "L{lap} · exact moment: no data, start of the lap (clock {clock}) · no spoilers: who, once you get there"
+      },
+      "duel": {
+        "next": "Next battle",
+        "prev": "Previous battle",
+        "nextCar": "Next battle involving {driver}",
+        "prevCar": "Previous battle involving {driver}",
+        "nextPair": "Next battle between {a} and {b}",
+        "prevPair": "Previous battle between {a} and {b}",
+        "none": "No data: no battles of 3 laps or more within 1 s in this session",
+        "noneCar": "No data: no battles of 3 laps or more within 1 s involving {driver} in this session",
+        "nonePair": "No data: no battles of 3 laps or more within 1 s between {a} and {b} in this session",
+        "noTrackStatus": "No per-lap track status data: laps under SC or VSC cannot be ruled out, so no battles are searched for",
+        "detail": "From L{lap}: {chaser} behind {leader} within 1 s (clock {clock}) · compares {select} with {rival}",
+        "detailNoCompare": "From L{lap}: {chaser} behind {leader} within 1 s (clock {clock}) · selects {select}",
+        "hidden": "From L{lap} (clock {clock}) · no spoilers: who, once you get there"
+      }
     }
   }
 }
