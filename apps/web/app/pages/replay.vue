@@ -25,6 +25,11 @@ const session = useSessionStore()
 const playback = usePlaybackStore()
 useReplayShortcuts()
 
+/** Prioridad del título en la cabecera (D44): lo secundario se acorta antes que el título (useHeaderFit). */
+const bar = ref<HTMLElement | null>(null)
+const titleEl = ref<HTMLElement | null>(null)
+useHeaderFit(bar, titleEl)
+
 const id = computed(() => (typeof route.query.s === 'string' ? route.query.s : ''))
 const parsed = computed(() => parseSessionId(id.value))
 
@@ -135,14 +140,15 @@ onBeforeUnmount(() => {
     <LazyTzScene v-if="sceneEnabled" />
 
     <!--
-      Cabecera en una sola fila (D44): marca, título (se acorta con «…» antes que nada), estado, avisos, estado de pista,
-      botones del hueco y herramientas de la escena. Por debajo de 1600 px, lo secundario va solo con su icono (el estado,
-      los avisos y «Cómo se dibuja», por debajo de 1920 px); las etiquetas «Estimado» nunca se esconden (las de la escena
-      flotan justo debajo, sobre el mapa).
+      Cabecera en una sola fila (D44): marca, título, estado, avisos, estado de pista, botones del hueco y herramientas
+      de la escena. El título tiene prioridad: por debajo de 1600 px lo secundario va solo con su icono (el estado, los
+      avisos y «Cómo se dibuja», por debajo de 1920 px) y, si aun así el título no cabe entero, lo secundario pasa antes
+      a su forma corta (`data-fit`, useHeaderFit); solo con todo en su forma más corta se acorta el título con «…». Las
+      etiquetas «Estimado» y las banderas nunca se esconden (las de la escena flotan justo debajo, sobre el mapa).
     -->
-    <header class="tz-replay__bar">
+    <header ref="bar" class="tz-replay__bar">
       <TzBrandBar />
-      <h1 class="tz-replay__title" :title="title" data-testid="replay-title">{{ title }}</h1>
+      <h1 ref="titleEl" class="tz-replay__title" :title="title" data-testid="replay-title">{{ title }}</h1>
       <p
         v-if="session.status === 'ready'"
         class="tz-replay__status"
@@ -211,8 +217,9 @@ onBeforeUnmount(() => {
 /*
  * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Para decidir si cabe, el título cuenta
  * solo con su mínimo (6 em) y el estado de pista con su chip más ancho: después crecen hasta su contenido (primero el
- * estado de pista) y el título se acorta con «…» si no llega. Solo si ni así cabe (tablet), la fila se parte; nunca se
- * esconde una bandera ni una etiqueta «Estimado».
+ * estado de pista) y el título se acorta con «…» si no llega. Antes de eso, lo secundario pasa a su forma corta por
+ * niveles (`data-fit`, más abajo). Solo si ni así cabe (tablet), la fila se parte; nunca se esconde una bandera ni una
+ * etiqueta «Estimado».
  */
 .tz-replay__bar {
   position: relative;
@@ -326,6 +333,93 @@ onBeforeUnmount(() => {
   .tz-replay__title {
     font-size: var(--tz-text-lg);
   }
+}
+
+/*
+ * Prioridad del título (D44, useHeaderFit): si el título no cabe entero con lo que dicen las media queries, lo
+ * secundario adelanta su forma corta por niveles acumulativos (`data-fit="1 2 3"`), los mismos cortes que por ancho:
+ *   1 → las formas de por debajo de 1920 px (estado sin «Listo», avisos con la cifra, «Cómo se dibuja» y meteorología
+ *       sin lo de 1920, «≈ Estimado» corto);
+ *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, meteorología solo con el suyo);
+ *   3 → las de por debajo de 1360 px («Altura» y «Separar coches» con su icono, huecos más justos).
+ * Lo que se acorta sigue en el nombre accesible y en el título de cada control. «Estimado» y las banderas, siempre.
+ * Un elemento nuevo de la cabecera (hueco replay-header) se suma sin tocar esto: su texto largo lleva
+ * `data-fit-hide="N"` (se oculta desde el nivel N, como con su media query) y su forma corta, si la tiene,
+ * `data-fit-show="N"` (se ve desde el nivel N).
+ */
+.tz-replay__bar[data-fit~='1'] :deep([data-fit-hide='1']),
+.tz-replay__bar[data-fit~='2'] :deep([data-fit-hide='2']),
+.tz-replay__bar[data-fit~='3'] :deep([data-fit-hide='3']) {
+  display: none !important;
+}
+
+.tz-replay__bar[data-fit~='1'] :deep([data-fit-show='1']),
+.tz-replay__bar[data-fit~='2'] :deep([data-fit-show='2']),
+.tz-replay__bar[data-fit~='3'] :deep([data-fit-show='3']) {
+  display: inline !important;
+}
+
+.tz-replay__bar[data-fit~='1'] .tz-replay__ready,
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__tag),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tz-replay__bar[data-fit~='1'] .tz-replay__detail,
+.tz-replay__bar[data-fit~='1'] :deep(.tz-notes__word),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-tools__how-text),
+.tz-replay__bar[data-fit~='1'] :deep(.tz-weather__piece.is-wide) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='1'] :deep(.tz-estimated.is-compact .tz-estimated__short) {
+  display: inline;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-analysis-btn),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tv-btn) {
+  padding: 0 var(--tz-space-2);
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-analysis-btn__text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tv-btn__text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__menu-text),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__pieces),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__piece.is-mid),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__nodata-long) {
+  display: none;
+}
+
+/* Con lluvia, «Lluvia» se queda (sola, sin separador delante), como por debajo de 1600 px. */
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__pieces.has-always) {
+  display: inline-flex;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__piece.is-always)::before {
+  content: none;
+}
+
+.tz-replay__bar[data-fit~='2'] :deep(.tz-weather__nodata-short) {
+  display: inline;
+}
+
+.tz-replay__bar[data-fit~='3'] {
+  column-gap: var(--tz-space-2);
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label),
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-text) {
+  display: none;
+}
+
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label-icon),
+.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-icon) {
+  display: inline-block;
 }
 
 .tz-replay__tools {

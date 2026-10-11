@@ -130,9 +130,10 @@ for (const vp of VIEWPORTS) {
 /**
  * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
  * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
- * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado).
+ * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado). Con `event`, otro nombre de
+ * Gran Premio en el título (p. ej. el de Japón, más largo).
  */
-async function serveLikeDevRace(page: Page): Promise<void> {
+async function serveLikeDevRace(page: Page, options: { event?: string } = {}): Promise<void> {
   let patched: Promise<Buffer> | null = null
   const events = (url: string) =>
     (patched ??= page.request.get(url).then(async (r) => {
@@ -145,6 +146,7 @@ async function serveLikeDevRace(page: Page): Promise<void> {
     const manifest = await res.json()
     const body = await events(new URL(manifest.files.events.path, route.request().url()).href)
     manifest.channels.weather = 'absent'
+    if (options.event) manifest.session.event = options.event
     manifest.quality.estimated = ['positions', 'telemetry', 'trackStatus']
     manifest.quality.notes = [
       ...manifest.quality.notes,
@@ -156,6 +158,15 @@ async function serveLikeDevRace(page: Page): Promise<void> {
   })
   await page.route(`**/sessions/${SESSION}/events.*.json.gz`, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/gzip', body: await events(route.request().url()) })
+  })
+}
+
+/** ¿El título de la cabecera se acorta con «…»? Y los niveles de compactación de la cabecera (`data-fit`). */
+function titleFit(page: Page) {
+  return page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>('[data-testid="replay-title"]')!
+    const bar = document.querySelector<HTMLElement>('.tz-replay__bar')!
+    return { truncated: title.scrollWidth > title.clientWidth + 1, levels: (bar.dataset.fit ?? '').split(' ').filter(Boolean) }
   })
 }
 
@@ -196,6 +207,10 @@ for (const vp of [
       expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
       expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(56)
       expect(await overflowing(page)).toEqual([])
+      // El título tiene prioridad (D44): si aun así se acorta con «…», es que todo lo secundario ya está en su forma
+      // más corta (por la media query de < 1360 px o por `data-fit` con el nivel 3).
+      const fit = await titleFit(page)
+      if (fit.truncated) expect(vp.width < 1360 || fit.levels.includes('3')).toBe(true)
 
       // Ninguna etiqueta «Estimado» se esconde: la del estado de pista, en la cabecera (corta, pulsable); la de las
       // posiciones, flotando justo debajo, sobre el mapa, sin tapar la clasificación ni la columna derecha.
@@ -320,5 +335,41 @@ test.describe('girar la tablet', () => {
     await page.waitForTimeout(500)
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
     expect(close(await camera(page), moved)).toBe(true)
+  })
+})
+
+/*
+ * Prioridad del título (regresión de la Tanda 5): a 1920 px, con lo de una carrera dev y el nombre largo de Japón,
+ * las piezas secundarias pasaban a su forma larga y el título se cortaba («JAPANESE GRAND P…»). Ahora lo secundario se
+ * acorta antes (data-fit) y el título se ve entero, sin esconder «Estimado».
+ */
+test.describe('escritorio 1920×1080: el título de la cabecera tiene prioridad (D44)', () => {
+  test.use({ viewport: { width: 1920, height: 1080 } })
+
+  test('con una carrera dev y un Gran Premio de nombre largo, el título se ve entero y la cabecera va en una fila', async ({ page }) => {
+    await resetStorage(page)
+    await serveLikeDevRace(page, { event: 'Japanese Grand Prix' })
+    await open(page)
+    await expect(page.getByTestId('replay-title')).toContainText('Japanese Grand Prix')
+    await expect.poll(async () => (await titleFit(page)).truncated).toBe(false)
+    const middles = await barRowMiddles(page)
+    expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+    expect(await overflowing(page)).toEqual([])
+    // «Estimado» sigue a la vista (en su forma corta si hace falta) y lo acortado sigue en su nombre accesible.
+    const track = page.getByTestId('track-status').locator('[data-testid="estimated"][data-field="trackStatus"]')
+    await expect(track).toBeVisible()
+    await expect(track).toContainText(/Estimad[oa]|Estimated/, { useInnerText: true })
+    await expect(page.getByTestId('session-notes')).toHaveAccessibleName(/^5 /)
+    await expect(page.getByTestId('analysis-button')).toHaveAccessibleName(/^(Análisis|Analysis)$/)
+  })
+
+  test('con los datos del fixture (meteorología completa a 1920 px), el título también se ve entero, en una fila', async ({ page }) => {
+    await resetStorage(page)
+    await open(page)
+    await expect.poll(async () => (await titleFit(page)).truncated).toBe(false)
+    const middles = await barRowMiddles(page)
+    expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
+    // Lo que se acortara sigue en su nombre accesible: la meteorología lo dice todo.
+    await expect(page.getByTestId('weather')).toHaveAccessibleName(/.+/)
   })
 })
