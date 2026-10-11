@@ -190,7 +190,7 @@ describe('TzTrackStatus', () => {
     setTime(1500)
     await nextTick()
     const sector = w.find('[data-testid="track-sector"]')
-    expect(sector.attributes('data-sector')).toBe('7')
+    expect(sector.attributes('data-sectors')).toBe('7')
     expect(sector.text()).toMatch(/7/)
     expect(sector.attributes('title')).toBeTruthy() // sin geometría de sectores: se explica
     setTime(3500)

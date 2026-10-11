@@ -37,7 +37,7 @@ test('sector 21: amarillo 1 s después de YELLOW IN TRACK SECTOR 21 y neutro 1 s
   const clear = rc.find((m) => m.text === 'CLEAR IN TRACK SECTOR 21' && m.t > yellow.t)!
   await page.evaluate((t) => window.__trazada!.seek(t), yellow.t + 1000)
   await expect.poll(() => handle(page, (h) => h.trackState.sectors[21])).toBe('YELLOW')
-  await expect(page.locator('[data-testid="track-sector"][data-sector="21"]')).toBeVisible()
+  await expect(page.locator('[data-testid="track-sector"][data-sectors~="21"]')).toBeVisible()
   await page.evaluate((t) => window.__trazada!.seek(t), clear.t + 1000)
   await expect.poll(() => handle(page, (h) => h.trackState.sectors[21] ?? null)).toBe(null)
 })

@@ -101,13 +101,13 @@ test('cerca de una bandera: el marcador y el chip de estado de ese instante, sin
   expect(2000 / p.msPerPx).toBeLessThan(8)
   await page.mouse.move(p.x, p.y)
   await expect(card(page)).toBeVisible()
-  await expect(page.locator(`[data-testid="preview-sector"][data-sector="${flag!.sector}"]`)).toHaveAttribute(
+  await expect(page.locator(`[data-testid="preview-sector"][data-sectors~="${flag!.sector}"]`)).toHaveAttribute(
     'data-flag',
     'DOUBLE YELLOW',
   )
   await expect(page.getByTestId('preview-markers')).toContainText(new RegExp(`(Doble amarilla|Double yellow) · sector ${flag!.sector}`))
   // La cabecera sigue con el instante del reloj (al inicio no hay bandera en ese sector) y sin ids repetidos.
-  await expect(page.locator(`[data-testid="track-sector"][data-sector="${flag!.sector}"]`)).toHaveCount(0)
+  await expect(page.locator(`[data-testid="track-sector"][data-sectors~="${flag!.sector}"]`)).toHaveCount(0)
   expect(await serious(page)).toEqual([])
 })
 

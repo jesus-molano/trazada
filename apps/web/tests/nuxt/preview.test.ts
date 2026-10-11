@@ -38,7 +38,7 @@ describe('TzTrackStatusChips', () => {
     const state = { ...emptySnapshot(), neutral: 'sc' as const, sectors: { 5: 'YELLOW' as const } }
     const w = await mountSuspended(TzTrackStatusChips, { props: { state, inferred: true, placeable: true, testid: 'x' } })
     expect(w.find('[data-testid="x-neutral"]').attributes('data-kind')).toBe('sc')
-    expect(w.find('[data-testid="x-sector"]').attributes('data-sector')).toBe('5')
+    expect(w.find('[data-testid="x-sector"]').attributes('data-sectors')).toBe('5')
     expect(w.find('[data-testid="x-sector"]').attributes('title')).toBeUndefined()
     expect(w.find('[data-testid="track-neutral"]').exists()).toBe(false)
     expect(w.find('[data-testid="estimated"][data-field="trackStatus"]').exists()).toBe(true)
@@ -51,6 +51,22 @@ describe('TzTrackStatusChips', () => {
     // Sin texto para el vacío (la cabecera), no se pinta ningún chip.
     const header = await mountSuspended(TzTrackStatusChips, { props: { state: emptySnapshot(), inferred: false, placeable: false } })
     expect(header.findAll('span').length).toBe(0)
+  })
+
+  it('las banderas de sector de la misma clase van en un chip, de la más grave a la más leve, con sus sectores en orden', async () => {
+    const sectors = { 21: 'DOUBLE YELLOW', 4: 'YELLOW', 20: 'DOUBLE YELLOW', 9: 'RED', 3: 'DOUBLE YELLOW' } as const
+    const state = { ...emptySnapshot(), neutral: 'sc' as const, sectors }
+    const w = await mountSuspended(TzTrackStatusChips, { props: { state, inferred: false, placeable: true, testid: 'x' } })
+    const chips = w.findAll('[data-testid="x-sector"]')
+    expect(chips.map((c) => [c.attributes('data-flag'), c.attributes('data-sectors')])).toEqual([
+      ['RED', '9'],
+      ['DOUBLE YELLOW', '3 20 21'],
+      ['YELLOW', '4'],
+    ])
+    // Una lista en el idioma de la interfaz: «sectores 3, 20 y 21» (o «sectors 3, 20, and 21»); uno solo, en singular.
+    expect(chips[1]!.text()).toMatch(/^(Doble amarilla · sectores 3, 20 y 21|Double yellow · sectors 3, 20, and 21)$/)
+    expect(chips[0]!.text()).toMatch(/^(Roja · sector 9|Red · sector 9)$/)
+    expect(chips[2]!.text()).toMatch(/^(Amarilla · sector 4|Yellow · sector 4)$/)
   })
 })
 

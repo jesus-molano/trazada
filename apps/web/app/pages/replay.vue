@@ -156,8 +156,10 @@ onBeforeUnmount(() => {
       Cabecera en una sola fila (D44): marca, título, estado, avisos, estado de pista, botones del hueco y herramientas
       de la escena. El título tiene prioridad: por debajo de 1600 px lo secundario va solo con su icono (el estado, los
       avisos y «Cómo se dibuja», por debajo de 1920 px) y, si aun así el título no cabe entero, lo secundario pasa antes
-      a su forma corta (`data-fit`, useHeaderFit); solo con todo en su forma más corta se acorta el título con «…». Las
-      etiquetas «Estimado» y las banderas nunca se esconden (las de la escena flotan justo debajo, sobre el mapa).
+      a su forma corta (`data-fit`, useHeaderFit); solo con todo en su forma más corta se acorta el título con «…». Si
+      ni así cabe la fila con las banderas, el estado de pista pasa a una fila propia debajo (como mucho, una fila más;
+      nunca una columna de chips). Las etiquetas «Estimado» y las banderas nunca se esconden (las de la escena flotan
+      justo debajo, sobre el mapa).
     -->
     <header ref="bar" class="tz-replay__bar">
       <TzBrandBar />
@@ -274,10 +276,10 @@ onBeforeUnmount(() => {
 
 /*
  * Cabecera: una sola fila (si se parte, la escena y los paneles pierden alto). Para decidir si cabe, el título cuenta
- * solo con su mínimo (6 em) y el estado de pista con su chip más ancho: después crecen hasta su contenido (primero el
- * estado de pista) y el título se acorta con «…» si no llega. Antes de eso, lo secundario pasa a su forma corta por
- * niveles (`data-fit`, más abajo). Solo si ni así cabe (tablet), la fila se parte; nunca se esconde una bandera ni una
- * etiqueta «Estimado».
+ * solo con su mínimo (6 em) y el estado de pista con todos sus chips en una línea: el título crece hasta su contenido
+ * y se acorta con «…» si no llega. Antes de eso, lo secundario pasa a su forma corta por niveles (`data-fit`, más
+ * abajo). Si ni así cabe con las banderas, el estado de pista va en su propia fila (nivel 4); solo si la fila se parte
+ * igualmente (tablet en vertical), se parte. Nunca se esconde una bandera ni una etiqueta «Estimado».
  */
 .tz-replay__bar {
   position: relative;
@@ -328,11 +330,23 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-/* Estado de pista: cuenta con su chip más ancho y crece (antes que el título) hasta que caben todos sus chips. */
+/*
+ * Estado de pista: entero, con sus chips en una línea (nunca encoge hasta su chip más ancho: sería una columna de chips
+ * que alarga la cabecera); como mucho, el ancho de la cabecera, y entonces sus chips pasan a otra línea, en horizontal.
+ */
 .tz-replay__bar > [data-testid='track-status'] {
-  flex: 100 1 0;
-  min-width: min-content;
-  max-width: max-content;
+  flex: none;
+  max-width: 100%;
+}
+
+/*
+ * Nivel 4 (useHeaderFit): con las banderas no cabe la fila ni con todo lo secundario en su forma más corta. El estado de
+ * pista pasa a una fila propia, debajo de todo lo demás y a todo el ancho (sus chips, en horizontal), y lo demás vuelve
+ * a la primera fila, con el título.
+ */
+.tz-replay__bar[data-fit~='4'] > [data-testid='track-status'] {
+  order: 99;
+  flex: 1 0 100%;
 }
 
 /* Portátiles (< 1360 px): huecos más justos entre los elementos de la cabecera. */
@@ -395,7 +409,8 @@ onBeforeUnmount(() => {
 
 /*
  * Prioridad del título (D44, useHeaderFit): si el título no cabe entero con lo que dicen las media queries, lo
- * secundario adelanta su forma corta por niveles acumulativos (`data-fit="1 2 3"`), los mismos cortes que por ancho:
+ * secundario adelanta su forma corta por niveles acumulativos (`data-fit="1 2 3"`), los mismos cortes que por ancho (y
+ * el 4, el estado de pista en su fila, arriba):
  *   1 → las formas de por debajo de 1920 px (estado sin «Listo», avisos con la cifra, «Cómo se dibuja» y meteorología
  *       sin lo de 1920, «≈ Estimado» corto);
  *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, meteorología solo con el suyo);

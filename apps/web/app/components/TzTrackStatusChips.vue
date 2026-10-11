@@ -3,7 +3,9 @@
  * Chips del estado de la pista (presentacional, sin runtime): neutralización, banderas por sector, amarilla y ventana
  * de overtake/DRS de un `TrackStateSnapshot`. Lo usan la cabecera del replay (`TzTrackStatus`, el instante del reloj)
  * y la vista previa del timeline (`TzTimelinePreview`, otro instante). El color nunca va solo: siempre hay texto. Un
- * estado de pista deducido (no oficial) lleva su etiqueta «Estimado».
+ * estado de pista deducido (no oficial) lleva su etiqueta «Estimado». Las banderas de sector de la misma clase van en
+ * un solo chip («Doble amarilla · sectores 20 y 21», `data-sectors="20 21"`), de la más grave a la más leve: así la
+ * cabecera cabe en una fila más a menudo.
  *
  * `interactive` (la cabecera): la etiqueta «Estimado» se pulsa para ver por qué y, si hay banderas de sector sin
  * geometría para situarlas en el mapa, una pista ⓘ lo explica (en iPad un título no se ve). Sin él (la vista previa es
@@ -31,19 +33,38 @@ const props = withDefaults(
   { testid: 'track', emptyLabel: '', interactive: false, compactEstimated: false },
 )
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const sectors = computed(() =>
-  Object.entries(props.state.sectors)
-    .map(([n, flag]) => ({ n: Number(n), flag }))
-    .sort((a, b) => a.n - b.n),
-)
-const yellowOnly = computed(() => props.state.yellow && !sectors.value.length && !props.state.neutral)
-const empty = computed(
-  () => !props.state.neutral && !sectors.value.length && !yellowOnly.value && !props.state.overtake && !props.state.drs,
-)
+type SectorFlag = TrackStateSnapshot['sectors'][number]
+/** De la más grave a la más leve: el orden de los chips de sector. */
+const FLAG_ORDER: readonly SectorFlag[] = ['RED', 'DOUBLE YELLOW', 'YELLOW']
 const flagClass = { YELLOW: 'is-yellow', 'DOUBLE YELLOW': 'is-double-yellow', RED: 'is-red' } as const
 const flagKey = { YELLOW: 'yellow', 'DOUBLE YELLOW': 'doubleYellow', RED: 'red' } as const
+
+/** «20 y 21», «7, 8 y 9» (en el idioma de la interfaz). */
+const listFmt = computed(() => new Intl.ListFormat(locale.value, { style: 'long', type: 'conjunction' }))
+
+/** Un chip por clase de bandera, con sus sectores en orden. */
+const sectorChips = computed(() => {
+  const by = new Map<SectorFlag, number[]>()
+  for (const [n, flag] of Object.entries(props.state.sectors)) {
+    const list = by.get(flag) ?? []
+    list.push(Number(n))
+    by.set(flag, list)
+  }
+  return FLAG_ORDER.filter((flag) => by.has(flag)).map((flag) => {
+    const ns = by.get(flag)!.sort((a, b) => a - b)
+    return {
+      flag,
+      sectors: ns.join(' '),
+      text: t(`trackStatus.sector.${flagKey[flag]}`, { list: listFmt.value.format(ns.map(String)) }, ns.length),
+    }
+  })
+})
+const yellowOnly = computed(() => props.state.yellow && !sectorChips.value.length && !props.state.neutral)
+const empty = computed(
+  () => !props.state.neutral && !sectorChips.value.length && !yellowOnly.value && !props.state.overtake && !props.state.drs,
+)
 </script>
 
 <template>
@@ -59,19 +80,19 @@ const flagKey = { YELLOW: 'yellow', 'DOUBLE YELLOW': 'doubleYellow', RED: 'red' 
       {{ t(`trackStatus.neutral.${state.neutral}`) }}
     </span>
     <span
-      v-for="s in sectors"
-      :key="s.n"
+      v-for="s in sectorChips"
+      :key="s.flag"
       class="tz-ts__chip"
       :class="flagClass[s.flag]"
       :data-testid="`${testid}-sector`"
-      :data-sector="s.n"
+      :data-sectors="s.sectors"
       :data-flag="s.flag"
       :title="placeable ? undefined : t('trackStatus.noGeometry')"
     >
-      {{ t(`trackStatus.sector.${flagKey[s.flag]}`, { n: s.n }) }}
+      {{ s.text }}
     </span>
     <TzHint
-      v-if="interactive && !placeable && sectors.length"
+      v-if="interactive && !placeable && sectorChips.length"
       class="tz-ts__hint"
       :label="t('trackStatus.noGeometryLabel')"
       :text="t('trackStatus.noGeometry')"

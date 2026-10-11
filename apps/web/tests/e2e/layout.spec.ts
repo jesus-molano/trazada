@@ -1,7 +1,8 @@
 /**
  * Escritorio y tablet: sin scroll horizontal en la página ni en los paneles; en tablet (táctil), tocar un
  * coche lo selecciona y arrastrar el timeline con el dedo mueve el reloj. La cabecera del replay va en una sola fila
- * también con todo lo que trae una carrera dev (D44), sin esconder ninguna etiqueta «Estimado».
+ * también con todo lo que trae una carrera dev (D44), sin esconder ninguna etiqueta «Estimado»; con muchas banderas, el
+ * estado de pista pasa a una fila propia (nunca una columna de chips).
  */
 import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -138,24 +139,37 @@ for (const vp of VIEWPORTS) {
   })
 }
 
+/** Ventana (ms desde el inicio de la reproducción) de las banderas sintéticas de `serveLikeDevRace({ flags: true })`. */
+const FLAGS_FROM_MS = 80_000
+const FLAGS_TO_MS = 100_000
+
 /**
  * Sirve el fixture con lo que trae la cabecera de una carrera dev (Japón 2026): cinco avisos del procesado, posiciones,
  * telemetría y estado de pista estimados y sin meteorología (`channels.weather: absent`; los eventos se vuelven a
  * comprimir sin `weather` y su sha256 se reescribe en el manifest, que no va firmado). Con `event`, otro nombre de
- * Gran Premio en el título (p. ej. el de Japón, más largo).
+ * Gran Premio en el título (p. ej. el de Japón, más largo). Con `flags`, entre `FLAGS_FROM_MS` y `FLAGS_TO_MS`, lo de
+ * una carrera con el coche de seguridad: dobles amarillas en los sectores 20 y 21 (con la del 7 del fixture) y una
+ * amarilla en el 9.
  */
-async function serveLikeDevRace(page: Page, options: { event?: string } = {}): Promise<void> {
+async function serveLikeDevRace(page: Page, options: { event?: string; flags?: boolean } = {}): Promise<void> {
   let patched: Promise<Buffer> | null = null
-  const events = (url: string) =>
+  const events = (url: string, startMs: number) =>
     (patched ??= page.request.get(url).then(async (r) => {
       const doc = JSON.parse(gunzipSync(await r.body()).toString('utf8'))
       delete doc.weather
+      if (options.flags) {
+        const fromMs = startMs + FLAGS_FROM_MS
+        const toMs = startMs + FLAGS_TO_MS
+        doc.windows.push({ kind: 'sc', fromMs, toMs })
+        for (const sector of [20, 21]) doc.sectorFlags.push({ sector, flag: 'DOUBLE YELLOW', fromMs, toMs })
+        doc.sectorFlags.push({ sector: 9, flag: 'YELLOW', fromMs, toMs })
+      }
       return gzipSync(Buffer.from(JSON.stringify(doc), 'utf8'))
     }))
   await page.route(`**/sessions/${SESSION}/manifest.json`, async (route) => {
     const res = await route.fetch()
     const manifest = await res.json()
-    const body = await events(new URL(manifest.files.events.path, route.request().url()).href)
+    const body = await events(new URL(manifest.files.events.path, route.request().url()).href, manifest.session.playback.startMs)
     manifest.channels.weather = 'absent'
     if (options.event) manifest.session.event = options.event
     manifest.quality.estimated = ['positions', 'telemetry', 'trackStatus']
@@ -168,7 +182,8 @@ async function serveLikeDevRace(page: Page, options: { event?: string } = {}): P
     await route.fulfill({ response: res, json: manifest })
   })
   await page.route(`**/sessions/${SESSION}/events.*.json.gz`, async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/gzip', body: await events(route.request().url()) })
+    // El manifest se pide antes: `patched` ya está en marcha con su inicio.
+    await route.fulfill({ status: 200, contentType: 'application/gzip', body: await (patched ?? events(route.request().url(), 0)) })
   })
 }
 
@@ -272,6 +287,82 @@ for (const vp of [
       const timeline = (await page.getByTestId('timeline').boundingBox())!
       expect(timeline.x).toBeGreaterThan(play.x + play.width)
       expect(Math.abs(timeline.y + timeline.height / 2 - (play.y + play.height / 2))).toBeLessThan(dock.height / 2)
+    })
+  })
+}
+
+/** Cajas de los chips del estado de pista de la cabecera, de las etiquetas que flotan bajo ella y de la cabecera. */
+function headerBoxes(page: Page) {
+  return page.evaluate(() => {
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.left, y: r.top, w: r.width, h: r.height }
+    }
+    const bar = document.querySelector<HTMLElement>('.tz-replay__bar')!
+    const status = bar.querySelector('[data-testid="track-status"]')!
+    const title = bar.querySelector('[data-testid="replay-title"]')!
+    const cs = getComputedStyle(bar)
+    return {
+      bar: box(bar),
+      inner: bar.clientWidth - Number.parseFloat(cs.paddingLeft) - Number.parseFloat(cs.paddingRight),
+      status: box(status),
+      title: box(title),
+      level: bar.getAttribute('data-fit') ?? '',
+      chips: [...status.children].filter((c) => c.getBoundingClientRect().width > 0).map(box),
+      floating: [...document.querySelectorAll('[data-testid="scene-estimated"] > *')].map(box),
+    }
+  })
+}
+
+const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
+  a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
+
+/*
+ * Estado de pista con muchas banderas (regresión del cierre): el bloque de chips encogía hasta su chip más ancho y cada
+ * chip iba en su línea, una columna que alargaba la cabecera hasta 170 px en el iPad. Ahora los chips van siempre en
+ * horizontal: en la fila del título si caben y, si no, en una fila propia debajo, a todo el ancho.
+ */
+for (const vp of VIEWPORTS) {
+  test.describe(`${vp.name}: estado de pista con coche de seguridad y banderas`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.touch })
+
+    test('los chips van en horizontal, nunca en columna; como mucho, una fila más en la cabecera', async ({ page }) => {
+      await resetStorage(page)
+      await serveLikeDevRace(page, { event: 'Japanese Grand Prix', flags: true })
+      await open(page)
+      const status = page.getByTestId('track-status')
+      await expect(status.getByTestId('track-neutral')).toHaveAttribute('data-kind', 'sc')
+      // Las banderas de una misma clase, en un chip: «Doble amarilla · sectores 7, 20 y 21».
+      await expect(status.locator('[data-testid="track-sector"][data-flag="DOUBLE YELLOW"]')).toHaveAttribute('data-sectors', '7 20 21')
+      await expect(status.locator('[data-testid="track-sector"][data-flag="YELLOW"]')).toHaveAttribute('data-sectors', '9')
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      const withFlags = await headerBoxes(page)
+      // Nunca una columna: todos los chips a la misma altura (con la cabecera entera, caben en una línea).
+      const tops = withFlags.chips.map((c) => Math.round(c.y + c.h / 2))
+      expect(withFlags.chips.length).toBeGreaterThanOrEqual(4)
+      expect(Math.max(...tops) - Math.min(...tops), JSON.stringify(withFlags.chips)).toBeLessThanOrEqual(4)
+      if (withFlags.level.split(' ').includes('4')) {
+        // En su propia fila: debajo del título y a todo el ancho de la cabecera.
+        expect(withFlags.status.y).toBeGreaterThanOrEqual(withFlags.title.y + withFlags.title.h)
+        expect(Math.abs(withFlags.status.w - withFlags.inner)).toBeLessThanOrEqual(1)
+      } else {
+        // En la fila del título: la cabecera sigue en una fila.
+        expect(Math.abs(withFlags.status.y + withFlags.status.h / 2 - (withFlags.title.y + withFlags.title.h / 2))).toBeLessThanOrEqual(4)
+        expect(withFlags.bar.h).toBeLessThanOrEqual(vp.width > vp.height ? 56 : 100)
+      }
+      // Lo que flota bajo la cabecera (las etiquetas «Estimado» de la escena) no tapa ningún chip.
+      for (const f of withFlags.floating) for (const c of withFlags.chips) expect(overlaps(f, c)).toBe(false)
+      expect(await overflowing(page)).toEqual([])
+
+      // Sin las banderas (antes de que empiecen), la misma cabecera: como mucho, una fila menos.
+      await page.evaluate((ms) => window.__trazada!.seek(window.__trazada!.startMs + ms), 30_000)
+      await expect(status.getByTestId('track-neutral')).toHaveCount(0)
+      await expect.poll(async () => (await headerBoxes(page)).bar.h).toBeLessThanOrEqual(withFlags.bar.h)
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      const without = await headerBoxes(page)
+      expect(withFlags.bar.h - without.bar.h).toBeLessThanOrEqual(40)
+      // Sin banderas, el estado de pista (solo «Estimado») vuelve a la fila del título.
+      expect(without.level.split(' ')).not.toContain('4')
     })
   })
 }
