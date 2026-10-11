@@ -2,21 +2,13 @@
 /**
  * Pista (cinta con color por altura), bordes, pit lane y línea de meta. Va dentro de TresCanvas.
  * La exageración de altura se aplica con la escala Y del grupo padre.
- *
- * Es lo único de la escena con niebla (ambiente, ítem 10, D37): sus materiales la usan (`fog: true`) y la niebla de la
- * escena (`scene-layers/TzSky.vue`) solo atenúa su parte lejana; coches, banderas, estelas y las demás capas no la
- * usan, así que conservan su color. De noche (sol por debajo del horizonte, según el ambiente) la pista se aclara un
- * poco hacia `--tz-track-night-tint`, como con focos: se recolorea solo al cambiar ese tono, nunca en cada frame.
  */
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, LineBasicMaterial, MeshBasicMaterial, SRGBColorSpace } from 'three'
+import { BufferAttribute, BufferGeometry, Color, DoubleSide, LineBasicMaterial, MeshBasicMaterial } from 'three'
 import { setMapAttributes, useMapWidth } from '~/composables/useMapWidth'
-import { useSceneAmbience } from '~/composables/useSceneAmbience'
-import { useSceneFrame } from '~/composables/useSceneFrame'
 import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
 import { MIN_PIT_PX, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { buildRibbon, edgeNormal, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
-import { getRuntime } from '~/stores/playback'
 
 const props = defineProps<{ model: CircuitModel; flat: boolean }>()
 
@@ -49,7 +41,7 @@ function ribbonGeometry(width: number, path = props.model.centerline) {
     setMapAttributes(e, r.center, edgeNormal(r, side))
     return e
   })
-  return { ribbon: g, edges, shade: r.shade, colors }
+  return { ribbon: g, edges }
 }
 
 const track = ribbonGeometry(TRACK_WIDTH_M)
@@ -100,7 +92,6 @@ const trackMaterial = mapWidth(
   new MeshBasicMaterial({
     vertexColors: true,
     side: DoubleSide,
-    fog: true,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
@@ -108,12 +99,11 @@ const trackMaterial = mapWidth(
   TRACK_HALF,
   MIN_TRACK_PX,
 )
-const edgeMaterial = mapWidth(new LineBasicMaterial({ color: EDGE, fog: true }), TRACK_HALF, MIN_TRACK_PX)
+const edgeMaterial = mapWidth(new LineBasicMaterial({ color: EDGE }), TRACK_HALF, MIN_TRACK_PX)
 const finishMaterial = mapWidth(
   new MeshBasicMaterial({
     color: FINISH,
     side: DoubleSide,
-    fog: true,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,
@@ -126,41 +116,8 @@ const finishMaterial = mapWidth(
 // se solapa con la pista, la meta o los coches, mandan ellos.
 const PIT_FILL = new Color(BG).lerp(new Color(PIT), 0.35)
 const PIT_EDGE = new Color(BG).lerp(new Color(PIT), 0.6)
-const pitMaterial = mapWidth(new MeshBasicMaterial({ color: PIT_FILL, side: DoubleSide, depthWrite: false, fog: true }), PIT_HALF, MIN_PIT_PX)
-const pitEdgeMaterial = mapWidth(new LineBasicMaterial({ color: PIT_EDGE, depthWrite: false, fog: true }), PIT_HALF, MIN_PIT_PX)
-
-/**
- * Tono nocturno del ambiente: mezcla en sRGB (como un degradado CSS) hacia `--tz-track-night-tint`; con 0, los colores
- * de siempre, tal cual. Cambia por pasos de sol de 0,25°: unas pocas decenas de recoloreos en un crepúsculo.
- */
-const NIGHT_TINT = new Color(token('--tz-track-night-tint'))
-const ambience = useSceneAmbience()
-const rt = getRuntime()!
-const tinted = { low: new Color(), high: new Color() }
-const srgbA = { r: 0, g: 0, b: 0 }
-const srgbB = { r: 0, g: 0, b: 0 }
-let tint = 0
-
-function towardNight(base: Color, k: number, out: Color): Color {
-  if (k === 0) return out.copy(base)
-  base.getRGB(srgbA, SRGBColorSpace)
-  NIGHT_TINT.getRGB(srgbB, SRGBColorSpace)
-  return out.setRGB(srgbA.r + (srgbB.r - srgbA.r) * k, srgbA.g + (srgbB.g - srgbA.g) * k, srgbA.b + (srgbB.b - srgbA.b) * k, SRGBColorSpace)
-}
-
-function applyTint(k: number) {
-  tint = k
-  shadeColors(track.shade, towardNight(LOW, k, tinted.low), towardNight(HIGH, k, tinted.high), track.colors)
-  track.ribbon.getAttribute('color').needsUpdate = true
-  towardNight(EDGE, k, edgeMaterial.color)
-  towardNight(PIT_FILL, k, pitMaterial.color)
-  towardNight(PIT_EDGE, k, pitEdgeMaterial.color)
-}
-
-useSceneFrame(() => {
-  const k = ambience?.look(rt.clock.timeMs)?.trackTint ?? 0
-  if (k !== tint) applyTint(k)
-})
+const pitMaterial = mapWidth(new MeshBasicMaterial({ color: PIT_FILL, side: DoubleSide, depthWrite: false }), PIT_HALF, MIN_PIT_PX)
+const pitEdgeMaterial = mapWidth(new LineBasicMaterial({ color: PIT_EDGE, depthWrite: false }), PIT_HALF, MIN_PIT_PX)
 
 onBeforeUnmount(() => {
   for (const g of [track.ribbon, ...track.edges, finish]) g.dispose()
@@ -173,7 +130,6 @@ defineExpose({ trackWidth: TRACK_WIDTH_M })
 
 <template>
   <TresGroup>
-    <!-- Nombres: el ambiente comprueba con ellos que solo la pista usa la niebla (sceneStats.ambience.foggedObjects). -->
     <template v-if="pit">
       <TresMesh name="pit-ribbon" :geometry="pit.ribbon" :material="pitMaterial" :render-order="-1" :frustum-culled="false" />
       <TresLine

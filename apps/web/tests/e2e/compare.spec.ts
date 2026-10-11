@@ -2,7 +2,7 @@
  * Comparar dos pilotos (ítem 1, D31) con el fixture de Spa (libres 1, extracto de 9 minutos): Mayús+clic en la
  * clasificación, diferencia en vivo en décimas con «Estimado», «sin dato» con su motivo cuando la vuelta de referencia
  * cae fuera de los datos, diferencia oficial al cerrar la vuelta, trazas por distancia y el fantasma (una draw call
- * dentro del presupuesto, sin niebla, sin renders en pausa), Esc con su prioridad y la preferencia del fantasma.
+ * dentro del presupuesto, sin renders en pausa), Esc con su prioridad y la preferencia del fantasma.
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
@@ -21,7 +21,6 @@ interface GhostStats {
   t: number
   drawCalls: number
   triangles: number
-  fogged: boolean
 }
 
 const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
@@ -94,19 +93,18 @@ test('Mayús+clic compara; misma vuelta: diferencia en décimas con «Estimado»
   await expect(delta).toHaveAttribute('data-state', 'ok')
   await expect.poll(() => delta.getAttribute('data-ms')).not.toBe(first)
 
-  // El fantasma: ALB en su vuelta 22 al mismo tiempo de vuelta (B ya la cerró, A aún no), una draw call, sin niebla.
+  // El fantasma: ALB en su vuelta 22 al mismo tiempo de vuelta (B ya la cerró, A aún no), una draw call.
   await expect.poll(async () => (await ghost(page)).visible).toBe(true)
   const g = await ghost(page)
-  expect(g).toMatchObject({ car: '23', lap: 22, state: 'visible', drawCalls: 1, fogged: false })
+  expect(g).toMatchObject({ car: '23', lap: 22, state: 'visible', drawCalls: 1 })
   expect(g.t).toBeLessThan(4_525_000)
   await expect(page.getByTestId('compare-ghost-state')).toHaveAttribute('data-state', 'visible')
   const s = await scene(page)
-  expect(s.layers.find((l) => l.name === 'ghost')).toMatchObject({ drawCalls: 1, fogged: false })
+  expect(s.layers.find((l) => l.name === 'ghost')).toMatchObject({ drawCalls: 1 })
   // Plan §5: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
   expect(s.drawCalls).toBeLessThanOrEqual(13 + s.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(s.drawCalls).toBeLessThan(30)
   expect(s.triangles).toBeLessThan(150_000)
-  for (const l of s.layers) expect(l.fogged, l.name).toBe(false)
 
   // Al cerrar los dos la vuelta 22: la diferencia oficial, con los tiempos de vuelta (114,436 − 115,235 s).
   await seekTo(page, 4_540_000)

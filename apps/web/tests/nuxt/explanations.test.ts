@@ -71,7 +71,6 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
         'pit',
         'positions',
         'sectors',
-        'sky',
         'timing',
         'trails',
         'weather',
@@ -102,7 +101,6 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
     expect(items.compare).toMatch(/(fantasma|ghost)/)
     expect(items.weather).toContain(`${WEATHER_STALE_MS / 1000} s`)
     expect(items.weather).toMatch(/(sin interpolar|not interpolated)/)
-    expect(items.sky).toMatch(/(decorativ)/)
     for (const text of Object.values(items)) expect(text).not.toMatch(/(posición real|real position|anchura real|real width)/)
   })
 })

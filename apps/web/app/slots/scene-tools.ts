@@ -1,7 +1,6 @@
 /**
- * Hueco `components/scene-tools/*.vue` (D29): controles de la escena (estelas, calor, DRS, ambiente, realización
- * automática…). TzSceneTools los agrupa en «Capas» y «Cámara», cada grupo con su etiqueta, y solo pinta los grupos
- * que tienen algo.
+ * Hueco `components/scene-tools/*.vue` (D29): controles de la escena (estelas, calor, DRS, realización automática…).
+ * TzSceneTools los agrupa en «Capas» y «Cámara», cada grupo con su etiqueta, y solo pinta los grupos que tienen algo.
  *
  * Contrato de cada fichero: `<script lang="ts">export const order = 10; export const group = 'layers'</script>`
  * (`group`: 'layers' | 'camera'). Sin props: lee y escribe sus stores. Lo que pinte sin ser dato real, con su

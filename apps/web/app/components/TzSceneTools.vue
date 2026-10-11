@@ -55,7 +55,6 @@ const HOW_MODEL = [
   'sectors',
   'compare',
   'weather',
-  'sky',
   'estimated',
 ] as const
 /** Las cifras salen de las constantes que usa el motor: si cambian allí, el texto no se queda atrás. */

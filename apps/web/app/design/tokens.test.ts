@@ -133,9 +133,6 @@ describe('tokens de diseño', () => {
       '--tz-trail-slow', '--tz-trail-mid', '--tz-trail-fast', '--tz-trail-nodata',
       // clasificación
       '--tz-gain', '--tz-loss', '--tz-dur-flash', '--tz-best',
-      // ambiente
-      '--tz-sky-day-zenith', '--tz-sky-day-horizon', '--tz-sky-dusk-zenith', '--tz-sky-dusk-horizon',
-      '--tz-sky-night-zenith', '--tz-sky-night-horizon', '--tz-fog', '--tz-track-night-tint',
       // DRS
       '--tz-drs',
       // iconos

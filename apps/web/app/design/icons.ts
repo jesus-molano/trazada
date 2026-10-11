@@ -50,7 +50,6 @@ import {
   SignalZero,
   SkipBack,
   SkipForward,
-  SunMoon,
   Thermometer,
   TriangleAlert,
   Video,
@@ -97,7 +96,6 @@ export const ICONS = {
   director: Clapperboard,
   elevation: Mountain,
   separation: MoveHorizontal,
-  ambience: SunMoon,
   // Carrera y análisis
   flag: Flag,
   gain: ArrowUp,

@@ -50,8 +50,8 @@ export const sceneStats = {
     const out: SceneLayerStat[] = []
     for (const [name, getter] of registered) {
       const v = getter() as Partial<SceneLayerCost>
-      if (typeof v.drawCalls === 'number' && typeof v.triangles === 'number' && typeof v.fogged === 'boolean') {
-        out.push({ name, drawCalls: v.drawCalls, triangles: v.triangles, fogged: v.fogged })
+      if (typeof v.drawCalls === 'number' && typeof v.triangles === 'number') {
+        out.push({ name, drawCalls: v.drawCalls, triangles: v.triangles })
       }
     }
     return out
@@ -62,8 +62,6 @@ export const sceneStats = {
 export interface SceneLayerCost {
   drawCalls: number
   triangles: number
-  /** ¿Usa la niebla de la escena? Solo la pista debería (plan §3: materiales nuevos con `fog: false`). */
-  fogged: boolean
 }
 export interface SceneLayerStat extends SceneLayerCost {
   name: string
@@ -78,7 +76,7 @@ const registered = new Map<string, () => object>()
 /**
  * Publica una estadística con nombre en `sceneStats` (y así en `window.__trazada.scene.<nombre>` y en las copias
  * `{ ...scene }` de los e2e), leída en el momento con `getter`: cada capa o herramienta expone lo suyo (`trails`,
- * `heat`, `tv`…) sin tocar este fichero. Si lo que devuelve lleva `drawCalls`, `triangles` y `fogged`
+ * `heat`, `tv`…) sin tocar este fichero. Si lo que devuelve lleva `drawCalls` y `triangles`
  * (`SceneLayerCost`), cuenta como capa en `sceneStats.layers`. Con el mismo nombre, manda el último registro.
  * Devuelve la baja (que no borra un registro posterior con el mismo nombre).
  */

@@ -71,13 +71,12 @@ test('de clic a "listo" sin long tasks > 50 ms en el hilo principal (CPU ×4)', 
 })
 
 /**
- * Escenario «todas las capas» (plan §5, al cerrar la Tanda 4): cielo y niebla del ambiente, estelas, mapa de calor
- * (minisectores) y fantasma de la comparación a la vez, sobre Spa FP1. Las zonas de DRS no existen en 2026 (no hay
+ * Escenario «todas las capas» (plan §5, al cerrar la Tanda 4): estelas, mapa de calor (minisectores) y fantasma de la
+ * comparación a la vez, sobre Spa FP1. Las zonas de DRS no existen en 2026 (no hay
  * dato), así que esa capa no suma aquí; su coste se mide con una sesión de 2018–2025 (bench local). Lo que se exige es
- * determinista: presupuesto de escena (< 30 draw calls, < 150 000 triángulos), ninguna capa nueva con niebla y nada de
- * renders en pausa. Los tiempos de frame con CPU ×4 («iPad aproximado») solo se anotan: CI no tiene GPU.
+ * determinista: presupuesto de escena (< 30 draw calls, < 150 000 triángulos) y nada de renders en pausa. Los tiempos de frame con CPU ×4 («iPad aproximado») solo se anotan: CI no tiene GPU.
  */
-test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; frames con CPU ×4 anotados', async ({ page }) => {
+test('todas las capas: presupuesto de escena, sin renders en pausa; frames con CPU ×4 anotados', async ({ page }) => {
   await gotoApp(page, FP1)
   await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 15_000 }).toBe(true)
   // GAS va por su vuelta 22 y ALB ya la cerró (como compare.spec.ts); los dos tienen entera y con posiciones su vuelta 21.
@@ -97,10 +96,9 @@ test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; fr
   // Minisectores de la última vuelta válida de cada uno (la 21 de los dos).
   await page.getByTestId('heat-minisectors').click()
   await page.getByTestId('heat-pick-last').click()
-  if ((await page.getByTestId('ambience-on').getAttribute('aria-pressed')) !== 'true') await page.getByTestId('ambience-on').click()
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
 
-  for (const name of ['ambience', 'trails', 'heat', 'ghost']) {
+  for (const name of ['trails', 'heat', 'ghost']) {
     await expect.poll(async () => (await layer(page, name))?.drawCalls ?? 0, { message: name }).toBeGreaterThan(0)
   }
   await twoFrames(page)
@@ -112,10 +110,9 @@ test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; fr
   expect(all.drawCalls).toBeLessThanOrEqual(13 + all.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(all.drawCalls).toBeLessThan(30)
   expect(all.triangles).toBeLessThan(150_000)
-  for (const l of all.layers) expect(l.fogged, l.name).toBe(false)
 
-  // En pausa, con todo encendido, no se renderiza ni se prepara nada en bucle (`useSceneFrame`): ni las estelas ni la
-  // niebla se recalculan. Tampoco con la hoja de análisis tapando la escena.
+  // En pausa, con todo encendido, no se renderiza ni se prepara nada en bucle (`useSceneFrame`): las estelas no se
+  // recalculan. Tampoco con la hoja de análisis tapando la escena.
   const idle = () =>
     page.evaluate(() => {
       const s = window.__trazada!.scene
@@ -123,7 +120,6 @@ test('todas las capas: presupuesto de escena, sin niebla ni renders en pausa; fr
         renders: window.__trazada!.renders,
         prepared: (s.loop as { prepared: number }).prepared,
         trails: (s.trails as { computes: number }).computes,
-        fog: (s.ambience as { computes: number }).computes,
       }
     })
   // Sin el mensajero de las devtools de TresJS, su muestreo no recorre la escena en cada frame (build de producción).

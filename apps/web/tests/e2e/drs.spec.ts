@@ -19,7 +19,6 @@ interface DrsStats {
   enabled: boolean
   drawCalls: number
   triangles: number
-  fogged: boolean
   cars: number
   spans: number[]
 }
@@ -60,9 +59,9 @@ test('2026: la leyenda dice que no hay datos de zonas; sin zonas, sin «Estimado
   await expect(page.locator('[data-testid="estimated"][data-field="drsZones"]')).toHaveCount(0)
 
   const stats = await drsStats(page)
-  expect(stats).toMatchObject({ status: 'season', zones: 0, shown: false, drawCalls: 0, triangles: 0, fogged: false, spans: [] })
+  expect(stats).toMatchObject({ status: 'season', zones: 0, shown: false, drawCalls: 0, triangles: 0, spans: [] })
   const s = await scene(page)
-  expect(s.layers.find((l) => l.name === 'drsZones')).toMatchObject({ drawCalls: 0, triangles: 0, fogged: false })
+  expect(s.layers.find((l) => l.name === 'drsZones')).toMatchObject({ drawCalls: 0, triangles: 0 })
   expect(s.drawCalls).toBeLessThanOrEqual(13 + s.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(s.drawCalls).toBeLessThan(30)
 

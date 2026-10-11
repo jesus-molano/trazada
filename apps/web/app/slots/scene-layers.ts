@@ -9,9 +9,9 @@
  * - Prepara sus mallas con `useSceneFrame` (composables/useSceneFrame.ts), nunca con `useLoop` de TresJS: así solo
  *   calcula y sube a la GPU justo antes de cada render, nada en pausa ni con la escena tapada (lo comprueba
  *   `app/composables/useSceneFrame.test.ts`). Lo que cambie lo que pinta pide el frame (`rt.requestFrame()`).
- * - Materiales con `fog: false` (solo la pista usa la niebla); objetos y arrays de la plantilla, estables (constantes
- *   o `computed`), nunca literales: TresCanvas vuelve a evaluar su slot y un literal nuevo provoca renders en pausa.
- * - Publica su coste con `registerSceneStat(nombre, () => ({ drawCalls, triangles, fogged, … }))` (replay/debug.ts):
+ * - Objetos y arrays de la plantilla, estables (constantes o `computed`), nunca literales: TresCanvas vuelve a evaluar
+ *   su slot y un literal nuevo provoca renders en pausa.
+ * - Publica su coste con `registerSceneStat(nombre, () => ({ drawCalls, triangles, … }))` (replay/debug.ts):
  *   así cuenta en `sceneStats.layers` y en el tope de draw calls de los e2e.
  */
 import type { CircuitModel } from '~/engine/track/circuit'

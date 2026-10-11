@@ -52,7 +52,6 @@ const material = mapWidth(
     forceSinglePass: true,
     depthWrite: false,
     toneMapped: false,
-    fog: false,
     // Coplanaria con la pista, como el tinte de neutralización: siempre por encima de ella.
     polygonOffset: true,
     polygonOffsetFactor: -1,
@@ -77,7 +76,6 @@ const stats = {
 }
 const offStat = registerSceneStat('drsZones', () => ({
   ...stats,
-  fogged: material.fog,
   cars: zones.cars,
   spans: Array.from(zones.spans),
 }))

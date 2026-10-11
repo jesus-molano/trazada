@@ -22,8 +22,6 @@ test('capas de la escena: cada una con su coste, y el render dentro del tope (13
     expect(typeof l.name).toBe('string')
     expect(l.drawCalls).toBeGreaterThanOrEqual(0)
     expect(l.triangles).toBeGreaterThanOrEqual(0)
-    // Plan §3: solo la pista usa la niebla.
-    expect(l.fogged, l.name).toBe(false)
   }
   expect(s.drawCalls).toBeLessThanOrEqual(13 + s.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(s.drawCalls).toBeLessThan(30)

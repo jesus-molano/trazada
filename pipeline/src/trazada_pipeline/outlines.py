@@ -4,10 +4,6 @@ Se ejecuta una vez en desarrollo (`trazada outlines <checkout>`) y su salida se 
 son datos de F1 ni de MultiViewer, sino trazados dibujados a mano sobre imagen de satélite por su autor.
 Cada circuito pasa a un path SVG en un viewBox de 64 x 64, con el norte arriba (igual para todas las
 tarjetas) y simplificado con Ramer-Douglas-Peucker por debajo del píxel.
-
-Del mismo GeoJSON sale el centro de cada circuito (latitud y longitud, el centro de la caja del trazado
-redondeado a 0,01°, ~1 km): con él y la hora UTC de la sesión, la escena calcula la altura del sol para
-su ambiente decorativo (D37). No es la hora local ni el tiempo atmosférico.
 """
 
 from __future__ import annotations
@@ -24,8 +20,6 @@ VIEW = 64.0
 MARGIN = 4.0
 #: Tolerancia de la simplificación, en unidades del viewBox (a 40-64 px, por debajo del píxel).
 EPSILON = 0.35
-#: Decimales de los centros (0,01° ≈ 1 km): de sobra para la altura del sol (un grado de longitud son 4 min).
-CENTER_DECIMALS = 2
 REPO_URL = "https://github.com/bacinger/f1-circuits"
 
 #: Localidades de FastF1 (slug de `Location`, la misma regla que `event_slug`) que no coinciden con las de
@@ -117,16 +111,6 @@ def outline_path(coords: list[list[float]]) -> str:
     return to_path(simplify(pts), closed)
 
 
-def center(coords: list[list[float]]) -> dict[str, float]:
-    """Centro de la caja del trazado (lon/lat de GeoJSON) en grados, redondeado a `CENTER_DECIMALS`."""
-    lons = [c[0] for c in coords]
-    lats = [c[1] for c in coords]
-    return {
-        "lat": round((min(lats) + max(lats)) / 2, CENTER_DECIMALS),
-        "lon": round((min(lons) + max(lons)) / 2, CENTER_DECIMALS),
-    }
-
-
 def _commit(src: Path) -> str:
     try:
         out = subprocess.run(
@@ -140,14 +124,12 @@ def _commit(src: Path) -> str:
 def build_outlines(src: Path, commit: str | None = None) -> dict[str, Any]:
     """Lee `<src>/circuits/*.geojson` y devuelve el documento que usa el front."""
     outlines: dict[str, str] = {}
-    centers: dict[str, dict[str, float]] = {}
     by_location: dict[str, str] = {}
     for path in sorted((src / "circuits").glob("*.geojson")):
         doc = json.loads(path.read_text(encoding="utf-8"))
         feature = next(f for f in doc["features"] if f["geometry"]["type"] == "LineString")
         cid = str(feature["properties"]["id"])
         outlines[cid] = outline_path(feature["geometry"]["coordinates"])
-        centers[cid] = center(feature["geometry"]["coordinates"])
         by_location[slugify(str(feature["properties"]["Location"]))] = cid
     if not outlines:
         raise RuntimeError(f"No hay circuitos en {src / 'circuits'}")
@@ -166,7 +148,6 @@ def build_outlines(src: Path, commit: str | None = None) -> dict[str, Any]:
         "byLocation": dict(sorted(by_location.items())),
         "exceptions": EVENT_EXCEPTIONS,
         "outlines": outlines,
-        "centers": centers,
     }
 
 

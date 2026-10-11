@@ -134,7 +134,6 @@
     "sectors": "Sector colours are calculated by Trazada from the official sector times: they are not the timing feed’s marks, which the source does not include.",
     "compare": "When comparing two drivers, the live gap comes from the distance given by the GPS: it is shown in tenths and carries the “Estimated” label; the exact one is the official gap, when the lap ends. The ghost is the other car on its reference lap, drawn as in the replay and shifted in time; where there is no position, it is not drawn.",
     "weather": "Weather comes from the circuit’s station, one reading per minute: the latest is shown, not interpolated, and after {s} s without another it becomes «no data». Nothing the source lacks is ever filled with 0.",
-    "sky": "The sky and the fog in the scene are decorative: they come from the session time and the circuit’s location, not from the weather at the time.",
     "estimated": "Anything calculated or exaggerated (height ×2 or ×3, spreading cars, lap 1…) carries the “Estimated” label."
   },
   "sessionNotes": {

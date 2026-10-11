@@ -101,7 +101,6 @@ const material = mapWidth(
     // calls. Es una cinta plana: no hay caras que ordenar, así que basta una (1 draw call, como dice sceneStats.trails).
     forceSinglePass: true,
     toneMapped: false,
-    fog: false,
     // Coplanaria con la pista: siempre por encima (más que las banderas de sector, −2).
     polygonOffset: true,
     polygonOffsetFactor: -3,
@@ -154,7 +153,6 @@ const headShown = new Uint8Array(N)
 const stats = { mode: 'off' as TrailMode, cars: 0, points: 0, noSample: 0, triangles: 0, drawCalls: 0, computes: 0 }
 const offStat = registerSceneStat('trails', () => ({
   ...stats,
-  fogged: material.fog,
   pointsPerCar: K,
   spanMs: TRAIL_SPAN_MS,
   heads: states.flatMap((st, i) => (headShown[i] ? [{ car: st.car, x: heads[i * 2]!, y: heads[i * 2 + 1]! }] : [])),

@@ -152,18 +152,6 @@
   --tz-car-rim: #6f7379;
   --tz-car-halo: #3f4245;
   --tz-car-helmet: #9599a0;
-  /*
-   * Ambiente de la escena: cielo según la elevación del sol en el circuito (cálculo astronómico; decorativo,
-   * no es el tiempo atmosférico), niebla solo en la pista y tono de la pista de noche (focos).
-   */
-  --tz-sky-day-zenith: #161a1f;
-  --tz-sky-day-horizon: #2e3236;
-  --tz-sky-dusk-zenith: #17161b;
-  --tz-sky-dusk-horizon: #4a3428;
-  --tz-sky-night-zenith: #070708;
-  --tz-sky-night-horizon: #15161b;
-  --tz-fog: #1a1a19;
-  --tz-track-night-tint: #b4c6ee;
 
   /* Compuestos de neumático */
   --tz-tyre-soft: #ff3b30;

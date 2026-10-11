@@ -53,8 +53,6 @@ function overlayMaterial(opacity: number, offset: number): MeshBasicMaterial {
     opacity,
     side: DoubleSide,
     depthWrite: false,
-    // Sin la niebla del ambiente (D37): el color de una bandera es su significado y no se atenúa con la distancia.
-    fog: false,
     polygonOffset: true,
     polygonOffsetFactor: offset,
     polygonOffsetUnits: offset,

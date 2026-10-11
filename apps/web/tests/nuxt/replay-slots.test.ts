@@ -48,7 +48,7 @@ vi.mock('~/slots/scene-layers', async () => {
     SCENE_LAYERS: collectSlot(
       {
         'scene-layers/TzTrails.vue': { default: await fake('TzTrails', ['model', 'flat', 'yScale']), renderOrder: 4 },
-        'scene-layers/TzSky.vue': { default: await fake('TzSky', ['model', 'flat', 'yScale']), renderOrder: -10 },
+        'scene-layers/TzDrsZones.vue': { default: await fake('TzDrsZones', ['model', 'flat', 'yScale']), renderOrder: -10 },
       },
       'renderOrder',
     ),
@@ -118,7 +118,7 @@ describe('capas de la escena', () => {
     await nextTick()
 
     const layers = w.findAll('[data-fake]')
-    expect(layers.map((l) => l.attributes('data-fake'))).toEqual(['TzSky', 'TzTrails'])
+    expect(layers.map((l) => l.attributes('data-fake'))).toEqual(['TzDrsZones', 'TzTrails'])
     const group = layers[0]!.element.parentElement!
     expect(group.tagName.toLowerCase()).toBe('tresgroup')
     const siblings = [...group.children].map((e) => e.tagName.toLowerCase())

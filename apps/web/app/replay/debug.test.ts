@@ -19,16 +19,16 @@ describe('registerSceneStat (D29)', () => {
   it('las que llevan coste cuentan como capas; el resto, no', () => {
     expect(sceneStats.layers).toEqual([])
     let on = true
-    offs.push(registerSceneStat('heat', () => ({ mode: 'speed', drawCalls: on ? 1 : 0, triangles: on ? 14_000 : 0, fogged: false })))
+    offs.push(registerSceneStat('heat', () => ({ mode: 'speed', drawCalls: on ? 1 : 0, triangles: on ? 14_000 : 0 })))
     offs.push(registerSceneStat('tv', () => ({ shot: 'chase' })))
-    expect(sceneStats.layers).toEqual([{ name: 'heat', drawCalls: 1, triangles: 14_000, fogged: false }])
+    expect(sceneStats.layers).toEqual([{ name: 'heat', drawCalls: 1, triangles: 14_000 }])
     on = false
     expect(sceneStats.layers[0]!.drawCalls).toBe(0)
     expect({ ...sceneStats }.layers).toHaveLength(1)
   })
 
   it('la baja la quita; un nombre fijo de sceneStats no se puede registrar', () => {
-    const off = registerSceneStat('ghost', () => ({ visible: false, drawCalls: 0, triangles: 0, fogged: false }))
+    const off = registerSceneStat('ghost', () => ({ visible: false, drawCalls: 0, triangles: 0 }))
     off()
     expect('ghost' in sceneStats).toBe(false)
     expect(sceneStats.layers).toEqual([])

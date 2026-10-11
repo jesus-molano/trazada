@@ -54,7 +54,6 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Dos diseños del replay (en la cabecera o con la tecla L): «Espectador», con el mapa primero, y «Análisis», con la mejor vuelta, la última y las entradas en boxes de cada piloto en la clasificación y la telemetría más grande. El ancho de la clasificación y el de la columna derecha se cambian arrastrando su borde o con el teclado (salvo en la tablet en vertical), y el mapa siempre conserva su sitio. El diseño y los anchos se recuerdan en el navegador.
 - Guía de primer uso: seis burbujas que señalan la clasificación, cómo seguir un coche, la línea de tiempo, qué es «Estimado» (con un ejemplo rotulado como ejemplo), el análisis y los comandos. Sale sola la primera vez y vuelve con el botón «?», la tecla «?» o la paleta («guía»).
 - Gestos en tablet: dos dedos en horizontal mueven el reloj (todo el ancho de la escena son 2 minutos), el pellizco hace zoom y un doble toque sobre un coche lo sigue (en escritorio, doble clic).
-- Ambiente de la escena (menú «Capas»): el cielo sigue la altura del sol sobre el circuito a esa hora (de día, al atardecer o de noche), con niebla en la parte lejana de la pista. Es decorativo: posición del sol, no el tiempo.
 - Datos honestos: lo que se estima se marca como «Estimado» (la etiqueta se pulsa para ver por qué) y lo que falta se muestra como «sin dato».
 - En español e inglés, con un tema oscuro propio inspirado en la pista (asfalto, pintura y piano), en escritorio y tablet. El replay ocupa toda la ventana, con la marca y el cambio de idioma en su propia cabecera.
 
@@ -84,7 +83,6 @@ Desde 2026 no hay DRS, y la fuente no trae por coche lo nuevo del reglamento: ni
 - Los colores de sector los calcula Trazada con los tiempos oficiales de cada sector: no son las marcas del cronometraje, que la fuente no trae.
 - Al comparar dos pilotos, la diferencia en vivo sale de la distancia que da el GPS: va en décimas y lleva «Estimado». La exacta es la oficial, al cerrar la vuelta. El fantasma es la posición real del otro coche en su vuelta de referencia, desplazada en el tiempo; donde no hay posición, no se dibuja.
 - La meteorología es la de la estación del circuito, una medida por minuto: se muestra la última, sin interpolar, y a los 150 s sin otra pasa a «sin dato». Lo que la fuente no trae nunca se rellena con 0.
-- El cielo y la niebla son decorativos: salen de la hora de la sesión y la posición del circuito, no del tiempo que hacía.
 - Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
 
 ## Estado

@@ -1,7 +1,7 @@
 /**
  * Mapa de calor (ítem 2, D32) con el fixture de Spa (libres 1, extracto de 9 min, de 4 230 000 a 4 770 000 ms):
  * apagado por defecto; «Velocidad» de la última vuelta válida de GAS (la 22, entera dentro del extracto) en una draw
- * call, sin niebla, dentro del presupuesto y sin «Estimado»; su mejor vuelta (la 12) es de antes del extracto y sale
+ * call, dentro del presupuesto y sin «Estimado»; su mejor vuelta (la 12) es de antes del extracto y sale
  * «sin dato», nunca otra; «Minisectores» GAS frente a HAM con el recuento de los 25 y la etiqueta «Estimado» a la
  * vista; las banderas de sector se siguen viendo; sin renders en pausa; el modo se recuerda al recargar.
  */
@@ -30,7 +30,6 @@ interface HeatStats {
   uploads: number
   drawCalls: number
   triangles: number
-  fogged: boolean
   renderOrder: number
 }
 
@@ -85,9 +84,9 @@ test('apagado por defecto: la capa existe sin draw calls y sin etiqueta', async 
   await openScene(page)
   await openLayers(page)
   await expect(page.getByTestId('heat-off')).toHaveAttribute('aria-pressed', 'true')
-  expect(await heat(page)).toMatchObject({ mode: 'off', status: 'off', drawCalls: 0, triangles: 0, fogged: false })
+  expect(await heat(page)).toMatchObject({ mode: 'off', status: 'off', drawCalls: 0, triangles: 0 })
   const base = await scene(page)
-  expect(base.layers.find((l) => l.name === 'heat')).toMatchObject({ drawCalls: 0, triangles: 0, fogged: false })
+  expect(base.layers.find((l) => l.name === 'heat')).toMatchObject({ drawCalls: 0, triangles: 0 })
   await expect(page.locator('[data-testid="estimated"][data-field="minisectors"]')).toHaveCount(0)
 })
 
@@ -113,7 +112,7 @@ test('velocidad: la mejor vuelta fuera del extracto es «sin dato»; la última,
   await expect.poll(async () => (await heat(page)).drawCalls).toBe(1)
   await twoFrames(page)
   const on = await heat(page)
-  expect(on).toMatchObject({ mode: 'speed', status: 'ok', car: '10', lap: 22, fogged: false, renderOrder: 0.5 })
+  expect(on).toMatchObject({ mode: 'speed', status: 'ok', car: '10', lap: 22, renderOrder: 0.5 })
   // Casi toda la vuelta con color; la escala, la de lo que midió (km/h plausibles en Spa).
   expect(on.colored / on.points).toBeGreaterThan(0.9)
   expect(on.minKmh!).toBeGreaterThan(50)
@@ -132,7 +131,6 @@ test('velocidad: la mejor vuelta fuera del extracto es «sin dato»; la última,
   expect(now.drawCalls).toBeLessThanOrEqual(13 + now.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(now.drawCalls).toBeLessThan(30)
   expect(now.triangles).toBeLessThan(150_000)
-  for (const l of now.layers) expect(l.fogged, l.name).toBe(false)
   // Las banderas de sector siguen igual: el calor no las tapa ni las quita.
   expect(now.sectorOverlays).toEqual(flagsBefore)
 
@@ -157,7 +155,7 @@ test('minisectores: sin comparación lo dice; GAS frente a HAM, 25 tramos con «
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
   await expect.poll(async () => (await heat(page)).drawCalls).toBe(1)
   const on = await heat(page)
-  expect(on).toMatchObject({ mode: 'minisectors', car: '10', lap: 22, carB: '44', lapB: 20, fogged: false })
+  expect(on).toMatchObject({ mode: 'minisectors', car: '10', lap: 22, carB: '44', lapB: 20 })
   const n = on.minisectors!
   expect(n.a + n.b + n.tie + n.none).toBe(25)
   await expect(page.getByTestId('heat-count-a')).toHaveText(`GAS: ${n.a}`)

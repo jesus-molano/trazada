@@ -75,7 +75,6 @@ const material = mapWidth(
     depthWrite: false,
     // El color exacto del token, como en la leyenda.
     toneMapped: false,
-    fog: false,
     // Coplanaria con la pista: siempre por encima de ella (las banderas usan un desplazamiento mayor).
     polygonOffset: true,
     polygonOffsetFactor: -1,
@@ -108,7 +107,7 @@ const stats = {
   drawCalls: 0,
   triangles: 0,
 }
-const offStat = registerSceneStat('heat', () => ({ ...stats, fogged: material.fog, renderOrder: mesh.renderOrder }))
+const offStat = registerSceneStat('heat', () => ({ ...stats, renderOrder: mesh.renderOrder }))
 
 /** La vista que falta subir (undefined: nada pendiente). Se copia del store sin reactividad. */
 let pending: HeatView | null | undefined = heat.view

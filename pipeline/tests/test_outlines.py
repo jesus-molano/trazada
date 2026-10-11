@@ -1,4 +1,4 @@
-"""Miniaturas de trazado (D27) y centros de circuito (D37): del GeoJSON de bacinger/f1-circuits al front."""
+"""Miniaturas de trazado (D27): del GeoJSON de bacinger/f1-circuits al front."""
 
 from __future__ import annotations
 
@@ -94,29 +94,6 @@ def test_document_maps_locations_with_aliases_and_exceptions(tmp_path: Path) -> 
     assert doc["viewBox"] == "0 0 64 64"
 
 
-def test_centers_are_bbox_midpoints_rounded_inside_the_outline(tmp_path: Path) -> None:
-    src = _checkout(tmp_path)
-    doc = outlines.build_outlines(src, commit="abc123")
-    # Un centro por trazado, y nada más.
-    assert set(doc["centers"]) == set(doc["outlines"])
-    # El rectángulo de Spa: lat 50,44…50,441 y lon 5,97…5,973 → centro de la caja, redondeado a 0,01°.
-    assert doc["centers"]["be-1925"] == {"lat": 50.44, "lon": 5.97}
-    # Cada centro cae dentro de la caja de su trazado (con el redondeo, a menos de media centésima).
-    for cid, c in doc["centers"].items():
-        feature = json.loads((src / "circuits" / f"{cid}.geojson").read_text(encoding="utf-8"))["features"][0]
-        coords = feature["geometry"]["coordinates"]
-        lons = [p[0] for p in coords]
-        lats = [p[1] for p in coords]
-        assert min(lats) - 0.005 <= c["lat"] <= max(lats) + 0.005, cid
-        assert min(lons) - 0.005 <= c["lon"] <= max(lons) + 0.005, cid
-        assert c == {"lat": round(c["lat"], 2), "lon": round(c["lon"], 2)}
-
-
-def test_center_of_a_line_string() -> None:
-    coords = [[-97.64, 30.13], [-97.62, 30.14], [-97.63, 30.15, 120.0]]
-    assert outlines.center(coords) == {"lat": 30.14, "lon": -97.63}
-
-
 def test_alias_to_missing_circuit_fails(tmp_path: Path) -> None:
     src = _checkout(tmp_path)
     (src / "circuits" / "my-1999.geojson").unlink()
@@ -156,25 +133,3 @@ def test_committed_outlines_cover_2023_to_2026() -> None:
     assert missing == []
     assert set(doc["byLocation"].values()) <= set(doc["outlines"])
     assert path.with_suffix(".LICENSE.txt").exists()
-
-
-def test_committed_centers_match_known_circuit_positions() -> None:
-    """Los centros versionados (ambiente, D37) están donde están los circuitos: a menos de 0,05° (~5 km)."""
-    path = cli.REPO / "apps" / "web" / "app" / "assets" / "circuit-outlines.json"
-    doc = json.loads(path.read_text(encoding="utf-8"))
-    assert set(doc["centers"]) == set(doc["outlines"])
-    for cid, c in doc["centers"].items():
-        assert -90 <= c["lat"] <= 90 and -180 <= c["lon"] <= 180, cid
-    # Coordenadas públicas de cada circuito (grados decimales), independientes del GeoJSON.
-    known = {
-        "be-1925": (50.437, 5.971),  # Spa-Francorchamps
-        "jp-1962": (34.843, 136.541),  # Suzuka
-        "sg-2008": (1.291, 103.864),  # Marina Bay
-        "ae-2009": (24.467, 54.603),  # Yas Marina
-        "my-1999": (2.761, 101.738),  # Sepang (GP de Baréin 2026, alias kuala-lumpur)
-        "us-2023": (36.116, -115.168),  # Las Vegas
-        "br-1940": (-23.704, -46.700),  # Interlagos
-    }
-    for cid, (lat, lon) in known.items():
-        assert doc["centers"][cid]["lat"] == pytest.approx(lat, abs=0.05), cid
-        assert doc["centers"][cid]["lon"] == pytest.approx(lon, abs=0.05), cid

@@ -33,10 +33,10 @@ describe('huecos por glob (D29)', () => {
 
   it('la escena ordena por renderOrder, también negativo (el cielo, −10)', () => {
     const slot = collectSlot(
-      { 'a/TzTrails.vue': mod('T', { renderOrder: 4 }), 'a/TzSky.vue': mod('S', { renderOrder: -10 }) },
+      { 'a/TzTrails.vue': mod('T', { renderOrder: 4 }), 'a/TzDrsZones.vue': mod('S', { renderOrder: -10 }) },
       'renderOrder',
     )
-    expect(slot.map((e) => e.name)).toEqual(['TzSky', 'TzTrails'])
+    expect(slot.map((e) => e.name)).toEqual(['TzDrsZones', 'TzTrails'])
   })
 
   it('un hueco sin ficheros es una lista vacía', () => {

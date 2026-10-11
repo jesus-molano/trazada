@@ -99,7 +99,6 @@ const material = new MeshBasicMaterial({
   depthWrite: false,
   depthTest: true,
   toneMapped: false,
-  fog: false,
 })
 const noRaycast = () => {}
 function ghostMesh(g: BufferGeometry): Mesh<BufferGeometry, MeshBasicMaterial> {
@@ -130,7 +129,7 @@ const stats = {
   drawCalls: 0,
   triangles: 0,
 }
-const offStat = registerSceneStat('ghost', () => ({ ...stats, fogged: material.fog }))
+const offStat = registerSceneStat('ghost', () => ({ ...stats }))
 
 /** Instante del último frame del runtime: el del modelo que dibujan los coches. */
 let frameMs = rt.clock.timeMs

@@ -1,6 +1,6 @@
 /**
  * Estelas (ítem 7): apagadas por defecto; con «Equipo» o «Velocidad», una sola draw call para todos los coches dentro
- * del presupuesto de la escena, sin niebla; la punta de cada estela es su coche; se recuerdan al recargar; en pausa
+ * del presupuesto de la escena; la punta de cada estela es su coche; se recuerdan al recargar; en pausa
  * no hay renders en bucle.
  */
 import AxeBuilder from '@axe-core/playwright'
@@ -18,7 +18,6 @@ interface TrailStats {
   noSample: number
   triangles: number
   drawCalls: number
-  fogged: boolean
   pointsPerCar: number
   spanMs: number
   heads: { car: string; x: number; y: number }[]
@@ -73,9 +72,9 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
   await openLayers(page)
   await expect(page.getByTestId('trails-off')).toHaveAttribute('aria-pressed', 'true')
   const off = await trails(page)
-  expect(off).toMatchObject({ mode: 'off', cars: 0, points: 0, drawCalls: 0, triangles: 0, fogged: false })
+  expect(off).toMatchObject({ mode: 'off', cars: 0, points: 0, drawCalls: 0, triangles: 0 })
   const base = await scene(page)
-  expect(base.layers.find((l) => l.name === 'trails')).toMatchObject({ drawCalls: 0, triangles: 0, fogged: false })
+  expect(base.layers.find((l) => l.name === 'trails')).toMatchObject({ drawCalls: 0, triangles: 0 })
 
   await page.getByTestId('trails-team').click()
   await expect(page.getByTestId('trails-team')).toHaveAttribute('aria-pressed', 'true')
@@ -84,7 +83,6 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
   const team = await trails(page)
   expect(team.mode).toBe('team')
   expect(team.drawCalls).toBe(1)
-  expect(team.fogged).toBe(false)
   expect(team.cars).toBeGreaterThan(5)
   expect(team.points).toBeLessThanOrEqual(team.cars * team.pointsPerCar)
   expect(team.triangles).toBeGreaterThan(0)
@@ -97,7 +95,6 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
   expect(on.drawCalls).toBeLessThanOrEqual(13 + on.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(on.drawCalls).toBeLessThan(30)
   expect(on.triangles).toBeLessThan(150_000)
-  for (const l of on.layers) expect(l.fogged, l.name).toBe(false)
 
   // Por navegador, con su versión de formato.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.trails') ?? 'null'))).toEqual({ mode: 'team', _v: 1 })
