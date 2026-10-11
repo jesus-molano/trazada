@@ -18,6 +18,15 @@ const origin = clockOrigin(type, rt.session.timing, pb)
 
 const elapsed = computed(() => formatClock(playback.timeMs - origin))
 const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 0))
+/**
+ * La lectura no cambia de ancho con el reloj: desde 1280 px el timeline va en la misma fila (D44) y se estrecharía al
+ * pasar de «59:59» a «1:00:00» o de la vuelta 9 a la 10 (con el puntero encima, el instante bajo él saltaría). El reloj
+ * (monoespaciado) reserva los caracteres de su lectura más larga en la sesión, que siempre es la de uno de los extremos;
+ * la vuelta, el ancho de la última (cifras tabulares) con una copia invisible debajo.
+ */
+const clockChars = Math.max(formatClock(rt.clock.startMs - origin).length, formatClock(rt.clock.endMs - origin).length)
+const clockStyle = { minWidth: `${clockChars}ch` }
+const widestLap = Math.max(totalLaps ?? 0, rt.markers.laps.at(-1)?.lap ?? 0)
 </script>
 
 <template>
@@ -56,8 +65,11 @@ const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 
     <slot />
 
     <p class="tz-readout tz-tabular" data-testid="time-readout">
-      <span v-if="isRace && totalLaps" class="tz-readout__lap">{{ t('controls.lap', { lap, total: totalLaps }) }}</span>
-      <span class="tz-readout__clock" :aria-label="t('controls.elapsed')">{{ elapsed }}</span>
+      <span v-if="isRace && totalLaps" class="tz-readout__lap">
+        <span>{{ t('controls.lap', { lap, total: totalLaps }) }}</span>
+        <span class="tz-readout__reserve" aria-hidden="true">{{ t('controls.lap', { lap: widestLap, total: totalLaps }) }}</span>
+      </span>
+      <span class="tz-readout__clock" :style="clockStyle" :aria-label="t('controls.elapsed')">{{ elapsed }}</span>
     </p>
   </div>
 </template>
@@ -154,15 +166,30 @@ const lap = computed(() => (isRace ? leaderLapAt(rt.markers, playback.timeMs) : 
   white-space: nowrap;
 }
 
+/* La vuelta y, en la misma celda, su copia invisible con la última vuelta: el ancho no cambia de la 9 a la 10. */
 .tz-readout__lap {
+  display: inline-grid;
   font-family: var(--tz-font-sans);
   font-size: var(--tz-text-sm);
   color: var(--tz-text-muted);
 }
 
-/* El reloj, la cifra que se lee de un vistazo: más grande (su valor nunca se anima). */
+.tz-readout__lap > * {
+  grid-area: 1 / 1;
+  text-align: end;
+}
+
+.tz-readout__reserve {
+  visibility: hidden;
+}
+
+/*
+ * El reloj, la cifra que se lee de un vistazo: más grande (su valor nunca se anima). Ancho mínimo en `ch` (`clockStyle`:
+ * su lectura más larga en la sesión), alineado al final: la hora aparece a la izquierda sin mover los segundos.
+ */
 .tz-readout__clock {
   font-size: var(--tz-text-num-md);
   font-weight: var(--tz-weight-semibold);
+  text-align: end;
 }
 </style>

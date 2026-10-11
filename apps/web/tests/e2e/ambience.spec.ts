@@ -7,7 +7,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const MANIFEST = '**/sessions/2026/10-spa-francorchamps/fp1/manifest.json'
@@ -157,6 +157,7 @@ test('Spa de día: cielo y niebla solo en la pista, una draw call más dentro de
   await expect(page.getByTestId('ambience-hint-panel')).toBeVisible()
   await expect(page.getByTestId('ambience-hint-panel')).toContainText(/NOAA/)
   await expect(page.getByTestId('ambience-hint-panel')).toContainText(/UTC/)
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="scene-tools"]')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

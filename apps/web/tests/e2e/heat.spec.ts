@@ -7,7 +7,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 /** Instante absoluto (ms de sesión): GAS ya cerró su vuelta 22 y HAM su vuelta 20, las dos con posiciones. */
@@ -105,7 +105,8 @@ test('velocidad: la mejor vuelta fuera del extracto es «sin dato»; la última,
   await expect(page.getByTestId('heat-pick-best')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'noData')
   await expect(page.getByTestId('heat-note')).toHaveText(/^(Sin dato|No data):.*12.*GAS$/)
-  expect(await heat(page)).toMatchObject({ mode: 'speed', status: 'noData', car: '10', lap: 12, drawCalls: 0 })
+  // La capa sube la vista nueva en el siguiente render (onBeforeRender), que puede llegar después que el DOM.
+  await expect.poll(() => heat(page)).toMatchObject({ mode: 'speed', status: 'noData', car: '10', lap: 12, drawCalls: 0 })
 
   await page.getByTestId('heat-pick-last').click()
   await expect(page.getByTestId('heat-tool')).toHaveAttribute('data-status', 'ok')
@@ -201,6 +202,7 @@ test('se recuerda al recargar; la herramienta es accesible y la pista explica qu
   await expect(page.getByTestId('heat-hint-panel')).toBeVisible()
   await expect(page.getByTestId('heat-hint-panel')).toContainText(/~4 Hz/)
   await expect(page.getByTestId('heat-hint-panel')).toContainText(/50 ms/)
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="scene-tools"]')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

@@ -8,7 +8,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
@@ -34,6 +34,7 @@ const time = (page: Page) => page.evaluate(() => window.__trazada!.timeMs)
 const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
 
 async function serious(page: Page) {
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .exclude('[data-testid="scene"] canvas')

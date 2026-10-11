@@ -10,7 +10,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1_ID = '2026/10-spa-francorchamps/fp1'
 const FP1 = `/replay?s=${FP1_ID}`
@@ -81,6 +81,7 @@ const state = (page: Page) =>
   })
 
 async function serious(page: Page, include: string) {
+  await settled(page)
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).include(include).analyze()
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)
 }

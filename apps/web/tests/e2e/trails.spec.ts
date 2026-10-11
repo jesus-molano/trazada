@@ -5,7 +5,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 /** Un minuto y medio dentro del extracto: coches en pista. */
@@ -166,6 +166,7 @@ test('la herramienta y su leyenda son accesibles; la pista explica qué es dato'
   await expect(page.getByTestId('trails-hint-panel')).toBeVisible()
   await expect(page.getByTestId('trails-hint-panel')).toContainText(/(línea central|centre line)/)
   await expect(page.getByTestId('trails-hint-panel')).toContainText(/(sin interpolar|not interpolated)/)
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="scene-tools"]')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

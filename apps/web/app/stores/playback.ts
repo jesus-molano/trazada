@@ -24,6 +24,12 @@ export const usePlaybackStore = defineStore('playback', () => {
   const following = ref(false)
   /** Orden para ↑/↓: lo fija el leaderboard; por defecto, el orden del manifest. */
   const order = shallowRef<string[]>([])
+  /**
+   * Se está arrastrando el cabezal del timeline (ratón, lápiz o dedo). El timeline comparte fila con los controles del
+   * dock (D44): mientras dura, lo que cambiaría el ancho de los controles (el botón «Resumen») espera a que se suelte,
+   * para que el instante bajo el puntero no salte.
+   */
+  const scrubbing = ref(false)
 
   function attach(rt: ReplayRuntime): void {
     detach()
@@ -31,6 +37,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     order.value = rt.drivers.map((d) => d.number)
     selectedCar.value = null
     following.value = false
+    scrubbing.value = false
     offCoarse = rt.onCoarse((s) => {
       timeMs.value = s.timeMs
       playing.value = s.playing
@@ -60,6 +67,10 @@ export const usePlaybackStore = defineStore('playback', () => {
     runtime?.requestFrame()
   }
 
+  function setScrubbing(value: boolean): void {
+    scrubbing.value = value
+  }
+
   function setFollowing(value: boolean): void {
     following.value = value && selectedCar.value !== null
     runtime?.requestFrame()
@@ -82,6 +93,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     selectedCar,
     following,
     order,
+    scrubbing,
     attach,
     detach,
     toggle,
@@ -93,5 +105,6 @@ export const usePlaybackStore = defineStore('playback', () => {
     selectCar,
     selectRelative,
     setFollowing,
+    setScrubbing,
   }
 })

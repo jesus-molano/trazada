@@ -2,9 +2,20 @@
 /**
  * Vuelve a abrir la tarjeta de fin de sesión (`useSessionSummary`). Solo existe desde el momento de la tarjeta: antes
  * del fin de la sesión no hay resumen (y al volver atrás, desaparece).
+ *
+ * Mientras se arrastra el cabezal del timeline, ni aparece ni desaparece: el timeline va en la misma fila que los
+ * controles (D44) y perdería de golpe el ancho del botón bajo el puntero (el instante arrastrado saltaría). Al soltar,
+ * se pone al día.
  */
+import { usePlaybackStore } from '~/stores/playback'
+
 const { t } = useI18n()
+const playback = usePlaybackStore()
 const { available, open, show } = useSessionSummary()
+const shown = ref(available.value)
+watchEffect(() => {
+  if (!playback.scrubbing) shown.value = available.value
+})
 </script>
 
 <script lang="ts">
@@ -14,7 +25,7 @@ export const order = 90
 
 <template>
   <button
-    v-if="available"
+    v-if="shown"
     type="button"
     class="tz-summary-btn"
     aria-haspopup="dialog"

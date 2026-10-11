@@ -6,7 +6,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
@@ -37,6 +37,7 @@ const card = (page: Page) => page.getByTestId('session-summary')
 const button = (page: Page) => page.getByTestId('summary-button')
 
 async function serious(page: Page) {
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .exclude('[data-testid="scene"] canvas')

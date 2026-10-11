@@ -7,7 +7,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp } from './helpers'
+import { gotoApp, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 /**
@@ -212,6 +212,7 @@ test('el chip y la herramienta son accesibles; «Salir» la apaga', async ({ pag
   await startFromMenu(page)
   await page.getByTestId('tv-hint').click()
   await expect(page.getByTestId('tv-hint-panel')).toContainText(/(torre de tiempos oficial|official timing tower)/)
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="scene-tools"]')
     .include('[data-testid="tv-chip"]')

@@ -7,7 +7,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const T_MS = 85_828
@@ -70,6 +70,7 @@ test('2026: la leyenda dice que no hay datos de zonas; sin zonas, sin «Estimado
   await page.getByTestId('drs-hint').click()
   await expect(page.getByTestId('drs-hint-panel')).toBeVisible()
   await expect(page.getByTestId('drs-hint-panel')).toContainText(/2026/)
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .include('[data-testid="scene-tools"]')
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

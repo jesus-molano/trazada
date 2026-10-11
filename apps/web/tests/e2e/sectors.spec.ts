@@ -13,7 +13,7 @@
  */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 const STATES = ['best', 'personal', 'normal', 'none', 'deleted']
@@ -140,6 +140,7 @@ for (const lang of ['es', 'en'] as const) {
     await seekOffset(page, 1_000)
     await page.locator('[data-testid="leaderboard"] [data-car="43"]').getByRole('button').click()
     await expect(page.getByTestId('lap-sectors')).toBeVisible()
+    await settled(page)
     const results = await new AxeBuilder({ page })
       .include('[data-testid="leaderboard"]')
       .include('[data-testid="telemetry"]')

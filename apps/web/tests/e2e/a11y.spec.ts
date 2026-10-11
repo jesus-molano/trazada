@@ -1,11 +1,12 @@
 /** Accesibilidad (axe-core, WCAG 2.1 A/AA): ninguna infracción seria o crítica. */
 import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page, test } from '@playwright/test'
-import { gotoApp, resetStorage } from './helpers'
+import { gotoApp, resetStorage, settled } from './helpers'
 
 const FP1 = '/replay?s=2026/10-spa-francorchamps/fp1'
 
 async function serious(page: Page) {
+  await settled(page)
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     // El lienzo WebGL es la representación visual; su contenido accesible son los paneles y las siglas.

@@ -52,6 +52,35 @@ async function touch(cdp: CDPSession, type: 'touchStart' | 'touchMove' | 'touchE
 }
 
 /**
+ * Doble toque (o doble clic) en `p` con los tiempos de uno de verdad, fijados en cada evento (CDP `timestamp`): 40 ms
+ * cada toque y 150 ms entre el primero y el segundo. Un dedo o un ratón marcan el tiempo al tocar, no cuando la página
+ * los atiende; `touchscreen.tap` y `mouse.dblclick` lo marcan al enviar cada evento, después de que el anterior se haya
+ * atendido. Con la máquina cargada, el primer toque elige el coche (abre la telemetría: una tarea larga con SwiftShader)
+ * y el segundo salía a más de 400 ms (dos toques lentos: elegir y soltar), o los cuatro eventos del doble clic salían
+ * de golpe con la misma marca (Chromium la redondea a 0,1 ms; para DoubleTap, el mismo toque contado dos veces).
+ */
+async function doubleTap(page: Page, p: Point, pointer: 'touch' | 'mouse') {
+  const cdp = await page.context().newCDPSession(page)
+  const t0 = Date.now() / 1000
+  const at = (ms: number) => t0 + ms / 1000
+  if (pointer === 'mouse') {
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y, timestamp: at(0) })
+  }
+  for (const [i, start] of [20, 170].entries()) {
+    if (pointer === 'touch') {
+      const points = [{ x: p.x, y: p.y, id: i + 1 }]
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points, timestamp: at(start) })
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], timestamp: at(start + 40) })
+    } else {
+      const click = { x: p.x, y: p.y, button: 'left' as const, clickCount: i + 1 }
+      await cdp.send('Input.dispatchMouseEvent', { ...click, type: 'mousePressed', timestamp: at(start) })
+      await cdp.send('Input.dispatchMouseEvent', { ...click, type: 'mouseReleased', timestamp: at(start + 40) })
+    }
+  }
+  await cdp.detach()
+}
+
+/**
  * Dos dedos a `gap` px el uno del otro, en horizontal, sobre el lienzo (no sobre una sigla ni un panel), a media altura
  * del hueco libre del encuadre y lo más a un lado posible (`from`), para que quepa un deslizamiento largo hacia el
  * otro. Devuelve el dedo de la izquierda.
@@ -222,8 +251,7 @@ test.describe('tablet', () => {
   test('doble toque sobre un coche: lo elige y la cámara lo sigue', async ({ page }) => {
     await openScene(page)
     const { car, x, y } = await carOnScreen(page)
-    await page.touchscreen.tap(x, y)
-    await page.touchscreen.tap(x, y)
+    await doubleTap(page, { x, y }, 'touch')
     await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
     await expect.poll(() => mode(page), { timeout: 5000 }).toBe('follow')
     await expect(page.getByTestId('follow-toggle')).toHaveAttribute('aria-pressed', 'true')
@@ -241,8 +269,7 @@ test.describe('tablet', () => {
     })
     expect(car).not.toBeNull()
     const box = (await page.locator(`[data-testid="car-labels"] [data-car="${car}"]`).boundingBox())!
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await doubleTap(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, 'touch')
     await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
     await expect.poll(() => mode(page), { timeout: 5000 }).toBe('follow')
   })
@@ -274,7 +301,7 @@ test.describe('escritorio', () => {
   test('doble clic sobre un coche: lo sigue; Esc vuelve a la vista general', async ({ page }) => {
     await openScene(page)
     const { car, x, y } = await carOnScreen(page)
-    await page.mouse.dblclick(x, y)
+    await doubleTap(page, { x, y }, 'mouse')
     await expect.poll(() => page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
     await expect.poll(() => mode(page), { timeout: 5000 }).toBe('follow')
     // Esc deja de seguirlo y vuelve a la vista general, como siempre.
