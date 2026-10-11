@@ -232,6 +232,34 @@ describe('cuándo aparece', () => {
     expect(dockButton()).not.toBeNull()
   })
 
+  it('arrastrando el timeline, el botón ni aparece ni desaparece (el dock no cambia de ancho bajo el puntero); al soltar, sí', async () => {
+    const { summary, available } = useSessionSummary()
+    const playback = usePlaybackStore()
+    await mountBoth()
+    seek(summary.showMs - 5_000)
+    await nextTick()
+    expect(dockButton()).toBeNull()
+
+    playback.setScrubbing(true)
+    seek(summary.showMs + 5_000)
+    await nextTick()
+    expect(available.value).toBe(true)
+    expect(dockButton()).toBeNull()
+    playback.setScrubbing(false)
+    await nextTick()
+    expect(dockButton()).not.toBeNull()
+
+    // Y al revés: arrastrando hacia atrás, el botón se queda hasta soltar.
+    playback.setScrubbing(true)
+    seek(summary.showMs - 5_000)
+    await nextTick()
+    expect(available.value).toBe(false)
+    expect(dockButton()).not.toBeNull()
+    playback.setScrubbing(false)
+    await nextTick()
+    expect(dockButton()).toBeNull()
+  })
+
   // Con `route`, `mountSuspended` navega de verdad a /replay: la primera vez se transforma todo el grafo de módulos de
   // la página (escena, three.js y lo de cada hueco), 2–3 s solo y más del límite de 5 s con la CPU compartida de la
   // suite completa. El tiempo es de esa carga, no de lo que se prueba.

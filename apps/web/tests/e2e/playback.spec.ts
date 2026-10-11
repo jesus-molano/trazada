@@ -98,6 +98,44 @@ test.describe('timeline', () => {
     expect(Math.abs(t - (startMs + 0.75 * (endMs - startMs)))).toBeLessThan((endMs - startMs) * 0.01)
   })
 
+  // Desde 1280 px el timeline comparte fila con los controles (D44): si estos cambiaran de ancho con el reloj, el
+  // instante bajo el puntero saltaría a mitad de un arrastre (el de arriba cruza la hora y el resumen del fixture).
+  test('el timeline no cambia de ancho con el reloj: ni al pasar de la hora ni, arrastrando, al llegar el resumen', async ({
+    page,
+  }) => {
+    await openReplay(page)
+    const timeline = page.getByTestId('timeline')
+    const { startMs, endMs } = await handle(page, (h) => ({ startMs: h.startMs, endMs: h.endMs }))
+    const showMs = await page.evaluate(() => (window.__trazada!.scene.summary as { showMs: number }).showMs)
+    const box = (await timeline.boundingBox())!
+    /** Mismo sitio y ancho, salvo el redondeo de las fuentes (1/64 px). */
+    const unchanged = async () => {
+      const now = (await timeline.boundingBox())!
+      expect(Math.abs(now.x - box.x)).toBeLessThan(0.5)
+      expect(Math.abs(now.width - box.width)).toBeLessThan(0.5)
+    }
+    // Del principio (56:53 en el fixture) a justo antes del resumen: el reloj gana la hora y el timeline no se mueve.
+    await page.evaluate((t) => window.__trazada!.seek(t), showMs - 2000)
+    await expect(page.locator('[data-testid="time-readout"] .tz-readout__clock')).toHaveText(/^1:\d{2}:\d{2}$/)
+    await unchanged()
+
+    // Arrastrando por encima del momento del resumen: el botón espera a que se suelte y el instante sigue al puntero.
+    const x = (ms: number) => box.x + ((ms - startMs) / (endMs - startMs)) * box.width
+    const y = box.y + box.height / 2
+    await page.mouse.move(x(showMs - 10_000), y)
+    await page.mouse.down()
+    await page.mouse.move(x(showMs + 60_000), y, { steps: 5 })
+    await expect
+      .poll(() => page.evaluate(() => (window.__trazada!.scene.summary as { available: boolean }).available))
+      .toBe(true)
+    await expect(page.getByTestId('summary-button')).toHaveCount(0)
+    await unchanged()
+    await page.mouse.move(x(showMs + 120_000), y, { steps: 3 })
+    await page.mouse.up()
+    expect(Math.abs((await handle(page, (h) => h.timeMs)) - (showMs + 120_000))).toBeLessThan((endMs - startMs) * 0.01)
+    await expect(page.getByTestId('summary-button')).toBeVisible()
+  })
+
   test('los marcadores pintados coinciden con los recuentos', async ({ page }) => {
     await openReplay(page)
     const m = await handle(page, (h) => ({

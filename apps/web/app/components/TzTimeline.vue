@@ -132,6 +132,7 @@ function onPointerDown(event: PointerEvent) {
   if (event.button !== 0 && event.pointerType === 'mouse') return
   track.value!.setPointerCapture(event.pointerId)
   dragging.value = true
+  playback.setScrubbing(true)
   clock.seekToFraction(fractionAt(event.clientX))
   // Con el puntero ya no se usa el teclado: al soltar, la tarjeta no se queda sobre el cabezal.
   keyboardFocus = false
@@ -155,6 +156,7 @@ function onPointerMove(event: PointerEvent) {
 function onPointerUp(event: PointerEvent) {
   if (track.value?.hasPointerCapture(event.pointerId)) track.value.releasePointerCapture(event.pointerId)
   dragging.value = false
+  playback.setScrubbing(false)
   if (event.pointerType === 'touch') {
     followHead()
     return
@@ -233,6 +235,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   off?.()
   cancelPending()
+  if (dragging.value) playback.setScrubbing(false)
 })
 </script>
 
