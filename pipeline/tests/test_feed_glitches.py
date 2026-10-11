@@ -73,15 +73,19 @@ def test_pit_lane_ignores_a_position_glitch_going_backwards() -> None:
 
 
 def test_pit_lane_ignores_the_garage_detour() -> None:
-    """El coche que da el pit lane se mete en su garaje (12 m de lado, despacio) y vuelve a salir."""
+    """El coche que da el pit lane se mete en su garaje (12 m de lado, despacio) y vuelve a salir.
+
+    Es la única parada (sin el drive-through del coche 2 ni la bandera roja del coche 4). Las muestras lentas
+    no se usan y dejan un hueco de ~30 m alrededor del box, como en Spa, Japón o Singapur (con 1,5 s a
+    cada lado a velocidad de pit lane eran 66 m: un hueco que el pit lane ya no cruza en línea recta)."""
     data, sims = synthetic_session()
     laps = data.laps
-    laps.loc[laps["car"] == "2", ["pit_in_ms", "pit_out_ms"]] = -1  # sin drive-through: la parada del coche 1
+    laps.loc[laps["car"].isin(["2", "4"]), ["pit_in_ms", "pit_out_ms"]] = -1
     sim, pos, tel = sims["1"], data.pos["1"], data.car["1"]
     hold = next(g for g in sim.segs if g.mode == "pit" and g.p0 == g.p1)
     t = pos["t_ms"].to_numpy(dtype=np.float64)
-    a, b = hold.t0 - 1500, hold.t1 + 1500
-    ramp = np.clip(np.minimum(t - a, b - t) / 1000, 0, 1)
+    a, b = hold.t0 - 600, hold.t1 + 600
+    ramp = np.clip(np.minimum(t - a, b - t) / 500, 0, 1)
     rows = np.flatnonzero(ramp > 0)
     xyz, _, _ = sim.truth(t[rows])
     xyz[:, 1] -= 12.0 * ramp[rows]  # hacia fuera de la pista, hasta el fondo del garaje

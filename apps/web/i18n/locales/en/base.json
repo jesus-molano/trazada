@@ -163,6 +163,7 @@
       "circuit-rebuilt": {
         "outdated": "Circuit {circuit} was rebuilt from this session (it was made with an older version).",
         "gains-corners": "Circuit {circuit} was rebuilt from this session, which has the official corners and rotation.",
+        "gains-pit": "Circuit {circuit} had no pit lane: the one from this session has been added (nothing else changes).",
         "other": "Circuit {circuit} was rebuilt from this session."
       },
       "circuit-outdated-kept": {
@@ -171,7 +172,13 @@
         "would-lose": "Circuit {circuit} is from an older version, but rebuilding it from this session would drop the pit lane or the sectors: it is used as is.",
         "other": "Circuit {circuit} is from an older version and is used as is."
       },
-      "position-glitches": "More than 1% of the positions of some cars ({cars}) are «no data» because of feed glitches (going backwards or frozen while moving)."
+      "position-glitches": "More than 1% of the positions of some cars ({cars}) are «no data» because of feed glitches (going backwards or frozen while moving).",
+      "pitlane-missing": {
+        "no-stops": "The circuit has no pit lane: the session it was built from had no pit stops. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops.",
+        "none-valid": "The circuit has no pit lane: none of the {stops} pit stops of the session it was built from gave one without gaps that the cars follow. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
+        "dropped": "The circuit has no pit lane: the one it had did not follow the cars ({stopShare}% of the pit stops followed it) and no pit stop gave a good one. Cars in the pit lane are not drawn; it will be added when you download a session with pit stops that gives one.",
+        "other": "The circuit has no pit lane: cars in the pit lane are not drawn."
+      }
     }
   },
   "controls": {
