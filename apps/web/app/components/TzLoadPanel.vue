@@ -61,7 +61,6 @@ v-else-if="session.status === 'error' && session.error" role="alert" data-testid
   border: 1px solid var(--tz-border);
   border-radius: var(--tz-radius-lg);
   background: var(--tz-overlay);
-  backdrop-filter: blur(8px);
   box-shadow: var(--tz-shadow-panel);
 }
 
