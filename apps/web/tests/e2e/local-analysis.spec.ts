@@ -208,12 +208,14 @@ test.describe('sprint de Singapur 2026 (D49)', () => {
     await expect(page.getByTestId('analysis-card-last')).toHaveText('Último paso por meta: V14.')
     await expect(page.getByTestId('analysis-card-pit')).toHaveText('Entró en el pit lane en esa vuelta.')
     await expect(page.getByTestId('analysis-card-after')).toHaveText('Después, ningún paso por meta más en los datos; la fuente no dice por qué.')
+    // A 1440×900 la ficha es más alta que el área de datos: su forma corta, con un solo mensaje (y cuántos más).
+    await expect(card).toHaveAttribute('data-compact', 'true')
     const rc = page.getByTestId('analysis-card-rc')
-    await expect(rc).toHaveCount(2)
+    await expect(rc).toHaveCount(1)
     await expect(rc.first()).toContainText('V14')
     await expect(rc.first()).toContainText('Incidente')
     await expect(rc.first()).toContainText('23 (ALB) AND 5 (BOR)')
-    await expect(page.getByTestId('analysis-card-rc-more')).toHaveText('y 1 más en dirección de carrera')
+    await expect(page.getByTestId('analysis-card-rc-more')).toHaveText('y 2 más en dirección de carrera')
     await expect(page.getByTestId('analysis-card-click')).toHaveText('Clic: elegir ALB')
     await expect(card).not.toContainText(/retir|abandon|estrell|accident|crash/i)
     // Un clic en su línea elige a ALB (D49) sin saltar en el tiempo; otro clic ya iría al inicio de la V10.

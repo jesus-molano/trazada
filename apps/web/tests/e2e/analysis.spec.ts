@@ -566,7 +566,7 @@ for (const vp of [
       await expect(page.getByTestId('follow-toggle')).toHaveAttribute('aria-pressed', 'true')
     })
 
-    test('desde la gráfica: un punto de otro piloto lo elige (clic, o «Elegir» en su ficha con el dedo) y la cámara pasa a seguirlo', async ({
+    test('desde la gráfica: un punto de otro piloto lo elige (clic, o la fila de su nombre en su ficha con el dedo) y la cámara pasa a seguirlo', async ({
       page,
     }) => {
       test.setTimeout(90_000)
@@ -592,7 +592,9 @@ for (const vp of [
         const choose = page.getByTestId('analysis-card-choose')
         await expect(choose).toHaveText('Elegir')
         await expect(choose).toHaveAccessibleName(`Elegir ${tla}`)
-        await choose.tap()
+        // Toda la fila del piloto es la zona táctil de «Elegir»: un toque en su nombre lo elige.
+        const name = (await page.getByTestId('analysis-card-head').locator('.tz-achart__card-tla').boundingBox())!
+        await page.touchscreen.tap(name.x + name.width / 2, name.y + name.height / 2)
       } else {
         await expect(page.getByTestId('analysis-card-click')).toHaveText(`Clic: elegir ${tla}`)
         await page.mouse.click(hit.x, hit.y)

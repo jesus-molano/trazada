@@ -971,6 +971,28 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     expect($('[data-testid="analysis-selection"]')!.dataset.car).toBe('23')
   })
 
+  it('elegir a uno que el usuario ocultó lo vuelve a mostrar y conserva el resto de su elección, también los pilotos sin vueltas', async () => {
+    attach(groupsRace())
+    useAnalysis().noSpoilers.value = false
+    const playback = usePlaybackStore()
+    await mountBoth()
+    await openSheet()
+    const all = rt.drivers.map((d) => d.number)
+    // Hay pilotos del manifest sin vueltas (su grupo de la leyenda).
+    expect($$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-nodata"]').length).toBeGreaterThan(0)
+    const key = () => $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-item"][data-car="23"]')!
+    key().click()
+    await settle()
+    expect(key().getAttribute('aria-pressed')).toBe('false')
+    expect(useAnalysis().shown.value.raceTrace).toEqual(all.filter((c) => c !== '23'))
+    $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"][data-pick="23"]')!.click()
+    await settle()
+    expect(playback.selectedCar).toBe('23')
+    expect(key().getAttribute('aria-pressed')).toBe('true')
+    expect(key().classList).toContain('is-emphasis')
+    expect(useAnalysis().shown.value.raceTrace).toEqual(all)
+  })
+
   it('con el teclado: Intro en un nombre lo elige y espacio lo sigue mostrando u ocultando; la ficha del foco lo dice', async () => {
     attach(groupsRace())
     useAnalysis().noSpoilers.value = false
@@ -1165,5 +1187,105 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     await new Promise((r) => setTimeout(r, 600))
     await settle()
     expect(card().dataset.shown).toBe('false')
+  })
+
+  it('elegir desde la gráfica (D49): la ficha fijada con el dedo lleva «Elegir» en la fila del piloto; el círculo de la leyenda elige y no muestra ni oculta', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec = (chosen: string | null): ChartSpec => ({
+      x: [1, 2, 3],
+      series: [
+        { group: '1', mark: 'line', values: [0, 0, 0] },
+        { group: '18', mark: 'line', values: [3, 4, 5] },
+      ],
+      groups: [
+        { ...base, key: '1', label: 'AAA', emphasis: chosen === '1' },
+        { ...base, key: '18', label: 'BBB', emphasis: chosen === '18' },
+      ],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    })
+    const chart = await mountSuspended(TzAnalysisChart, {
+      props: { spec: spec('1'), cursorX: null, label: 'gráfica', legendLabel: 'pilotos', selectable: true },
+      attachTo: document.body,
+    })
+    unmounts.push(() => chart.unmount())
+    const card = () => chart.find('[data-testid="analysis-card"]').element as HTMLElement
+    const key = chart.find('[data-testid="analysis-legend-item"][data-car="18"]').element as HTMLButtonElement
+    const touch = (type: string) =>
+      key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 }))
+    // Pulsación larga en BBB: su ficha fijada, con «Elegir» en la fila de su nombre (antes del ×).
+    touch('pointerdown')
+    await new Promise((r) => setTimeout(r, 600))
+    touch('pointerup')
+    key.click()
+    await settle()
+    expect(card().dataset.mode).toBe('pinned')
+    const top = chart.find('.tz-achart__card-top')
+    const choose = top.find('[data-testid="analysis-card-choose"]')
+    expect(choose.exists()).toBe(true)
+    expect(choose.text()).toMatch(/^(Elegir|Choose)$/)
+    expect(choose.attributes('aria-label')).toMatch(/^(Elegir BBB|Choose BBB)$/)
+    expect(top.findAll('button').map((b) => b.attributes('data-testid'))).toEqual(['analysis-card-choose', 'analysis-card-close'])
+    expect(chart.find('[data-testid="analysis-card-chosen"]').exists()).toBe(false)
+    ;(choose.element as HTMLButtonElement).click()
+    await settle()
+    expect(chart.emitted('select')).toEqual([['18']])
+    expect(chart.emitted('toggle')).toBeUndefined()
+    // Ya elegido (la pestaña lo destaca): «Elegido», sin botón; la ficha sigue fijada.
+    await chart.setProps({ spec: spec('18') })
+    await settle()
+    expect(card().dataset.mode).toBe('pinned')
+    expect(chart.find('[data-testid="analysis-card-choose"]').exists()).toBe(false)
+    expect(chart.find('[data-testid="analysis-card-chosen"]').text()).toMatch(/^(Elegido|Selected)$/)
+
+    // El círculo: elige (fuera del orden de tabulación), sin mostrar u ocultar; en el elegido, nada.
+    const ring = (car: string) => chart.find(`[data-testid="analysis-legend-pick"][data-pick="${car}"]`).element as HTMLButtonElement
+    expect(ring('1').tabIndex).toBe(-1)
+    ring('18').click()
+    ring('1').click()
+    await settle()
+    expect(chart.emitted('select')).toEqual([['18'], ['1']])
+    expect(chart.emitted('toggle')).toBeUndefined()
+  })
+
+  it('una gráfica que no deja elegir: sin círculos ni «Elegir», e Intro en un nombre lo muestra u oculta como siempre', async () => {
+    const base = { color: '#123456', dash: false, visible: true, emphasis: false }
+    const spec: ChartSpec = {
+      x: [1, 2],
+      series: [{ group: '1', mark: 'line', values: [0, 1] }],
+      groups: [{ ...base, key: '1', label: 'AAA' }],
+      xRange: null,
+      yRange: null,
+      yDir: -1,
+      xIncrs: null,
+      formatX: (v) => `V${v}`,
+      formatY: String,
+    }
+    const chart = await mountSuspended(TzAnalysisChart, {
+      props: { spec, cursorX: null, label: 'gráfica', legendLabel: 'pilotos' },
+      attachTo: document.body,
+    })
+    unmounts.push(() => chart.unmount())
+    expect(chart.find('[data-testid="analysis-legend-pick"]').exists()).toBe(false)
+    const key = chart.find('[data-testid="analysis-legend-item"]').element as HTMLButtonElement
+    key.focus()
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    key.dispatchEvent(enter)
+    expect(enter.defaultPrevented).toBe(false)
+    await settle()
+    expect(chart.find('[data-testid="analysis-card-keys"]').exists()).toBe(false)
+    const touch = (type: string) =>
+      key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 }))
+    touch('pointerdown')
+    await new Promise((r) => setTimeout(r, 600))
+    touch('pointerup')
+    await settle()
+    expect((chart.find('[data-testid="analysis-card"]').element as HTMLElement).dataset.mode).toBe('pinned')
+    expect(chart.find('[data-testid="analysis-card-choose"]').exists()).toBe(false)
+    expect(chart.emitted('select')).toBeUndefined()
   })
 })

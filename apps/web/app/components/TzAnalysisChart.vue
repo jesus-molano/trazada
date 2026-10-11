@@ -31,9 +31,10 @@
  * del ratón en una serie elige a su piloto (`select`); en la del elegido, salta a esa vuelta (`lineClick`: nunca quita
  * la selección); fuera de las series, a la vuelta más cercana, como siempre. El puntero es una mano sobre una serie y
  * una cruz fuera. La ficha lo dice: «Clic: elegir ALO» o, en el elegido, «Elegido» y «Clic: ir al inicio de la V12»;
- * fijada con el dedo, su botón «Elegir». En la leyenda, cada nombre sigue mostrando u ocultando su serie y el círculo de
- * su izquierda (fuera del orden de tabulación) elige a su piloto; con el teclado, Intro en el nombre lo elige y espacio
- * lo muestra u oculta (la ficha del foco lo dice).
+ * fijada con el dedo, la fila del piloto lleva «Elegir» y tocarla entera lo elige. En la leyenda, cada nombre sigue
+ * mostrando u ocultando su serie (con el dedo, mantenerlo pulsado fija su ficha) y el círculo de su izquierda (fuera del
+ * orden de tabulación) elige a su piloto; con el teclado, Intro en el nombre lo elige y espacio lo muestra u oculta (la
+ * ficha del foco lo dice).
  *
  * Sin Canvas 2D (entorno de tests), no pinta la gráfica; la leyenda y la ficha (desde la leyenda) sí.
  */
@@ -639,7 +640,8 @@ function placeCard() {
   const rel = (r: DOMRect): Rect => ({ x0: r.left - fr.left, y0: r.top - fr.top, x1: r.right - fr.left, y1: r.bottom - fr.top })
   let legendKey: Rect | null = null
   for (const el of fig.querySelectorAll<HTMLElement>('[data-testid="analysis-legend-item"], [data-testid="analysis-legend-nodata"]')) {
-    const r = rel(el.getBoundingClientRect())
+    // La entrada entera (con su círculo para elegir, si lo hay).
+    const r = rel((el.closest('.tz-achart__entry') ?? el).getBoundingClientRect())
     if (el.dataset.car === p.key && el.dataset.testid === 'analysis-legend-item') legendKey = r
     else soft.push(r)
   }
@@ -1300,9 +1302,16 @@ onBeforeUnmount(() => {
   font-weight: var(--tz-weight-semibold);
 }
 
-/* «Elegir» (ficha fijada con el dedo): contorno, con la zona táctil de --tz-hit-min. */
-.tz-achart__card-choose {
+/*
+ * «Elegir» (ficha fijada con el dedo): contorno. Su zona táctil es toda la fila del piloto (su ::after la cubre, con
+ * --tz-hit-min de alto): tocar el nombre también lo elige. El × va después en el DOM y queda encima.
+ */
+.tz-achart__card-top:has(.tz-achart__card-choose) {
   position: relative;
+}
+
+.tz-achart__card-choose {
+  position: static;
   flex: none;
   margin-left: auto;
   padding: var(--tz-space-0-5) var(--tz-space-2);

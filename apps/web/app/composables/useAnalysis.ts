@@ -45,8 +45,9 @@ export interface AnalysisState {
   readonly shown: Readonly<Ref<Readonly<Record<string, readonly string[]>>>>
   setShown(tab: string, cars: readonly string[]): void
   /**
-   * Coches que se quitaron de la selección con la hoja abierta (D49): «Ritmo» los sigue mostrando por defecto, sin
-   * destacar, junto al coche elegido y los cinco primeros. Se vacía al cerrar la hoja.
+   * Coches que dejaron de ser el elegido con la hoja abierta (al quitar la selección o al elegir a otro, D49): «Ritmo»
+   * los sigue mostrando por defecto, sin destacar, junto al coche elegido y los cinco primeros. Se vacía al cerrar la
+   * hoja.
    */
   readonly paceKept: Readonly<Ref<readonly string[]>>
   show(): void
