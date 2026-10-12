@@ -49,6 +49,12 @@ export default defineNuxtConfig({
         // Proyecto personal: nunca indexable, aunque algún día se despliegue (docs/BRIEF.md, D23).
         { name: 'robots', content: 'noindex, nofollow' },
       ],
+      // Favicon: el símbolo de Trazada (TzLogo) sobre el cromo; PNG para lo que no lee SVG (public/, generados).
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+      ],
     },
   },
 

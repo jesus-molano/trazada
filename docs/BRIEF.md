@@ -530,6 +530,10 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
     - Sin dato no se dibujan pianos, escapatorias, muros ni la parrilla (el usuario preguntó por los pianos: ninguna fuente libre da dónde están; inventarlos rompería «datos honestos»). Sin guías de curva: las etiquetas no están en la posición oficial, sino a un lado de la curva.
   - **Selección**: el replay no deja seleccionar nada por accidente (`user-select: none` en la página; en las demás, en botones, etiquetas, pestañas e interruptores). Se puede seleccionar el texto original de dirección de carrera y los campos de texto.
   - **Pendiente**: ver «Pendientes» en `docs/PLAN.md` (§8).
+- **2026-10-12** — **Marca y favicon**
+  - Petición (el usuario): un título de Trazada más propio y acorde a «Herramienta pro», y un favicon a juego.
+  - **Símbolo** (TzLogo): una curva de pista (sus dos bordes, tenues) y la trazada, la línea de carrera, en pintura, que la corta de fuera a dentro y a fuera: lo que significa el nombre. Junto al rótulo condensado en mayúsculas de siempre (Barlow Condensed, no la tipografía oficial), en la portada y en la cabecera del replay («← símbolo TRAZADA»). Sin piano. Es el único SVG en línea permitido fuera de TzIcon (icons.test.ts).
+  - **Favicon**: el mismo dibujo sobre el cromo (`public/favicon.svg`) y sus PNG de 32 y 180 px (`favicon-32.png`, `apple-touch-icon.png`, generados desde el SVG con el Chrome de Playwright). Todo local.
 - **2026-10-12** — **Aviso de build vieja**
   - Petición (el usuario, tras un `pnpm build` con la página abierta): «Failed to fetch dynamically imported module» al entrar en un circuito. Una build nueva borra los trozos de JS con el hash de antes.
   - **Ahora**: un aviso no modal («Hay una versión nueva de Trazada. Recarga la página para seguir», con «Recargar» y cerrar; `role="status"`, sin robar el foco) en vez del error. Se detecta por el evento de Vite al no poder precargar un trozo, el gancho `app:chunkError` de Nuxt, un import dinámico que falla y el manifiesto de builds de Nuxt, que mira cada minuto `/_nuxt/builds/latest.json` del propio servidor. No recarga solo. Tests: `stale-build.spec.ts`.

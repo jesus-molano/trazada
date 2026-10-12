@@ -933,7 +933,7 @@ Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su 
 4. ~~**Timeline con zoom y desplazamiento**~~ (hecho el 2026-10-12: D56).
 5. **Tarea 1: rendimiento al abrir una sesión** (`perf.spec`).
 6. ~~**Aviso «hay una versión nueva, recarga»**~~ (hecho el 2026-10-12: plugin `stale-build.client.ts` y `TzStaleBuild`).
-6b. **Marca y favicon** (pedido el 2026-10-12): un título de «Trazada» en la cabecera más propio y acorde a «Herramienta pro» (sin el piano, que no le gusta; sin tipografía ni nada oficial de F1) y un favicon a juego (SVG con los tokens, más los tamaños de PNG que hagan falta; sin peticiones externas).
+6b. ~~**Marca y favicon**~~ (hecho el 2026-10-12: TzLogo y favicon). Lo pedido: un título de «Trazada» en la cabecera más propio y acorde a «Herramienta pro» (sin el piano, que no le gusta; sin tipografía ni nada oficial de F1) y un favicon a juego (SVG con los tokens, más los tamaños de PNG que hagan falta; sin peticiones externas).
 6c. **Docs e imágenes al día** (pedido el 2026-10-12): README (textos y capturas de `docs/img/*.webp` con `README_SHOTS=1 pnpm e2e readme-shots`), BRIEF, PLAN y PERFORMANCE con todo lo de D50 en adelante, y la captura `@screenshot` regenerada en CI (commit con `[snapshots]`).
 7. **Cierre**: Playwright completo, CI en verde, docs (BRIEF, PLAN, PERFORMANCE, README) al día con D50–D54.
 8. **Del usuario**: excluir `http://127.0.0.1:3000/*` en Vimium (o las teclas l, p, c, g, t…); cambiar la rama por defecto de GitHub a `main` y después borrar `ccr-b997f50f-6uesh6`.

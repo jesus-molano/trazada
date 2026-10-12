@@ -11,7 +11,7 @@ async function toggleLocale() {
 <template>
   <div class="tz-shell">
     <header class="tz-header">
-      <NuxtLink to="/" class="tz-brand" data-testid="brand">{{ t('app.name') }}</NuxtLink>
+      <NuxtLink to="/" class="tz-brand" data-testid="brand"><TzLogo /><span>{{ t('app.name') }}</span></NuxtLink>
       <!-- El icono acompaña al código del otro idioma («EN»); el nombre accesible es la acción completa. -->
       <button
         type="button"
@@ -52,7 +52,11 @@ async function toggleLocale() {
 }
 
 /* Marca: rótulo condensado en mayúsculas, como la rotulación pintada de un muro de boxes. */
+/* Marca: el símbolo (la trazada por una curva, TzLogo) y el rótulo condensado en mayúsculas. */
 .tz-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-2);
   font-family: var(--tz-font-display);
   font-size: var(--tz-text-lg);
   font-weight: var(--tz-weight-bold);

@@ -17,6 +17,7 @@ const { t } = useI18n()
       data-testid="brand-link"
     >
       <TzIcon name="back" size="sm" />
+      <TzLogo />
       <span class="tz-brandbar__word">{{ t('app.name') }}</span>
     </NuxtLink>
   </div>
@@ -30,7 +31,7 @@ const { t } = useI18n()
   gap: var(--tz-space-2);
 }
 
-/* «← TRAZADA»: rótulo condensado en mayúsculas, como en la cabecera de la portada, con el piano debajo. */
+/* «← símbolo TRAZADA»: el símbolo (TzLogo) y el rótulo condensado en mayúsculas, como en la portada. */
 .tz-brandbar__brand {
   position: relative;
   display: inline-flex;

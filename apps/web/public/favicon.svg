@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Símbolo de Trazada (TzLogo.vue) sobre el cromo. Colores de design/tokens.css: --tz-bg, --tz-text-faint y --tz-paint. -->
+  <rect width="32" height="32" rx="7" fill="#171716"/>
+  <path d="M5 26C5 13 13 5 26 5" fill="none" stroke="#9a968b" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M14 28A14 14 0 0 1 28 14" fill="none" stroke="#9a968b" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M8 27C11 19 19 11 27 8" fill="none" stroke="#e8e1cf" stroke-width="3.6" stroke-linecap="round"/>
+</svg>

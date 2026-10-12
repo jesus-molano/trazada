@@ -40,7 +40,8 @@ const inlineSvgs = (src: string) => (template(src).match(/<svg[\s>]/g) ?? []).le
 const SVG_DATA_MARKS = new Set(['components/TzTrackOutline.vue'])
 
 /** Infractores de antes de D30: ninguno desde la Tanda 5 (B1 migró los últimos a TzIcon). */
-const ALLOWED_INLINE_SVG: Record<string, number> = {}
+/** El símbolo de la marca (no es un icono: es el logotipo de Trazada, el mismo dibujo que el favicon). */
+const ALLOWED_INLINE_SVG: Record<string, number> = { 'components/TzLogo.vue': 1 }
 const ALLOWED_GLYPHS: Record<string, string[]> = {}
 
 describe('iconos (D30)', () => {
