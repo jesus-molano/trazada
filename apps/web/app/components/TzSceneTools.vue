@@ -22,6 +22,7 @@ import { isEstimatedField, sceneManifestFields } from '~/engine/estimated'
 import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { TRAIL_SPAN_MS } from '~/engine/replay/trail'
 import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
+import { CHEVRON_EVERY_M } from '~/engine/track/detail'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { WEATHER_STALE_MS } from '~/engine/weather/weather'
 import { SCENE_TOOLS, type SceneToolGroup } from '~/slots/scene-tools'
@@ -53,6 +54,7 @@ const HOW_MODEL = [
   'trails',
   'drs',
   'sectors',
+  'trackDetail',
   'compare',
   'weather',
   'estimated',
@@ -61,6 +63,7 @@ const HOW_MODEL = [
 const HOW_PARAMS: Partial<Record<(typeof HOW_MODEL)[number], Record<string, number>>> = {
   interpolation: { s: SEGMENT_GAP_MS / 1000 },
   width: { m: TRACK_WIDTH_M },
+  trackDetail: { m: CHEVRON_EVERY_M },
   trails: { s: TRAIL_SPAN_MS / 1000, age: MAX_SAMPLE_AGE_MS / 1000 },
   weather: { s: WEATHER_STALE_MS / 1000 },
 }

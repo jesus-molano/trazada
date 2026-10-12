@@ -159,6 +159,8 @@
   --tz-track-high: #4a4943;
   --tz-track-edge: #a9a495;
   --tz-track-finish: #f2eee3;
+  /* Faldón de altura bajo cada borde (D50): arriba este tono; se funde con --tz-scene-bg hacia el suelo. */
+  --tz-track-skirt: #2e2d2a;
   --tz-team-unknown: #a8a498;
   --tz-chart-speed: var(--tz-signal);
   --tz-chart-throttle: #34d399;

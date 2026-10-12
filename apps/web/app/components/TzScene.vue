@@ -165,7 +165,52 @@ const cornerLabels: SceneLabel[] = model.corners.map((c) => {
   const y = a.y + sign * a.tx * LABEL_OFFSET
   return { id: c.label, text: c.label, x, y: flat ? 0 : a.z, z: -y }
 })
+/** Rótulos de boxes: cuánto dentro del pit lane desde cada extremo y cuánto hacia fuera de la pista (m). */
+const PIT_TAG_LEAD_M = 40
+const PIT_TAG_OFFSET_M = 26
+
+/** Dirección en planta (canónica) del punto del eje más cercano a `p` hacia `p`; si casi coinciden, la normal de `p`. */
+function awayFromTrack(p: { x: number; y: number; tx: number; ty: number }): { x: number; y: number } {
+  const v = { x: 0, y: 0, z: 0 }
+  let best = Infinity
+  let bx = 0
+  let by = 0
+  for (let i = 0; i < model.centerline.count; i++) {
+    model.centerline.vertex(i, v)
+    const d = (v.x - p.x) ** 2 + (v.y - p.y) ** 2
+    if (d < best) [best, bx, by] = [d, v.x, v.y]
+  }
+  const dx = p.x - bx
+  const dy = p.y - by
+  const len = Math.hypot(dx, dy)
+  return len > 2 ? { x: dx / len, y: dy / len } : { x: -p.ty, y: p.tx }
+}
+
+/**
+ * Rótulos del trazado (D50, lámina 5), con datos del circuito: «Meta» en s = 0, a un lado de la pista, y la entrada y la
+ * salida de boxes en los extremos de la línea del pit lane (si la hay).
+ */
+const tagLabels = computed<SceneLabel[]>(() => {
+  const out: SceneLabel[] = []
+  const p = model.centerline.sample(0, { x: 0, y: 0, z: 0, tx: 1, ty: 0 })
+  out.push({ id: 'finish', text: t('scene.tags.finish'), x: p.x - p.ty * LABEL_OFFSET, y: flat ? 0 : p.z, z: -(p.y + p.tx * LABEL_OFFSET) })
+  const pit = model.pitlane
+  if (pit) {
+    // Un poco dentro del pit lane y hacia fuera de la pista: el rótulo no tapa el cruce.
+    const lead = Math.min(PIT_TAG_LEAD_M, pit.length / 4)
+    for (const [id, s, text] of [
+      ['pitEntry', lead, t('scene.tags.pitEntry')],
+      ['pitExit', pit.length - lead, t('scene.tags.pitExit')],
+    ] as const) {
+      const q = pit.sample(s, { x: 0, y: 0, z: 0, tx: 1, ty: 0 })
+      const away = awayFromTrack(q)
+      out.push({ id, text, x: q.x + away.x * PIT_TAG_OFFSET_M, y: flat ? 0 : q.z, z: -(q.y + away.y * PIT_TAG_OFFSET_M), tone: 'pit' })
+    }
+  }
+  return out
+})
 const labels = ref<{ update: (c: PerspectiveCamera, w: number, h: number, k: number) => void } | null>(null)
+const tags = ref<{ update: (c: PerspectiveCamera, w: number, h: number, k: number) => void } | null>(null)
 const carLabels = ref<{
   update: (c: PerspectiveCamera, w: number, h: number, k: number, flat: boolean) => void
 } | null>(null)
@@ -525,6 +570,7 @@ function onRender() {
   const cam = camera.value
   if (cam && canvasEl) {
     labels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
+    tags.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
     carLabels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value, flat)
   }
   if (!sceneStats.ready) sceneStats.ready = true
@@ -649,6 +695,7 @@ onBeforeUnmount(() => {
     </TresCanvas>
 
     <TzSceneLabels v-if="supported" ref="labels" :labels="cornerLabels" kind="corner" />
+    <TzSceneLabels v-if="supported" ref="tags" :labels="tagLabels" kind="tag" />
     <TzCarLabels v-if="supported" ref="carLabels" :states="rt.model.states" :offsets="rt.offsets" />
     <TzGestureHud v-if="supported && scrubHud" :hud="scrubHud" />
     <!-- «Centrar» (D53): solo con la vista movida, en la esquina de abajo a la derecha del hueco libre del mapa. -->

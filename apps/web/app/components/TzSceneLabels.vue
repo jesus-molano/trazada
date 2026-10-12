@@ -12,6 +12,8 @@ export interface SceneLabel {
   x: number
   y: number
   z: number
+  /** Matiz del rótulo (`data-tone`), p. ej. `pit` para la entrada y la salida de boxes. */
+  tone?: string
 }
 
 const props = defineProps<{ labels: SceneLabel[]; kind: string }>()
@@ -40,7 +42,7 @@ defineExpose({ update })
 
 <template>
   <div ref="root" class="tz-labels" :class="`tz-labels--${kind}`" aria-hidden="true">
-    <span v-for="l in labels" :key="l.id" class="tz-label" :data-label="l.id">{{ l.text }}</span>
+    <span v-for="l in labels" :key="l.id" class="tz-label" :data-label="l.id" :data-tone="l.tone">{{ l.text }}</span>
   </div>
 </template>
 
@@ -61,13 +63,28 @@ defineExpose({ update })
   white-space: nowrap;
 }
 
+/* Números de curva (D50): en mono, sin cápsula, con un halo del color de la escena para leerse sobre la pista. */
 .tz-labels--corner .tz-label {
-  padding: 1px 5px;
-  border-radius: var(--tz-radius-sm);
-  background: var(--tz-label-bg-soft);
   color: var(--tz-text-muted);
   font-family: var(--tz-font-mono);
   font-size: var(--tz-text-2xs);
   font-weight: var(--tz-weight-semibold);
+  text-shadow:
+    0 0 2px var(--tz-scene-bg),
+    0 0 4px var(--tz-scene-bg);
+}
+
+/* Rótulos del trazado (D50): «Meta», en pintura; la entrada y la salida de boxes, en su color. Caja de frase, sin píldora. */
+.tz-labels--tag .tz-label {
+  color: var(--tz-paint);
+  font-size: var(--tz-text-2xs);
+  font-weight: var(--tz-weight-semibold);
+  text-shadow:
+    0 0 2px var(--tz-scene-bg),
+    0 0 4px var(--tz-scene-bg);
+}
+
+.tz-labels--tag .tz-label[data-tone='pit'] {
+  color: var(--tz-pit);
 }
 </style>

@@ -86,8 +86,10 @@ async function measureTrack(page: Page, samples: TrackScreenSample[]): Promise<{
   )
 }
 
+// Solo el lienzo: también la máscara de la ventana del mapa (D50, pinta el cromo fuera de ella) y cada etiqueta, que
+// lleva su visibilidad en línea (la del contenedor no le llega).
 const HIDE_UI =
-  '.tz-replay__bar, .tz-replay__side, [data-testid="replay-dock"], [data-testid="scene-tools"], [data-testid="leaderboard"], .tz-labels, .tz-cars'
+  '.tz-replay__bar, .tz-replay__side, [data-testid="replay-dock"], [data-testid="scene-tools"], [data-testid="leaderboard"], .tz-labels, .tz-label, .tz-cars, [data-testid="map-window"]'
 
 async function openScene(page: Page) {
   await gotoApp(page, FP1)
@@ -134,6 +136,12 @@ test('captura del circuito de Spa con cámara fija @screenshot', async ({ page }
 })
 
 test.describe('legibilidad del mapa', () => {
+  // Aquí se mide la cinta al píxel (de su eje al fondo): sin el relieve ni la retícula de D50, que no son la cinta y
+  // cambian el fondo junto a ella. Se prueban aparte (track-detail.spec.ts).
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('trazada.trackDetail', JSON.stringify({ relief: false, grid: false, _v: 1 })))
+  })
+
   // Las medidas buscan el borde de la pista hasta dar con el fondo liso (`--tz-scene-bg`).
   for (const vp of [
     { name: 'escritorio 1440×900', width: 1440, height: 900 },

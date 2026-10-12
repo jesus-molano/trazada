@@ -127,6 +127,19 @@
     "toolGroups": {
       "layers": "Capas",
       "camera": "Cámara"
+    },
+    "tags": {
+      "finish": "Meta",
+      "pitEntry": "Entrada a boxes",
+      "pitExit": "Salida de boxes"
+    },
+    "detail": {
+      "relief": "Relieve",
+      "grid": "Retícula",
+      "off": "No",
+      "on": "Sí",
+      "hintLabel": "Qué es el relieve y la retícula",
+      "hint": "Relieve: un faldón cae desde cada borde de la pista hasta el punto más bajo del circuito y se funde con el fondo; la altura es la de los datos (con la exageración, si la hay). Retícula: líneas en el suelo cada 100 m, a escala real, que se desvanecen lejos del circuito; es solo para dar profundidad."
     }
   },
   "howDrawn": {
@@ -146,6 +159,7 @@
     "trails": "Las estelas son los últimos {s} s del mismo movimiento que se dibuja para el coche: también van sobre la línea central y se cortan donde el coche no se dibuja. Por velocidad, cada punto lleva la última velocidad medida de hace {age} s como mucho, sin interpolar; si no hay ninguna, gris.",
     "drs": "Las zonas de DRS se deducen de dónde llevaron los coches el DRS abierto según su telemetría: no son las líneas oficiales, que ninguna fuente da, y llevan la etiqueta «Estimado». En 2026 no hay DRS ni canal por coche, así que no se dibujan.",
     "sectors": "Los colores de sector los calcula Trazada con los tiempos oficiales de cada sector: no son las marcas del cronometraje, que la fuente no trae.",
+    "trackDetail": "Del trazado son dato la línea central y su altura (la cinta y los faldones que caen hasta el suelo), el pit lane y sus extremos («Entrada a boxes», «Salida de boxes»), la meta en el punto de salida del recorrido y el sentido de la marcha (los chevrones, cada {m} m). Son decorativos la retícula del suelo (cada 100 m, a escala real) y el fundido de los faldones con el fondo. Sin dato no se dibujan pianos, escapatorias, muros ni la parrilla.",
     "compare": "Al comparar dos pilotos, la diferencia en vivo sale de la distancia que da el GPS: va en décimas y lleva la etiqueta «Estimado»; la exacta es la oficial, al cerrar la vuelta. El fantasma es el otro coche en su vuelta de referencia, dibujado como en el replay y desplazado en el tiempo; donde no hay posición, no se dibuja.",
     "weather": "La meteorología es la de la estación del circuito, una medida por minuto: se muestra la última, sin interpolar, y a los {s} s sin otra pasa a «sin dato». Lo que la fuente no trae nunca se rellena con 0.",
     "estimated": "Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado»."

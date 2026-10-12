@@ -2,11 +2,16 @@
 /**
  * Pista (cinta con color por altura), bordes, pit lane y línea de meta. Va dentro de TresCanvas.
  * La exageración de altura se aplica con la escala Y del grupo padre.
+ *
+ * Sentido de la marcha (D50, lámina 5): chevrones tenues de pintura cada `CHEVRON_EVERY_M` sobre la cinta, en el sentido
+ * de s creciente (el de la carrera), pintados en el shader con la distancia recorrida de cada vértice (`seamRibbon`:
+ * sin salto de s en la meta). De lejos, cuando un píxel cubre más de un par de metros, se desvanecen (serían ruido).
  */
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, LineBasicMaterial, MeshBasicMaterial } from 'three'
+import { BufferAttribute, BufferGeometry, Color, DoubleSide, LineBasicMaterial, MeshBasicMaterial, type WebGLProgramParametersWithUniforms } from 'three'
 import { setMapAttributes, useMapWidth } from '~/composables/useMapWidth'
 import { token } from '~/design/tokens'
 import type { CircuitModel } from '~/engine/track/circuit'
+import { CHEVRON_EVERY_M, seamRibbon } from '~/engine/track/detail'
 import { MIN_PIT_PX, MIN_TRACK_PX } from '~/engine/track/mapWidth'
 import { buildRibbon, edgeNormal, toThree, TRACK_WIDTH_M } from '~/engine/track/ribbon'
 
@@ -19,6 +24,7 @@ const EDGE = new Color(token('--tz-track-edge'))
 const FINISH = token('--tz-track-finish')
 const BG = token('--tz-scene-bg')
 const PIT = token('--tz-pit')
+const PAINT = new Color(token('--tz-paint'))
 
 /** Color por vértice de la cinta: de `low` a `high` según la altura (`shade`, 0…1). */
 function shadeColors(shade: Float32Array, low: Color, high: Color, out: Float32Array) {
@@ -28,13 +34,17 @@ function shadeColors(shade: Float32Array, low: Color, high: Color, out: Float32A
 
 function ribbonGeometry(width: number, path = props.model.centerline) {
   const r = buildRibbon(path, width, props.flat)
+  // Con la distancia recorrida y el lado de cada vértice (los chevrones de sentido) y la costura de la meta cerrada.
+  const seam = seamRibbon(path, r)
   const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(r.positions, 3))
-  const colors = new Float32Array(r.shade.length * 3)
-  shadeColors(r.shade, LOW, HIGH, colors)
+  g.setAttribute('position', new BufferAttribute(seam.positions, 3))
+  const colors = new Float32Array(seam.shade.length * 3)
+  shadeColors(seam.shade, LOW, HIGH, colors)
   g.setAttribute('color', new BufferAttribute(colors, 3))
-  g.setIndex(new BufferAttribute(r.indices, 1))
-  setMapAttributes(g, r.mapCenter, r.mapNormal)
+  g.setAttribute('tzAlong', new BufferAttribute(seam.along, 1))
+  g.setAttribute('tzAcross', new BufferAttribute(seam.across, 1))
+  g.setIndex(new BufferAttribute(seam.indices, 1))
+  setMapAttributes(g, seam.mapCenter, seam.mapNormal)
   const edges = (['left', 'right'] as const).map((side) => {
     const e = new BufferGeometry()
     e.setAttribute('position', new BufferAttribute(r[side], 3))
@@ -82,6 +92,38 @@ function finishLine(): BufferGeometry {
 }
 const finish = finishLine()
 
+/**
+ * Chevrones de sentido en la cinta (ver arriba): una «V» que apunta hacia s creciente en los últimos 26 m de cada
+ * tramo de `CHEVRON_EVERY_M`, mezclada con la pintura al 28 %. Se suma a la anchura de mapa (`useMapWidth`).
+ */
+const CHEVRON_GLSL = /* glsl */ `
+{
+  float m = mod(vTzAlong, tzChevronEvery);
+  float u = m - (tzChevronEvery - 26.0);
+  float av = abs(vTzAcross);
+  float target = 22.0 * (1.0 - av / 0.62);
+  float chev = (u > 0.0 && av < 0.62) ? 1.0 - smoothstep(3.0, 5.5, abs(u - target)) : 0.0;
+  chev *= 1.0 - smoothstep(0.6, 2.0, fwidth(vTzAlong));
+  diffuseColor.rgb = mix(diffuseColor.rgb, tzPaint, 0.28 * chev);
+}
+`
+function withChevrons(material: MeshBasicMaterial) {
+  const base = material.onBeforeCompile.bind(material)
+  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms, renderer) => {
+    base(shader, renderer)
+    shader.uniforms.tzPaint = { value: PAINT }
+    shader.uniforms.tzChevronEvery = { value: CHEVRON_EVERY_M }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float tzAlong;\nattribute float tzAcross;\nvarying float vTzAlong;\nvarying float vTzAcross;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTzAlong = tzAlong;\nvTzAcross = tzAcross;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 tzPaint;\nuniform float tzChevronEvery;\nvarying float vTzAlong;\nvarying float vTzAcross;')
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${CHEVRON_GLSL}`)
+  }
+  // Otro programa que el de la anchura de mapa sola (las demás cintas no llevan chevrones).
+  material.customProgramCacheKey = () => 'tz-map-width-chevrons'
+}
+
 // Anchura de mapa (en el shader): la genérica de 14 m de cerca y un mínimo en pantalla al alejarse (si no, a escala de
 // circuito, un hilo). Pista, bordes y meta comparten parámetros: se ensanchan juntos.
 const mapWidth = useMapWidth()
@@ -99,6 +141,7 @@ const trackMaterial = mapWidth(
   TRACK_HALF,
   MIN_TRACK_PX,
 )
+withChevrons(trackMaterial)
 const edgeMaterial = mapWidth(new LineBasicMaterial({ color: EDGE }), TRACK_HALF, MIN_TRACK_PX)
 const finishMaterial = mapWidth(
   new MeshBasicMaterial({

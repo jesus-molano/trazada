@@ -12,6 +12,7 @@ import { SEGMENT_GAP_MS } from '~/engine/interp/hermite'
 import { BLUE_FLAG_MS, type LeaderboardRow } from '~/engine/leaderboard/leaderboard'
 import { TRAIL_SPAN_MS } from '~/engine/replay/trail'
 import { MAX_SAMPLE_AGE_MS } from '~/engine/telemetry/telemetry'
+import { CHEVRON_EVERY_M } from '~/engine/track/detail'
 import { TRACK_WIDTH_M } from '~/engine/track/ribbon'
 import { WEATHER_STALE_MS } from '~/engine/weather/weather'
 import type { ReplayRuntime } from '~/replay/runtime'
@@ -72,6 +73,7 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
         'positions',
         'sectors',
         'timing',
+        'trackDetail',
         'trails',
         'weather',
         'width',
@@ -97,6 +99,10 @@ describe('«Cómo se dibuja» (qué es dato y qué es modelo)', () => {
     expect(items.drs).toMatch(/(Estimado|Estimated)/)
     expect(items.drs).toMatch(/(no son las líneas oficiales|not the official lines)/)
     expect(items.sectors).toMatch(/(tiempos oficiales|official sector times)/)
+    // Detalle del trazado (D50): qué es dato, qué es decorativo y qué no se dibuja sin dato; los chevrones, con su cifra.
+    expect(items.trackDetail).toContain(`${CHEVRON_EVERY_M} m`)
+    expect(items.trackDetail).toMatch(/(decorativ)/)
+    expect(items.trackDetail).toMatch(/(pianos|kerbs)/)
     expect(items.compare).toMatch(/(Estimado|Estimated)/)
     expect(items.compare).toMatch(/(fantasma|ghost)/)
     expect(items.weather).toContain(`${WEATHER_STALE_MS / 1000} s`)

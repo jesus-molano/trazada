@@ -918,11 +918,7 @@ Alcance: diseños «Espectador» y «Análisis» con paneles de ancho ajustable 
 Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su verificación.
 
 1. ~~**e2e de la cabecera nueva (D50) que seguían en rojo**~~ (hecho el 2026-10-12). «Girar la tablet»: el encuadre de la apertura se hacía con la cabecera aún en una fila (56 px), antes de que entraran los avisos y el estado de pista y pasara a dos (92 px); la barra no reencuadra, así que la vista de abrir y la de girar no coincidían. Vuelve la regla de la lámina: por debajo de 1360 px, las condiciones siempre en su fila (con alto mínimo, la cabecera tiene su alto definitivo desde el primer frame), y `useHeaderFit` no cuenta lo que va en su propia fila al decidir si la primera cabe. El resto eran tests que leían la estructura de antes (el padre del título, el nivel 4, la tecla L, la dirección de carrera con un coche elegido). Queda: `tests/unit/local-server.test.ts` falla a veces **solo en Windows** al borrar el directorio temporal (EPERM: el nieto lo tiene como directorio de trabajo); no viene de esta tanda.
-2. **Resto de D50**:
-   - Estado de pista: solo SC/VSC/roja en placa; las banderas de sector con glifo y texto.
-   - Avisos de la sesión como lista numerada.
-   - Trazado 3D como la lámina 5: retícula degradada, faldones, placas de curva, Meta y boxes, chevrones (decorativo honesto: declarado en «Cómo se dibuja» y desactivable en «Capas»; medir draw calls y triángulos).
-   - Capturas del README y `@screenshot` (commit con `[snapshots]`).
+2. ~~**Resto de D50**~~ (hecho el 2026-10-12): estado de pista con placa solo para SC/VSC/roja y banderas con glifo; avisos en lista numerada; trazado 3D de la lámina 5 (faldones, retícula, chevrones, «Meta» y boxes; ver D50 en el BRIEF). Las capturas pasan al punto 6c.
 3. **Responsive de verdad (tablet y móvil)**, nueva tarea: en tablet en vertical y ventanas estrechas el mapa se queda casi sin sitio (a 613×666, unos 70 px entre la cabecera y los paneles), y en horizontal estrecho la ventana del mapa se queda en una rendija (620×560: 44 px). Propuesta:
    - Regla única: el mapa nunca por debajo de ~45 % del alto; si los paneles no lo dejan, pasan a una **hoja inferior** arrastrable (asomada / media / entera) con pestañas Clasificación · Coche · Dirección de carrera · Radio, sin dependencias y con los tokens de movimiento.
    - Cabecera de móvil en una fila: ← + título corto + estado; el resto (altura, capas, cámara, paneles, análisis, ayuda, idioma) en un menú «⋯» y en la paleta; las condiciones (SC, banderas, «Estimado») como una tira fina sobre el mapa.
@@ -936,6 +932,7 @@ Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su 
 5. **Tarea 1: rendimiento al abrir una sesión** (`perf.spec`).
 6. **Aviso «hay una versión nueva, recarga»** cuando falta un chunk de una build anterior («Failed to fetch dynamically imported module»).
 6b. **Marca y favicon** (pedido el 2026-10-12): un título de «Trazada» en la cabecera más propio y acorde a «Herramienta pro» (sin el piano, que no le gusta; sin tipografía ni nada oficial de F1) y un favicon a juego (SVG con los tokens, más los tamaños de PNG que hagan falta; sin peticiones externas).
+6c. **Docs e imágenes al día** (pedido el 2026-10-12): README (textos y capturas de `docs/img/*.webp` con `README_SHOTS=1 pnpm e2e readme-shots`), BRIEF, PLAN y PERFORMANCE con todo lo de D50 en adelante, y la captura `@screenshot` regenerada en CI (commit con `[snapshots]`).
 7. **Cierre**: Playwright completo, CI en verde, docs (BRIEF, PLAN, PERFORMANCE, README) al día con D50–D54.
 8. **Del usuario**: excluir `http://127.0.0.1:3000/*` en Vimium (o las teclas l, p, c, g, t…); cambiar la rama por defecto de GitHub a `main` y después borrar `ccr-b997f50f-6uesh6`.
 
