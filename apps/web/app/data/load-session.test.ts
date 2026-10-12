@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { SCHEMA_VERSION } from '@trazada/schema'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FIXTURE_ROOT as ROOT, fixtureFetch } from '../testing/fixture'
 import { type LoadOptions, loadSession, transferablesOf } from './load-session'
 import { LoadError } from './types'
@@ -23,6 +23,8 @@ async function code(p: Promise<unknown>): Promise<string> {
     return (err as LoadError).code
   }
 }
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('loadSession', () => {
   it('carga la sesión del fixture con progreso monótono hasta el total', async () => {
@@ -50,6 +52,15 @@ describe('loadSession', () => {
         prev = pos!.columns.s![i]!
       }
     }
+  })
+
+  it('sin crypto.subtle (la app por http://192.168.x.x con pnpm local --lan) carga igual y sigue comprobando el hash', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+    const s = await load('fp1')
+    expect(s.manifest.session.type).toBe('fp1')
+    // Un fichero alterado sigue sin pasar la comprobación.
+    const tampered = fixtureFetch({ mutate: (url, bytes) => (url.includes('/motion.') ? bytes.map((b, i) => (i === 100 ? b ^ 1 : b)) : bytes) })
+    expect(await code(load('fp1', tampered))).not.toBe('ok')
   })
 
   it('los buffers transferibles son únicos y cubren todas las columnas', async () => {

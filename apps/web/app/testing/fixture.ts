@@ -20,13 +20,22 @@ export const FIXTURE_FP1 = '2026/10-spa-francorchamps/fp1'
 /** Raíz de datos completos en local (data/ del repo, ignorado por git). */
 export const LOCAL_DATA_ROOT = webPath('../../data')
 
-export function fixtureFetch(opts: { fail?: RegExp; chunk?: number; root?: string } = {}): typeof fetch {
+export function fixtureFetch(
+  opts: {
+    fail?: RegExp
+    chunk?: number
+    root?: string
+    /** Cambia los bytes de un fichero antes de servirlo (p. ej. para comprobar el hash). */
+    mutate?: (path: string, bytes: Uint8Array) => Uint8Array
+  } = {},
+): typeof fetch {
   return (async (input: string | URL | Request) => {
     const url = new URL(String(input))
     if (opts.fail?.test(url.pathname)) throw new TypeError('network down')
     const rel = url.pathname.replace(/^\/data\//, '')
     try {
-      const bytes = await readFile((opts.root ?? FIXTURE_ROOT) + rel)
+      const raw = new Uint8Array(await readFile((opts.root ?? FIXTURE_ROOT) + rel))
+      const bytes = opts.mutate ? opts.mutate(url.pathname, raw) : raw
       const chunk = opts.chunk ?? bytes.byteLength
       const stream = new ReadableStream<Uint8Array>({
         start(controller) {

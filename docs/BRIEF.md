@@ -530,6 +530,10 @@ Este documento (`docs/BRIEF.md`) es la fuente de verdad del proyecto. Actualíza
     - Sin dato no se dibujan pianos, escapatorias, muros ni la parrilla (el usuario preguntó por los pianos: ninguna fuente libre da dónde están; inventarlos rompería «datos honestos»). Sin guías de curva: las etiquetas no están en la posición oficial, sino a un lado de la curva.
   - **Selección**: el replay no deja seleccionar nada por accidente (`user-select: none` en la página; en las demás, en botones, etiquetas, pestañas e interruptores). Se puede seleccionar el texto original de dirección de carrera y los campos de texto.
   - **Pendiente**: ver «Pendientes» en `docs/PLAN.md` (§8).
+- **2026-10-12** — **La app por la red de casa (`pnpm local --lan`)**
+  - El usuario, desde el móvil y desde el PC por `http://192.168.1.34:3000`: «The session data could not be decoded. Cannot read properties of undefined (reading 'digest')».
+  - **Causa**: `crypto.subtle` solo existe en contextos seguros (HTTPS, `localhost` / `127.0.0.1`); por la IP de la red de casa no está, y la carga comprueba con él el SHA-256 de cada fichero.
+  - **Ahora**: sin `crypto.subtle`, un SHA-256 en TS puro (`data/sha256.ts`, en el worker de carga; vectores de FIPS 180-4 y comparado con `crypto.subtle` en los tests). La comprobación de integridad se mantiene (un fichero alterado sigue sin cargar). Verificado abriendo Mónaco por `http://192.168.1.34:3000` en vista de móvil.
 - **2026-10-12** — **Portada: el Gran Premio del momento**
   - Petición (el usuario): «el más cercano, como en portada, más grande arriba; luego “Seguir viendo” y luego la selección por año… por proximidad de fecha, el mismo día de la primera práctica».
   - **Cuál** (`featuredEvent`, `manager/model.ts`, con tests): el del fin de semana en curso, desde la medianoche (hora local) del día de los primeros libres hasta el día después de su última sesión; si no hay ninguno, el último que empezó; en pretemporada, el próximo. Fechas del calendario del gestor (la hora de cada sesión) o, sin él, el primer día del catálogo. Sin fechas, no sale.

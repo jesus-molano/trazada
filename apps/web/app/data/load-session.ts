@@ -17,6 +17,7 @@ import {
 import { sessionDrsZones } from '../engine/drs/zones'
 import { computeTangents } from '../engine/replay/motion'
 import { realignPositionTimes } from '../engine/replay/realign'
+import { sha256 } from './sha256'
 import { LoadError, type LoadedSession, type LoadStage, type LoadTimings } from './types'
 
 export interface LoadOptions {
@@ -68,9 +69,14 @@ async function readBody(res: Response, expected: number, onChunk: (n: number) =>
   return out.subarray(0, length)
 }
 
+/**
+ * SHA-256 de un fichero en hexadecimal. `crypto.subtle` solo existe en contextos seguros (HTTPS, `localhost`): con
+ * `pnpm local --lan`, desde el móvil o desde otro PC por `http://192.168.x.x`, no está, y se usa el de `sha256.ts`.
+ */
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+  const subtle = globalThis.crypto?.subtle
+  const digest = subtle ? new Uint8Array(await subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)) : sha256(bytes)
+  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
