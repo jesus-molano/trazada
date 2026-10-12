@@ -65,7 +65,7 @@ def test_coverage(path: Path) -> None:
     assert m["session"]["status"] == "ok"
     # Las fuentes dev no traen posiciones tras un abandono: margen documentado en el informe de H2. Las
     # oficiales: un feed congelado con el coche en marcha cuenta como hueco (sin dato); en Bélgica FP1 el
-    # del coche 5 se congela 2-3,5 s en cada vuelta en s ≈ 4.670 m y se queda en el 97,9 % (PLAN, H2).
+    # del coche 5 se congela 2-3,5 s en cada vuelta en s ≈ 4.670 m y se queda en el 97,9 % (H2).
     limit = 0.95 if _is_dev(m) else 0.975
     low = {car: c for car, c in m["quality"]["coverage"].items() if min(c["pos"], c["car"]) < limit}
     assert not low, low

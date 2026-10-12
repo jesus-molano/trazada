@@ -1,5 +1,5 @@
 /**
- * Preparación de la escena antes de cada render (plan §2.5): un único gancho en el bucle de TresJS para toda la escena, que
+ * Preparación de la escena antes de cada render: un único gancho en el bucle de TresJS para toda la escena, que
  * llama a lo que registran pista, banderas, coches, capas y la anchura de mapa SOLO cuando hay un render pendiente.
  *
  * Por qué no `useLoop().onBeforeRender` en cada componente: en TresJS 5 ese gancho cuelga del bucle de

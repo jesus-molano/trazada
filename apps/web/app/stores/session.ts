@@ -50,7 +50,7 @@ export const useSessionStore = defineStore('session', () => {
       })
       if (signal.aborted) return
       performance.mark('trazada:ready') // instante exacto de "listo": los datos están (medidas de rendimiento)
-      // Se cede el hilo antes de montar el replay (tarea 1 del PLAN): pasar a «listo» arranca en microtareas el montaje de
+      // Se cede el hilo antes de montar el replay: pasar a «listo» arranca en microtareas el montaje de
       // todo (runtime, paneles, escena) y, en la misma tarea que trae los datos, era una tarea larga; así el navegador
       // puede atender un clic o una tecla entre medias.
       await new Promise((resolve) => setTimeout(resolve, 0))

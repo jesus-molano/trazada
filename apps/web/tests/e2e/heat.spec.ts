@@ -126,7 +126,7 @@ test('velocidad: la mejor vuelta fuera del extracto es «sin dato»; la última,
   await expect(page.locator('[data-testid="estimated"][data-field="minisectors"]')).toHaveCount(0)
 
   const now = await scene(page)
-  // Una draw call más (la cámara no se ha movido y el reloj está en pausa), dentro del presupuesto (plan §5).
+  // Una draw call más (la cámara no se ha movido y el reloj está en pausa), dentro del presupuesto de escena.
   expect(now.drawCalls).toBe(base.drawCalls + 1)
   expect(now.drawCalls).toBeLessThanOrEqual(13 + now.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(now.drawCalls).toBeLessThan(30)

@@ -118,7 +118,7 @@ test('desde el menú «Cámara»: sigue a dos coches cerca en pista, sin cifra, 
   expect(await page.getByTestId('tv-chip-text').textContent()).not.toMatch(/\d/)
   await expect(page.getByTestId('tv-chip-text')).toHaveAttribute('title', /(no se da cifra|no figure is given)/)
 
-  // Plan §5: < 30 draw calls y < 150 000 triángulos; tope de la escena base (13) más las capas activas.
+  // Presupuesto de escena: < 30 draw calls y < 150 000 triángulos; tope de la escena base (13) más las capas activas.
   await twoFrames(page)
   const st = await scene(page)
   expect(st.drawCalls).toBeLessThanOrEqual(13 + st.layers.reduce((n, l) => n + l.drawCalls, 0))

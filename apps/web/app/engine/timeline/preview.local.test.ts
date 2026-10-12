@@ -20,7 +20,7 @@ describe.skipIf(!hasJapan)('vista previa de la carrera de Japón (local)', () =>
     const markers = buildTimelineMarkers(type, s.timing, s.events, playback.endMs)
     const t0 = performance.now()
     const p = createTimelinePreview({ session: s, markers, leaderboard: lb })
-    // Plan §5: < 10 ms con Japón; margen para máquinas lentas.
+    // Presupuesto: < 10 ms con Japón; margen para máquinas lentas.
     expect(performance.now() - t0).toBeLessThan(50)
     const t1 = performance.now()
     const n = 2000

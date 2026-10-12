@@ -34,7 +34,7 @@ export function chooseLevel(
   measure: () => HeaderFit,
   from = 0,
 ): number {
-  // Desde el nivel actual (tarea 1 del PLAN: cada nivel probado fuerza un layout de toda la página). Un nivel más alto
+  // Desde el nivel actual (cada nivel probado fuerza un layout de toda la página). Un nivel más alto
   // nunca ocupa más: si con `from` cabe, se baja mientras siga cabiendo; si no, los de debajo tampoco caben y se sube.
   if (from > 0 && from <= max) {
     apply(from)

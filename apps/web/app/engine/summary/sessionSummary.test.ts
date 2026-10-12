@@ -268,7 +268,7 @@ describe('fixture e2e (Spa 2026, libres 1)', () => {
     const lb = new LeaderboardEngine(type, data.timing, data.events, data.manifest.drivers)
     const t0 = performance.now()
     const s = sessionSummary({ type, timing: data.timing, events: data.events, drivers: data.manifest.drivers, playback: pb, leaderboard: lb })
-    // Se calcula en el hilo principal al abrir el replay: barato (plan §5, < 10 ms).
+    // Se calcula en el hilo principal al abrir el replay: barato (< 10 ms).
     expect(performance.now() - t0).toBeLessThan(50)
     expect(s.end).toEqual({ t: 4_416_887, source: 'finished' })
     expect(s.showMs).toBeGreaterThan(s.end.t)

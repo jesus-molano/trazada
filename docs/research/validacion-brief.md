@@ -107,7 +107,7 @@ Leyenda: ✅ confirmado · ⚠️ parcial / con matices · ❌ refutado · ❓ n
 | — | Jolpica | FastF1 trae resultados y el tiempo de la vuelta 1 de carrera desde Jolpica, que es **CC BY-NC-SA 4.0**. | FastF1 `fastf1/ergast/interface.py:35` (`BASE_URL = "https://api.jolpi.ca/ergast/f1"`); licencia de Jolpica (búsqueda) |
 | — | OpenF1 | El código es CC BY-NC-SA 4.0 (el pyproject dice MIT, contradictorio). La API es para uso personal y no comercial. | `openf1/LICENSE` |
 
-**Conclusiones que entran en el plan:**
+**Conclusiones:**
 - No hay dataset público en HF.
 - Los datos se sirven como assets de la app desde un Worker separado, sin licencia abierta y retirables.
 - No se publican campos de Jolpica.

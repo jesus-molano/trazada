@@ -41,7 +41,7 @@ test('relieve y retícula por defecto, dentro del presupuesto; se apagan en «Ca
   await openScene(page)
   await expect.poll(() => detail(page)).toMatchObject({ relief: true, grid: true, drawCalls: 2 })
   const on = await scene(page)
-  // Plan §5: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
+  // Presupuesto de escena: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
   expect(on.drawCalls).toBeLessThanOrEqual(13 + on.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(on.drawCalls).toBeLessThan(30)
   expect(on.triangles).toBeLessThan(150_000)

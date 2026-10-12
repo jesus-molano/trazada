@@ -1,10 +1,10 @@
 # CLAUDE.md — Trazada
 
-Replay 3D y análisis de carreras, web estática y coste cero. **Fuente de verdad: `docs/BRIEF.md`**. Plan, decisiones (D1–D21), riesgos e hitos (H0–H11, con criterios de aceptación): `docs/PLAN.md`. Formato de datos: `docs/DATA_FORMAT.md`.
+Replay 3D y análisis de carreras, web estática y coste cero. **Fuente de verdad: `docs/BRIEF.md`**. Decisiones (D1–D56) y riesgos (R1–R18): `docs/DECISIONS.md`. Formato de datos: `docs/DATA_FORMAT.md`.
 
 ## Reglas innegociables
 
-- **Coste cero**: nada de pago ni free tiers con tarjeta. Cualquier pieza nueva debe ser gratis; justifícala en el plan.
+- **Coste cero**: nada de pago ni free tiers con tarjeta. Cualquier pieza nueva debe ser gratis; justifícala en `docs/DECISIONS.md`.
 - **Datos honestos**: lo estimado lleva la etiqueta "Estimado" (componente común) y nunca se presenta como real. No inventes datos: si falta un dato, se muestra "sin dato/sin señal".
 - **Un reloj maestro**: todo cuelga del tiempo de sesión en ms (`SessionClock`). Las fuentes se normalizan a ese reloj en el pipeline; las horas dentro de los textos de race control se ignoran.
 - **Rendimiento**: un único contexto WebGL (`TresCanvas` + `ViewRegistry` con scissor). Nada de datos por frame en la reactividad de Vue: motor TS puro mutado en sitio, `shallowRef`/`markRaw`, Pinia solo para estado grueso. Parseo y precálculo en Web Workers con transferibles.
@@ -67,7 +67,7 @@ uv run trazada outlines <checkout de github.com/bacinger/f1-circuits>   # trazad
 1. `pnpm lint && pnpm typecheck && pnpm test` en verde.
 2. Si toca el front: `pnpm build && PW_CHROMIUM_PATH=/opt/pw-browsers/chromium pnpm e2e`.
 3. Si toca el pipeline o el esquema: `uv run ruff check && uv run ruff format --check && uv run pytest` y el test de ida y vuelta Python→TS.
-4. Comprobar los criterios de aceptación del hito en `docs/PLAN.md` §8 y anotar lo verificado en el commit.
+4. Anotar lo verificado en el commit.
 
 ## Convenciones
 
@@ -86,4 +86,4 @@ uv run trazada outlines <checkout de github.com/bacinger/f1-circuits>   # trazad
 - **Identidad «Asfalto y pintura» (D47)**: el acento es la pintura (`--tz-accent` = `--tz-paint`) y la placa maciza de pintura (`--tz-accent` de fondo, `--tz-accent-on` de texto) significa «activado»; desplegado (`aria-expanded`) es el relleno suave. El color de señal (`--tz-signal`) solo para el foco, la selección de texto y la traza de velocidad, y el piano (`--tz-kerb`) solo bajo la marca y en la pestaña activa del análisis (los dos los vigila `design/tokens.test.ts`). Sin `backdrop-filter`.
 - **Estimado**: todo campo estimado está en `engine/estimated.ts` y se pinta con `<TzEstimated field="…">`. Un campo nuevo necesita su caso en `tests/nuxt/estimated.test.ts` (si no, el test falla) y su texto en `estimated.fields/hints`.
 - **e2e**: para dar el foco a la página, clic en el título (`replay-title`), nunca en el lienzo (selecciona coches). Tras un seek, esperar dos `requestAnimationFrame` antes de leer posiciones de pantalla.
-- **Docs**: cuando cambie una decisión, actualizar `docs/BRIEF.md` (registro de decisiones) y `docs/PLAN.md`.
+- **Docs**: cuando cambie una decisión, actualizar `docs/BRIEF.md` (registro de decisiones) y `docs/DECISIONS.md`.

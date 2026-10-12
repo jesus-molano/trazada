@@ -89,9 +89,9 @@ Desde 2026 no hay DRS, y la fuente no trae por coche lo nuevo del reglamento: ni
 - La meteorología es la de la estación del circuito, una medida por minuto: se muestra la última, sin interpolar, y a los 150 s sin otra pasa a «sin dato». Lo que la fuente no trae nunca se rellena con 0.
 - Lo que se calcula o se exagera (altura ×2 o ×3, separar coches, vuelta 1…) lleva la etiqueta «Estimado».
 
-## Estado
+## Documentación
 
-En desarrollo (Fase 1, MVP replay). Plan, decisiones e hitos en [`docs/PLAN.md`](docs/PLAN.md). La fuente de verdad del proyecto es [`docs/BRIEF.md`](docs/BRIEF.md).
+La fuente de verdad del proyecto es [`docs/BRIEF.md`](docs/BRIEF.md); las decisiones de diseño y los riesgos, en [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Estructura
 
@@ -100,7 +100,7 @@ En desarrollo (Fase 1, MVP replay). Plan, decisiones e hitos en [`docs/PLAN.md`]
 | `apps/web` | App Nuxt 4 + TresJS v5 (estática, `nuxt generate`) |
 | `packages/schema` | Esquema de datos compartido (JSON Schema, layouts TRZB, tipos TS) |
 | `pipeline` | Pipeline Python (FastF1) que genera los ficheros de cada sesión |
-| `docs` | Brief, plan, formato de datos, rendimiento e investigación |
+| `docs` | Brief, decisiones, formato de datos, rendimiento e investigación |
 
 ## Requisitos
 
@@ -134,7 +134,7 @@ pnpm local --lan    # también en tu red de casa (p. ej. el iPad)
 
 En la portada verás el calendario de cada temporada. Cada sesión ya disputada tiene un botón **Descargar**: ejecuta el pipeline en tu PC (FastF1, con tu conexión de casa), muestra el progreso y, al terminar, la sesión se puede abrir. También puedes descargar de una vez lo que falta de un Gran Premio o todas las carreras que faltan de la temporada. Las descargas solo se pueden lanzar desde el propio PC, no desde otros dispositivos de la red. La caché de FastF1 (`.cache/`) ocupa bastante más que los datos generados; se puede borrar sin perder nada.
 
-Todo se usa en local: no hay despliegue (decisiones D25 y D26 en `docs/PLAN.md`).
+Todo se usa en local: no hay despliegue (decisiones D25 y D26 en `docs/DECISIONS.md`).
 
 ## Rendimiento
 

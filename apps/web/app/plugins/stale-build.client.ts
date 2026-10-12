@@ -1,5 +1,5 @@
 /**
- * Build vieja (pendiente 6 del PLAN): con la página abierta, una build nueva (`pnpm build` mientras se usa `pnpm local`)
+ * Build vieja: con la página abierta, una build nueva (`pnpm build` mientras se usa `pnpm local`)
  * borra los trozos de JS con el hash de antes y, al pedir uno que aún no se había cargado, el navegador falla con
  * «Failed to fetch dynamically imported module». En vez de un error, un aviso no modal con «Recargar»
  * (TzStaleBuild, en app.vue). Se detecta por tres vías: el evento de Vite al no poder precargar un trozo, el gancho

@@ -1,5 +1,5 @@
 /**
- * Modo compacto (móvil y ventanas pequeñas; pendiente 3 del PLAN): el mapa en todo el escenario y los paneles en una
+ * Modo compacto (móvil y ventanas pequeñas; D55): el mapa en todo el escenario y los paneles en una
  * hoja inferior con pestañas (asomada, media, entera); la cabecera en una fila con «⋯» para las herramientas; sin scroll
  * horizontal. En el móvil en horizontal, el dock en una fila.
  */

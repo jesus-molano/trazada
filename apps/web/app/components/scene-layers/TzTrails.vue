@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
 </script>
 
 <script lang="ts">
-/** Orden de pintado (plan §3): después de la meta (3) y antes que los coches (10/11). */
+/** Orden de pintado: después de la meta (3) y antes que los coches (10/11). */
 export const renderOrder = 4
 </script>
 

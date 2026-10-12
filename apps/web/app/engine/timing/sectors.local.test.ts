@@ -14,7 +14,7 @@ describe.skipIf(!hasJapan)('colores de sector de la carrera de Japón (local)', 
     const table = buildLapTable(s.manifest.session.type, s.timing, s.events.raceControl)
     const t0 = performance.now()
     const st = new SectorTimes(table)
-    // Plan §5: < 10 ms con Japón en el hilo principal al abrir el replay; margen para máquinas lentas.
+    // Presupuesto: < 10 ms con Japón en el hilo principal al abrir el replay; margen para máquinas lentas.
     expect(performance.now() - t0).toBeLessThan(50)
     // ~1100 vueltas con sus tres sectores (faltan muy pocos).
     expect(st.timedSectors).toBeGreaterThan(2500)

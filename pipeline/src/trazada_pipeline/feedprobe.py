@@ -1,4 +1,4 @@
-"""Sonda del feed de live timing (`trazada probe-feed`, riesgo R4 del plan).
+"""Sonda del feed de live timing (`trazada probe-feed`, riesgo R4).
 
 ¿Publica el archivo de live timing algo del reglamento de 2026 (aerodinámica activa, modo adelantamiento,
 Boost, energía) que el pipeline no lea? Con la misma función de FastF1 que usa el pipeline

@@ -1,5 +1,5 @@
 /**
- * Zoom y desplazamiento de la línea de tiempo (pendiente 4 del PLAN): la rueda acerca en el cursor (el instante bajo él
+ * Zoom y desplazamiento de la línea de tiempo (D56): la rueda acerca en el cursor (el instante bajo él
  * no se mueve), Mayús + rueda desplaza, los botones y las teclas + y − con el foco, «×N» vuelve a toda la sesión; un clic
  * con zoom cae en el instante que se ve (no en el de la sesión entera); la barra de lo que se ve sale solo con zoom; con
  * el cabezal fuera de la vista, un salto la lleva hasta él.

@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
 </script>
 
 <script lang="ts">
-/** Orden de pintado (plan §3): encima de la cinta (0), debajo de las zonas de DRS (0,7) y de las banderas (1). */
+/** Orden de pintado: encima de la cinta (0), debajo de las zonas de DRS (0,7) y de las banderas (1). */
 export const renderOrder = 0.5
 </script>
 

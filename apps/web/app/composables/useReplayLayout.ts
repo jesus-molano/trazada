@@ -22,7 +22,7 @@ import { useLayoutStore } from '~/stores/layout'
 /** La media query del CSS de la página para la franja inferior (tablet en vertical): ahí no hay asas ni anchos. */
 export const PORTRAIT_QUERY = '(width <= 900px) and (orientation: portrait)'
 /**
- * Modo compacto (móvil, ventanas pequeñas; pendiente 3 del PLAN): el mapa ocupa todo el escenario y los paneles van en una
+ * Modo compacto (móvil, ventanas pequeñas; D55): el mapa ocupa todo el escenario y los paneles van en una
  * hoja inferior con pestañas (pages/replay.vue, TzSheetHead). Tampoco hay asas ni anchos.
  */
 export const COMPACT_QUERY = '(width < 768px), (height < 500px)'

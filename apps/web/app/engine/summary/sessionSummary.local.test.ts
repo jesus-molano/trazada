@@ -19,7 +19,7 @@ describe.skipIf(!hasJapan)('resumen de la carrera de Japón (local)', () => {
     const lb = new LeaderboardEngine(type, s.timing, s.events, s.manifest.drivers)
     const t0 = performance.now()
     const summary = sessionSummary({ type, timing: s.timing, events: s.events, drivers: s.manifest.drivers, playback, leaderboard: lb })
-    // En el hilo principal al abrir el replay (plan §5: < 10 ms con Japón; margen para máquinas lentas).
+    // En el hilo principal al abrir el replay (< 10 ms con Japón; margen para máquinas lentas).
     expect(performance.now() - t0).toBeLessThan(50)
     expect(['finished', 'chequered']).toContain(summary.end.source)
     expect(summary.showMs).toBeGreaterThanOrEqual(summary.end.t)

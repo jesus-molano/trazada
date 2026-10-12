@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
 </script>
 
 <script lang="ts">
-/** Orden de pintado (plan §3): después de los coches (10/11). */
+/** Orden de pintado: después de los coches (10/11). */
 export const renderOrder = 12
 </script>
 

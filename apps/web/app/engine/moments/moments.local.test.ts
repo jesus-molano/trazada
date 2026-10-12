@@ -33,7 +33,7 @@ describe.skipIf(!hasJapan)('momentos de la carrera de Japón (local)', () => {
     const t1 = performance.now()
     duels(table, Infinity, overtakes(table, tracks))
     const warm = performance.now() - t1
-    // Plan §5: < 10 ms en el hilo principal con Japón (margen para máquinas lentas).
+    // Presupuesto: < 10 ms en el hilo principal con Japón (margen para máquinas lentas).
     expect(ms).toBeLessThan(50)
     // Estudio del ítem 5: unos 50 cambios de orden en la línea sin boxes, 42 con cruce GPS; ~39 duelos.
     expect(list.length).toBeGreaterThan(20)

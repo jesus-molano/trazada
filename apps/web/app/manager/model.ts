@@ -287,7 +287,7 @@ export function parseJob(v: unknown): Job | null {
 }
 
 /**
- * El Gran Premio del momento para la portada (pendiente 6d del PLAN): el del fin de semana en curso, desde el día de los
+ * El Gran Premio del momento para la portada: el del fin de semana en curso, desde el día de los
  * primeros libres (a medianoche, hora local) hasta el día después de su última sesión; si no hay ninguno, el último
  * que empezó; si aún no ha empezado ninguno (pretemporada), el próximo. Las fechas salen del calendario (`startUtc` de
  * cada sesión) o, sin él, del primer día del catálogo (`dateStart`). Sin fechas, ninguno.

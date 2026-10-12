@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
 
 <script lang="ts">
 /**
- * Orden de pintado de las banderas (plan §3): encima de la cinta (0) y de las capas que la colorean (calor 0,5, zonas
+ * Orden de pintado de las banderas: encima de la cinta (0) y de las capas que la colorean (calor 0,5, zonas
  * de DRS 0,7). Lo comprueba tests/nuxt/heat.test.ts: la seguridad siempre se ve.
  */
 export const renderOrder = 1

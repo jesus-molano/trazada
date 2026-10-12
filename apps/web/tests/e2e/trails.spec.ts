@@ -91,7 +91,7 @@ test('apagadas por defecto; con Equipo o Velocidad, una draw call dentro del pre
   const on = await scene(page)
   // Una sola draw call para todas las estelas (la cámara no se ha movido y el reloj está en pausa).
   expect(on.drawCalls).toBe(base.drawCalls + 1)
-  // Plan §5: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
+  // Presupuesto de escena: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
   expect(on.drawCalls).toBeLessThanOrEqual(13 + on.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(on.drawCalls).toBeLessThan(30)
   expect(on.triangles).toBeLessThan(150_000)

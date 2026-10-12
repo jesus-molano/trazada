@@ -3,8 +3,8 @@
  * grupo de la pista (el que escala la altura), después de pista, banderas y coches, en orden de `renderOrder`.
  *
  * Contrato de cada fichero:
- * - `<script lang="ts">export const renderOrder = 4</script>`: el mismo que pone a sus mallas. Orden de pintado
- *   (plan §3): cielo −10 · cinta 0 · calor 0,5 · DRS 0,7 · banderas 1 · meta 3 · estelas 4 · coches 10/11 · fantasma 12.
+ * - `<script lang="ts">export const renderOrder = 4</script>`: el mismo que pone a sus mallas. Orden de pintado:
+ *   cielo −10 · cinta 0 · calor 0,5 · DRS 0,7 · banderas 1 · meta 3 · estelas 4 · coches 10/11 · fantasma 12.
  * - Props: `model`, `flat` y `yScale` (`SceneLayerProps`). Lo demás, del runtime (`getRuntime()`, `rt.ext`).
  * - Prepara sus mallas con `useSceneFrame` (composables/useSceneFrame.ts), nunca con `useLoop` de TresJS: así solo
  *   calcula y sube a la GPU justo antes de cada render, nada en pausa ni con la escena tapada (lo comprueba

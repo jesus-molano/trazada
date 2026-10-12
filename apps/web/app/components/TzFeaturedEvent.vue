@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * El Gran Premio del momento, arriba y en grande en la portada (pendiente 6d del PLAN): el del fin de semana en curso
+ * El Gran Premio del momento, arriba y en grande en la portada: el del fin de semana en curso
  * desde el día de los primeros libres; si no, el último; en pretemporada, el próximo (`featuredEvent`, con el calendario
  * del gestor local o, sin él, las fechas del catálogo). Su trazado grande, sus sesiones con la misma fila que el
  * selector (abrir, descargar, progreso, «disponible el…») y, si aún no ha empezado, cuánto falta. Sin fechas, no sale.

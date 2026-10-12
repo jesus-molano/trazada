@@ -20,7 +20,7 @@ const ROW_TOLERANCE_PX = 12
 
 /**
  * `enabled`: mientras dé `false` (la sesión cargando: la cabecera cambia a cada paso y aún no lleva lo que la parte),
- * no se mide; al pasar a `true`, una medida. Cada nivel probado fuerza un layout de toda la página (tarea 1 del PLAN).
+ * no se mide; al pasar a `true`, una medida. Cada nivel probado fuerza un layout de toda la página.
  */
 export function useHeaderFit(
   bar: Ref<HTMLElement | null>,

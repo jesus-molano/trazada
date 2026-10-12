@@ -22,7 +22,7 @@ describe.skipIf(!hasJapan)('análisis de la carrera de Japón (local)', () => {
     const table = buildLapTable(s.manifest.session.type, s.timing, s.events.raceControl)
     const t0 = performance.now()
     const trace = raceTrace(table)
-    // Plan §5: < 10 ms en el hilo principal con Japón (margen para máquinas lentas).
+    // Presupuesto: < 10 ms en el hilo principal con Japón (margen para máquinas lentas).
     expect(performance.now() - t0).toBeLessThan(50)
     expect(trace.laps.length).toBeGreaterThan(40)
     for (let k = 0; k < trace.laps.length; k++) {

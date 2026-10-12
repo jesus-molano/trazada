@@ -1,5 +1,5 @@
 /**
- * Build vieja (pendiente 6 del PLAN): si falta un trozo de JS de la build de antes (Vite no puede precargarlo, o un
+ * Build vieja: si falta un trozo de JS de la build de antes (Vite no puede precargarlo, o un
  * import dinámico falla), un aviso no modal ofrece recargar en vez de un error; se puede cerrar y recargar lo quita.
  */
 import { expect, test } from '@playwright/test'

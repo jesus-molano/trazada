@@ -101,7 +101,7 @@ test('Mayús+clic compara; misma vuelta: diferencia en décimas con «Estimado»
   await expect(page.getByTestId('compare-ghost-state')).toHaveAttribute('data-state', 'visible')
   const s = await scene(page)
   expect(s.layers.find((l) => l.name === 'ghost')).toMatchObject({ drawCalls: 1 })
-  // Plan §5: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
+  // Presupuesto de escena: tope de la escena base (13) más lo de cada capa activa, < 30 draw calls y < 150 000 triángulos.
   expect(s.drawCalls).toBeLessThanOrEqual(13 + s.layers.reduce((n, l) => n + l.drawCalls, 0))
   expect(s.drawCalls).toBeLessThan(30)
   expect(s.triangles).toBeLessThan(150_000)

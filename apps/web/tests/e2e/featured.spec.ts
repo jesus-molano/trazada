@@ -1,5 +1,5 @@
 /**
- * El Gran Premio del momento en la portada (pendiente 6d del PLAN): con fecha en el catálogo, arriba y en grande, el del
+ * El Gran Premio del momento en la portada: con fecha en el catálogo, arriba y en grande, el del
  * fin de semana en curso («Este fin de semana») o, pasado ese fin de semana, el último («Último Gran Premio»), con sus
  * sesiones (la descargada se abre desde ahí) y antes de «Seguir viendo» y del selector. Sin fechas, no sale.
  */

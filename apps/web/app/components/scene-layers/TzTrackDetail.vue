@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
 </script>
 
 <script lang="ts">
-/** Orden de pintado (plan §3): la retícula, lo primero (−2); los faldones, con la cinta (0). */
+/** Orden de pintado: la retícula, lo primero (−2); los faldones, con la cinta (0). */
 export const renderOrder = -2
 </script>
 

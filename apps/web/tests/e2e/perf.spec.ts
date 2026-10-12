@@ -71,7 +71,7 @@ test('de clic a "listo" sin long tasks > 50 ms en el hilo principal (CPU ×4)', 
 })
 
 /**
- * Escenario «todas las capas» (plan §5, al cerrar la Tanda 4): estelas, mapa de calor (minisectores) y fantasma de la
+ * Escenario «todas las capas» (al cerrar la Tanda 4): estelas, mapa de calor (minisectores) y fantasma de la
  * comparación a la vez, sobre Spa FP1. Las zonas de DRS no existen en 2026 (no hay
  * dato), así que esa capa no suma aquí; su coste se mide con una sesión de 2018–2025 (bench local). Lo que se exige es
  * determinista: presupuesto de escena (< 30 draw calls, < 150 000 triángulos) y nada de renders en pausa. Los tiempos de frame con CPU ×4 («iPad aproximado») solo se anotan: CI no tiene GPU.

@@ -8,7 +8,7 @@
  * del teclado (sobre el cabezal), una tarjeta con lo que pasaba en ese instante. Se recalcula como mucho una vez por
  * frame de pantalla y solo mientras el puntero se mueve (nada por frame del reloj); Esc la oculta.
  *
- * Zoom y desplazamiento (pendiente 4 del PLAN): la pista se ensancha `zoom` veces dentro de su marco y se desplaza con
+ * Zoom y desplazamiento (D56): la pista se ensancha `zoom` veces dentro de su marco y se desplaza con
  * `transform`; todo lo de dentro (marcas, ventanas, carriles) va en % de la duración, así que se estira solo, y el
  * instante bajo el puntero se sigue midiendo con la caja de la pista. Rueda: acercar o alejar en el cursor; Mayús + rueda
  * o la rueda horizontal: desplazar; + y − con el foco; botones (también en táctil) y una barra con lo que se ve, que se

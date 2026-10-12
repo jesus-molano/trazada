@@ -1,6 +1,6 @@
 # H2: pipeline v1 de punta a punta (informe)
 
-Fecha: 2026-10-10. Datos medidos en el contenedor de desarrollo (sin acceso al archivo de F1 ni a MultiViewer; ver R1 en `docs/PLAN.md`).
+Fecha: 2026-10-10. Datos medidos en el contenedor de desarrollo (sin acceso al archivo de F1 ni a MultiViewer; ver R1 en `docs/DECISIONS.md`).
 
 ## Sesiones de referencia
 
@@ -83,9 +83,3 @@ Corpus de 23 654 mensajes, 9 635 textos únicos, 2023–2026. Quedan 6 textos `o
 - `AFTERNOON SESSION WILL BE FROM 14:00 - 19:00`
 - `LAP TIME UNDER INVESTIGATION - TRACK LIMITS - CAR 27 (HUL) - 1:31.998`
 - `LAP TIME OF CAR 87 (BEA) - UNDER REVIEW`
-
-## Pendiente o con riesgo
-
-- **Longitudes oficiales** de `circuits.json`: hay que verificarlas contra fuente primaria antes de publicar.
-- **Sectores de comisarios**: esta sesión no los tiene, porque MultiViewer no es accesible desde aquí. La comprobación "TURN N cae en el sector que contiene la curva N" queda para el primer build en tu PC.
-- **Ingesta real** (FastF1 online, MultiViewer): solo desde IP residencial (R1). En la nube, F1 responde 403 y `trazada probe` lo detecta.

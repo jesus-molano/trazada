@@ -1,6 +1,6 @@
 /**
  * Motor compartido con sesiones completas (local): contrato de s monótona, ida y vuelta distancia↔tiempo,
- * inicio de vuelta sobre la línea de meta y presupuestos de precálculo (§5 del plan: < 10 ms en el hilo
+ * inicio de vuelta sobre la línea de meta y presupuestos de precálculo (< 10 ms en el hilo
  * principal para el índice de vueltas; < 50 ms para un barrido de minisectores de toda la sesión).
  */
 import { existsSync } from 'node:fs'
