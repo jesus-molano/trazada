@@ -562,18 +562,42 @@ function onReady(context: TresContext) {
 
 function onRender() {
   sceneStats.renders++
-  const info = (ctx?.renderer.instance as WebGLRenderer | undefined)?.info.render
+  const renderer = ctx?.renderer.instance as WebGLRenderer | undefined
+  const info = renderer?.info.render
   if (info) {
     sceneStats.drawCalls = info.calls
     sceneStats.triangles = info.triangles
   }
+  sceneStats.programs = renderer?.info.programs?.length ?? 0
   const cam = camera.value
   if (cam && canvasEl) {
     labels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
     tags.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value)
     carLabels.value?.update(cam, canvasEl.clientWidth, canvasEl.clientHeight, yScale.value, flat)
   }
-  if (!sceneStats.ready) sceneStats.ready = true
+  if (!sceneStats.ready) {
+    sceneStats.ready = true
+    precompileShaders()
+  }
+}
+
+/**
+ * Tras el primer render, con todas las capas montadas: compila ya los programas de shader de lo que aún no se ve (banderas
+ * de sector, zonas de DRS, tintes, el coche de cerca o de lejos…). Si no, cada uno se compilaba la primera vez que salía,
+ * a mitad de la reproducción: en Windows (ANGLE sobre Direct3D) eso son tareas de 100–400 ms, tirones a ×1.
+ * `compileAsync` recorre la escena entera (también lo oculto) y, con KHR_parallel_shader_compile, no bloquea.
+ */
+function precompileShaders() {
+  const renderer = ctx?.renderer.instance as WebGLRenderer | undefined
+  const scene = ctx?.scene.value
+  const cam = camera.value
+  if (!renderer || !scene || !cam || typeof renderer.compileAsync !== 'function') return
+  // Fuera del frame en curso: no alarga el primer render.
+  setTimeout(() => {
+    renderer.compileAsync(scene, cam).catch(() => {
+      // un contexto perdido a mitad: se compilará al dibujar, como antes
+    })
+  }, 0)
 }
 
 function onError() {

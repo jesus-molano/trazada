@@ -33,6 +33,8 @@ export const sceneStats = {
   /** Draw calls y triángulos del último render; GPU según el driver (si lo expone). */
   drawCalls: 0,
   triangles: 0,
+  /** Programas de shader compilados hasta ahora: si crece reproduciendo, hay compilaciones (tirones) a mitad. */
+  programs: 0,
   gpu: '',
   /** Coches: triángulos del modelo detallado y cuántos se dibujan con él o con la cuña en el último render. */
   carTriangles: 0,
