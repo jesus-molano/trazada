@@ -938,37 +938,26 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     expect(sheetEl()).toBeNull()
   })
 
-  it('el círculo de cada nombre elige a su piloto (la cámara pasa a seguirlo); otro clic en el del elegido no lo quita', async () => {
+  it('la leyenda no elige (D50): sin círculo, el nombre solo muestra u oculta; «Mostrar todos» y «Ocultar todos»', async () => {
     attach(groupsRace())
     useAnalysis().noSpoilers.value = false
     const playback = usePlaybackStore()
     playback.selectCar('3')
-    playback.setFollowing(true)
     await mountBoth()
     await openSheet()
-    const ring = (car: string) => $<HTMLButtonElement>(`[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"][data-pick="${car}"]`)!
     const key = (car: string) => $<HTMLButtonElement>(`[data-testid="race-trace-chart"] [data-testid="analysis-legend-item"][data-car="${car}"]`)!
-    // Uno por piloto con serie (los que no tienen vueltas no tienen nada que destacar), fuera del orden de tabulación.
-    expect($$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"]').map((b) => b.dataset.pick).sort()).toEqual(
-      ['1', '3', '23', '5', '11'].sort(),
-    )
-    expect(ring('23').tabIndex).toBe(-1)
-    expect(ring('23').getAttribute('aria-label')).toMatch(/^(Elegir ALB|Choose ALB)$/)
-    expect(ring('23').getAttribute('aria-pressed')).toBe('false')
-    expect(ring('3').getAttribute('aria-pressed')).toBe('true')
-    ring('23').click()
+    expect($$('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"]')).toHaveLength(0)
+    key('23').click()
     await settle()
-    expect(playback.selectedCar).toBe('23')
-    expect(playback.following).toBe(true)
-    expect(ring('23').getAttribute('aria-pressed')).toBe('true')
-    expect(ring('3').getAttribute('aria-pressed')).toBe('false')
-    expect(key('23').classList).toContain('is-emphasis')
-    // Mostrar u ocultar sigue siendo cosa del nombre: elegir no lo cambia.
+    expect(playback.selectedCar).toBe('3')
+    expect(key('23').getAttribute('aria-pressed')).toBe('false')
+    $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-all"]')!.click()
+    await settle()
     expect(key('23').getAttribute('aria-pressed')).toBe('true')
-    ring('23').click()
+    $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-none"]')!.click()
     await settle()
-    expect(playback.selectedCar).toBe('23')
-    expect($('[data-testid="analysis-selection"]')!.dataset.car).toBe('23')
+    expect(useAnalysis().shown.value.raceTrace).toEqual([])
+    expect(playback.selectedCar).toBe('3')
   })
 
   it('elegir a uno que el usuario ocultó lo vuelve a mostrar y conserva el resto de su elección, también los pilotos sin vueltas', async () => {
@@ -985,15 +974,15 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     await settle()
     expect(key().getAttribute('aria-pressed')).toBe('false')
     expect(useAnalysis().shown.value.raceTrace).toEqual(all.filter((c) => c !== '23'))
-    $<HTMLButtonElement>('[data-testid="race-trace-chart"] [data-testid="analysis-legend-pick"][data-pick="23"]')!.click()
+    // Elegido desde «Elegir piloto» (o su línea): vuelve a verse.
+    playback.selectCar('23')
     await settle()
-    expect(playback.selectedCar).toBe('23')
     expect(key().getAttribute('aria-pressed')).toBe('true')
     expect(key().classList).toContain('is-emphasis')
     expect(useAnalysis().shown.value.raceTrace).toEqual(all)
   })
 
-  it('con el teclado: Intro en un nombre lo elige y espacio lo sigue mostrando u ocultando; la ficha del foco lo dice', async () => {
+  it('con el teclado: espacio o Intro en un nombre lo muestran u ocultan (nunca eligen); la ficha del foco lo dice', async () => {
     attach(groupsRace())
     useAnalysis().noSpoilers.value = false
     const playback = usePlaybackStore()
@@ -1004,24 +993,17 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     key.focus()
     await settle()
     const keys = () => $('[data-testid="analysis-card-keys"]')
-    expect(keys()!.textContent).toMatch(/^(Intro: elegir ALB · Espacio: mostrar u ocultar|Enter: choose ALB · Space: show or hide)$/)
-    expect($('[data-testid="analysis-card-chosen"]')).toBeNull()
+    expect(keys()!.textContent).toMatch(/^(Espacio o Intro: mostrar u ocultar|Space or Enter: show or hide)$/)
     const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
     key.dispatchEvent(enter)
     await settle()
-    // Intro no llega al clic del botón (que lo ocultaría): elige.
-    expect(enter.defaultPrevented).toBe(true)
-    expect(playback.selectedCar).toBe('23')
-    expect(key.getAttribute('aria-pressed')).toBe('true')
-    expect(document.activeElement).toBe(key)
-    expect($('[data-testid="analysis-card"]')!.dataset.car).toBe('23')
-    expect($('[data-testid="analysis-card-chosen"]')!.textContent).toMatch(/^(Elegido|Selected)$/)
-    expect(keys()!.textContent).toMatch(/^(Espacio: mostrar u ocultar|Space: show or hide)$/)
-    // El clic (lo que hace el espacio en un botón) sigue mostrando u ocultando la serie.
+    // Intro no elige: el botón hace lo suyo (mostrar u ocultar, con el clic que le da el navegador).
+    expect(enter.defaultPrevented).toBe(false)
+    expect(playback.selectedCar).toBeNull()
     key.click()
     await settle()
     expect(key.getAttribute('aria-pressed')).toBe('false')
-    expect(playback.selectedCar).toBe('23')
+    expect(playback.selectedCar).toBeNull()
   })
 
   it('al perder el foco, la ficha se va', async () => {
@@ -1189,7 +1171,7 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     expect(card().dataset.shown).toBe('false')
   })
 
-  it('elegir desde la gráfica (D49): la ficha fijada con el dedo lleva «Elegir» en la fila del piloto; el círculo de la leyenda elige y no muestra ni oculta', async () => {
+  it('elegir desde la gráfica (D49): la ficha fijada con el dedo lleva «Elegir» en la fila del piloto; la leyenda no tiene círculo de elegir (D50)', async () => {
     const base = { color: '#123456', dash: false, visible: true, emphasis: false }
     const spec = (chosen: string | null): ChartSpec => ({
       x: [1, 2, 3],
@@ -1242,13 +1224,8 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     expect(chart.find('[data-testid="analysis-card-choose"]').exists()).toBe(false)
     expect(chart.find('[data-testid="analysis-card-chosen"]').text()).toMatch(/^(Elegido|Selected)$/)
 
-    // El círculo: elige (fuera del orden de tabulación), sin mostrar u ocultar; en el elegido, nada.
-    const ring = (car: string) => chart.find(`[data-testid="analysis-legend-pick"][data-pick="${car}"]`).element as HTMLButtonElement
-    expect(ring('1').tabIndex).toBe(-1)
-    ring('18').click()
-    ring('1').click()
-    await settle()
-    expect(chart.emitted('select')).toEqual([['18'], ['1']])
+    // La leyenda no elige: no hay círculo (D50).
+    expect(chart.find('[data-testid="analysis-legend-pick"]').exists()).toBe(false)
     expect(chart.emitted('toggle')).toBeUndefined()
   })
 
@@ -1277,7 +1254,8 @@ describe('leyenda del race trace por grupos y ficha desde la leyenda (D49)', () 
     key.dispatchEvent(enter)
     expect(enter.defaultPrevented).toBe(false)
     await settle()
-    expect(chart.find('[data-testid="analysis-card-keys"]').exists()).toBe(false)
+    // La ficha del foco dice sus teclas: aquí también, solo mostrar u ocultar.
+    expect(chart.find('[data-testid="analysis-card-keys"]').text()).toMatch(/^(Espacio o Intro: mostrar u ocultar|Space or Enter: show or hide)$/)
     const touch = (type: string) =>
       key.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 10 }))
     touch('pointerdown')

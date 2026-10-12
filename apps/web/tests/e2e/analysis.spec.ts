@@ -623,36 +623,35 @@ for (const vp of [
   })
 }
 
-test('la leyenda elige con su círculo (y con Intro en el nombre); el nombre sigue mostrando u ocultando', async ({ page }) => {
+test('la leyenda solo muestra u oculta (D50): sin círculo de elegir; Intro y espacio, también; «Ocultar todos»', async ({ page }) => {
   test.setTimeout(90_000)
   await openReplay(page)
   await seek(page, await page.evaluate(() => window.__trazada!.endMs))
   const first = await followFirst(page)
   await openSheet(page)
   const chart = page.getByTestId('pace-chart')
-  // Otro piloto de los que se ven: elegirlo no cambia que se vea.
+  await expect(chart.locator('[data-testid="analysis-legend-pick"]')).toHaveCount(0)
   const shown = chart.locator('[data-testid="analysis-legend-item"][aria-pressed="true"]')
   const other = (await shown.evaluateAll((els, f) => els.map((e) => e.getAttribute('data-car')!).filter((c) => c !== f), first))[0]!
-  const ring = chart.locator(`[data-testid="analysis-legend-pick"][data-pick="${other}"]`)
-  await expect(ring).toHaveAttribute('aria-pressed', 'false')
-  await expect(ring).toHaveAttribute('tabindex', '-1')
-  await ring.click()
-  await expect.poll(() => selected(page)).toBe(other)
-  await expect(ring).toHaveAttribute('aria-pressed', 'true')
-  await expect(chart.locator(`[data-testid="analysis-legend-item"][data-car="${other}"]`)).toHaveAttribute('aria-pressed', 'true')
-  await expect(chart.locator(`[data-testid="analysis-legend-item"][data-car="${other}"]`)).toHaveClass(/is-emphasis/)
-  await expect(page.getByTestId('analysis-selection')).toHaveAttribute('data-following', 'true')
-  // Con el teclado: Intro en el nombre del primero lo vuelve a elegir; la ficha del foco dice las teclas.
-  const firstKey = chart.locator(`[data-testid="analysis-legend-item"][data-car="${first}"]`)
-  await firstKey.focus()
+  const key = chart.locator(`[data-testid="analysis-legend-item"][data-car="${other}"]`)
+  // Un clic en el nombre lo oculta; el elegido sigue siendo el mismo.
+  await key.click()
+  await expect(key).toHaveAttribute('aria-pressed', 'false')
+  expect(await selected(page)).toBe(first)
+  // Con el teclado: Intro lo vuelve a mostrar (nunca elige); la ficha del foco lo dice.
+  await key.focus()
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Tab')
-  await expect(firstKey).toBeFocused()
-  await expect(page.getByTestId('analysis-card-keys')).toContainText('Intro: elegir')
+  await expect(key).toBeFocused()
+  await expect(page.getByTestId('analysis-card-keys')).toHaveText('Espacio o Intro: mostrar u ocultar')
   await page.keyboard.press('Enter')
-  await expect.poll(() => selected(page)).toBe(first)
-  await expect(firstKey).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('analysis-card-keys')).toHaveText('Espacio: mostrar u ocultar')
+  await expect(key).toHaveAttribute('aria-pressed', 'true')
+  expect(await selected(page)).toBe(first)
+  // «Ocultar todos» y «Mostrar todos».
+  await chart.getByTestId('analysis-legend-none').click()
+  await expect(shown).toHaveCount(0)
+  await chart.getByTestId('analysis-legend-all').click()
+  await expect(key).toHaveAttribute('aria-pressed', 'true')
   await expect(sheet(page)).toBeVisible()
 })
 

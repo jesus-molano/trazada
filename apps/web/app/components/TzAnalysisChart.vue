@@ -78,7 +78,7 @@ const props = defineProps<{
   selectable?: boolean
 }>()
 
-const emit = defineEmits<{ pick: [index: number]; toggle: [key: string]; select: [key: string] }>()
+const emit = defineEmits<{ pick: [index: number]; toggle: [key: string]; select: [key: string]; setAll: [on: boolean] }>()
 /** `compact`: la ficha no cabe en el alto del área de datos; el hueco enseña su forma corta (un solo mensaje). */
 defineSlots<{ card?(props: { hit: ChartPreview; compact: boolean }): unknown }>()
 
@@ -329,7 +329,7 @@ const pickText = computed(() => {
 
 /**
  * Pie de la ficha: con el ratón, qué hace un clic ahí («Clic: elegir ALO» o, en el elegido, «Clic: ir al inicio de la
- * V12»); desde la leyenda con el teclado, sus teclas (Intro elige, espacio muestra u oculta).
+ * V12»); desde la leyenda con el teclado, sus teclas (espacio o Intro muestran u ocultan: elegir va aparte).
  */
 const foot = computed<{ testid: string; text: string } | null>(() => {
   const p = shown.value
@@ -341,9 +341,7 @@ const foot = computed<{ testid: string; text: string } | null>(() => {
     }
     return pickText.value ? { testid: 'analysis-card-click', text: pickText.value.click } : null
   }
-  if (p.mode === 'legend' && p.keyboard && props.selectable) {
-    return { testid: 'analysis-card-keys', text: g.emphasis ? t('analysis.card.keysChosen') : t('analysis.card.keys', { driver: g.label }) }
-  }
+  if (p.mode === 'legend' && p.keyboard) return { testid: 'analysis-card-keys', text: t('analysis.card.keys') }
   return null
 })
 
@@ -466,13 +464,6 @@ function chooseFromCard(event: MouseEvent) {
     void nextTick(() =>
       cardEl.value?.querySelector<HTMLElement>('[data-testid="analysis-card-go"], [data-testid="analysis-card-close"]')?.focus(),
     )
-}
-
-/** Intro en un nombre de la leyenda elige a su piloto (espacio lo sigue mostrando u ocultando). */
-function onKeyEnterDown(event: KeyboardEvent, key: string) {
-  if (!props.selectable) return
-  event.preventDefault()
-  choose(key)
 }
 
 /** Ficha desde la leyenda (ratón o foco del teclado): la vuelta del último dato de su serie. */
@@ -858,6 +849,19 @@ onBeforeUnmount(() => {
       @click="onClick"
     />
     <figcaption class="tz-achart__legend" role="group" :aria-label="legendLabel" @pointerenter="onLegendEnter" @pointerleave="onLegendLeave">
+      <!--
+        La leyenda solo muestra u oculta series (una casilla por piloto). Elegir un piloto es otra cosa y va aparte: un clic
+        en su línea o «Elegir piloto», arriba en la hoja. Así nadie oculta queriendo elegir, ni al revés.
+      -->
+      <div class="tz-achart__legend-tools">
+        <span class="tz-achart__legend-hint">{{ t('analysis.legendHint') }}</span>
+        <button type="button" class="tz-achart__all" data-testid="analysis-legend-all" @click="emit('setAll', true)">
+          {{ t('analysis.legendAll') }}
+        </button>
+        <button type="button" class="tz-achart__all" data-testid="analysis-legend-none" @click="emit('setAll', false)">
+          {{ t('analysis.legendNone') }}
+        </button>
+      </div>
       <div
         v-for="block in legendBlocks"
         :key="block.id"
@@ -876,21 +880,6 @@ onBeforeUnmount(() => {
           @pointerenter="onKeyEnter($event, g.key)"
           @pointerleave="onKeyLeave($event, g.key)"
         >
-          <!-- Elegir a su piloto con el ratón o el dedo (con el teclado, Intro en su nombre). -->
-          <button
-            v-if="selectable"
-            type="button"
-            tabindex="-1"
-            class="tz-achart__pick"
-            :aria-pressed="g.emphasis"
-            :aria-label="t('analysis.legendPick', { driver: g.label })"
-            :title="t('analysis.legendPick', { driver: g.label })"
-            :data-pick="g.key"
-            data-testid="analysis-legend-pick"
-            @click="choose(g.key)"
-          >
-            <span class="tz-achart__ring" aria-hidden="true" />
-          </button>
           <button
             type="button"
             class="tz-achart__key"
@@ -900,7 +889,6 @@ onBeforeUnmount(() => {
             :data-car="g.key"
             data-testid="analysis-legend-item"
             @click="onKeyClick(g.key)"
-            @keydown.enter="onKeyEnterDown($event, g.key)"
             @pointerdown="onKeyDown($event, g.key)"
             @pointermove="onKeyMove"
             @pointerup="cancelPress"
@@ -909,6 +897,7 @@ onBeforeUnmount(() => {
             @focus="onKeyFocus($event, g.key)"
             @blur="hideLegend(g.key)"
           >
+            <span class="tz-achart__check" aria-hidden="true"><TzIcon v-if="g.visible" name="check" size="sm" /></span>
             <span
               class="tz-achart__swatch"
               :class="{ 'is-dash': g.dash, 'is-point': pointsOnly }"
@@ -1060,63 +1049,75 @@ onBeforeUnmount(() => {
   color: var(--tz-text-muted);
 }
 
-/*
- * Entrada de un piloto: una pieza con borde con su círculo para elegirlo (si la gráfica deja) y su nombre, que muestra u
- * oculta su serie. Visible: borde fuerte y relleno; del coche elegido, borde de pintura (D47: nunca la placa maciza).
- */
-.tz-achart__entry {
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-pill);
-  transition: border-color var(--tz-dur-fast) var(--tz-ease-standard);
+/* Ayuda y «Mostrar todos · Ocultar todos», encima de los nombres. */
+.tz-achart__legend-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-1) var(--tz-space-2);
 }
 
-.tz-achart__entry.is-on {
-  border-color: var(--tz-border-strong);
-  background: var(--tz-surface-2);
+.tz-achart__legend-hint {
+  margin-right: auto;
+  font-size: var(--tz-text-2xs);
+  color: var(--tz-text-muted);
 }
 
-.tz-achart__entry.is-on.is-emphasis {
-  border-color: var(--tz-accent);
-}
-
-/* Círculo para elegir al piloto: 24 px de ancho (WCAG 2.5.8) y, con puntero grueso, --tz-hit-min de alto. */
-.tz-achart__pick {
+.tz-achart__all {
   position: relative;
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: var(--tz-space-6);
-  padding: 0;
+  padding: var(--tz-space-0-5) var(--tz-space-2);
   border: 0;
-  border-right: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-pill) 0 0 var(--tz-radius-pill);
+  border-radius: var(--tz-radius-md);
   background: transparent;
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-xs);
   cursor: pointer;
 }
 
-.tz-achart__pick::after {
+.tz-achart__all::after {
   content: '';
   position: absolute;
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
-.tz-achart__ring {
-  width: 10px;
-  height: 10px;
-  border: 1px solid var(--tz-text-faint);
-  border-radius: 50%;
-  transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
-    background-color var(--tz-dur-fast) var(--tz-ease-standard);
+@media (hover: hover) {
+  .tz-achart__all:hover {
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
+  }
 }
 
-/* El elegido: el círculo lleno de pintura (como una opción de radio), con el mismo borde que su entrada. */
-.tz-achart__pick[aria-pressed='true'] .tz-achart__ring {
+/*
+ * Entrada de un piloto: una casilla (✓ si su serie se ve) con su muestra y su nombre; solo muestra u oculta (elegir va
+ * aparte). Oculta: tenue y tachada. Del coche elegido, el nombre en seminegrita.
+ */
+.tz-achart__entry {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.tz-achart__check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-sm);
+  color: var(--tz-accent-on);
+}
+
+.tz-achart__key[aria-pressed='true'] .tz-achart__check {
   border-color: var(--tz-accent);
   background: var(--tz-accent);
-  box-shadow: inset 0 0 0 2px var(--tz-surface-2);
+}
+
+.tz-achart__key[aria-pressed='false'] {
+  text-decoration: line-through;
+}
+
+.tz-achart__key.is-emphasis {
+  font-weight: var(--tz-weight-bold);
 }
 
 .tz-achart__key {
@@ -1202,12 +1203,8 @@ onBeforeUnmount(() => {
 }
 
 @media (hover: hover) {
-  .tz-achart__entry:hover {
-    border-color: var(--tz-accent);
-  }
-
-  .tz-achart__pick:hover .tz-achart__ring {
-    border-color: var(--tz-accent);
+  .tz-achart__key:hover:not(.is-nodata) {
+    color: var(--tz-text);
   }
 }
 

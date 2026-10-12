@@ -397,7 +397,7 @@ export const raceOnly = true
 }
 
 .tz-atab__note {
-  max-width: 96ch;
+  max-width: none;
   margin: 0;
   font-size: var(--tz-text-xs);
   line-height: var(--tz-leading-normal);

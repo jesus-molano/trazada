@@ -64,6 +64,11 @@ const visibleList = computed<readonly string[]>(() => {
 })
 const visible = computed(() => new Set(visibleList.value))
 
+/** «Mostrar todos» u «Ocultar todos» de la leyenda. */
+function setAll(on: boolean) {
+  st.setShown(TAB, on ? [...cars] : [])
+}
+
 function toggle(car: string) {
   const next = new Set(visible.value)
   if (next.has(car)) next.delete(car)
@@ -182,6 +187,7 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
         selectable
         @pick="pick"
         @toggle="toggle"
+        @set-all="setAll"
         @select="playback.selectCar($event)"
       >
         <template #card="{ hit, compact }">
@@ -212,7 +218,12 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
       <p v-if="lap1NoTime" class="tz-atab__note" data-testid="pace-lap1">{{ t('analysis.pace.lap1') }}</p>
       <p v-if="!table.trackStatusKnown" class="tz-atab__note" data-testid="pace-no-track-status">{{ t('analysis.pace.noTrackStatus') }}</p>
       <p class="tz-atab__note">{{ t('analysis.pace.basis') }}</p>
-      <p class="tz-atab__note" data-testid="pace-identify">{{ axis === 'lap' ? t('analysis.identifyPaceLap') : t('analysis.identify') }}</p>
+      <details class="tz-atab__how">
+        <summary class="tz-link">{{ t('analysis.howToRead') }}</summary>
+        <p class="tz-atab__note" data-testid="pace-identify">
+          {{ axis === 'lap' ? t('analysis.identifyPaceLap') : t('analysis.identify') }}
+        </p>
+      </details>
     </template>
   </div>
 </template>
@@ -241,8 +252,16 @@ export const label = (t: (key: string) => string) => t('analysis.tabs.pace')
   color: var(--tz-text-muted);
 }
 
+.tz-atab__how summary {
+  font-size: var(--tz-text-xs);
+}
+
+.tz-atab__how .tz-atab__note {
+  margin-top: var(--tz-space-1);
+}
+
+/* A lo ancho de la gráfica (D50): con 96ch se quedaba en una columna estrecha con mucho hueco a la derecha. */
 .tz-atab__note {
-  max-width: 96ch;
   margin: 0;
   font-size: var(--tz-text-xs);
   line-height: var(--tz-leading-normal);
