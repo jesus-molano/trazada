@@ -143,7 +143,8 @@ describe('ficha del race trace (D49)', () => {
       'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 23 (ALB)',
     ])
     expect(rc[0]!.textContent).toMatch(/Coche detenido|Car stopped/)
-    expect(rc[1]!.classList).toContain('is-stewards')
+    // Comisarios: su glifo de la columna de estado (D50), no una franja.
+    expect(rc[1]!.querySelector('[data-glyph]')!.getAttribute('data-glyph')).toBe('stewards')
     expect($('[data-testid="analysis-card-rc-more"]')!.textContent).toMatch(/^(y 1 más en dirección de carrera|and 1 more in race control)$/)
     // Ni la bandera azul ni las horas del texto.
     expect(text).not.toMatch(/BLUE FLAG/)

@@ -14,7 +14,7 @@
  */
 import type { RaceControlEvent } from '@trazada/schema'
 import { CAR_STORY_MAX, carStory } from '~/engine/analysis/carStory'
-import { rcTone } from '~/replay/rcKinds'
+import { rcTint } from '~/replay/rcKinds'
 import { getRuntime } from '~/stores/playback'
 
 const props = defineProps<{ car: string; cutoffMs: number; stopped: boolean; compact?: boolean }>()
@@ -41,7 +41,8 @@ function kindLabel(e: RaceControlEvent): string {
     <template v-if="story.rc.length">
       <p class="tz-story__title">{{ t('rc.title') }}</p>
       <ul class="tz-story__rc">
-        <li v-for="e in story.rc" :key="`${e.t}-${e.parsed.kind}`" :class="rcTone(e.parsed.kind)" data-testid="analysis-card-rc">
+        <li v-for="e in story.rc" :key="`${e.t}-${e.parsed.kind}`" :class="rcTint(e.parsed.kind)" data-testid="analysis-card-rc">
+          <TzRcGlyph :kind="e.parsed.kind" class="tz-story__glyph" />
           <span class="tz-story__meta">
             <span v-if="e.lap" class="tz-story__lap tz-tabular">{{ lapText(e.lap) }}</span>
             <span class="tz-story__kind">{{ kindLabel(e) }}</span>
@@ -89,28 +90,28 @@ function kindLabel(e: RaceControlEvent): string {
   list-style: none;
 }
 
-/* Un mensaje: franja de su tono (como en dirección de carrera), vuelta y clase, y el texto original. */
+/* Un mensaje, como en la hoja de dirección de carrera (D50): su glifo, vuelta y clase, y el texto original. */
 .tz-story__rc li {
   display: grid;
-  gap: 2px;
-  padding-left: var(--tz-space-2);
-  border-left: 3px solid var(--tz-border-strong);
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: var(--tz-space-1);
+  row-gap: 2px;
 }
 
-.tz-story__rc li.is-stewards {
-  border-left-color: var(--tz-paint);
+.tz-story__rc li > :not(.tz-story__glyph) {
+  grid-column: 2;
+}
+
+.tz-story__glyph {
+  grid-row: 1 / span 2;
 }
 
 .tz-story__rc li.is-neutral {
-  border-left-color: var(--tz-sc);
+  background: var(--tz-row-tint-neutral);
 }
 
-.tz-story__rc li.is-flag {
-  border-left-color: var(--tz-flag-green);
-}
-
-.tz-story__rc li.is-yellow {
-  border-left-color: var(--tz-flag-yellow);
+.tz-story__rc li.is-red {
+  background: var(--tz-row-tint-red);
 }
 
 .tz-story__meta {

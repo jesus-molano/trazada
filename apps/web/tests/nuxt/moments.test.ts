@@ -216,7 +216,7 @@ describe('«Ver y saltar entre» filtra también la pestaña (D49)', () => {
     expect(rc!.dataset).toMatchObject({ kind: 'raceControl', sub: 'incident' })
     expect(rc!.querySelector('[data-testid="other-text"]')!.textContent).toBe('INCIDENT INVOLVING CAR 1 (NOR) NOTED')
     expect(rc!.querySelector('[data-testid="other-text"]')!.getAttribute('lang')).toBe('en')
-    expect(rc!.querySelector('[data-testid="other-kind"]')!.classList).toContain('is-stewards')
+    expect(rc!.querySelector('[data-testid="other-kind"] [data-glyph]')!.getAttribute('data-glyph')).toBe('stewards')
     // El coche que nombra el mensaje, elegido: la fila se destaca.
     expect(rc!.classList).not.toContain('is-involved')
     usePlaybackStore().selectCar('1')

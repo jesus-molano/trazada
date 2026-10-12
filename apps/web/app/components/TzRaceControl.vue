@@ -24,7 +24,7 @@ import { formatClock } from '~/engine/format/time'
 import { clipsUpTo, clipUrl, LIVE_MAX_RATE, liveClip, radioClips, radioStatus } from '~/engine/radio/radio'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { visibleCount } from '~/engine/trackstate/TrackState'
-import { rcTone } from '~/replay/rcKinds'
+import { rcTint } from '~/replay/rcKinds'
 import { useLayoutStore } from '~/stores/layout'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { type RadioFilter, useRadioStore } from '~/stores/radio'
@@ -237,26 +237,31 @@ function kindLabel(e: RaceControlEvent): string {
         <li
           v-if="row.kind === 'rc'"
           class="tz-rc__item"
-          :class="rcTone(row.e.parsed.kind)"
+          :class="rcTint(row.e.parsed.kind)"
           :data-t="row.e.t"
           :data-kind="row.e.parsed.kind"
           :data-fresh="fresh === row.i ? '' : undefined"
           data-testid="rc-message"
         >
+          <TzRcGlyph :kind="row.e.parsed.kind" class="tz-rc__glyph" />
           <div class="tz-rc__meta">
-            <span class="tz-rc__time tz-tabular">{{ formatClock(row.e.t - origin) }}</span>
-            <span v-if="row.e.lap" class="tz-rc__lap tz-tabular">{{ t('rc.lap', { lap: row.e.lap }) }}</span>
             <span class="tz-rc__kind" data-testid="rc-kind">{{ kindLabel(row.e) }}</span>
+            <span v-if="row.e.lap" class="tz-rc__lap tz-tabular">{{ t('rc.lap', { lap: row.e.lap }) }}</span>
+            <span class="tz-rc__time tz-tabular">{{ formatClock(row.e.t - origin) }}</span>
           </div>
           <p class="tz-rc__text" lang="en" :title="t('rc.original')" data-testid="rc-text">{{ row.e.text }}</p>
         </li>
         <li v-else class="tz-rc__item is-radio" :data-t="row.c.t" :data-car="row.c.car" data-testid="rc-radio">
+          <span class="tz-rc__glyph tz-rc__glyph--radio" aria-hidden="true"><TzIcon name="radio" size="sm" /></span>
           <div class="tz-rc__meta">
+            <span class="tz-rc__kind">
+              {{ t('radio.kind') }}
+              <span class="tz-rc__who"><span class="tz-rc__team" :style="teamMark(row.c.car)" />{{ who(row.c.car) }}</span>
+            </span>
+            <span />
             <span class="tz-rc__time tz-tabular" :title="t('radio.published')">{{ formatClock(row.c.t - origin) }}</span>
-            <span class="tz-rc__who"><span class="tz-rc__team" :style="teamMark(row.c.car)" />{{ who(row.c.car) }}</span>
-            <span class="tz-rc__kind">{{ t('radio.kind') }}</span>
           </div>
-          <TzRadioClip :clip="row.c" :who="who(row.c.car)" :when="formatClock(row.c.t - origin)" />
+          <TzRadioClip class="tz-rc__clip" :clip="row.c" :who="who(row.c.car)" :when="formatClock(row.c.t - origin)" />
         </li>
       </template>
     </TransitionGroup>
@@ -264,16 +269,18 @@ function kindLabel(e: RaceControlEvent): string {
 </template>
 
 <style scoped>
-/* Nada se pinta fuera de su borde redondeado (con poco alto, la lista asomaba por debajo del panel). */
+/*
+ * Hoja de tiempos (D50): el panel es parte del cromo (sin caja ni sombra); filas con filetes, una columna de estado con
+ * su glifo (TzRcGlyph), el tipo en seminegrita y «V5 11:30» en mono tenue a la derecha; las neutralizaciones y la roja
+ * tiñen la fila entera. Nada de franjas de color a la izquierda. Nada se pinta fuera del panel.
+ */
 .tz-rc {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-lg);
+  border-top: 1px solid var(--tz-border);
   background: var(--tz-overlay);
-  box-shadow: var(--tz-shadow-panel);
 }
 
 .tz-rc.is-open {
@@ -308,19 +315,25 @@ function kindLabel(e: RaceControlEvent): string {
   min-height: var(--tz-hit-min);
   padding: var(--tz-space-2) var(--tz-panel-pad);
   border: 0;
+  border-radius: var(--tz-radius-md);
   background: transparent;
   text-align: start;
   cursor: pointer;
 }
 
-/* Título de panel común (.tz-panel-title: condensada, mayúsculas, --tz-tracking-caps y una sola línea). */
+@media (hover: hover) {
+  .tz-rc__head:hover {
+    background: var(--tz-surface-2);
+  }
+}
+
 .tz-rc__title {
   flex: 1;
 }
 
 .tz-rc__count {
   flex: none;
-  font-size: var(--tz-text-2xs);
+  font-size: var(--tz-text-xs);
   color: var(--tz-text-faint);
 }
 
@@ -339,25 +352,46 @@ function kindLabel(e: RaceControlEvent): string {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 0 var(--tz-space-2) var(--tz-space-2);
+  padding: 0;
   overflow-y: auto;
   list-style: none;
 }
 
 .tz-rc__empty {
-  padding: var(--tz-space-2);
+  padding: var(--tz-space-2) var(--tz-panel-pad);
   font-size: var(--tz-text-xs);
   color: var(--tz-text-muted);
 }
 
 .tz-rc__item {
-  padding: var(--tz-space-2);
-  border-left: 3px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-sm);
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: var(--tz-space-2);
+  padding: 9px var(--tz-space-2) 10px var(--tz-space-1);
+  border-top: 1px solid var(--tz-row-rule);
 }
 
-.tz-rc__item + .tz-rc__item {
-  margin-top: var(--tz-space-1);
+.tz-rc__item:first-child {
+  border-top: 0;
+}
+
+.tz-rc__item.is-neutral {
+  background: var(--tz-row-tint-neutral);
+}
+
+.tz-rc__item.is-red {
+  background: var(--tz-row-tint-red);
+}
+
+.tz-rc__glyph {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  justify-self: center;
+  margin-top: 2px;
+}
+
+.tz-rc__glyph--radio {
+  color: var(--tz-radio);
 }
 
 /* Entrada de un mensaje nuevo (solo cuando se anima): desde arriba, con un fundido; los de debajo se desplazan. */
@@ -381,39 +415,39 @@ function kindLabel(e: RaceControlEvent): string {
   animation: tz-flash var(--tz-dur-flash) var(--tz-ease-exit);
 }
 
-.tz-rc__item.is-yellow {
-  border-left-color: var(--tz-flag-yellow);
-}
-
-.tz-rc__item.is-flag {
-  border-left-color: var(--tz-flag-green);
-}
-
-.tz-rc__item.is-neutral {
-  border-left-color: var(--tz-sc);
-}
-
-/* Comisarios: franja de pintura de pista (categoría), no el acento de los controles (D47). */
-.tz-rc__item.is-stewards {
-  border-left-color: var(--tz-paint);
-}
-
+/* Primero el tipo en seminegrita; «V5» y la hora en mono tenue, a la derecha. */
 .tz-rc__meta {
-  display: flex;
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--tz-space-2);
   align-items: baseline;
-  gap: var(--tz-space-2);
-  font-size: var(--tz-text-2xs);
-  color: var(--tz-text-muted);
-}
-
-.tz-rc__time {
-  font-family: var(--tz-font-mono);
 }
 
 .tz-rc__kind {
-  margin-left: auto;
+  overflow: hidden;
+  font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--tz-text);
+}
+
+.tz-rc__lap,
+.tz-rc__time {
+  font-family: var(--tz-font-mono);
+  font-size: var(--tz-text-xs);
+  color: var(--tz-text-faint);
+}
+
+/* El texto original (en inglés), en Barlow 12,5 secundario: se lee mejor que en mono (D50). */
+.tz-rc__text {
+  grid-column: 2;
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--tz-text-muted);
+  overflow-wrap: anywhere;
 }
 
 /* Filtro y «Escuchar en directo», bajo la cabecera. */
@@ -436,19 +470,25 @@ function kindLabel(e: RaceControlEvent): string {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
-  min-height: var(--tz-hit-min);
+  min-height: var(--tz-space-8);
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-sm);
+  border: 0;
+  border-radius: var(--tz-radius-md);
   background: transparent;
   color: var(--tz-text-muted);
-  font-size: var(--tz-text-2xs);
+  font-size: var(--tz-text-xs);
   cursor: pointer;
+}
+
+@media (hover: hover) {
+  .tz-rc__live:hover:not(:disabled, [aria-pressed='true']) {
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
+  }
 }
 
 /* Activado: la placa maciza de pintura (D47). */
 .tz-rc__live[aria-pressed='true'] {
-  border-color: var(--tz-accent);
   background: var(--tz-accent);
   color: var(--tz-accent-on);
 }
@@ -458,29 +498,24 @@ function kindLabel(e: RaceControlEvent): string {
   cursor: default;
 }
 
-.tz-rc__item.is-radio {
-  border-left-color: var(--tz-radio);
-}
-
 .tz-rc__who {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
+  margin-left: var(--tz-space-1);
   font-family: var(--tz-font-mono);
-  color: var(--tz-text);
+  font-weight: var(--tz-weight-medium);
 }
 
+/* Marca del equipo (un dato, no el borde de la fila). */
 .tz-rc__team {
   width: 3px;
   height: 12px;
   border-radius: 1px;
 }
 
-.tz-rc__text {
-  margin: 2px 0 0;
-  font-family: var(--tz-font-mono);
-  font-size: var(--tz-text-xs);
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+.tz-rc__clip {
+  grid-column: 2;
+  margin-top: var(--tz-space-1);
 }
 </style>

@@ -21,7 +21,7 @@ import { duels } from '~/engine/moments/duels'
 import type { Moment, MomentKind } from '~/engine/moments/jumps'
 import type { Overtake } from '~/engine/moments/overtakes'
 import { clockOrigin } from '~/engine/timeline/markers'
-import { rcTone } from '~/replay/rcKinds'
+import { rcTint } from '~/replay/rcKinds'
 import { JUMP_FILTERS, type JumpFilter, useMomentsStore } from '~/stores/moments'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
 
@@ -174,10 +174,15 @@ interface OtherRow {
   lap: string | null
   lapLong: string | null
   label: string
-  tone: string
+  /** Clase para el glifo de su columna de estado (una neutralización, como el mensaje que la abre). */
+  glyph: string
+  tint: string
   time: string
   involved: boolean
 }
+
+/** Glifo de una neutralización: el del mensaje que la abre (SC, VSC o bandera roja). */
+const NEUTRAL_GLYPH: Readonly<Record<string, string>> = { sc: 'sc_deployed', vsc: 'vsc_deployed', 'vsc-ending': 'vsc_ending', red: 'red_flag' }
 
 const otherRows = computed<OtherRow[]>(() =>
   othersInSession.value
@@ -188,7 +193,8 @@ const otherRows = computed<OtherRow[]>(() =>
       lap: o.lap !== null ? t('moments.overtakes.lap', { lap: o.lap }) : null,
       lapLong: o.lap !== null ? t('moments.overtakes.lapLong', { lap: o.lap }) : null,
       label: otherLabel(o),
-      tone: o.m.kind === 'neutralisation' ? 'is-neutral' : rcTone(o.sub),
+      glyph: o.m.kind === 'neutralisation' ? NEUTRAL_GLYPH[o.sub] ?? 'sc_deployed' : o.sub,
+      tint: o.m.kind === 'neutralisation' ? (o.sub === 'red' ? 'is-red' : 'is-neutral') : rcTint(o.sub),
       time: formatClock(o.m.t - origin),
       involved: playback.selectedCar !== null && o.cars.includes(playback.selectedCar),
     })),
@@ -361,7 +367,7 @@ export const raceOnly = true
                 <span v-if="r.lapLong" class="tz-visually-hidden">{{ r.lapLong }}</span>
               </template>
               <span class="tz-moments__body">
-                <span class="tz-chip tz-moments__kind" :class="r.tone" data-testid="other-kind">{{ r.label }}</span>
+                <span class="tz-moments__kind" data-testid="other-kind"><TzRcGlyph :kind="r.glyph" />{{ r.label }}</span>
                 <span v-if="r.o.text" class="tz-moments__rc" lang="en" :title="r.o.text" data-testid="other-text">{{ r.o.text }}</span>
                 <span class="tz-moments__when tz-tabular">{{ r.time }}</span>
               </span>
@@ -590,28 +596,14 @@ export const raceOnly = true
   flex: none;
 }
 
-/* Clase de una neutralización o de un mensaje: chip con la franja de su tono (como en dirección de carrera). */
+/* Clase de una neutralización o de un mensaje: su glifo de la columna de estado y el tipo en seminegrita (D50). */
 .tz-moments__kind {
+  display: inline-flex;
   flex: none;
-  border-left: 3px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-sm);
-}
-
-.tz-moments__kind.is-neutral {
-  border-left-color: var(--tz-sc);
-}
-
-.tz-moments__kind.is-yellow {
-  border-left-color: var(--tz-flag-yellow);
-}
-
-.tz-moments__kind.is-flag {
-  border-left-color: var(--tz-flag-green);
-}
-
-/* Comisarios: franja de pintura de pista (categoría), no el acento de los controles (D47). */
-.tz-moments__kind.is-stewards {
-  border-left-color: var(--tz-paint);
+  align-items: center;
+  gap: var(--tz-space-1);
+  font-size: var(--tz-text-xs);
+  font-weight: var(--tz-weight-semibold);
 }
 
 /* Texto original del mensaje: dos líneas como mucho (el entero, en el título). */

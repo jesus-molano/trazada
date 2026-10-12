@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rcTone } from './rcKinds'
+import { rcGlyph, rcTint, rcTone } from './rcKinds'
 
 describe('tono de los mensajes de dirección de carrera', () => {
   it('los mismos grupos que tenía el panel de dirección de carrera', () => {
@@ -32,5 +32,37 @@ describe('tono de los mensajes de dirección de carrera', () => {
     expect(rcTone('sc_deployed')).toBe('is-neutral')
     expect(rcTone('green_light')).toBe('is-flag')
     expect(rcTone('car_stopped')).toBe('')
+  })
+})
+
+describe('columna de estado: glifo y tinte (D50)', () => {
+  it('banderas con mástil, rótulos SC/VSC/PIT, comisarios, adelantamiento y un punto para lo demás', () => {
+    const cases: [string, string][] = [
+      ['sector_clear', 'flag-green'],
+      ['green_light', 'flag-green'],
+      ['sector_yellow', 'flag-yellow'],
+      ['sector_double_yellow', 'flag-double-yellow'],
+      ['blue_flag', 'flag-blue'],
+      ['red_flag', 'flag-red'],
+      ['chequered_flag', 'flag-chequered'],
+      ['sc_deployed', 'sc'],
+      ['sc_procedure', 'sc'],
+      ['vsc_ending', 'vsc'],
+      ['pit_exit_open', 'pit'],
+      ['lap_deleted', 'stewards'],
+      ['black_flag', 'stewards'],
+      ['overtake_enabled', 'overtake'],
+      ['drs_disabled', 'overtake'],
+      ['info', 'dot'],
+      ['no_such_kind', 'dot'],
+    ]
+    for (const [kind, glyph] of cases) expect(rcGlyph(kind), kind).toBe(glyph)
+  })
+
+  it('solo las neutralizaciones y la roja tiñen la fila entera', () => {
+    expect(rcTint('sc_deployed')).toBe('is-neutral')
+    expect(rcTint('vsc_deployed')).toBe('is-neutral')
+    expect(rcTint('red_flag')).toBe('is-red')
+    for (const kind of ['sector_yellow', 'lap_deleted', 'info', 'pit_exit_open']) expect(rcTint(kind), kind).toBe('')
   })
 })

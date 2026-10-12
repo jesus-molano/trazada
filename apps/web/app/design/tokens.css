@@ -96,6 +96,9 @@
   --tz-sc: #f59e0b;
   --tz-vsc: #fbbf24;
   --tz-pit: #a78bfa;
+  /* Fila entera teñida en las hojas de tiempos (D50): neutralizaciones y bandera roja (contraste del tenue ≥ 5,17). */
+  --tz-row-tint-neutral: color-mix(in oklab, var(--tz-sc) 10%, transparent);
+  --tz-row-tint-red: color-mix(in oklab, var(--tz-flag-red) 12%, transparent);
   /* «Estimado»: magenta claro, a ΔE OKLab ≥ 0,08 del morado de mejor vuelta y del de boxes (tokens.test.ts) */
   --tz-estimated: #e07af5;
   --tz-danger: #ff6b6b;
