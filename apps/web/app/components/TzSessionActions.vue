@@ -8,7 +8,14 @@ import type { SessionType } from '@trazada/schema'
 import { useCatalogStore } from '~/stores/catalog'
 import { useManagerStore } from '~/stores/manager'
 
-const props = defineProps<{ season: number; round: number; session: SessionType }>()
+const props = defineProps<{
+  season: number
+  round: number
+  session: SessionType
+  /** Prefijo de los `data-testid` (las mismas acciones en otro sitio de la portada). */
+  scope?: string
+}>()
+const tid = (id: string) => (props.scope ? `${props.scope}-${id}` : id)
 const { t } = useI18n()
 const manager = useManagerStore()
 const catalog = useCatalogStore()
@@ -44,14 +51,14 @@ async function remove() {
 </script>
 
 <template>
-  <span class="tz-session-actions" :data-testid="`session-actions-${session}`">
+  <span class="tz-session-actions" :data-testid="tid(`session-actions-${session}`)">
     <template v-if="!confirming">
       <button
         type="button"
         class="tz-iconbtn"
         :aria-label="t('manager.redownloadSession', { session: name })"
         :title="t('manager.redownloadHint')"
-        :data-testid="`redownload-${session}`"
+        :data-testid="tid(`redownload-${session}`)"
         @click="redownload"
       >
         <TzIcon name="retry" size="sm" />
@@ -62,7 +69,7 @@ async function remove() {
         class="tz-iconbtn"
         :aria-label="t('manager.deleteSession', { session: name })"
         :title="t('manager.deleteSession', { session: name })"
-        :data-testid="`delete-${session}`"
+        :data-testid="tid(`delete-${session}`)"
         @click="ask"
       >
         <TzIcon name="delete" size="sm" />
@@ -75,12 +82,12 @@ async function remove() {
         type="button"
         class="tz-button tz-session-actions__yes"
         :disabled="busy"
-        :data-testid="`delete-yes-${session}`"
+        :data-testid="tid(`delete-yes-${session}`)"
         @click="remove"
       >
         {{ t('manager.deleteYes') }}
       </button>
-      <button type="button" class="tz-button tz-button--quiet" :data-testid="`delete-no-${session}`" @click="cancel">
+      <button type="button" class="tz-button tz-button--quiet" :data-testid="tid(`delete-no-${session}`)" @click="cancel">
         {{ t('manager.deleteNo') }}
       </button>
     </span>

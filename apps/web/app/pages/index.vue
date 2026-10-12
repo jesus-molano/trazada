@@ -7,6 +7,8 @@ useHead({ title: () => t('home.title') })
   <section class="tz-home">
     <h1>{{ t('home.title') }}</h1>
     <p class="tz-lead">{{ t('home.lead') }}</p>
+    <!-- El Gran Premio del momento (el del fin de semana, el último o el próximo), arriba y en grande. -->
+    <TzFeaturedEvent />
     <!-- «Seguir viendo» (ítem 13): solo con sesiones guardadas que siguen en el catálogo. -->
     <TzContinue />
     <TzSelector />

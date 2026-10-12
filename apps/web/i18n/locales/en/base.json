@@ -115,6 +115,15 @@
     "more": "More tools",
     "moreHint": "View, scene, camera, help and language"
   },
+  "featured": {
+    "live": "This weekend",
+    "last": "Latest Grand Prix",
+    "next": "Next Grand Prix",
+    "countdown": "{session} in {left}",
+    "inDays": "{d} d {h} h",
+    "inHours": "{h} h {m} min",
+    "inMinutes": "{m} min"
+  },
   "staleBuild": {
     "text": "There is a new version of Trazada. Reload the page to carry on.",
     "reload": "Reload",

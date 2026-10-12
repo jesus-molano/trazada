@@ -285,3 +285,47 @@ export function parseJob(v: unknown): Job | null {
     log: Array.isArray(v.log) ? v.log.filter((l): l is string => typeof l === 'string') : undefined,
   }
 }
+
+/**
+ * El Gran Premio del momento para la portada (pendiente 6d del PLAN): el del fin de semana en curso, desde el día de los
+ * primeros libres (a medianoche, hora local) hasta el día después de su última sesión; si no hay ninguno, el último
+ * que empezó; si aún no ha empezado ninguno (pretemporada), el próximo. Las fechas salen del calendario (`startUtc` de
+ * cada sesión) o, sin él, del primer día del catálogo (`dateStart`). Sin fechas, ninguno.
+ */
+export type FeaturedWhen = 'live' | 'last' | 'next'
+
+const DAY_MS = 86_400_000
+
+/** Medianoche local del día de `ms`. */
+function localMidnight(ms: number): number {
+  const d = new Date(ms)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/** Comienzo (medianoche del día de la primera sesión) y fin (fin del día después de la última) del fin de semana. */
+export function weekendSpan(e: BrowseEvent): { start: number; end: number } | null {
+  const starts = e.sessions.map((s) => (s.startUtc ? Date.parse(s.startUtc) : Number.NaN)).filter(Number.isFinite)
+  if (starts.length) {
+    const first = Math.min(...starts)
+    const last = Math.max(...starts)
+    return { start: localMidnight(first), end: localMidnight(last) + 2 * DAY_MS }
+  }
+  if (e.dateStart) {
+    const first = Date.parse(`${e.dateStart}T00:00:00`)
+    if (Number.isFinite(first)) return { start: first, end: first + 4 * DAY_MS }
+  }
+  return null
+}
+
+export function featuredEvent(events: readonly BrowseEvent[], now: number): { event: BrowseEvent; when: FeaturedWhen } | null {
+  const spans = events
+    .map((event) => ({ event, span: weekendSpan(event) }))
+    .filter((x): x is { event: BrowseEvent; span: { start: number; end: number } } => x.span !== null)
+  const live = spans.find((x) => x.span.start <= now && now < x.span.end)
+  if (live) return { event: live.event, when: 'live' }
+  const past = spans.filter((x) => x.span.start <= now).sort((a, b) => b.span.start - a.span.start)[0]
+  if (past) return { event: past.event, when: 'last' }
+  const next = spans.filter((x) => x.span.start > now).sort((a, b) => a.span.start - b.span.start)[0]
+  return next ? { event: next.event, when: 'next' } : null
+}

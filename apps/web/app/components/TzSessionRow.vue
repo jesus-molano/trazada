@@ -4,7 +4,13 @@ import type { ComponentPublicInstance } from 'vue'
 import type { IconName } from '~/design/icons'
 import { DATA_DELAY_MIN, type SessionView } from '~/manager/model'
 
-const props = defineProps<{ type: SessionType; view: SessionView }>()
+const props = defineProps<{
+  type: SessionType
+  view: SessionView
+  /** Prefijo de los `data-testid` (la misma fila en otro sitio de la portada, p. ej. la ficha del Gran Premio del momento). */
+  scope?: string
+}>()
+const tid = (id: string) => (props.scope ? `${props.scope}-${id}` : id)
 const emit = defineEmits<{ download: []; cancel: [id: string] }>()
 const { t, locale } = useI18n()
 
@@ -130,7 +136,7 @@ function onAnimationEnd(event: AnimationEvent) {
     :class="{ 'is-fresh': fresh }"
     data-state="link"
     :data-fresh="fresh ? '' : undefined"
-    :data-testid="`session-${type}`"
+    :data-testid="tid(`session-${type}`)"
     @animationend="onAnimationEnd"
   >
     <span class="tz-session__name">{{ name }}</span>
@@ -149,12 +155,12 @@ function onAnimationEnd(event: AnimationEvent) {
     data-state="unavailable"
     :data-reason="view.reason"
     :title="unavailableHint"
-    :data-testid="`session-${type}`"
+    :data-testid="tid(`session-${type}`)"
   >
     <span class="tz-session__name">{{ name }}</span>
     <span class="tz-badge">{{ t('selector.unavailable') }}</span>
     <!-- El motivo, en texto visible (en iPad un title no se ve nunca). -->
-    <span class="tz-session__reason" data-testid="unavailable-reason">
+    <span class="tz-session__reason" :data-testid="tid('unavailable-reason')">
       <TzIcon :name="unavailableIcon" size="sm" />{{ unavailableHint }}
     </span>
   </div>
@@ -166,11 +172,11 @@ function onAnimationEnd(event: AnimationEvent) {
     aria-disabled="true"
     tabindex="-1"
     data-state="future"
-    :data-testid="`session-${type}`"
+    :data-testid="tid(`session-${type}`)"
   >
     <span class="tz-session__name">{{ name }}</span>
     <template v-if="view.at">
-      <span class="tz-session__note" :title="futureHint" data-testid="available-from">{{
+      <span class="tz-session__note" :title="futureHint" :data-testid="tid('available-from')">{{
         t('manager.availableFrom', { date: formatDateTime(view.at, locale) })
       }}</span>
       <span class="tz-visually-hidden">{{ futureHint }}</span>
@@ -184,7 +190,7 @@ function onAnimationEnd(event: AnimationEvent) {
     class="tz-session"
     :class="`is-${view.kind}`"
     :data-state="view.kind"
-    :data-testid="`session-${type}`"
+    :data-testid="tid(`session-${type}`)"
   >
     <span class="tz-session__name">{{ name }}</span>
     <span v-if="view.kind === 'queued'" class="tz-badge">{{ t('manager.queued') }}</span>
@@ -201,7 +207,7 @@ function onAnimationEnd(event: AnimationEvent) {
       :class="{ 'tz-button--quiet': action.quiet }"
       :title="action.title"
       :aria-label="action.label"
-      :data-testid="action.testid"
+      :data-testid="tid(action.testid)"
       @click="action.run()"
     >
       <TzIcon :name="action.icon" size="sm" />{{ action.text }}
@@ -215,13 +221,13 @@ function onAnimationEnd(event: AnimationEvent) {
       aria-valuemax="100"
       :aria-valuenow="pct"
       :aria-label="t('manager.progressLabel', { session: name })"
-      :data-testid="`progress-${type}`"
+      :data-testid="tid(`progress-${type}`)"
     >
       <span class="tz-session__bar" :style="barStyle" />
     </span>
 
     <template v-if="view.kind === 'error'">
-      <p class="tz-session__error" :data-testid="`error-${type}`">
+      <p class="tz-session__error" :data-testid="tid(`error-${type}`)">
         <TzIcon name="error" size="sm" class="tz-session__error-icon" />{{ t(`manager.error.${view.job.error?.code ?? 'failed'}`) }}
       </p>
       <details v-if="details" class="tz-session__details">

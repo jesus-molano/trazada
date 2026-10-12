@@ -1,10 +1,12 @@
-import type { CatalogEvent } from '@trazada/schema'
+import type { CatalogEvent, SessionType } from '@trazada/schema'
 import { describe, expect, it } from 'vitest'
 import {
   availableFrom,
+  type BrowseEvent,
   type BrowseSession,
   DATA_DELAY_MIN,
   downloadable,
+  featuredEvent,
   type Job,
   jobKey,
   mergeEvents,
@@ -221,5 +223,46 @@ describe('validación de respuestas', () => {
     expect(result(true)).toBe(true)
     expect([result(false), result('sí'), result(undefined)]).toEqual([false, false, false])
     expect(parseJob({ id: '1', season: 2026, round: 3, session: 'fp1', state: 'otro' })).toBeNull()
+  })
+})
+
+describe('el Gran Premio del momento (portada)', () => {
+  const ev = (round: number, sessions: [SessionType, string][]): BrowseEvent => ({
+    key: `2026-${round}`,
+    round,
+    slug: `r${round}`,
+    event: `GP ${round}`,
+    country: 'X',
+    scheduled: true,
+    sessions: sessions.map(([session, startUtc]) => ({ session, catalog: null, startUtc })),
+  })
+  const singapore = ev(18, [
+    ['fp1', '2026-10-09T09:30:00Z'],
+    ['q', '2026-10-10T13:00:00Z'],
+    ['race', '2026-10-11T12:00:00Z'],
+  ])
+  const austin = ev(19, [
+    ['fp1', '2026-10-23T17:30:00Z'],
+    ['sprint', '2026-10-24T18:00:00Z'],
+    ['race', '2026-10-25T19:00:00Z'],
+  ])
+  const events = [singapore, austin]
+  const at = (iso: string) => Date.parse(iso)
+
+  it('entre semanas, el último que empezó; desde el día de los primeros libres, el del fin de semana', () => {
+    expect(featuredEvent(events, at('2026-10-15T10:00:00'))).toEqual({ event: singapore, when: 'last' })
+    // El mismo día de los primeros libres, aunque aún no hayan empezado.
+    expect(featuredEvent(events, at('2026-10-23T08:00:00'))).toEqual({ event: austin, when: 'live' })
+    expect(featuredEvent(events, at('2026-10-25T23:00:00'))).toEqual({ event: austin, when: 'live' })
+    // Pasado el día después de la carrera, sigue siendo el último (hasta los libres del siguiente).
+    expect(featuredEvent(events, at('2026-10-28T10:00:00'))).toEqual({ event: austin, when: 'last' })
+  })
+
+  it('en pretemporada, el próximo; sin fechas, ninguno; sin calendario, el primer día del catálogo', () => {
+    expect(featuredEvent(events, at('2026-01-10T10:00:00'))).toEqual({ event: singapore, when: 'next' })
+    expect(featuredEvent([ev(1, [['race', '']])], at('2026-10-15T10:00:00'))).toBeNull()
+    const fromCatalog: BrowseEvent = { ...ev(3, []), dateStart: '2026-03-27' }
+    expect(featuredEvent([fromCatalog], at('2026-03-28T12:00:00'))).toEqual({ event: fromCatalog, when: 'live' })
+    expect(featuredEvent([fromCatalog], at('2026-04-10T12:00:00'))).toEqual({ event: fromCatalog, when: 'last' })
   })
 })

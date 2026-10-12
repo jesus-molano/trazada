@@ -115,6 +115,15 @@
     "more": "Más herramientas",
     "moreHint": "Vista, escena, cámara, ayuda e idioma"
   },
+  "featured": {
+    "live": "Este fin de semana",
+    "last": "Último Gran Premio",
+    "next": "Próximo Gran Premio",
+    "countdown": "{session} en {left}",
+    "inDays": "{d} d {h} h",
+    "inHours": "{h} h {m} min",
+    "inMinutes": "{m} min"
+  },
   "staleBuild": {
     "text": "Hay una versión nueva de Trazada. Recarga la página para seguir.",
     "reload": "Recargar",
