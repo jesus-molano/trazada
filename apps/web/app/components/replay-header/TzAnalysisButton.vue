@@ -78,7 +78,7 @@ export const group = 'view'
 
 /*
  * Con su texto a cualquier ancho de escritorio (D50: ya es el único «Análisis» de la cabecera); solo el icono por
- * debajo de 1360 px o si la cabecera no cabe (nivel 2 de useHeaderFit, en pages/replay.vue).
+ * debajo de 1360 px o si la cabecera no cabe (nivel 2 de useHeaderFit, en TzReplay.vue).
  */
 @media (width < 1360px) {
   .tz-analysis-btn {

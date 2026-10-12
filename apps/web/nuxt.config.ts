@@ -38,6 +38,11 @@ export default defineNuxtConfig({
     // Build vieja (plugins/stale-build.client.ts): mira cada minuto si hay una más nueva (solo pide
     // /_nuxt/builds/latest.json al propio servidor; por defecto, cada hora).
     checkOutdatedBuildInterval: 60_000,
+    // Los enlaces no precargan (cada NuxtLink ponía su requestIdleCallback y su IntersectionObserver al montar y los
+    // quitaba al desmontar, dentro de la transición de ruta; y la precarga de un enlace que entraba en la vista podía
+    // coincidir con el clic): la portada precarga el replay una sola vez (pages/index.vue). Volver a la portada desde
+    // un replay abierto directamente baja su trozo al hacer clic (del propio PC).
+    defaults: { nuxtLink: { prefetch: false } },
   },
   app: {
     head: {

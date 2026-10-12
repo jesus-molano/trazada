@@ -3,7 +3,7 @@
  * Estado de la pista en el instante del reloj, en texto: neutralización vigente, banderas por sector y ventana de
  * overtake/DRS (chips de `TzTrackStatusChips`, compartidos con la vista previa del timeline). Se actualiza solo
  * cuando cambia el estado (no en cada frame). En la cabecera, «Estimado» se pulsa para ver por qué y se acorta por
- * debajo de 1920 px (la cabecera cabe en una fila; ver pages/replay.vue).
+ * debajo de 1920 px (la cabecera cabe en una fila; ver TzReplay.vue).
  *
  * Microinteracciones (21b, D42): con reproducción a ≤ ×4, un chip que entra lo hace con un fundido y una escala corta, y
  * el de coche de seguridad o bandera roja lanza un pulso de su anillo dos veces (nunca en bucle); tras un seek, en

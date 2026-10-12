@@ -8,7 +8,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { markRaw, nextTick } from 'vue'
 import TzScene from '~/components/TzScene.vue'
-import ReplayPage from '~/pages/replay.vue'
+import TzReplay from '~/components/TzReplay.vue'
 import { createReplayRuntime } from '~/replay/runtime'
 import { usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
@@ -75,7 +75,7 @@ describe('huecos de la página del replay', () => {
         (n) => [n, true],
       ),
     )
-    const w = await mountSuspended(ReplayPage, { global: { stubs } })
+    const w = await mountSuspended(TzReplay, { global: { stubs } })
     expect(w.findAll('[data-fake]')).toHaveLength(0)
 
     usePlaybackStore().attach(createReplayRuntime(await loadFixture()))
@@ -99,6 +99,8 @@ describe('huecos de la página del replay', () => {
     usePlaybackStore().detach()
     await nextTick()
     expect(w.findAll('[data-fake]')).toHaveLength(0)
+    // La carga va diferida (otra tarea): desmontado, ya no salta tras quitar los espías.
+    w.unmount()
   })
 })
 

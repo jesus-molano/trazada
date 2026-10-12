@@ -35,7 +35,7 @@ const { t } = useI18n()
   background: var(--tz-bg);
 }
 
-/* Modo compacto (móvil y ventanas pequeñas, pages/replay.vue): pegado a los bordes. */
+/* Modo compacto (móvil y ventanas pequeñas, TzReplay.vue): pegado a los bordes. */
 @media (width < 768px), (height < 500px) {
   .tz-dock {
     margin: 0 var(--tz-space-2) var(--tz-space-1);

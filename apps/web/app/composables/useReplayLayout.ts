@@ -23,7 +23,7 @@ import { useLayoutStore } from '~/stores/layout'
 export const PORTRAIT_QUERY = '(width <= 900px) and (orientation: portrait)'
 /**
  * Modo compacto (móvil, ventanas pequeñas; D55): el mapa ocupa todo el escenario y los paneles van en una
- * hoja inferior con pestañas (pages/replay.vue, TzSheetHead). Tampoco hay asas ni anchos.
+ * hoja inferior con pestañas (TzReplay.vue, TzSheetHead). Tampoco hay asas ni anchos.
  */
 export const COMPACT_QUERY = '(width < 768px), (height < 500px)'
 /** Altura de la hoja de paneles del modo compacto: asomada (solo su cabecera), media o entera. */
@@ -37,7 +37,12 @@ const LB_GAP_NARROW_PX = 6
 
 const px = (name: `--tz-${string}`) => Number.parseFloat(token(name)) || 0
 
-export function useReplayLayout() {
+/**
+ * `enabled`: si hay paneles que medir (en el replay, con el runtime enganchado). Hasta entonces no se calculan las
+ * variables de ancho, que leen tokens con getComputedStyle: justo tras montar la página, eso forzaba un recálculo de
+ * estilo de todo el documento dentro de la tarea del montaje.
+ */
+export function useReplayLayout(enabled: () => boolean = () => true) {
   const layout = useLayoutStore()
   const width = ref(0)
   const portrait = ref(false)
@@ -111,7 +116,7 @@ export function useReplayLayout() {
   )
 
   const vars = computed(() =>
-    resizable.value
+    enabled() && resizable.value
       ? {
           '--replay-lb-w': `${widths.value.lb}px`,
           '--replay-side-w': `${widths.value.side}px`,

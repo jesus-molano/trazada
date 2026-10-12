@@ -106,7 +106,7 @@ export const order = 70
 
 <style scoped>
 /*
- * Dentro de la ventana del mapa, arriba a la izquierda (`--replay-over-*`, pages/replay.vue): las etiquetas «Estimado»
+ * Dentro de la ventana del mapa, arriba a la izquierda (`--replay-over-*`, TzReplay.vue): las etiquetas «Estimado»
  * de la escena van a la derecha, en la misma fila, y cada lado se queda con la mitad como mucho.
  */
 .tz-tv-chip {

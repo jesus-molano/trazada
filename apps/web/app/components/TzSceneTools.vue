@@ -14,7 +14,7 @@
  *
  * Las etiquetas «Estimado» de la escena no van en la fila de la cabecera (la partían en dos): flotan justo debajo de
  * ella, sobre el mapa (lo que describen), a la izquierda de la columna derecha y siempre a la vista; cada una se pulsa
- * para ver por qué es estimada. La página da su sitio con `--replay-over-right` (pages/replay.vue) y las quita
+ * para ver por qué es estimada. La página da su sitio con `--replay-over-right` (TzReplay.vue) y las quita
  * mientras la hoja de análisis tapa la escena entera (no describen nada a la vista ni flotan sobre la hoja).
  */
 import type { IconName } from '~/design/icons'

@@ -5,9 +5,6 @@
  * las barras del navegador y el dock quedaba fuera de la pantalla) y `100vh` de respaldo. El pie lleva el disclaimer
  * completo y visible, con menos relleno.
  */
-const { locale } = useI18n()
-
-useHead(() => ({ htmlAttrs: { lang: locale.value } }))
 </script>
 
 <template>

@@ -38,6 +38,8 @@ export const useSessionStore = defineStore('session', () => {
     }
     try {
       const { loadSessionInWorker } = await import('~/data/session-client')
+      // Cancelada mientras se importaba el cliente: ni se crea su Web Worker.
+      if (signal.aborted) return
       const session = await loadSessionInWorker(useDataUrl()(manifestPath(newId)), newId, SCHEMA_VERSION, {
         signal,
         onManifest: (m) => (manifest.value = markRaw(m)),

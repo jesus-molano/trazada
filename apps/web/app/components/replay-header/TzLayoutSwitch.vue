@@ -5,7 +5,7 @@
  * placa maciza). También con la tecla P (de «paneles»; la L es de la realización automática) y desde la paleta de comandos. Se recuerda por navegador (stores/layout.ts).
  *
  * La cabecera va en una fila: desde 1600 px, icono y texto; por debajo (o antes, si el título no cabe entero:
- * `data-fit-hide="2"`, ver pages/replay.vue), solo el icono, con su nombre accesible y su título. Por debajo de 1360 px
+ * `data-fit-hide="2"`, ver TzReplay.vue), solo el icono, con su nombre accesible y su título. Por debajo de 1360 px
  * (o antes, con `data-fit="3"`): con ratón, botones de 24 px de ancho; en táctil (sin ratón), un solo botón que alterna
  * «Detallados» (pulsado) y «Compactos» (sin pulsar), con su zona táctil y el mismo nombre en voz alta. Así la cabecera
  * de la tablet en horizontal (1024 px) sigue en una fila, como antes del cambio de diseño.
@@ -172,7 +172,7 @@ export const group = 'view'
   }
 }
 
-/* Por debajo de 1360 px (o con `data-fit="3"`: pages/replay.vue), en táctil, el botón que alterna. */
+/* Por debajo de 1360 px (o con `data-fit="3"`: TzReplay.vue), en táctil, el botón que alterna. */
 @media (width < 1360px) {
   .tz-layout-switch__group {
     display: none;

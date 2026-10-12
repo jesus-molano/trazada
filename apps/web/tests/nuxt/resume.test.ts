@@ -12,7 +12,7 @@ import TzContinue from '~/components/TzContinue.vue'
 import TzResumeToast from '~/components/replay-overlays/TzResumeToast.vue'
 import type { LoadedSession } from '~/data/types'
 import { formatClock } from '~/engine/format/time'
-import ReplayPage from '~/pages/replay.vue'
+import TzReplay from '~/components/TzReplay.vue'
 import {
   RESUME_EXT,
   RESUME_TOAST_MS,
@@ -88,7 +88,7 @@ afterEach(() => {
 async function openReplay(route = `/replay?s=${FIXTURE_FP1}`) {
   const session = useSessionStore()
   vi.spyOn(session, 'load').mockResolvedValue()
-  const w = await mountSuspended(ReplayPage, { route, global: { stubs }, attachTo: document.body })
+  const w = await mountSuspended(TzReplay, { route, global: { stubs }, attachTo: document.body })
   unmount = () => w.unmount()
   frames = []
   session.data = markRaw(fixture)

@@ -262,7 +262,7 @@ function kindLabel(e: RaceControlEvent): string {
 /*
  * Con sitio solo para la cabecera (un coche elegido en una pantalla baja o en la tablet): la lista no asoma a medias.
  * 5,5 rem de contenido: la cabecera con su zona táctil (44 px) y un mensaje de una línea; por debajo del mínimo de «un
- * mensaje» que la telemetría le puede pedir (`--replay-rc-one`, 6 rem con su borde, en pages/replay.vue).
+ * mensaje» que la telemetría le puede pedir (`--replay-rc-one`, 6 rem con su borde, en TzReplay.vue).
  */
 @container (height < 5.5rem) {
   .tz-rc__list {

@@ -75,7 +75,7 @@ export const group = 'help'
 }
 
 /*
- * Por debajo de 1360 px (o antes, con `data-fit="3"`: pages/replay.vue), 24 px de ancho (el mínimo de WCAG 2.2) para
+ * Por debajo de 1360 px (o antes, con `data-fit="3"`: TzReplay.vue), 24 px de ancho (el mínimo de WCAG 2.2) para
  * que la cabecera siga en una fila.
  */
 @media (width < 1360px) {

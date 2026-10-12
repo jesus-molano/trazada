@@ -183,7 +183,7 @@ function markOverflow() {
   if (more !== el.hasAttribute('data-overflow')) el.toggleAttribute('data-overflow', more)
 }
 
-/** Lo que la telemetría le pide a la dirección de carrera (pages/replay.vue): nada, un mensaje o solo su cabecera. */
+/** Lo que la telemetría le pide a la dirección de carrera (TzReplay.vue): nada, un mensaje o solo su cabecera. */
 function askRaceControl(floor: 'one' | 'head' | null) {
   if (floor) fitSide?.style.setProperty('--replay-rc-fit', `var(--replay-rc-${floor})`)
   else fitSide?.style.removeProperty('--replay-rc-fit')

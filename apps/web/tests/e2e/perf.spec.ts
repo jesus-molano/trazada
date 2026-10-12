@@ -4,6 +4,8 @@ import { gotoApp } from './helpers'
 declare global {
   interface Window {
     __longTasks: { start: number; duration: number }[]
+    /** Frames largos (Long Animation Frames) con los scripts que los ocupan: para saber en el CI qué es cada tarea. */
+    __loaf: { start: number; duration: number; scripts: string[] }[]
   }
 }
 
@@ -43,16 +45,41 @@ test('de clic a "listo" sin long tasks > 50 ms en el hilo principal (CPU ×4)', 
     new PerformanceObserver((list) => {
       for (const e of list.getEntries()) window.__longTasks.push({ start: e.startTime, duration: e.duration })
     }).observe({ type: 'longtask', buffered: true })
+    window.__loaf = []
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as (PerformanceEntry & { scripts?: PerformanceEntry[] })[]) {
+          const scripts = (e.scripts ?? []).map((s) => {
+            const x = s as PerformanceEntry & { invoker?: string; sourceURL?: string; sourceFunctionName?: string }
+            const file = (x.sourceURL ?? '').split('/').pop()
+            return `${x.invoker ?? '?'} ${file}${x.sourceFunctionName ? `#${x.sourceFunctionName}` : ''} ${Math.round(x.duration)} ms`
+          })
+          window.__loaf.push({ start: e.startTime, duration: e.duration, scripts })
+        }
+      }).observe({ type: 'long-animation-frame', buffered: true })
+    } catch {
+      // Sin Long Animation Frames (Chromium < 123): solo las long tasks.
+    }
   })
   await gotoApp(page, '/?season=2026&event=10-spa-francorchamps')
-  await expect(page.getByTestId('session-fp1')).toBeVisible()
-  // Deja que termine el trabajo inicial de la página (hidratación, fuentes) antes de medir.
-  await page.waitForTimeout(500)
+  const link = page.getByTestId('session-fp1')
+  await expect(link).toBeVisible()
+  // Deja que termine el trabajo inicial de la página antes de medir: la hidratación y lo que la portada prepara del
+  // replay en ratos libres (su trozo, el cliente de carga y las fuentes: la marca trazada:home-warm).
+  await page.waitForFunction(() => performance.getEntriesByName('trazada:home-warm').length > 0)
+  await page.waitForTimeout(300)
 
+  // Un clic de ratón de verdad donde está el enlace (medido antes de frenar la CPU): con locator.click(), Playwright
+  // comprueba dentro de la página que el clic cae en el enlace (elementsFromPoint y un listener suyo), y ese trabajo,
+  // que no es de la app, entraba en la tarea del clic. Se comprueba aquí, antes de medir.
+  await expect(link).toBeInViewport({ ratio: 1 })
+  const box = (await link.boundingBox())!
+  const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  expect(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-testid="session-fp1"]'), at)).toBe(true)
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
   const clickAt = await page.evaluate(() => performance.now())
-  await page.getByTestId('session-fp1').click()
+  await page.mouse.click(at.x, at.y)
   await expect(page.getByTestId('replay-status')).toHaveAttribute('data-state', 'ready', { timeout: 30_000 })
   // Fin de la ventana: la marca que pone la app al quedar lista (no cuando Playwright lo detecta, que
   // ya incluiría el montaje de la escena, que va después).
@@ -63,9 +90,11 @@ test('de clic a "listo" sin long tasks > 50 ms en el hilo principal (CPU ×4)', 
   const tasks = await page.evaluate(() => window.__longTasks)
   const inWindow = tasks.filter((t) => t.start + t.duration > clickAt && t.start < readyAt)
   const after = tasks.filter((t) => t.start >= readyAt)
+  const frames = (await page.evaluate(() => window.__loaf)).filter((f) => f.start + f.duration > clickAt && f.start < readyAt)
   console.log(
     `clic→listo ${Math.round(readyAt - clickAt)} ms (CPU ×4); long tasks: ${JSON.stringify(inWindow)}; ` +
-      `tras "listo" (montaje de la escena): ${JSON.stringify(after.map((t) => Math.round(t.duration)))}`,
+      `tras "listo" (montaje de la escena): ${JSON.stringify(after.map((t) => Math.round(t.duration)))}\n` +
+      `frames largos entre el clic y "listo": ${frames.map((f) => `\n  ${Math.round(f.start - clickAt)} ms tras el clic, ${Math.round(f.duration)} ms: ${f.scripts.join(' | ') || '(sin scripts: estilo, layout, pintado)'}`).join('')}`,
   )
   expect(inWindow.filter((t) => t.duration > 50)).toEqual([])
 })

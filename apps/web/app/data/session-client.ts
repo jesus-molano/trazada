@@ -15,6 +15,11 @@ export function loadSessionInWorker(
   opts: ClientLoadOptions = {},
 ): Promise<LoadedSession> {
   return new Promise((resolve, reject) => {
+    // Con la señal ya cancelada, su evento 'abort' no volvería a saltar y el worker cargaría la sesión entera.
+    if (opts.signal?.aborted) {
+      reject(new DOMException('carga cancelada', 'AbortError'))
+      return
+    }
     const worker = new Worker(new URL('../workers/session.worker.ts', import.meta.url), {
       type: 'module',
       name: 'trazada-session',

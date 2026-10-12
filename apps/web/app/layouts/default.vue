@@ -1,8 +1,6 @@
 <script setup lang="ts">
 const { t, locale, setLocale } = useI18n()
 
-useHead(() => ({ htmlAttrs: { lang: locale.value } }))
-
 async function toggleLocale() {
   await setLocale(locale.value === 'es' ? 'en' : 'es')
 }

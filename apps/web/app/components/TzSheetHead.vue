@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Cabecera de la hoja de paneles del modo compacto (móvil y ventanas pequeñas; pages/replay.vue): un asa y las pestañas
+ * Cabecera de la hoja de paneles del modo compacto (móvil y ventanas pequeñas; TzReplay.vue): un asa y las pestañas
  * «Clasificación · <sigla del coche elegido> · Dirección de carrera». La hoja tiene tres alturas: asomada (solo esta
  * cabecera: el mapa entero a la vista), media y entera.
  *

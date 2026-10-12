@@ -1,6 +1,29 @@
 <script setup lang="ts">
+import { warmLatinFonts } from '~/design/fonts'
+import { useLayoutStore } from '~/stores/layout'
+import { usePlaybackStore } from '~/stores/playback'
+import { useSessionStore } from '~/stores/session'
+
 const { t } = useI18n()
 useHead({ title: () => t('home.title') })
+
+// El replay (su página, su layout, el cliente de carga, sus fuentes y sus stores), preparado una vez con la portada ya
+// ociosa: los enlaces no precargan (nuxt.config.ts), y sin esto el primer clic en una sesión bajaría y evaluaría el
+// trozo del replay, su primer layout esperaría a las fuentes que la portada no usa y Pinia crearía los stores (sin
+// efectos al crearse) dentro del montaje. Al acabar, la marca `trazada:home-warm` (la espera perf.spec).
+const nuxtApp = useNuxtApp()
+onNuxtReady(() => {
+  warmLatinFonts()
+  useSessionStore()
+  usePlaybackStore()
+  useLayoutStore()
+  void Promise.allSettled([
+    preloadRouteComponents('/replay'),
+    nuxtApp.callHook('link:prefetch', '/replay'),
+    import('~/data/session-client'),
+    document.fonts.ready,
+  ]).then(() => performance.mark('trazada:home-warm'))
+})
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 /**
  * Prioridad del título en la cabecera del replay (D44): mide si el título cabe entero y la cabecera va en una fila y,
  * si no, adelanta las formas cortas de lo secundario por niveles (engine/layout/fit.ts) con el atributo `data-fit` de
- * la cabecera (los estilos de cada nivel están en pages/replay.vue); el último pasa el estado de pista a su propia fila
+ * la cabecera (los estilos de cada nivel están en TzReplay.vue); el último pasa el estado de pista a su propia fila
  * si la cabecera se parte de todos modos. Las etiquetas «Estimado» y las banderas no se esconden en ningún nivel: solo
  * pasan a su forma corta, como por debajo de 1920 px.
  *
