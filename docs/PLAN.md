@@ -932,7 +932,7 @@ Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su 
    - Pendiente del usuario: un rectángulo oscuro que tapaba parte del mapa en tablet (captura del 2026-10-12, Gran Premio de España con LEC elegido); no se reproduce a 613×666 ni a 820×1180: hace falta el tamaño exacto de la ventana.
 4. ~~**Timeline con zoom y desplazamiento**~~ (hecho el 2026-10-12: D56).
 5. **Tarea 1: rendimiento al abrir una sesión** (`perf.spec`).
-6. **Aviso «hay una versión nueva, recarga»** cuando falta un chunk de una build anterior («Failed to fetch dynamically imported module»).
+6. ~~**Aviso «hay una versión nueva, recarga»**~~ (hecho el 2026-10-12: plugin `stale-build.client.ts` y `TzStaleBuild`).
 6b. **Marca y favicon** (pedido el 2026-10-12): un título de «Trazada» en la cabecera más propio y acorde a «Herramienta pro» (sin el piano, que no le gusta; sin tipografía ni nada oficial de F1) y un favicon a juego (SVG con los tokens, más los tamaños de PNG que hagan falta; sin peticiones externas).
 6c. **Docs e imágenes al día** (pedido el 2026-10-12): README (textos y capturas de `docs/img/*.webp` con `README_SHOTS=1 pnpm e2e readme-shots`), BRIEF, PLAN y PERFORMANCE con todo lo de D50 en adelante, y la captura `@screenshot` regenerada en CI (commit con `[snapshots]`).
 7. **Cierre**: Playwright completo, CI en verde, docs (BRIEF, PLAN, PERFORMANCE, README) al día con D50–D54.

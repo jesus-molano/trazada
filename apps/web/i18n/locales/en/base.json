@@ -115,6 +115,11 @@
     "more": "More tools",
     "moreHint": "View, scene, camera, help and language"
   },
+  "staleBuild": {
+    "text": "There is a new version of Trazada. Reload the page to carry on.",
+    "reload": "Reload",
+    "close": "Close the notice"
+  },
   "sheet": {
     "label": "Panels",
     "lb": "Standings",

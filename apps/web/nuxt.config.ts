@@ -34,6 +34,11 @@ export default defineNuxtConfig({
     '~/design/base.css',
   ],
 
+  experimental: {
+    // Build vieja (plugins/stale-build.client.ts): mira cada minuto si hay una más nueva (solo pide
+    // /_nuxt/builds/latest.json al propio servidor; por defecto, cada hora).
+    checkOutdatedBuildInterval: 60_000,
+  },
   app: {
     head: {
       title: 'Trazada',

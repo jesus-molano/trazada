@@ -115,6 +115,11 @@
     "more": "Más herramientas",
     "moreHint": "Vista, escena, cámara, ayuda e idioma"
   },
+  "staleBuild": {
+    "text": "Hay una versión nueva de Trazada. Recarga la página para seguir.",
+    "reload": "Recargar",
+    "close": "Cerrar el aviso"
+  },
   "sheet": {
     "label": "Paneles",
     "lb": "Clasificación",
