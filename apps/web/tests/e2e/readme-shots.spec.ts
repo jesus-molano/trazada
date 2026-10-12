@@ -138,3 +138,12 @@ test('tablet en vertical', async ({ browser, baseURL }) => {
   await shot(page, 'tablet')
   await page.close()
 })
+
+test('móvil: el mapa entero y la hoja de paneles con la clasificación', async ({ browser, baseURL }) => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: 'es-ES' })
+  await openReplay(page, baseURL!)
+  await page.getByTestId('sheet-tab-lb').click()
+  await expect(page.getByTestId('leaderboard')).toBeVisible()
+  await shot(page, 'movil')
+  await page.close()
+})

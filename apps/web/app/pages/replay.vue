@@ -1020,5 +1020,15 @@ onBeforeUnmount(() => {
     flex: 1 1 auto;
     min-height: 0;
   }
+
+  /* En la hoja, la pestaña ya dice qué panel es: su título, solo para los lectores de pantalla. */
+  .tz-replay__stage[data-sheet] :deep(:is(.tz-lb__title, .tz-rc__title)) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 </style>
