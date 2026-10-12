@@ -7,8 +7,11 @@
 //   - del mismo origen (Origin y Sec-Fetch-Site, si llegan) y con la cabecera X-Trazada: una web ajena no
 //     puede enviarla sin un preflight CORS, y este servidor nunca lo concede;
 //   - con temporada, ronda y tipo de sesión validados. El pipeline se lanza sin shell, con argumentos fijos.
+// Borrar una sesión descargada (DELETE /api/sessions/<temporada>/<ronda>/<sesión>) solo toca su carpeta, dentro de
+// data/v1/sessions, y su entrada del catálogo; nunca con una descarga en marcha (el pipeline también escribe el
+// catálogo).
 import { spawn } from 'node:child_process'
-import { createReadStream } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, join, normalize, resolve, sep } from 'node:path'
@@ -314,6 +317,34 @@ function publicJob(job) {
  * Cola de descargas: una sesión a la vez (FastF1 y su caché no se comparten bien entre procesos).
  * `pipeline` = { command, args, cwd, env } (p. ej. `uv run trazada` en pipeline/).
  */
+/**
+ * Borra una sesión descargada: su carpeta (con sus clips de radio) y su entrada del catálogo (y el Gran Premio o la
+ * temporada si se quedan vacíos). Los circuitos se quedan: los comparten otras sesiones. Devuelve 'ok' o 'not-found'.
+ * La carpeta sale de la ruta del catálogo, validada, y nunca de fuera de data/v1/sessions.
+ */
+export function deleteSession(dataDir, item) {
+  const v1 = resolve(dataDir, 'v1')
+  const catalogPath = join(v1, 'catalog.json')
+  if (!existsSync(catalogPath)) return 'not-found'
+  const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
+  const season = Array.isArray(catalog?.seasons) ? catalog.seasons.find((s) => s.season === item.season) : undefined
+  const event = season?.events?.find((e) => e.round === item.round && e.sessions?.some((s) => s.session === item.session))
+  const entry = event?.sessions.find((s) => s.session === item.session)
+  const path = typeof entry?.path === 'string' ? entry.path : ''
+  const id = path.startsWith('sessions/') && path.endsWith('/manifest.json') ? path.slice(9, -14) : ''
+  if (!entry || !SESSION_ID.test(id)) return 'not-found'
+  const root = resolve(v1, 'sessions')
+  const dir = resolve(root, ...id.split('/'))
+  if (!dir.startsWith(root + sep)) return 'not-found'
+  rmSync(dir, { recursive: true, force: true })
+  event.sessions = event.sessions.filter((s) => s !== entry)
+  if (event.sessions.length === 0) season.events = season.events.filter((e) => e !== event)
+  if (season.events.length === 0) catalog.seasons = catalog.seasons.filter((s) => s !== season)
+  writeFileSync(`${catalogPath}.tmp`, JSON.stringify(catalog, null, 2))
+  renameSync(`${catalogPath}.tmp`, catalogPath)
+  return 'ok'
+}
+
 export function createJobQueue({ pipeline, dataDir, timeoutMs = BUILD_TIMEOUT_MS, now = () => new Date() }) {
   const jobs = []
   let seq = 0
@@ -635,6 +666,14 @@ export function createLocalServer({ appDir, dataDir, manager = null }) {
       const items = list.map((item) => parseJobItem(item))
       if (items.some((item) => item === null)) return sendJson(res, 400, { error: 'job' })
       return sendJson(res, 202, { jobs: queue.enqueue(items) })
+    }
+    const del = /^\/api\/sessions\/(\d{4})\/(\d{1,2})\/([a-z0-9]{1,6})$/.exec(route)
+    if (del && req.method === 'DELETE') {
+      const item = parseJobItem({ season: Number(del[1]), round: Number(del[2]), session: del[3] })
+      if (!item) return sendJson(res, 400, { error: 'session' })
+      // Con una descarga en marcha no: el pipeline también escribe el catálogo.
+      if (queue.list().some((j) => j.state === 'queued' || j.state === 'running')) return sendJson(res, 409, { error: 'busy' })
+      return deleteSession(data, item) === 'ok' ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: 'session' })
     }
     const m = /^\/api\/jobs\/(\d{1,9})$/.exec(route)
     if (m && req.method === 'DELETE') {

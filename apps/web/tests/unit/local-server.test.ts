@@ -463,3 +463,68 @@ describe('la cola nunca se queda bloqueada', () => {
     }
   })
 })
+
+describe('borrar una sesión descargada (DELETE /api/sessions/…)', () => {
+  let root: string
+  let data: string
+  let server: Server & { shutdown: () => void }
+  let port: number
+  const FP1 = '2026/10-spa-francorchamps/fp1'
+
+  beforeAll(async () => {
+    root = mkdtempSync(join(tmpdir(), 'trazada-delete-'))
+    data = join(root, 'data')
+    cpSync(FIXTURE_DATA, data, { recursive: true })
+    mkdirSync(join(root, 'public'))
+    mkdirSync(join(root, 'cache'))
+    writeFileSync(join(root, 'public', 'index.html'), '<!doctype html><title>Trazada</title>')
+    process.env.FAKE_STEP_MS = '400'
+    server = createLocalServer({
+      appDir: join(root, 'public'),
+      dataDir: data,
+      manager: { pipeline: { command: process.execPath, args: [FAKE], cwd: root }, scheduleCacheDir: join(root, 'cache') },
+    })
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+    port = (server.address() as AddressInfo).port
+  })
+
+  afterAll(() => {
+    server.shutdown()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  const sessionsIn = () =>
+    (JSON.parse(readFileSync(join(data, 'v1', 'catalog.json'), 'utf8')).seasons as { events: { sessions: { path: string }[] }[] }[])
+      .flatMap((s) => s.events.flatMap((e) => e.sessions.map((x) => x.path)))
+
+  it('valida la sesión y solo atiende al propio equipo con su cabecera', async () => {
+    expect((await call(port, '/api/sessions/2026/10/xx', { method: 'DELETE' })).status).toBe(400)
+    expect((await call(port, '/api/sessions/2026/10/../fp1', { method: 'DELETE' })).status).toBe(404) // la ruta no casa
+    expect((await call(port, '/api/sessions/1999/10/fp1', { method: 'DELETE' })).status).toBe(400)
+    expect((await call(port, '/api/sessions/2026/99/fp1', { method: 'DELETE' })).status).toBe(400)
+    expect((await call(port, '/api/sessions/2026/10/fp1', { method: 'DELETE', api: false })).status).toBe(403)
+    expect(existsSync(join(data, 'v1', 'sessions', ...FP1.split('/'), 'manifest.json'))).toBe(true)
+  })
+
+  it('con una descarga en marcha, no (el pipeline también escribe el catálogo)', async () => {
+    const res = await postJobs(port, [{ season: 2026, round: 3, session: 'fp1' }])
+    expect(res.status).toBe(202)
+    expect((await call(port, '/api/sessions/2026/10/fp1', { method: 'DELETE' })).status).toBe(409)
+    await waitFor(async () => {
+      const jobs = (await call(port, '/api/jobs')).json().jobs as { state: string }[]
+      return jobs.every((j) => j.state !== 'queued' && j.state !== 'running')
+    }, 20_000)
+  })
+
+  it('borra su carpeta y su entrada del catálogo (y nada más); la segunda vez, 404', async () => {
+    const before = sessionsIn()
+    expect(before).toContain(`sessions/${FP1}/manifest.json`)
+    const res = await call(port, '/api/sessions/2026/10/fp1', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(existsSync(join(data, 'v1', 'sessions', ...FP1.split('/')))).toBe(false)
+    expect(sessionsIn()).toEqual(before.filter((p) => p !== `sessions/${FP1}/manifest.json`))
+    // Los circuitos se quedan (los comparten otras sesiones).
+    expect(existsSync(join(data, 'v1', 'circuits'))).toBe(true)
+    expect((await call(port, '/api/sessions/2026/10/fp1', { method: 'DELETE' })).status).toBe(404)
+  })
+})

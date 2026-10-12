@@ -144,6 +144,22 @@ export const useManagerStore = defineStore('manager', () => {
     })
   }
 
+  /**
+   * Borra una sesión descargada (su carpeta y su entrada del catálogo). Con una descarga en marcha, el servidor dice
+   * que no (409): se avisa como cualquier fallo de acción. Devuelve si se borró.
+   */
+  async function removeSession(item: JobRequest): Promise<boolean> {
+    actionError.value = false
+    try {
+      const res = await api(`/api/sessions/${item.season}/${item.round}/${item.session}`, { method: 'DELETE' })
+      if (!res.ok) actionError.value = true
+      return res.ok
+    } catch {
+      actionError.value = true
+      return false
+    }
+  }
+
   /** Cancela un trabajo en cola o en curso (o lo quita de la lista si ya terminó). */
   function cancel(id: string): Promise<void> {
     return send(`/api/jobs/${encodeURIComponent(id)}`, { method: 'DELETE' })
@@ -183,6 +199,7 @@ export const useManagerStore = defineStore('manager', () => {
     actionError,
     loadSchedule,
     enqueue,
+    removeSession,
     cancel,
     cancelAll,
     subscribe,

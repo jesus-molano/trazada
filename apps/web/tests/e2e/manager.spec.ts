@@ -168,6 +168,28 @@ test.describe('gestor de datos local', () => {
     await page.getByTestId('cancel-all').click()
     await expect(page.getByTestId('download-queue')).toHaveCount(0)
   })
+
+  test('una sesión descargada se puede volver a descargar o borrar (con confirmación)', async ({ page }) => {
+    await open(page, '?season=2026&event=10-spa-francorchamps')
+    const fp1 = page.getByTestId('session-fp1')
+    await expect(fp1).toHaveAttribute('data-state', 'link')
+    // Borrar pide confirmación; «No» la deshace y el foco vuelve al botón.
+    await page.getByTestId('delete-fp1').click()
+    await expect(page.getByTestId('session-actions-fp1')).toContainText(/(¿Borrar Libres 1?|Delete Practice 1?)/)
+    await page.getByTestId('delete-no-fp1').click()
+    await expect(page.getByTestId('delete-fp1')).toBeFocused()
+    await expect(fp1).toHaveAttribute('data-state', 'link')
+    // «Sí»: se borra y la sesión vuelve a ofrecerse para descargar.
+    await page.getByTestId('delete-fp1').click()
+    await page.getByTestId('delete-yes-fp1').click()
+    await expect(fp1).toHaveAttribute('data-state', 'download', { timeout: 10_000 })
+    await expect(page.getByTestId('built-spa-francorchamps')).toContainText('3/6')
+    // Volver a descargar otra ya descargada: entra en la cola.
+    const again = page.locator('[data-testid^="redownload-"]').first()
+    const session = (await again.getAttribute('data-testid'))!.replace('redownload-', '')
+    await again.click()
+    await expect(page.getByTestId(`session-${session}`)).toHaveAttribute('data-state', /queued|running/)
+  })
 })
 
 test('sin gestor (servidor estático), el selector no ofrece descargas', async ({ page }) => {

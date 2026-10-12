@@ -380,10 +380,18 @@ const queueText = computed(() => {
           <ul v-else :key="selectedEvent.key" role="list" class="tz-session-list" :class="{ 'is-entering': animateLists }">
             <li v-for="(s, i) in selectedEvent.sessions" :key="s.session" :style="enterStep(i)">
               <TzSessionRow
+                class="tz-session-list__row"
                 :type="s.session"
                 :view="viewOf(selectedEvent, s)"
                 @download="download(selectedEvent, s.session)"
                 @cancel="(id) => manager.cancel(id)"
+              />
+              <!-- Ya descargada: volver a descargarla o borrarla (con el gestor de datos). -->
+              <TzSessionActions
+                v-if="manager.available && viewOf(selectedEvent, s).kind === 'link'"
+                :season="season"
+                :round="selectedEvent.round"
+                :session="s.session"
               />
             </li>
           </ul>
@@ -677,9 +685,21 @@ const queueText = computed(() => {
   display: grid;
 }
 
-/* Filas de sesión con filetes (D50). */
+/* Filas de sesión con filetes (D50); las acciones de una descargada, a su derecha. */
+.tz-session-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tz-space-1);
+}
+
 .tz-session-list > li + li {
   border-top: 1px solid var(--tz-border);
+}
+
+.tz-session-list__row {
+  flex: 1 1 12em;
+  min-width: 0;
 }
 
 .tz-muted {
