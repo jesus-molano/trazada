@@ -56,12 +56,12 @@ onBeforeUnmount(() => off?.())
  * es 0 (la inicial) salvo con reproducción a ≤ ×4 (`is-live`; con reduced motion, el token vale 0): así un chip que
  * entra tras un seek o en pausa sale al instante, y al darle a reproducir los que ya estaban no se repiten.
  */
-.tz-ts :deep(.tz-ts__chip) {
+.tz-ts :deep(:is(.tz-ts__chip, .tz-ts__plate)) {
   animation-name: tz-chip-in;
   animation-timing-function: var(--tz-ease-enter);
 }
 
-.tz-ts.is-live :deep(.tz-ts__chip) {
+.tz-ts.is-live :deep(:is(.tz-ts__chip, .tz-ts__plate)) {
   animation-duration: var(--tz-dur-base);
 }
 
@@ -72,14 +72,14 @@ onBeforeUnmount(() => off?.())
   }
 }
 
-/* Coche de seguridad y bandera roja: el anillo del chip pulsa dos veces al entrar (nunca en bucle); invisible después. */
-.tz-ts :deep(.tz-ts__chip.is-sc),
-.tz-ts :deep(.tz-ts__chip.is-red) {
+/* Coche de seguridad y bandera roja: el anillo de la placa pulsa dos veces al entrar (nunca en bucle); invisible después. */
+.tz-ts :deep(.tz-ts__plate.is-sc),
+.tz-ts :deep(.tz-ts__plate.is-red) {
   position: relative;
 }
 
-.tz-ts :deep(.tz-ts__chip.is-sc)::after,
-.tz-ts :deep(.tz-ts__chip.is-red)::after {
+.tz-ts :deep(.tz-ts__plate.is-sc)::after,
+.tz-ts :deep(.tz-ts__plate.is-red)::after {
   content: '';
   position: absolute;
   inset: -3px;
@@ -92,12 +92,12 @@ onBeforeUnmount(() => off?.())
   animation-iteration-count: 2;
 }
 
-.tz-ts :deep(.tz-ts__chip.is-red)::after {
+.tz-ts :deep(.tz-ts__plate.is-red)::after {
   border-color: var(--tz-flag-red);
 }
 
-.tz-ts.is-live :deep(.tz-ts__chip.is-sc)::after,
-.tz-ts.is-live :deep(.tz-ts__chip.is-red)::after {
+.tz-ts.is-live :deep(.tz-ts__plate.is-sc)::after,
+.tz-ts.is-live :deep(.tz-ts__plate.is-red)::after {
   animation-duration: var(--tz-dur-slow);
 }
 </style>

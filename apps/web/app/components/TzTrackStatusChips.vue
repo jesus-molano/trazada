@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /**
  * Chips del estado de la pista (presentacional, sin runtime): neutralización, banderas por sector, amarilla y ventana
- * de overtake/DRS de un `TrackStateSnapshot`. Lo usan la cabecera del replay (`TzTrackStatus`, el instante del reloj)
+ * de overtake/DRS de un `TrackStateSnapshot`. Como en la lámina de D50: la neutralización (SC, VSC, roja) es la única
+ * placa maciza, del color de la bandera y con texto oscuro; las banderas y las ventanas van en un chip de tono con el
+ * glifo de la hoja de tiempos delante (`TzRcGlyph`). Nunca una franja de color. Lo usan la cabecera del replay (`TzTrackStatus`, el instante del reloj)
  * y la vista previa del timeline (`TzTimelinePreview`, otro instante). El color nunca va solo: siempre hay texto. Un
  * estado de pista deducido (no oficial) lleva su etiqueta «Estimado». Las banderas de sector de la misma clase van en
  * un solo chip («Doble amarilla · sectores 20 y 21», `data-sectors="20 21"`), de la más grave a la más leve: así la
@@ -40,6 +42,8 @@ type SectorFlag = TrackStateSnapshot['sectors'][number]
 const FLAG_ORDER: readonly SectorFlag[] = ['RED', 'DOUBLE YELLOW', 'YELLOW']
 const flagClass = { YELLOW: 'is-yellow', 'DOUBLE YELLOW': 'is-double-yellow', RED: 'is-red' } as const
 const flagKey = { YELLOW: 'yellow', 'DOUBLE YELLOW': 'doubleYellow', RED: 'red' } as const
+/** Glifo de cada bandera (el de la hoja de tiempos de dirección de carrera, `TzRcGlyph`). */
+const GLYPH_KIND = { YELLOW: 'sector_yellow', 'DOUBLE YELLOW': 'sector_double_yellow', RED: 'red_flag' } as const
 
 /** «20 y 21», «7, 8 y 9» (en el idioma de la interfaz). */
 const listFmt = computed(() => new Intl.ListFormat(locale.value, { style: 'long', type: 'conjunction' }))
@@ -72,7 +76,7 @@ const empty = computed(
     <TzEstimated v-if="inferred" field="trackStatus" :plain="!interactive" :compact="compactEstimated" />
     <span
       v-if="state.neutral"
-      class="tz-ts__chip tz-ts__chip--strong"
+      class="tz-ts__plate"
       :class="`is-${state.neutral}`"
       :data-testid="`${testid}-neutral`"
       :data-kind="state.neutral"
@@ -89,7 +93,7 @@ const empty = computed(
       :data-flag="s.flag"
       :title="placeable ? undefined : t('trackStatus.noGeometry')"
     >
-      {{ s.text }}
+      <TzRcGlyph :kind="GLYPH_KIND[s.flag]" />{{ s.text }}
     </span>
     <TzHint
       v-if="interactive && !placeable && sectorChips.length"
@@ -99,13 +103,13 @@ const empty = computed(
       :testid="`${testid}-no-geometry`"
     />
     <span v-if="yellowOnly" class="tz-ts__chip is-yellow" :data-testid="`${testid}-yellow`">
-      {{ t('trackStatus.yellow') }}
+      <TzRcGlyph kind="sector_yellow" />{{ t('trackStatus.yellow') }}
     </span>
     <span v-if="state.overtake" class="tz-ts__chip tz-ts__chip--quiet" :data-testid="`${testid}-overtake`">
-      {{ t('trackStatus.overtake') }}
+      <TzRcGlyph kind="overtake_enabled" />{{ t('trackStatus.overtake') }}
     </span>
     <span v-if="state.drs" class="tz-ts__chip tz-ts__chip--quiet" :data-testid="`${testid}-drs`">
-      {{ t('trackStatus.drs') }}
+      <TzRcGlyph kind="drs_enabled" />{{ t('trackStatus.drs') }}
     </span>
     <span v-if="empty && emptyLabel" class="tz-ts__chip tz-ts__chip--quiet" :data-testid="`${testid}-clear`">
       {{ emptyLabel }}
@@ -122,37 +126,58 @@ const empty = computed(
   min-width: 0;
 }
 
+/* Bandera o ventana: chip de tono con su glifo delante y el texto (nunca solo el color). */
 .tz-ts__chip {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
-  padding: 2px var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-left-width: 4px;
-  border-radius: var(--tz-radius-sm);
-  background: var(--tz-overlay);
-  font-size: var(--tz-text-xs);
+  height: 26px;
+  padding: 0 var(--tz-space-2) 0 var(--tz-space-1);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-2);
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-medium);
+  white-space: nowrap;
+}
+
+/* Ventanas de overtake/DRS: lo mismo, más tenue. */
+.tz-ts__chip--quiet {
+  color: var(--tz-text-muted);
+}
+
+/*
+ * Neutralización: la única placa maciza (del color de la bandera, con texto oscuro). El VSC que acaba, con el borde
+ * discontinuo y sin relleno: se va. En forced-colors, el fondo desaparece y queda un borde.
+ */
+.tz-ts__plate {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 var(--tz-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  color: var(--tz-text-inverse);
+  font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
   white-space: nowrap;
 }
 
-.tz-ts__chip--strong {
-  font-family: var(--tz-font-display);
-  font-size: var(--tz-text-sm);
-  letter-spacing: var(--tz-tracking-display);
-  text-transform: uppercase;
+.tz-ts__plate.is-sc {
+  background: var(--tz-sc);
 }
 
-/* Franja de categoría (ventanas de overtake/DRS): pintura de pista, no el acento de los controles (D47). */
-.tz-ts__chip--quiet {
-  border-left-color: var(--tz-paint);
-  font-weight: var(--tz-weight-regular);
-  color: var(--tz-text-muted);
+.tz-ts__plate.is-vsc {
+  background: var(--tz-vsc);
 }
 
-/* Sobre la escena (cabecera del replay), con el fondo de los paneles para leerse. */
-.tz-ts > .tz-estimated {
-  background: var(--tz-overlay);
+.tz-ts__plate.is-vsc-ending {
+  border-color: var(--tz-vsc);
+  border-style: dashed;
+  color: var(--tz-vsc);
+}
+
+.tz-ts__plate.is-red {
+  background: var(--tz-flag-red);
 }
 
 /* La pista no alarga la fila de chips (su zona táctil sigue entera). */
@@ -160,34 +185,9 @@ const empty = computed(
   margin-block: calc(-1 * var(--tz-space-1));
 }
 
-/*
- * Banderas y neutralizaciones: la franja del color de la bandera y un tinte suave del mismo color (≤ 20 %; sin
- * color-mix, el fondo de los paneles). El texto sigue en el color del tema: siempre hay texto, nunca solo el color.
- */
-.is-yellow {
-  border-left-color: var(--tz-flag-yellow);
-  background: color-mix(in oklab, var(--tz-flag-yellow) 20%, var(--tz-surface-1));
-}
-
-.is-double-yellow {
-  border-left-color: var(--tz-flag-double-yellow);
-  background: color-mix(in oklab, var(--tz-flag-double-yellow) 20%, var(--tz-surface-1));
-}
-
-.is-red {
-  border-left-color: var(--tz-flag-red);
-  background: color-mix(in oklab, var(--tz-flag-red) 20%, var(--tz-surface-1));
-}
-
-.is-sc {
-  border-left-color: var(--tz-sc);
-  background: color-mix(in oklab, var(--tz-sc) 20%, var(--tz-surface-1));
-}
-
-.is-vsc,
-.is-vsc-ending {
-  border-left-color: var(--tz-vsc);
-  border-left-style: dashed;
-  background: color-mix(in oklab, var(--tz-vsc) 20%, var(--tz-surface-1));
+@media (forced-colors: active) {
+  .tz-ts__plate {
+    border-color: CanvasText;
+  }
 }
 </style>

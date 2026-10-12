@@ -47,15 +47,17 @@ const params = (p: Record<string, number | string>) =>
     </template>
     <template v-if="items.length">
       <p class="tz-notes__title">{{ t('sessionNotes.title') }}</p>
-      <ul class="tz-notes__list">
+      <ol class="tz-notes__list">
         <li v-for="(n, i) in items" :key="i" :data-code="n.code ?? 'unknown'">
-          <template v-if="n.code">{{ t(`sessionNotes.note.${n.key}`, params(n.params)) }}</template>
-          <template v-else>
-            <span class="tz-notes__raw">{{ t('sessionNotes.raw') }}</span>
-            <span lang="es">{{ n.text }}</span>
-          </template>
+          <span class="tz-notes__text">
+            <template v-if="n.code">{{ t(`sessionNotes.note.${n.key}`, params(n.params)) }}</template>
+            <template v-else>
+              <span class="tz-notes__raw">{{ t('sessionNotes.raw') }}</span>
+              <span lang="es">{{ n.text }}</span>
+            </template>
+          </span>
         </li>
-      </ul>
+      </ol>
     </template>
     <div
       v-if="regulation"
@@ -87,11 +89,35 @@ const params = (p: Record<string, number | string>) =>
   font-weight: var(--tz-weight-semibold);
 }
 
+/* Lista numerada con filetes (D50): la cifra, tenue y en su columna; sin viñetas ni cajas. */
 .tz-notes__list {
-  display: grid;
-  gap: var(--tz-space-2);
   margin: 0;
-  padding-left: var(--tz-space-4);
+  padding: 0;
+  list-style: none;
+  counter-reset: tz-note;
+}
+
+.tz-notes__list > li {
+  display: grid;
+  grid-template-columns: var(--tz-space-6) 1fr;
+  padding: var(--tz-space-3) 0;
+  border-top: 1px solid var(--tz-border);
+  counter-increment: tz-note;
+}
+
+.tz-notes__list > li:first-child {
+  border-top: 0;
+  padding-top: var(--tz-space-1);
+}
+
+.tz-notes__list > li::before {
+  content: counter(tz-note);
+  color: var(--tz-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tz-notes__text {
+  grid-column: 2;
 }
 
 .tz-notes__raw {
