@@ -25,6 +25,7 @@ import {
   Command,
   Copy,
   Download,
+  Ellipsis,
   EqualApproximately,
   Flag,
   Ghost,
@@ -109,6 +110,7 @@ export const ICONS = {
   compare: ArrowLeftRight,
   ghost: Ghost,
   analysis: ChartLine,
+  more: Ellipsis,
   summary: ListOrdered,
   // Paneles del replay (ítem 15, D50): «Compactos» (el mapa primero) y «Detallados» (más columnas)
   spectator: PanelLeft,

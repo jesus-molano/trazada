@@ -85,9 +85,9 @@ test('cabecera del panel: cerrar es un icono con nombre; seguir y comparar, plac
   // Las cifras grandes de la muestra cruda: velocidad y marcha.
   await expect(page.getByTestId('tel-speed')).toHaveClass(/tz-num--xl/)
   await expect(page.getByTestId('tel-gear')).toHaveClass(/tz-num--xl/)
-  // El color de equipo tiñe la cabecera, nunca el texto.
-  const head = panel.locator('.tz-tel__head')
-  expect(await head.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain('gradient')
+  // El color de equipo va en una marca junto a la sigla (D50, sin tinte en la cabecera), nunca en el texto.
+  await expect(panel.locator('.tz-tel__team')).toBeVisible()
+  expect(await panel.locator('.tz-tel__head').evaluate((el) => getComputedStyle(el).backgroundImage)).toBe('none')
   const tla = panel.locator('.tz-tel__tla')
   expect(await tla.evaluate((el) => getComputedStyle(el).color)).toBe(await page.evaluate(() => getComputedStyle(document.body).color))
 

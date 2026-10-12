@@ -38,4 +38,11 @@ const { t } = useI18n()
 .tz-footer.is-compact p {
   max-width: none;
 }
+
+/* Modo compacto del replay (móvil y ventanas pequeñas): el aviso sigue entero, con menos aire. */
+@media (width < 768px), (height < 500px) {
+  .tz-footer.is-compact {
+    padding: var(--tz-space-0-5) var(--tz-space-3);
+  }
+}
 </style>

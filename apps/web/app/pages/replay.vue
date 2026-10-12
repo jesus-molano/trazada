@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
+import type { SheetState, SheetTab } from '~/composables/useReplayLayout'
 import { parseSessionId } from '~/data/session-id'
 import { installDebugHandle } from '~/replay/debug'
 import {
@@ -15,7 +16,7 @@ import {
 import { createReplayRuntime, defaultInitialMs } from '~/replay/runtime'
 import { REPLAY_HEADER, REPLAY_OVERLAYS } from '~/slots/replay'
 import { useLayoutStore } from '~/stores/layout'
-import { usePlaybackStore } from '~/stores/playback'
+import { getRuntime, usePlaybackStore } from '~/stores/playback'
 import { useSessionStore } from '~/stores/session'
 
 // Layout propio (D44): sin la cabecera global; la marca y el idioma van en la cabecera del replay (TzBrandBar).
@@ -33,7 +34,34 @@ useReplayShortcuts()
  * el mapa conserve su mínimo; en tablet vertical, sin anchos (la franja de abajo de siempre).
  */
 const root = ref<HTMLElement | null>(null)
-const { widths, ranges, vars: layoutVars, resizable } = useReplayLayout()
+const { widths, ranges, vars: layoutVars, resizable, compact } = useReplayLayout()
+
+/**
+ * Modo compacto (móvil y ventanas pequeñas; `COMPACT_QUERY`): el mapa ocupa todo el escenario y los paneles van en una
+ * hoja inferior (TzSheetHead) con tres alturas y una pestaña por panel; la cabecera, en una fila, con «⋯» para las
+ * herramientas. Elegir un coche abre su pestaña; quitarlo vuelve a la clasificación. Estado grueso (Vue).
+ */
+const stageEl = ref<HTMLElement | null>(null)
+const sheet = ref<SheetState>('peek')
+const sheetTab = ref<SheetTab>('lb')
+const moreOpen = ref(false)
+const selectedTla = computed(() => {
+  const n = playback.selectedCar
+  if (!n) return null
+  return getRuntime()?.drivers.find((d) => d.number === n)?.tla ?? n
+})
+watch(
+  () => playback.selectedCar,
+  (car, before) => {
+    if (car && car !== before) {
+      sheetTab.value = 'car'
+      if (sheet.value === 'peek') sheet.value = 'half'
+    } else if (!car && sheetTab.value === 'car') sheetTab.value = 'lb'
+  },
+)
+watch(compact, (on) => {
+  if (!on) moreOpen.value = false
+})
 
 /**
  * Ventana del mapa (D50): empieza justo después de la clasificación, que se ensancha con sus columnas extra (las de
@@ -190,7 +218,7 @@ onBeforeUnmount(() => {
       nunca una columna de chips). Las etiquetas «Estimado» y las banderas nunca se esconden (las de la escena flotan
       justo debajo, sobre el mapa).
     -->
-    <header ref="bar" class="tz-replay__bar">
+    <header ref="bar" class="tz-replay__bar" :data-more="compact && moreOpen ? 'open' : undefined">
       <!-- 1 · Sesión: ← Trazada, el título («Gran Premio» y, en secundario, «· Sprint · 2026») y el punto de estado. -->
       <div class="tz-hgroup is-session" role="group" :aria-label="t('replay.groups.session')" data-group="session">
         <TzBrandBar />
@@ -214,6 +242,19 @@ onBeforeUnmount(() => {
           </TzHint>
         </p>
       </div>
+      <!-- Modo compacto: vista, escena, ayuda e idioma, en filas bajo la cabecera al pulsar «⋯». -->
+      <button
+        v-if="compact"
+        type="button"
+        class="tz-iconbtn tz-replay__more"
+        :aria-expanded="moreOpen"
+        :aria-label="t('replay.more')"
+        :title="t('replay.moreHint')"
+        data-testid="header-more"
+        @click="moreOpen = !moreOpen"
+      >
+        <TzIcon name="more" />
+      </button>
       <!--
         2 · Condiciones de la sesión (lecturas): estado de pista, meteorología y avisos. Si no caben en la fila (varias
         banderas a la vez) o por debajo de 1360 px, bajan juntas a una segunda fila a lo ancho (nivel 4 de useHeaderFit).
@@ -262,7 +303,14 @@ onBeforeUnmount(() => {
       (ítem 15; en tablet vertical, sin asas). Al montarse, aparecen escalonados con un fundido (solo opacidad: la escena
       los mide para encuadrar, D42).
     -->
-    <div v-if="playback.attached" class="tz-replay__stage">
+    <div
+      v-if="playback.attached"
+      ref="stageEl"
+      class="tz-replay__stage"
+      :data-sheet="compact ? sheet : undefined"
+      :data-tab="compact ? sheetTab : undefined"
+    >
+      <TzSheetHead v-if="compact" v-model:state="sheet" v-model:tab="sheetTab" :car="selectedTla" :target="stageEl" :root="root" />
       <!--
         Ventana del mapa (D50, «marco continuo»): el hueco entre las columnas, con radio 18 px y un filo de 1 px; fuera de
         ella, el cromo (una sombra del color de fondo, estática: nunca se repinta). Cabecera, columnas y dock van por
@@ -290,7 +338,8 @@ onBeforeUnmount(() => {
       <aside id="tz-replay-side" class="tz-replay__side">
         <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" :preset="layout.preset" />
         <!-- Con un piloto elegido, su telemetría (con sus radios) ocupa la columna: la dirección de carrera general se oculta. -->
-        <TzRaceControl v-if="!playback.selectedCar" :key="`rc-${session.id}`" />
+        <!-- En el modo compacto es otra pestaña de la hoja: se queda. -->
+        <TzRaceControl v-if="!playback.selectedCar || compact" :key="`rc-${session.id}`" />
       </aside>
       <TzResizeHandle
         v-if="resizable"
@@ -853,5 +902,123 @@ onBeforeUnmount(() => {
 
 .tz-replay__center > * {
   pointer-events: auto;
+}
+
+/*
+ * Modo compacto (móvil y ventanas pequeñas; `COMPACT_QUERY` de useReplayLayout): una fila de cabecera con «⋯», el mapa
+ * en todo el escenario y los paneles en una hoja inferior (TzSheetHead): asomada (solo la cabecera de la hoja), media o
+ * entera, con un panel a la vista (`data-tab`). La escena encuadra por encima de la hoja (`--replay-panels-bottom`).
+ */
+@media (width < 768px), (height < 500px) {
+  .tz-replay {
+    --replay-over-left: var(--tz-space-3);
+    --replay-over-right: var(--tz-space-3);
+    --replay-over-max: calc(100% - 2 * var(--tz-space-3));
+  }
+
+  .tz-replay__bar {
+    padding: var(--tz-space-2) var(--tz-space-3);
+  }
+
+  /* Solo el Gran Premio: el resto del título sigue en su `title`. */
+  .tz-replay__sub {
+    display: none;
+  }
+
+  .tz-replay__more {
+    margin-left: auto;
+  }
+
+  /*
+   * Cerrada, la fila de las condiciones solo con el estado de pista y solo si dice algo (SC, banderas, «Estimado»): la
+   * meteorología y los avisos van con lo demás al pulsar «⋯».
+   */
+  .tz-replay__bar > .is-conditions {
+    min-height: 0;
+  }
+
+  .tz-replay__bar:not([data-more='open']) > .is-conditions > :not([data-testid='track-status']),
+  .tz-replay__bar:not([data-more='open']) > .is-conditions:not(:has(.tz-ts > *)) {
+    display: none;
+  }
+
+  /* Vista, escena y ayuda: fuera hasta pulsar «⋯»; entonces, una fila cada una, a todo el ancho. */
+  .tz-replay__bar:not([data-more='open']) > :is(.is-view, .is-scene, .is-help) {
+    display: none;
+  }
+
+  .tz-replay__bar[data-more='open'] > :is(.is-view, .is-scene, .is-help) {
+    order: 100;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  /* Con la hoja no hay paneles que elegir. */
+  .tz-replay__bar :deep(.tz-layout-switch) {
+    display: none;
+  }
+
+  .tz-replay__window,
+  .tz-replay__resize {
+    display: none;
+  }
+
+  .tz-replay__stage {
+    --replay-panels-bottom: 1;
+    --sheet-body: 0px;
+    display: block;
+    margin: 0;
+  }
+
+  .tz-replay__stage[data-sheet='half'] {
+    --sheet-body: calc(50% - 56px);
+  }
+
+  .tz-replay__stage[data-sheet='full'] {
+    --sheet-body: calc(100% - 64px);
+  }
+
+  .tz-replay__stage > .tz-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: var(--sheet-body);
+    z-index: 1;
+  }
+
+  /* Más específicas que las de la tablet en vertical (alto de 34 o 46vh), que también se aplican por debajo de 900 px. */
+  .tz-replay .tz-replay__stage[data-sheet] > :is(.tz-replay__lb, .tz-replay__side) {
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: var(--sheet-body);
+    max-height: none;
+    padding: 0 var(--tz-space-3);
+    background: var(--tz-surface-1);
+    animation: none;
+  }
+
+  .tz-replay .tz-replay__stage[data-sheet='peek'] > :is(.tz-replay__lb, .tz-replay__side),
+  .tz-replay .tz-replay__stage[data-sheet]:not([data-tab='lb']) > .tz-replay__lb,
+  .tz-replay .tz-replay__stage[data-tab='lb'] > .tz-replay__side {
+    display: none;
+  }
+
+  /* En la columna derecha, solo el panel de la pestaña: la telemetría del coche o la dirección de carrera. */
+  .tz-replay__stage[data-tab='car'] > .tz-replay__side :deep([data-testid='race-control']),
+  .tz-replay__stage[data-tab='rc'] > .tz-replay__side :deep([data-testid='telemetry']) {
+    display: none;
+  }
+
+  .tz-replay__side > :deep(*) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
 }
 </style>

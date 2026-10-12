@@ -116,7 +116,7 @@ const animations = (loc: Locator) =>
   )
 
 test.describe('portada: identidad, iconos y estados', () => {
-  test('marca en condensada con el piano debajo; la temporada elegida es una placa maciza de pintura que se lee', async ({ page }) => {
+  test('marca en condensada, sin piano; la temporada elegida es una placa maciza de pintura que se lee', async ({ page }) => {
     await gotoApp(page, '/')
     const brand = page.getByTestId('brand')
     const font = await brand.evaluate((el) => {
@@ -126,18 +126,9 @@ test.describe('portada: identidad, iconos y estados', () => {
     expect(font.family).toMatch(/Barlow Condensed/)
     expect(font.transform).toBe('uppercase')
 
-    // Piano: diez bloques de --tz-kerb-block bajo la marca, decorativo (sin eventos).
+    // Sin el piano bajo la marca (D50: el usuario no lo quiere): nada decorativo debajo de la cabecera.
     const header = page.locator('.tz-header')
-    const kerb = await header.evaluate((el) => {
-      const s = getComputedStyle(el, '::after')
-      return { image: s.backgroundImage, width: s.width, height: s.height, left: s.left, events: s.pointerEvents }
-    })
-    expect(kerb.image).toMatch(/repeating-linear-gradient/)
-    expect(Number.parseFloat(kerb.width)).toBe(10 * Number.parseFloat(await tokenValue(page, '--tz-kerb-block')))
-    expect(kerb.height).toBe('3px')
-    expect(kerb.events).toBe('none')
-    const [brandBox, headerBox] = [await brand.boundingBox(), await header.boundingBox()]
-    expect(Math.abs(brandBox!.x - headerBox!.x - Number.parseFloat(kerb.left))).toBeLessThanOrEqual(1)
+    expect(await header.evaluate((el) => getComputedStyle(el, '::after').backgroundImage)).toBe('none')
 
     // Placa maciza = activado (D47): fondo de pintura y texto --tz-accent-on, legible.
     const active = page.getByTestId('season-2026')

@@ -21,6 +21,15 @@ import { useLayoutStore } from '~/stores/layout'
 
 /** La media query del CSS de la página para la franja inferior (tablet en vertical): ahí no hay asas ni anchos. */
 export const PORTRAIT_QUERY = '(width <= 900px) and (orientation: portrait)'
+/**
+ * Modo compacto (móvil, ventanas pequeñas; pendiente 3 del PLAN): el mapa ocupa todo el escenario y los paneles van en una
+ * hoja inferior con pestañas (pages/replay.vue, TzSheetHead). Tampoco hay asas ni anchos.
+ */
+export const COMPACT_QUERY = '(width < 768px), (height < 500px)'
+/** Altura de la hoja de paneles del modo compacto: asomada (solo su cabecera), media o entera. */
+export type SheetState = 'peek' | 'half' | 'full'
+/** Panel a la vista en la hoja: la clasificación, el coche elegido o la dirección de carrera. */
+export type SheetTab = 'lb' | 'car' | 'rc'
 
 /** Hueco de la rejilla de la clasificación (`--lb-gap` en TzLeaderboard): 8 px, y 6 px con los paneles estrechos. */
 const LB_GAP_PX = 8
@@ -32,13 +41,16 @@ export function useReplayLayout() {
   const layout = useLayoutStore()
   const width = ref(0)
   const portrait = ref(false)
+  const compact = ref(false)
   let query: MediaQueryList | null = null
+  let compactQuery: MediaQueryList | null = null
   let raf = 0
 
   function read() {
     raf = 0
     width.value = window.innerWidth
     portrait.value = query?.matches ?? false
+    compact.value = compactQuery?.matches ?? false
   }
   function schedule() {
     if (!raf) raf = requestAnimationFrame(read)
@@ -46,20 +58,23 @@ export function useReplayLayout() {
 
   onMounted(() => {
     query = typeof window.matchMedia === 'function' ? window.matchMedia(PORTRAIT_QUERY) : null
+    compactQuery = typeof window.matchMedia === 'function' ? window.matchMedia(COMPACT_QUERY) : null
     read()
     window.addEventListener('resize', schedule)
     query?.addEventListener?.('change', schedule)
+    compactQuery?.addEventListener?.('change', schedule)
   })
   onBeforeUnmount(() => {
     window.removeEventListener('resize', schedule)
     query?.removeEventListener?.('change', schedule)
+    compactQuery?.removeEventListener?.('change', schedule)
     if (raf) cancelAnimationFrame(raf)
     raf = 0
   })
 
   const narrow = computed(() => width.value <= NARROW_MAX_PX)
-  /** Hay anchos (y asas): fuera de la tablet en vertical, una vez medida la ventana. */
-  const resizable = computed(() => width.value > 0 && !portrait.value)
+  /** Hay anchos (y asas): fuera de la tablet en vertical y del modo compacto, una vez medida la ventana. */
+  const resizable = computed(() => width.value > 0 && !portrait.value && !compact.value)
   const gap = computed(() => (narrow.value ? LB_GAP_NARROW_PX : LB_GAP_PX))
 
   const geometry = computed<StageGeometry>(() => ({
@@ -105,5 +120,5 @@ export function useReplayLayout() {
       : undefined,
   )
 
-  return { widths, ranges, vars, resizable }
+  return { widths, ranges, vars, resizable, compact: readonly(compact) }
 }

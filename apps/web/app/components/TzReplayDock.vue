@@ -35,8 +35,18 @@ const { t } = useI18n()
   background: var(--tz-bg);
 }
 
-/* Una sola fila: los controles a su ancho y el timeline con el resto (sin su margen de arriba). */
-@media (width >= 1280px) {
+/* Modo compacto (móvil y ventanas pequeñas, pages/replay.vue): pegado a los bordes. */
+@media (width < 768px), (height < 500px) {
+  .tz-dock {
+    margin: 0 var(--tz-space-2) var(--tz-space-1);
+  }
+}
+
+/*
+ * Una sola fila: los controles a su ancho y el timeline con el resto (sin su margen de arriba). También en el móvil en
+ * horizontal (poco alto, ancho de sobra): ahí cada fila es mapa que se pierde.
+ */
+@media (width >= 1280px), (height < 500px) and (width >= 640px) {
   .tz-dock {
     display: flex;
     align-items: center;

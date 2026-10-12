@@ -111,7 +111,16 @@
       "view": "View",
       "scene": "Scene and camera",
       "help": "Help"
-    }
+    },
+    "more": "More tools",
+    "moreHint": "View, scene, camera, help and language"
+  },
+  "sheet": {
+    "label": "Panels",
+    "lb": "Standings",
+    "rc": "Race control",
+    "handle": "Panel height",
+    "handleHint": "Tap to open or close the panels; drag to change their height"
   },
   "scene": {
     "noWebgl": "Your browser or device does not support WebGL 2: the 3D map is unavailable.",

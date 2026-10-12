@@ -111,7 +111,16 @@
       "view": "Vista",
       "scene": "Escena y cámara",
       "help": "Ayuda"
-    }
+    },
+    "more": "Más herramientas",
+    "moreHint": "Vista, escena, cámara, ayuda e idioma"
+  },
+  "sheet": {
+    "label": "Paneles",
+    "lb": "Clasificación",
+    "rc": "Dirección de carrera",
+    "handle": "Alto de los paneles",
+    "handleHint": "Pulsa para abrir o recoger los paneles; arrastra para cambiar su alto"
   },
   "scene": {
     "noWebgl": "Tu navegador o tu equipo no permiten WebGL 2: el mapa 3D no está disponible.",
