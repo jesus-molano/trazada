@@ -185,6 +185,37 @@ def _samples_between(df: pd.DataFrame, t0: int, t1: int) -> np.ndarray:
 
 def reference_laps(data: SessionData, k: int = REFERENCE_LAPS) -> pd.DataFrame:
     laps = data.laps
+    clean = _clean_laps(laps)
+    if clean.empty:
+        clean = laps[(laps["lap_ms"] > 0) & (laps["pit_in_ms"] < 0) & (laps["pit_out_ms"] < 0)]
+    best = clean.sort_values("lap_ms").groupby("car", sort=False).head(1).sort_values("lap_ms")
+    return best.head(k)
+
+
+#: Muestras de posición que necesita una vuelta para servir de referencia del trazado.
+MIN_TRACE_SAMPLES = 50
+
+
+def _lap_traces(data: SessionData, laps: pd.DataFrame, k: int | None = None) -> list[np.ndarray]:
+    """Muestras (m, sin rotar) de cada vuelta con posiciones, en el orden de `laps` (como mucho `k`)."""
+    valid: dict[str, pd.DataFrame] = {}
+    traces: list[np.ndarray] = []
+    for lap in laps.itertuples():
+        df = data.pos.get(lap.car)
+        if df is None:
+            continue
+        if lap.car not in valid:
+            valid[lap.car] = _valid_pos(df)
+        pts = _samples_between(valid[lap.car], int(lap.start_ms), int(lap.end_ms))
+        if len(pts) > MIN_TRACE_SAMPLES:
+            traces.append(pts)
+            if k is not None and len(traces) >= k:
+                break
+    return traces
+
+
+def _clean_laps(laps: pd.DataFrame) -> pd.DataFrame:
+    """Vueltas limpias (con tiempo, sin boxes, sin anular, pista en verde), de más rápida a más lenta."""
     clean = laps[
         (laps["lap_ms"] > 0)
         & (laps["pit_in_ms"] < 0)
@@ -194,22 +225,20 @@ def reference_laps(data: SessionData, k: int = REFERENCE_LAPS) -> pd.DataFrame:
         & (~laps["deleted"].astype(bool))
         & (laps["track_status"].isin(["", "1"]))
     ]
-    if clean.empty:
-        clean = laps[(laps["lap_ms"] > 0) & (laps["pit_in_ms"] < 0) & (laps["pit_out_ms"] < 0)]
-    best = clean.sort_values("lap_ms").groupby("car", sort=False).head(1).sort_values("lap_ms")
-    return best.head(k)
+    return clean.sort_values("lap_ms")
 
 
 def _raw_loop(data: SessionData, refs: pd.DataFrame) -> tuple[np.ndarray, list[np.ndarray]]:
-    """Muestras (m, sin rotar) de la vuelta más rápida y del resto de referencias."""
-    traces = []
-    for lap in refs.itertuples():
-        df = data.pos.get(lap.car)
-        if df is None:
-            continue
-        pts = _samples_between(_valid_pos(df), int(lap.start_ms), int(lap.end_ms))
-        if len(pts) > 50:
-            traces.append(pts)
+    """Muestras (m, sin rotar) de la vuelta más rápida y del resto de referencias.
+
+    Si las referencias no tienen posiciones (Mónaco 2026, carrera: el archivo de posiciones del live timing
+    se corta a la 1:52 de sesión y las vueltas más rápidas son las del final), las vueltas limpias más
+    rápidas que sí las tienen: el trazado sale igual y los coches se dibujan donde hay dato.
+    """
+    traces = _lap_traces(data, refs)
+    if not traces:
+        log.warning("Las vueltas de referencia no tienen posiciones: se buscan otras vueltas limpias")
+        traces = _lap_traces(data, _clean_laps(data.laps), REFERENCE_LAPS)
     if not traces:
         raise CircuitBuildError("no hay vueltas de referencia con posiciones")
     ref = traces[0]

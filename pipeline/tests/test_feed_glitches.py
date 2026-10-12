@@ -298,3 +298,27 @@ def test_off_both_paths_next_to_the_pit_entry_is_no_data() -> None:
 
     m = project_car(pos, data.laps.iloc[0:0], circuit, track_index, pit_index)
     assert np.all(m.path == PATH_NODATA)
+
+
+# --- Mónaco 2026: posiciones cortadas a mitad de la carrera ---
+
+
+def test_circuit_from_other_clean_laps_when_the_fastest_have_no_positions() -> None:
+    """El archivo de posiciones de la carrera de Mónaco 2026 se corta a la 1:52 de sesión y las vueltas
+    más rápidas de todos son del final: sin posiciones en ninguna referencia, el trazado sale de otras
+    vueltas limpias que sí las tienen. Antes: CircuitBuildError, «no hay vueltas de referencia con
+    posiciones»."""
+    from trazada_pipeline.circuit.build import reference_laps
+
+    clean = build_circuit(synthetic_session()[0], CIRCUIT_ID, "Synthetic")
+    data, _ = synthetic_session()
+    for lap in reference_laps(data).itertuples():
+        pos = data.pos[lap.car]
+        t = pos["t_ms"].to_numpy()
+        data.pos[lap.car] = pos[(t < lap.start_ms) | (t > lap.end_ms)].reset_index(drop=True)
+
+    c = build_circuit(data, CIRCUIT_ID, "Synthetic")
+    assert abs(c.length - clean.length) < 0.01 * clean.length
+    truth = PolylineIndex(_flat(clean.centerline), closed=True)
+    _, off = truth.project(_flat(c.centerline))
+    assert np.median(off) < 1.0, np.median(off)
