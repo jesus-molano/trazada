@@ -169,9 +169,9 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   gap: var(--tz-space-0-5);
   height: 28px;
   padding: var(--tz-space-0-5);
-  border: 1px solid var(--tz-border);
+  border: 0;
   border-radius: var(--tz-radius-md);
-  background: var(--tz-overlay);
+  background: var(--tz-surface-2);
 }
 
 .tz-tools__label {
@@ -194,23 +194,11 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
 /*
  * La cabecera tiene que caber en una fila (si se parte, la escena y la telemetría pierden alto). Por debajo de
  * 1600 px, los menús «Capas» y «Cámara» solo con su icono, como Análisis y la meteorología (el nombre accesible y el
- * título siguen ahí); por debajo de 1360 px, «Altura» y «Separar coches» pasan a su icono (el grupo y el botón
- * conservan su nombre accesible y su título).
+ * título siguen ahí), y «Altura» y «Separar coches» pasan a su icono (el grupo y el botón conservan su nombre
+ * accesible y su título), como en la lámina de D50.
  */
 @media (width < 1600px) {
-  .tz-tools__menu-text {
-    display: none;
-  }
-}
-
-/* «Cómo se dibuja», el texto más largo: solo el icono por debajo de 1920 px (la cabecera cabe en una fila). */
-@media (width < 1920px) {
-  .tz-tools__how-text {
-    display: none;
-  }
-}
-
-@media (width < 1360px) {
+  .tz-tools__menu-text,
   .tz-tools__label,
   .tz-tools__toggle-text {
     display: none;
@@ -220,6 +208,11 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   .tz-tools__toggle-icon {
     display: inline-block;
   }
+}
+
+/* «Cómo se dibuja»: siempre solo el icono (D50); el nombre accesible y el título dicen qué abre. */
+.tz-tools__how-text {
+  display: none;
 }
 
 /* Controles de un grupo del hueco, uno por línea dentro de su menú. */
@@ -238,7 +231,7 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   border-radius: var(--tz-radius-sm);
   background: transparent;
   font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
+  font-weight: var(--tz-weight-medium);
   cursor: pointer;
   transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
@@ -250,11 +243,12 @@ const estimatedHint = (f: string) => (isEstimatedField(f) ? t(`estimated.hints.$
   inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
 }
 
+/* «Separar coches»: fantasma, como los demás botones de la cabecera (D50); activado, placa. */
 .tz-tools__toggle {
   height: 28px;
   padding: 0 var(--tz-space-2);
-  border-color: var(--tz-border);
-  background: var(--tz-overlay);
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-sm);
 }
 
 /* Activado: placa maciza de pintura (D47); desplegado (los menús) conserva el relleno suave. */

@@ -1,7 +1,7 @@
 /**
  * Realización automática (ítem 9, D39): el store (cualquier acción manual la apaga, sin tocar el de reproducción; solo
  * con la escena 3D montada), el chip (la única cifra es el intervalo de la torre; por cercanía en pista, ninguna; el
- * líder es el de la clasificación), la tecla T y Esc, la herramienta del menú «Cámara», el botón de la cabecera y los
+ * líder es el de la clasificación), la tecla L y Esc, la herramienta del menú «Cámara», el botón de la cabecera y los
  * huecos reales donde se montan.
  */
 import { mountSuspended } from '@nuxt/test-utils/runtime'
@@ -233,20 +233,20 @@ describe('chip de la realización automática', () => {
     w.unmount()
   })
 
-  it('la tecla T la enciende y la apaga (solo con escena); Esc la apaga antes que el seguimiento o la selección', async () => {
+  it('la tecla L la enciende y la apaga (solo con escena); Esc la apaga antes que el seguimiento o la selección', async () => {
     const w = await mountChip()
     const tv = useTvStore()
     const playback = usePlaybackStore()
-    // Sin escena 3D, la T no es suya.
-    expect(runShortcut(key('t'), false)).toBe(false)
+    // Sin escena 3D, la L no es suya.
+    expect(runShortcut(key('l'), false)).toBe(false)
     withRig()
-    expect(runShortcut(key('t'), false)).toBe(true)
+    expect(runShortcut(key('l'), false)).toBe(true)
     expect(tv.active).toBe(true)
-    expect(runShortcut(key('T'), false)).toBe(true)
+    expect(runShortcut(key('L'), false)).toBe(true)
     expect(tv.active).toBe(false)
     expect(tv.lastExit).toBe('toggle')
     // En un campo de texto, no.
-    expect(runShortcut(key('t'), true)).toBe(false)
+    expect(runShortcut(key('l'), true)).toBe(false)
 
     playback.selectCar('1')
     tv.start()
@@ -258,7 +258,7 @@ describe('chip de la realización automática', () => {
     below()
     w.unmount()
     // Sin el chip (otra sesión), la tecla ya no está registrada.
-    expect(runShortcut(key('t'), false)).toBe(false)
+    expect(runShortcut(key('l'), false)).toBe(false)
   })
 })
 
@@ -282,7 +282,7 @@ describe('herramienta y botón', () => {
     expect(hint).toMatch(/(no da ninguna|it gives none)/)
     expect(hint).toMatch(/(coche de seguridad|safety car)/)
     expect(hint).toMatch(/6 s/)
-    expect(w.find('kbd').text()).toBe('T')
+    expect(w.find('kbd').text()).toBe('L')
   })
 
   it('botón de la cabecera: deshabilitado sin escena (y dice por qué); alterna y lo dice con aria-pressed', async () => {

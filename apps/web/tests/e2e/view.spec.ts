@@ -91,7 +91,7 @@ test.describe('escritorio', () => {
     const home = await view(page)
     await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 150_000))
     await page.getByTestId('replay-title').click()
-    await page.keyboard.press('t')
+    await page.keyboard.press('l')
     await expect.poll(() => page.evaluate(() => window.__trazada!.scene.cameraMode)).not.toBe('overview')
     await expect(page.getByTestId('scene-center')).toBeVisible()
     await page.keyboard.press('c')

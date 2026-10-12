@@ -104,7 +104,14 @@
       "corrupt": "Los datos descargados están dañados (error de integridad).",
       "decode": "No se pudieron decodificar los datos de la sesión."
     },
-    "reload": "Recargar"
+    "reload": "Recargar",
+    "groups": {
+      "session": "Sesión",
+      "conditions": "Condiciones",
+      "view": "Vista",
+      "scene": "Escena y cámara",
+      "help": "Ayuda"
+    }
   },
   "scene": {
     "noWebgl": "Tu navegador o tu equipo no permiten WebGL 2: el mapa 3D no está disponible.",

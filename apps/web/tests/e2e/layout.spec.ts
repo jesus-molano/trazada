@@ -197,15 +197,22 @@ function titleFit(page: Page) {
   })
 }
 
-/** Centro vertical de cada hijo de la cabecera en el flujo (lo que flota debajo, como el chip de la realización, no). */
+/**
+ * Centro vertical de cada hijo de la primera fila de la cabecera (lo que flota debajo, como el chip de la realización,
+ * no): desde D50, sus cinco grupos (sesión, condiciones, vista, escena y ayuda). En el nivel 4, las condiciones van en
+ * su propia fila, debajo, y la primera es la del resto.
+ */
 function barRowMiddles(page: Page) {
-  return page.evaluate(() =>
-    [...document.querySelector('.tz-replay__bar')!.children]
+  return page.evaluate(() => {
+    const bar = document.querySelector('.tz-replay__bar')!
+    const ownRow = (bar.getAttribute('data-fit') ?? '').split(' ').includes('4')
+    return [...bar.children]
       .filter((c) => getComputedStyle(c).position !== 'absolute')
+      .filter((c) => !(ownRow && (c as HTMLElement).dataset.group === 'conditions'))
       .map((c) => c.getBoundingClientRect())
       .filter((r) => r.height > 0)
-      .map((r) => Math.round(r.top + r.height / 2)),
-  )
+      .map((r) => Math.round(r.top + r.height / 2))
+  })
 }
 
 for (const vp of [
@@ -215,7 +222,7 @@ for (const vp of [
   test.describe(`${vp.name}: cabecera del replay`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } })
 
-    test('con lo de una carrera dev (6 avisos, dos «Estimado», bandera, sin meteorología), sigue en una sola fila', async ({ page }) => {
+    test('con lo de una carrera dev (6 avisos, dos «Estimado», bandera, sin meteorología): una fila; por debajo de 1360 px, las condiciones pueden ir en la suya', async ({ page }) => {
       await resetStorage(page)
       await serveLikeDevRace(page)
       await open(page)
@@ -229,10 +236,13 @@ for (const vp of [
       await expect(page.getByTestId('analysis-button')).toBeVisible()
       await expect(page.getByTestId('scene-tools')).toBeVisible()
 
+      // Como en la lámina de D50: por debajo de 1360 px, si no caben, las condiciones bajan a su fila (nivel 4).
+      const ownRow = (await titleFit(page)).levels.includes('4')
+      if (vp.width >= 1360) expect(ownRow).toBe(false)
       const middles = await barRowMiddles(page)
-      expect(middles.length).toBeGreaterThanOrEqual(7)
+      expect(middles.length).toBe(ownRow ? 4 : 5)
       expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
-      expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(56)
+      expect((await bar.boundingBox())!.height).toBeLessThanOrEqual(ownRow ? 100 : 56)
       expect(await overflowing(page)).toEqual([])
       // El título tiene prioridad (D44): si aun así se acorta con «…», es que todo lo secundario ya está en su forma
       // más corta (por la media query de < 1360 px o por `data-fit` con el nivel 3).
@@ -301,12 +311,15 @@ function headerBoxes(page: Page) {
     }
     const bar = document.querySelector<HTMLElement>('.tz-replay__bar')!
     const status = bar.querySelector('[data-testid="track-status"]')!
+    // El grupo de las condiciones (D50): es lo que baja a su propia fila en el nivel 4.
+    const row = status.closest('[data-group]') ?? status
     const title = bar.querySelector('[data-testid="replay-title"]')!
     const cs = getComputedStyle(bar)
     return {
       bar: box(bar),
       inner: bar.clientWidth - Number.parseFloat(cs.paddingLeft) - Number.parseFloat(cs.paddingRight),
       status: box(status),
+      row: box(row),
       title: box(title),
       level: bar.getAttribute('data-fit') ?? '',
       chips: [...status.children].filter((c) => c.getBoundingClientRect().width > 0).map(box),
@@ -344,8 +357,8 @@ for (const vp of VIEWPORTS) {
       expect(Math.max(...tops) - Math.min(...tops), JSON.stringify(withFlags.chips)).toBeLessThanOrEqual(4)
       if (withFlags.level.split(' ').includes('4')) {
         // En su propia fila: debajo del título y a todo el ancho de la cabecera.
-        expect(withFlags.status.y).toBeGreaterThanOrEqual(withFlags.title.y + withFlags.title.h)
-        expect(Math.abs(withFlags.status.w - withFlags.inner)).toBeLessThanOrEqual(1)
+        expect(withFlags.row.y).toBeGreaterThanOrEqual(withFlags.title.y + withFlags.title.h)
+        expect(Math.abs(withFlags.row.w - withFlags.inner)).toBeLessThanOrEqual(1)
       } else {
         // En la fila del título: la cabecera sigue en una fila.
         expect(Math.abs(withFlags.status.y + withFlags.status.h / 2 - (withFlags.title.y + withFlags.title.h / 2))).toBeLessThanOrEqual(4)
@@ -362,8 +375,9 @@ for (const vp of VIEWPORTS) {
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
       const without = await headerBoxes(page)
       expect(withFlags.bar.h - without.bar.h).toBeLessThanOrEqual(40)
-      // Sin banderas, el estado de pista (solo «Estimado») vuelve a la fila del título.
-      expect(without.level.split(' ')).not.toContain('4')
+      // Sin banderas, el estado de pista (solo «Estimado») vuelve a la fila del título; por debajo de 1360 px, las
+      // condiciones pueden seguir en la suya (D50: en la tablet, dos filas).
+      if (vp.width >= 1360) expect(without.level.split(' ')).not.toContain('4')
     })
   })
 }
@@ -581,7 +595,7 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
         const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches)
         if (vp.touch && coarse) {
           await expect(page.getByTestId('layout-toggle')).toBeVisible()
-          await expect(page.getByTestId('layout-toggle')).toHaveAccessibleName(/^(Diseño «Análisis»|“Analysis” layout)$/)
+          await expect(page.getByTestId('layout-toggle')).toHaveAccessibleName(/^(Paneles detallados|Detailed panels)$/)
           await expect(page.getByTestId('layout-switch')).toBeHidden()
         } else {
           await expect(page.getByTestId('layout-switch')).toBeVisible()
@@ -618,11 +632,11 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
   test.describe('escritorio 1440×900', () => {
     test.use({ viewport: { width: 1440, height: 900 } })
 
-    test('el diseño se recuerda al recargar (por navegador) y la tecla L lo cambia', async ({ page }) => {
+    test('el diseño se recuerda al recargar (por navegador) y la tecla P lo cambia', async ({ page }) => {
       // Sin resetStorage: este test recarga y lo guardado tiene que seguir ahí (cada test empieza con el suyo vacío).
       await open(page)
       await page.getByTestId('replay-title').click()
-      await page.keyboard.press('l')
+      await page.keyboard.press('p')
       await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))
       expect(saved).toMatchObject({ _v: 1, preset: 'analysis' })
@@ -687,6 +701,13 @@ test.describe('asas de los paneles (ítem 15)', () => {
     // Durante el arrastre: el panel sigue al puntero, la escena aún no reencuadra.
     await expect(page.locator('.tz-replay')).toHaveAttribute('data-resizing', '')
     await expect.poll(() => lbWidth(page)).toBeCloseTo(before + 60, -1)
+    // La ventana del mapa (D50) va pegada a la clasificación también durante el arrastre, no solo al soltar.
+    const gap = () =>
+      page.evaluate(() => {
+        const lb = document.querySelector('[data-testid="leaderboard"]')!.getBoundingClientRect()
+        return document.querySelector('[data-testid="map-window"]')!.getBoundingClientRect().left - lb.right
+      })
+    await expect.poll(gap).toBeCloseTo(10, 0)
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
     expect(await framing(page)).toEqual(framed)
     await page.mouse.up()

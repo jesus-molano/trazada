@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * Cambio de diseño del replay en la cabecera (ítem 15, D44): «Espectador» (el mapa primero, paneles compactos) o
- * «Análisis» (clasificación con columnas opcionales y telemetría más grande), como control segmentado (el elegido,
- * placa maciza). También con la tecla L y desde la paleta de comandos. Se recuerda por navegador (stores/layout.ts).
+ * Paneles del replay en la cabecera (ítem 15, D44; nombres de D50): «Compactos» (el mapa primero; preset `spectator`) o
+ * «Detallados» (preset `analysis`: clasificación con más columnas y telemetría más grande), como control segmentado (el elegido,
+ * placa maciza). También con la tecla P (de «paneles»; la L es de la realización automática) y desde la paleta de comandos. Se recuerda por navegador (stores/layout.ts).
  *
  * La cabecera va en una fila: desde 1600 px, icono y texto; por debajo (o antes, si el título no cabe entero:
  * `data-fit-hide="2"`, ver pages/replay.vue), solo el icono, con su nombre accesible y su título. Por debajo de 1360 px
  * (o antes, con `data-fit="3"`): con ratón, botones de 24 px de ancho; en táctil (sin ratón), un solo botón que alterna
- * «Análisis» (pulsado) y «Espectador» (sin pulsar), con su zona táctil y el mismo nombre en voz alta. Así la cabecera
+ * «Detallados» (pulsado) y «Compactos» (sin pulsar), con su zona táctil y el mismo nombre en voz alta. Así la cabecera
  * de la tablet en horizontal (1024 px) sigue en una fila, como antes del cambio de diseño.
  */
 import { PORTRAIT_QUERY } from '~/composables/useReplayLayout'
@@ -33,7 +33,7 @@ const HINT: Record<LayoutPreset, () => string> = {
 const offs: (() => void)[] = []
 onMounted(() => {
   offs.push(
-    registerShortcut({ key: 'l' }, () => layout.togglePreset()),
+    registerShortcut({ key: 'p' }, () => layout.togglePreset()),
     // Comandos de diseño de la paleta (engine/commands/builtin/layout.ts).
     registerCommandService('layout', {
       get preset() {
@@ -57,16 +57,18 @@ onBeforeUnmount(() => {
 
 <script lang="ts">
 /** Hueco `replay-header` (D29): detrás de los botones de análisis y de la realización automática. */
-export const order = 30
+export const order = 8
+export const group = 'view'
 </script>
 
 <template>
   <div class="tz-layout-switch">
+    <span class="tz-layout-switch__label" aria-hidden="true">{{ t('layout.switch.label') }}</span>
     <div
       class="tz-segmented tz-layout-switch__group"
       role="group"
       :aria-label="t('layout.switch.label')"
-      aria-keyshortcuts="L"
+      aria-keyshortcuts="P"
       data-testid="layout-switch"
     >
       <button
@@ -91,7 +93,7 @@ export const order = 30
       :aria-pressed="layout.preset === 'analysis'"
       :aria-label="t('layout.switch.toggle')"
       :title="t('layout.switch.toggleHint')"
-      aria-keyshortcuts="L"
+      aria-keyshortcuts="P"
       data-testid="layout-toggle"
       @click="layout.togglePreset()"
     >
@@ -111,7 +113,14 @@ export const order = 30
 .tz-layout-switch__group {
   align-items: center;
   height: 28px;
-  background: var(--tz-overlay);
+}
+
+/* Rótulo «Paneles» delante del segmentado (D50); el grupo lleva el mismo nombre accesible. */
+.tz-layout-switch__label {
+  margin-right: var(--tz-space-2);
+  font-size: var(--tz-text-sm);
+  color: var(--tz-text-faint);
+  white-space: nowrap;
 }
 
 .tz-layout-switch__btn {
@@ -119,7 +128,7 @@ export const order = 30
   align-items: center;
   gap: var(--tz-space-1);
   height: 22px;
-  font-weight: var(--tz-weight-semibold);
+  font-size: var(--tz-text-sm);
 }
 
 /* El botón que alterna: como el de la realización automática con solo el icono; pulsado («Análisis»), placa maciza. */
@@ -129,12 +138,14 @@ export const order = 30
   align-items: center;
   height: 28px;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
   cursor: pointer;
   transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
@@ -189,7 +200,8 @@ export const order = 30
 
 @media (hover: hover) {
   .tz-layout-switch__toggle:hover {
-    border-color: var(--tz-accent);
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
   }
 }
 </style>

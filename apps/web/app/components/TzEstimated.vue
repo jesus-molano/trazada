@@ -54,11 +54,15 @@ const name = computed(() => `${t('estimated.tag')} ${label.value}`)
 </template>
 
 <style scoped>
+/*
+ * «Estimado» (D50): sin caja discontinua; ≈ y el texto en magenta con subrayado de puntos. Sobre el mapa, flotando,
+ * lleva el fondo de las etiquetas de la escena (más abajo).
+ */
 .tz-estimated {
   display: inline-flex;
   align-items: center;
   gap: var(--tz-space-1);
-  border: 1px dashed var(--tz-estimated);
+  border: 0;
   border-radius: var(--tz-radius-pill);
   color: var(--tz-estimated);
   font-size: var(--tz-text-xs);
@@ -86,6 +90,8 @@ const name = computed(() => `${t('estimated.tag')} ${label.value}`)
 
 .tz-estimated__tag {
   font-weight: var(--tz-weight-semibold);
+  text-decoration: underline dotted 1px;
+  text-underline-offset: 0.2em;
 }
 
 /* «Estimado» sin dos puntos: solo en el chip compacto. */

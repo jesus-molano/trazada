@@ -70,8 +70,13 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
     mutation.disconnect()
     resize.observe(b)
     mutation.observe(b, { childList: true })
-    for (const child of b.children) resize.observe(child)
-    const status = b.querySelector(':scope > [data-testid="track-status"]')
+    // Cada grupo (D50) y lo que entra o sale en él (el estado de pista, los avisos, la meteorología).
+    for (const child of b.children) {
+      resize.observe(child)
+      mutation.observe(child, { childList: true })
+    }
+    // Dentro de su grupo (D50: condiciones), que en su fila propia no cambia de tamaño al perder un chip.
+    const status = b.querySelector('[data-testid="track-status"]')
     if (status) {
       mutation.observe(status, { childList: true })
       for (const chip of status.children) resize.observe(chip)

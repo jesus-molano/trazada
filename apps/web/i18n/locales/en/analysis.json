@@ -31,7 +31,7 @@
       "clearFollowing": "Clear the selection of {driver} and stop following it"
     },
     "legend": "Drivers: show or hide their series",
-    "legendHint": "Tick or untick a driver to show or hide their line. To choose one, click their line or use «Choose a driver», at the top.",
+    "legendHint": "Each driver below is a switch: on, their line shows; off (struck through), it is hidden. To highlight one, click their line or use «Choose a driver», at the top.",
     "legendAll": "Show all",
     "legendNone": "Hide all",
     "howToRead": "How to read the chart",

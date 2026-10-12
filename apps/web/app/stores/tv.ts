@@ -51,7 +51,7 @@ function sameView(a: TvShotView | null, b: TvShotView | null): boolean {
  *
  * Cualquier acción manual la apaga: elegir otro coche (o ninguno), seguir a un coche o dejar de seguirlo (lo vigila
  * este store, sin tocar el de reproducción), mover el mapa o tocar la escena (el rig de cámara), Esc, el botón o la
- * tecla T. Solo está disponible con la escena 3D montada (`available`: el rig de cámara se engancha con `attachRig`).
+ * tecla L. Solo está disponible con la escena 3D montada (`available`: el rig de cámara se engancha con `attachRig`).
  */
 export const useTvStore = defineStore('tv', () => {
   const playback = usePlaybackStore()

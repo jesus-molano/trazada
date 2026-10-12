@@ -95,6 +95,17 @@ button {
   color: inherit;
 }
 
+/* Lo que se pulsa o se arrastra no se selecciona: un doble clic o un arrastre no pinta la interfaz de selección. */
+button,
+label,
+summary,
+[role='button'],
+[role='tab'],
+[role='switch'],
+[role='separator'] {
+  user-select: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--tz-focus);
   outline-offset: 2px;

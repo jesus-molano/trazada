@@ -50,7 +50,7 @@ async function seekShot(page: Page, t: number): Promise<TvStats> {
 
 async function start(page: Page) {
   await page.getByTestId('replay-title').click()
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => handle(page, (h) => h.scene.cameraMode), { timeout: 5000 }).toBe('tv')
 }
 

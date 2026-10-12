@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Realización automática (ítem 9, D39): «No / Sí» en el grupo «Cámara» de las herramientas de escena, con la tecla
- * que la enciende (T) y la pista «ⓘ» de qué elige y por qué: la cifra solo sale de la torre oficial; por cercanía en
+ * que la enciende (L) y la pista «ⓘ» de qué elige y por qué: la cifra solo sale de la torre oficial; por cercanía en
  * pista, ninguna. En iPad, además, el botón de la cabecera (`replay-header/TzTvButton.vue`).
  */
 import { CUT_MIN_MS, DUEL_MAX_MS } from '~/engine/camera/Director'

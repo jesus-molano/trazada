@@ -1,6 +1,6 @@
 /**
  * Realización automática (ítem 9, D39) con el fixture (Spa, libres 1: sin intervalos en la torre ni curvas numeradas).
- * Se enciende desde el menú «Cámara» o con la T; elige dos coches cerca en pista y el chip no da ninguna cifra; corta
+ * Se enciende desde el menú «Cámara» o con la L; elige dos coches cerca en pista y el chip no da ninguna cifra; corta
  * como mucho cada 6 s; en pausa no renderiza en bucle; dentro del presupuesto de la escena; cualquier acción manual la
  * apaga (arrastrar el mapa deja la cámara donde está, con los controles; Esc vuelve a la vista general; elegir o seguir
  * un coche); con reduced motion, solo cortes. En tablet, el botón de la cabecera y un toque en la escena.
@@ -128,7 +128,7 @@ test('desde el menú «Cámara»: sigue a dos coches cerca en pista, sin cifra, 
 
 test('en pausa no renderiza en bucle; un seek elige plano de cero al momento', async ({ page }) => {
   await openScene(page)
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   const before = await settledRenders(page)
   await page.waitForTimeout(600)
@@ -142,7 +142,7 @@ test('en pausa no renderiza en bucle; un seek elige plano de cero al momento', a
 
 test('nunca corta más rápido que cada 6 s (×4, 14 s de reproducción)', async ({ page }) => {
   await openScene(page)
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await page.keyboard.press('3') // ×4
   await page.keyboard.press(' ')
@@ -158,7 +158,7 @@ test('nunca corta más rápido que cada 6 s (×4, 14 s de reproducción)', async
 test('arrastrar el mapa la apaga y deja la cámara donde está, con los controles del mapa', async ({ page }) => {
   await openScene(page)
   const overview = await camera(page)
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await settledRenders(page)
   const tvPose = await camera(page)
@@ -180,7 +180,7 @@ test('arrastrar el mapa la apaga y deja la cámara donde está, con los controle
 test('Esc la apaga y vuelve a la vista general; elegir un coche la apaga; seguirlo, también', async ({ page }) => {
   await openScene(page)
   const overview = await camera(page)
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await page.keyboard.press('Escape')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('overview')
@@ -188,7 +188,7 @@ test('Esc la apaga y vuelve a la vista general; elegir un coche la apaga; seguir
   expect((await tv(page)).active).toBe(false)
 
   // Elegir un coche la apaga (y vuelve a la vista general).
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   // Uno de los coches del plano: está en pista (después se le puede seguir sin esperar a que aparezca).
   const car = (await tv(page)).shot!.cars[0]!
@@ -197,9 +197,9 @@ test('Esc la apaga y vuelve a la vista general; elegir un coche la apaga; seguir
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('overview')
   expect(await page.evaluate(() => window.__trazada!.selectedCar)).toBe(car)
 
-  // Con el coche elegido: la T la enciende (la selección se queda) y «Seguir» la apaga y sigue al coche.
+  // Con el coche elegido: la L la enciende (la selección se queda) y «Seguir» la apaga y sigue al coche.
   await page.getByTestId('replay-title').click()
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   expect(await page.evaluate(() => window.__trazada!.selectedCar)).not.toBeNull()
   await page.getByTestId('follow-toggle').click()
@@ -224,7 +224,7 @@ test('el chip y la herramienta son accesibles; «Salir» la apaga', async ({ pag
   await page.getByTestId('tv-exit').click()
   await expect.poll(async () => (await tv(page)).active).toBe(false)
   await expect(page.getByTestId('tv-on')).toHaveAttribute('aria-pressed', 'false')
-  // Con ratón, el botón de la cabecera no está (la cabecera cabe en una fila; el menú y la T bastan).
+  // Con ratón, el botón de la cabecera no está (la cabecera cabe en una fila; el menú y la L bastan).
   await expect(page.getByTestId('tv-button')).toBeHidden()
 })
 
@@ -243,7 +243,7 @@ test('con prefers-reduced-motion, solo cortes: entra y sale sin vuelo', async ({
     }
     requestAnimationFrame(tick)
   })
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await page.waitForTimeout(300)
   const pose = await camera(page)

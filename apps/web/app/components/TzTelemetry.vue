@@ -288,6 +288,8 @@ watch(
     <header class="tz-tel__head">
       <!-- Destello único del fondo al cambiar de coche (decorativo; por debajo del texto). -->
       <span :key="driver.number" class="tz-tel__flash" aria-hidden="true" />
+      <!-- El color del equipo: una marca de 3×14 junto a la sigla (un dato, D50), como en la clasificación. -->
+      <span class="tz-tel__team" aria-hidden="true" />
       <span class="tz-tel__tla" :title="`${driver.first} ${driver.last}`">{{ driver.tla }}</span>
       <!-- Con poco sitio (tablet), el nombre no va acortado a una o dos letras: solo para lectores de pantalla. -->
       <span class="tz-tel__name" data-testid="telemetry-name"><span class="tz-tel__name-text">{{ driver.first }} {{ driver.last }}</span></span>
@@ -408,11 +410,10 @@ watch(
   min-height: 0;
   overflow-y: auto;
   padding: 0 var(--tz-panel-pad) var(--tz-space-3);
-  border: 1px solid var(--tz-border);
-  border-top: 4px solid var(--team);
-  border-radius: var(--tz-radius-lg);
+  /* Sobre el cromo, sin caja (D50); el color del equipo es una marca junto a la sigla, no un borde del panel. */
+  border: 0;
+  border-radius: 0;
   background: var(--tz-overlay);
-  box-shadow: var(--tz-shadow-panel);
   accent-color: var(--tz-accent);
 }
 
@@ -430,7 +431,7 @@ watch(
   margin: 0 0 var(--tz-space-2);
 }
 
-/* Cabecera con un tinte del color del equipo (≤ --tz-team-tint; sin color-mix, sin tinte). */
+/* Cabecera plana, separada por un filete (D50): sin tinte del equipo. */
 .tz-tel__head {
   position: relative;
   isolation: isolate;
@@ -440,7 +441,14 @@ watch(
   margin: 0 calc(-1 * var(--tz-panel-pad)) var(--tz-space-3);
   padding: var(--tz-space-2) var(--tz-panel-pad);
   border-bottom: 1px solid var(--tz-border);
-  background: linear-gradient(90deg, color-mix(in oklab, var(--team) var(--tz-team-tint), transparent), transparent 70%);
+}
+
+.tz-tel__team {
+  flex: none;
+  width: 3px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--team);
 }
 
 /* Destello único al cambiar de coche: el fondo, del acento suave a nada (con reduce, 0 ms); por debajo del texto. */

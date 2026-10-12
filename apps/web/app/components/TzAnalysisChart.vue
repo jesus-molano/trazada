@@ -897,7 +897,6 @@ onBeforeUnmount(() => {
             @focus="onKeyFocus($event, g.key)"
             @blur="hideLegend(g.key)"
           >
-            <span class="tz-achart__check" aria-hidden="true"><TzIcon v-if="g.visible" name="check" size="sm" /></span>
             <span
               class="tz-achart__swatch"
               :class="{ 'is-dash': g.dash, 'is-point': pointsOnly }"
@@ -1088,28 +1087,16 @@ onBeforeUnmount(() => {
 }
 
 /*
- * Entrada de un piloto: una casilla (✓ si su serie se ve) con su muestra y su nombre; solo muestra u oculta (elegir va
- * aparte). Oculta: tenue y tachada. Del coche elegido, el nombre en seminegrita.
+ * Entrada de un piloto: una píldora con su muestra y su nombre que solo muestra u oculta (elegir va aparte). Encendida:
+ * sobre tono y con el texto claro; apagada: sin fondo, tenue y tachada. Del coche elegido, el nombre en seminegrita.
  */
 .tz-achart__entry {
   display: inline-flex;
   align-items: stretch;
 }
 
-.tz-achart__check {
-  display: inline-grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  flex: none;
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-sm);
-  color: var(--tz-accent-on);
-}
-
-.tz-achart__key[aria-pressed='true'] .tz-achart__check {
-  border-color: var(--tz-accent);
-  background: var(--tz-accent);
+.tz-achart__key[aria-pressed='true'] {
+  background: var(--tz-surface-3);
 }
 
 .tz-achart__key[aria-pressed='false'] {

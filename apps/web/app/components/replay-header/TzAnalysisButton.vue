@@ -10,6 +10,7 @@ const { open, toggle } = useAnalysis()
 <script lang="ts">
 /** Hueco `replay-header` (D29): botón de la hoja de análisis (ítem 3), el primero de la cabecera. */
 export const order = 10
+export const group = 'view'
 </script>
 
 <template>
@@ -38,15 +39,17 @@ export const order = 10
   gap: var(--tz-space-2);
   height: 28px;
   padding: 0 var(--tz-space-3);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
   font-size: var(--tz-text-sm);
-  font-weight: var(--tz-weight-semibold);
+  font-weight: var(--tz-weight-medium);
   white-space: nowrap;
   cursor: pointer;
   transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
@@ -57,7 +60,7 @@ export const order = 10
 }
 
 .tz-analysis-btn[aria-expanded='true'] {
-  border-color: var(--tz-accent);
+  border-color: transparent;
   background: var(--tz-accent-soft);
   color: var(--tz-accent-strong);
 }
@@ -68,12 +71,16 @@ export const order = 10
 
 @media (hover: hover) {
   .tz-analysis-btn:hover {
-    border-color: var(--tz-accent);
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
   }
 }
 
-/* Por debajo de 1600 px, solo el icono (el nombre accesible y el título siguen ahí). */
-@media (width < 1600px) {
+/*
+ * Con su texto a cualquier ancho de escritorio (D50: ya es el único «Análisis» de la cabecera); solo el icono por
+ * debajo de 1360 px o si la cabecera no cabe (nivel 2 de useHeaderFit, en pages/replay.vue).
+ */
+@media (width < 1360px) {
   .tz-analysis-btn {
     padding: 0 var(--tz-space-2);
   }

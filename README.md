@@ -22,7 +22,7 @@ Es una app para usar en tu PC (no hay web pública), así que aquí van unas cap
 
 ![Cámara siguiendo a un coche, con su telemetría](docs/img/coche.webp)
 
-**Diseño «Análisis»** (en la cabecera o con la tecla L): la clasificación con la mejor vuelta, la última y las entradas en boxes de cada piloto, la telemetría más grande del coche elegido y, en el mapa, el calor por velocidad de su última vuelta entera (menú «Capas»).
+**Diseño «Análisis»** (en la cabecera o con la tecla P): la clasificación con la mejor vuelta, la última y las entradas en boxes de cada piloto, la telemetría más grande del coche elegido y, en el mapa, el calor por velocidad de su última vuelta entera (menú «Capas»).
 
 ![Diseño «Análisis» con la telemetría grande y el mapa de calor](docs/img/analisis.webp)
 
@@ -42,7 +42,7 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Telemetría del coche elegido (velocidad, marcha, RPM, acelerador, freno) y cámara que lo sigue.
 - Comparar dos pilotos (Mayús+clic en la clasificación): la diferencia en vivo a la misma distancia de la vuelta, las trazas de velocidad, acelerador y freno por distancia y un coche fantasma con la vuelta de referencia del otro (la misma, su mejor o su última vuelta). Al cerrar la vuelta, la diferencia oficial del cronometraje.
 - Centrar el mapa (botón sobre el mapa cuando lo has movido, menú «Cámara», tecla C, paleta o doble toque en una zona vacía): vuelve a la vista general; el mapa no se puede arrastrar más allá del circuito y un margen.
-- Realización automática (menú «Cámara» o tecla T): la cámara elige sola el duelo más cerrado, con persecución y cámaras fijas en las curvas, y se apaga en cuanto tocas algo.
+- Realización automática (menú «Cámara» o tecla L): la cámara elige sola el duelo más cerrado, con persecución y cámaras fijas en las curvas, y se apaga en cuanto tocas algo.
 - Colores de sector (morado, verde y amarillo) en la clasificación y en el panel del coche, calculados con los tiempos de sector oficiales.
 - Hoja «Análisis» con el race trace, el ritmo vuelta a vuelta y los stints de neumáticos, todo con los tiempos oficiales. Las vueltas con boxes, coche de seguridad o anuladas se marcan, no se quitan, y «Sin spoilers» enseña solo lo que ha pasado hasta el momento del replay.
 - Momentos: adelantamientos confirmados por el orden oficial en la línea de meta (con su instante aproximado por GPS, marcado «Estimado») y duelos a menos de 1 s, en la pestaña «Momentos» y como marcas en el timeline. Los botones del reproductor (o las teclas coma y punto) saltan al momento anterior o al siguiente: adelantamientos, duelos, coches de seguridad y mensajes destacados de dirección de carrera.
@@ -52,7 +52,7 @@ Las capturas se regeneran con `pnpm build && README_SHOTS=1 pnpm e2e readme-shot
 - Dirección de carrera, banderas por sector en el mapa y tinte de pista con coche de seguridad, VSC o bandera roja.
 - Meteorología de la sesión en la cabecera (aire, pista, humedad, presión, lluvia y viento, con una brújula junto al trazado) y una franja con la temperatura de pista y la lluvia en el timeline.
 - Paleta de comandos (Ctrl+K o «/»; en tablet, un botón en el reproductor): escribe en español o en inglés «seguir VER», «vuelta 30 de NOR», «x4», «siguiente momento», «siguiente adelantamiento», «adelantamientos de VER», «duelo HAM» o una hora del reloj. Lo que no está en los datos sale deshabilitado con su motivo.
-- Dos diseños del replay (en la cabecera o con la tecla L): «Espectador», con el mapa primero, y «Análisis», con la mejor vuelta, la última y las entradas en boxes de cada piloto en la clasificación y la telemetría más grande. El ancho de la clasificación y el de la columna derecha se cambian arrastrando su borde o con el teclado (salvo en la tablet en vertical), y el mapa siempre conserva su sitio. El diseño y los anchos se recuerdan en el navegador.
+- Dos diseños del replay (en la cabecera o con la tecla P): «Espectador», con el mapa primero, y «Análisis», con la mejor vuelta, la última y las entradas en boxes de cada piloto en la clasificación y la telemetría más grande. El ancho de la clasificación y el de la columna derecha se cambian arrastrando su borde o con el teclado (salvo en la tablet en vertical), y el mapa siempre conserva su sitio. El diseño y los anchos se recuerdan en el navegador.
 - Guía de primer uso: seis burbujas que señalan la clasificación, cómo seguir un coche, la línea de tiempo, qué es «Estimado» (con un ejemplo rotulado como ejemplo), el análisis y los comandos. Sale sola la primera vez y vuelve con el botón «?», la tecla «?» o la paleta («guía»).
 - Gestos en tablet: dos dedos en horizontal mueven el reloj (todo el ancho de la escena son 2 minutos), el pellizco hace zoom y un doble toque sobre un coche lo sigue (en escritorio, doble clic).
 - Datos honestos: lo que se estima se marca como «Estimado» (la etiqueta se pulsa para ver por qué) y lo que falta se muestra como «sin dato».

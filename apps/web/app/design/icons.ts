@@ -26,7 +26,6 @@ import {
   Copy,
   Download,
   EqualApproximately,
-  Eye,
   Flag,
   Ghost,
   GripVertical,
@@ -42,6 +41,7 @@ import {
   MonitorX,
   Mountain,
   MoveHorizontal,
+  PanelLeft,
   PanelsTopLeft,
   Pause,
   Play,
@@ -110,8 +110,8 @@ export const ICONS = {
   ghost: Ghost,
   analysis: ChartLine,
   summary: ListOrdered,
-  // Diseños del replay (ítem 15): «Espectador» (el mapa primero) y «Análisis» (más columnas)
-  spectator: Eye,
+  // Paneles del replay (ítem 15, D50): «Compactos» (el mapa primero) y «Detallados» (más columnas)
+  spectator: PanelLeft,
   columns: Columns3,
   // Meteorología
   rain: CloudRain,

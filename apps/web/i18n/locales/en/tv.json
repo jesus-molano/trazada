@@ -4,10 +4,10 @@
     "short": "Direction",
     "off": "Off",
     "on": "On",
-    "key": "T",
-    "keyHint": "T key: turn on or off",
-    "buttonStart": "Turn on auto direction (T key)",
-    "buttonStop": "Turn off auto direction (T key)",
+    "key": "L",
+    "keyHint": "L key: turn on or off",
+    "buttonStart": "Turn on auto direction (L key)",
+    "buttonStop": "Turn off auto direction (L key)",
     "unavailable": "Without the 3D scene there is no auto direction",
     "hintLabel": "What auto direction does",
     "hint": {
@@ -15,7 +15,7 @@
       "number": "The only figure it gives is the tower interval; if it picks them by how close they are on track, it gives none.",
       "neutral": "In a race, under a safety car (real or virtual), it follows the leader of the classification; under a red flag, or outside a race, the overview.",
       "cuts": "It chases the pair or watches them go by from a fixed camera at some corners, and never cuts more than once every {s} s.",
-      "exit": "It turns off as soon as you touch anything: picking or following a car, moving the map, Esc or the T key."
+      "exit": "It turns off as soon as you touch anything: picking or following a car, moving the map, Esc or the L key."
     },
     "chip": {
       "label": "Auto direction",

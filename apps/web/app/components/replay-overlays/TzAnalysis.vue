@@ -319,13 +319,9 @@ export const order = 20
     border-color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-/*
- * Pestaña activa: el piano (kerb) como borde inferior (D47: solo aquí y bajo la marca). El color del borde queda de
- * respaldo para los colores forzados, que no pintan imágenes de borde.
- */
+/* Pestaña activa: placa de tono (surface-3), navegación y no «activado» (D50: sin el piano). */
 .tz-analysis__tab[aria-selected='true'] {
-  border-bottom-color: var(--tz-accent);
-  border-image: var(--tz-kerb) 0 0 1 0 / 0 0 3px 0;
+  background: var(--tz-surface-3);
   color: var(--tz-text);
 }
 

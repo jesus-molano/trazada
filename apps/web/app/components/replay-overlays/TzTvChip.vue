@@ -7,7 +7,7 @@
  * si el duelo sale de la cercanía en pista, «cerca en pista» y ningún número. El líder es el de la clasificación
  * oficial, nunca el que va primero en pista. Bajo neutralización, lo dice con el nombre del estado de pista.
  *
- * También registra la tecla T (encender y apagar, con la escena 3D montada) y Esc (`ESC_PRIORITY.tv`: por encima del
+ * También registra la tecla L, de «live» (encender y apagar, con la escena 3D montada) y Esc (`ESC_PRIORITY.tv`: por encima del
  * seguimiento y de la selección). Para lectores de pantalla, un aviso solo cuando cambia el plano (no con cada cifra).
  */
 import { ESC_PRIORITY, registerEscape, registerShortcut } from '~/replay/keys'
@@ -66,7 +66,7 @@ watch(
 let offKeys: (() => void)[] = []
 onMounted(() => {
   offKeys = [
-    registerShortcut({ key: 't' }, () => tv.toggle(), { when: () => tv.available }),
+    registerShortcut({ key: 'l' }, () => tv.toggle(), { when: () => tv.available }),
     registerEscape(ESC_PRIORITY.tv, { active: () => tv.active, run: () => tv.stop('escape') }),
   ]
 })
@@ -105,18 +105,20 @@ export const order = 70
 </template>
 
 <style scoped>
-/* Centrado bajo la cabecera, entre la clasificación y los paneles de la derecha. `translate`, no `transform`: la
- * entrada tz-enter anima `transform` y no lo pisa. */
+/*
+ * Dentro de la ventana del mapa, arriba a la izquierda (`--replay-over-*`, pages/replay.vue): las etiquetas «Estimado»
+ * de la escena van a la derecha, en la misma fila, y cada lado se queda con la mitad como mucho.
+ */
 .tz-tv-chip {
   position: absolute;
-  top: 100%;
-  left: 50%;
+  top: calc(100% + var(--replay-over-top, var(--tz-space-3)));
+  left: var(--replay-over-left, var(--tz-space-6));
   z-index: var(--tz-z-header);
   display: flex;
   align-items: center;
   gap: var(--tz-space-2);
   width: max-content;
-  max-width: min(640px, calc(100% - 2 * var(--tz-space-6)));
+  max-width: min(640px, var(--replay-over-max, calc(100% - 2 * var(--tz-space-6))));
   padding: var(--tz-space-1) var(--tz-space-1) var(--tz-space-1) var(--tz-space-3);
   border: 1px solid var(--tz-border-strong);
   border-radius: var(--tz-radius-pill);
@@ -125,7 +127,6 @@ export const order = 70
   color: var(--tz-text);
   font-size: var(--tz-text-sm);
   pointer-events: auto;
-  translate: -50% 0;
   animation: tz-enter var(--tz-dur-slow) var(--tz-ease-enter);
 }
 
@@ -141,7 +142,10 @@ export const order = 70
 
 .tz-tv-chip__text {
   min-width: 0;
+  overflow: hidden;
   font-weight: var(--tz-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tz-tv-chip__camera {

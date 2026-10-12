@@ -1,13 +1,13 @@
 {
   "layout": {
     "switch": {
-      "label": "Panel layout",
-      "spectator": "Spectator",
-      "analysis": "Analysis",
-      "spectatorHint": "Spectator layout: the map first, with compact panels (L key)",
-      "analysisHint": "Analysis layout: classification with best and last lap and pit lane entries, and bigger telemetry (L key)",
-      "toggle": "“Analysis” layout",
-      "toggleHint": "Switches between the “Analysis” (pressed) and “Spectator” layouts (L key)"
+      "label": "Panels",
+      "spectator": "Compact",
+      "analysis": "Detailed",
+      "spectatorHint": "Compact panels: the map first (P key)",
+      "analysisHint": "Detailed panels: classification with best and last lap and pit lane entries, and bigger telemetry (P key)",
+      "toggle": "Detailed panels",
+      "toggleHint": "Switches between detailed (pressed) and compact panels (P key)"
     },
     "resize": {
       "lb": "Classification width",
@@ -39,19 +39,19 @@
     },
     "cmd": {
       "spectator": {
-        "title": "Spectator layout",
-        "detail": "The map first, with compact panels"
+        "title": "Compact panels",
+        "detail": "The map first, with just enough classification and telemetry"
       },
       "analysis": {
-        "title": "Analysis layout",
+        "title": "Detailed panels",
         "detail": "Classification with best and last lap and pit lane entries, and bigger telemetry"
       },
-      "already": "You are already in this layout",
+      "already": "You already have these panels",
       "reset": {
         "title": "Reset the panel widths",
         "detail": {
-          "spectator": "Back to the default widths of the Spectator layout",
-          "analysis": "Back to the default widths of the Analysis layout"
+          "spectator": "Back to the default widths of the compact panels",
+          "analysis": "Back to the default widths of the detailed panels"
         },
         "none": "The panels already have their default width",
         "portrait": "In portrait, the panels sit in the bottom strip and have no width"

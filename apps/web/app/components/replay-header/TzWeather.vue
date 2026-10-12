@@ -126,6 +126,7 @@ const sessionRain = computed(() =>
 <script lang="ts">
 /** Hueco `replay-header` (D29): chip de meteorología (ítem 6), junto al estado de pista, antes de los botones. */
 export const order = 5
+export const group = 'conditions'
 </script>
 
 <template>

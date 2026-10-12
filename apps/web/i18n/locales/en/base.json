@@ -104,7 +104,14 @@
       "corrupt": "The downloaded data is damaged (integrity check failed).",
       "decode": "The session data could not be decoded."
     },
-    "reload": "Reload"
+    "reload": "Reload",
+    "groups": {
+      "session": "Session",
+      "conditions": "Conditions",
+      "view": "View",
+      "scene": "Scene and camera",
+      "help": "Help"
+    }
   },
   "scene": {
     "noWebgl": "Your browser or device does not support WebGL 2: the 3D map is unavailable.",

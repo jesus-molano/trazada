@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Botón de la realización automática (ítem 9, D39) en la cabecera, para el iPad: allí no hay tecla T y el menú
+ * Botón de la realización automática (ítem 9, D39) en la cabecera, para el iPad: allí no hay tecla L y el menú
  * «Cámara» de las herramientas de escena queda lejos. Solo con puntero grueso o sin hover (con ratón, la cabecera
  * tiene que caber en una fila a 1280 px y ya están el menú y la tecla). Solo el icono por debajo de 1600 px, con su
  * nombre accesible y su título. Está desde que se engancha el runtime, deshabilitado hasta que la escena 3D monta su
@@ -20,6 +20,7 @@ const title = computed(() => {
 <script lang="ts">
 /** Hueco `replay-header` (D29): detrás del botón de análisis. */
 export const order = 20
+export const group = 'scene'
 </script>
 
 <template>
@@ -48,15 +49,17 @@ export const order = 20
   gap: var(--tz-space-2);
   height: 28px;
   padding: 0 var(--tz-space-3);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
   font-size: var(--tz-text-sm);
-  font-weight: var(--tz-weight-semibold);
+  font-weight: var(--tz-weight-medium);
   white-space: nowrap;
   cursor: pointer;
   transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
@@ -82,7 +85,7 @@ export const order = 20
   opacity: 0.5;
 }
 
-/* Con ratón (puntero fino y hover), fuera: el menú «Cámara» y la tecla T bastan. */
+/* Con ratón (puntero fino y hover), fuera: el menú «Cámara» y la tecla L bastan. */
 @media (hover: hover) and (pointer: fine) {
   .tz-tv-btn {
     display: none;

@@ -140,9 +140,9 @@ test('con el diseño «Análisis» (ítem 15: clasificación más ancha), la bur
   await expect(tip(page)).toHaveAttribute('data-anchored', 'true')
   await expect(tip(page)).toHaveAttribute('data-side', /^(right|bottom)$/)
   await expect.poll(async () => overlap((await tip(page).boundingBox())!, (await leaderboard.boundingBox())!)).toBe(false)
-  // Los dos atajos conviven: L cambia el diseño con la burbuja abierta y «?» la salta.
+  // Los dos atajos conviven: P cambia el diseño con la burbuja abierta y «?» la salta.
   await page.getByTestId('replay-title').click()
-  await page.keyboard.press('l')
+  await page.keyboard.press('p')
   await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'spectator')
   await expect(tip(page)).toBeVisible()
   await page.keyboard.press('?')

@@ -195,7 +195,7 @@ describe('estado del diseño por navegador (trazada.layout, D41)', () => {
 })
 
 describe('cambio de diseño en la cabecera', () => {
-  it('dos opciones con su nombre accesible; la elegida, pulsada; la tecla L y la paleta cambian de diseño', async () => {
+  it('dos opciones con su nombre accesible; la elegida, pulsada; la tecla P y la paleta cambian de diseño', async () => {
     const layout = useLayoutStore()
     layout.setPreset('spectator')
     const w = await mountSuspended(TzLayoutSwitch)
@@ -203,17 +203,19 @@ describe('cambio de diseño en la cabecera', () => {
     expect(group.attributes('role')).toBe('group')
     const spectator = w.find('[data-testid="layout-spectator"]')
     const analysis = w.find('[data-testid="layout-analysis"]')
-    expect(spectator.attributes('aria-label')).toMatch(/^(Espectador|Spectator)$/)
-    expect(analysis.attributes('aria-label')).toMatch(/^(Análisis|Analysis)$/)
+    // «Paneles: Compactos | Detallados» (D50): «Análisis» queda solo para la hoja.
+    expect(group.attributes('aria-label')).toMatch(/^(Paneles|Panels)$/)
+    expect(spectator.attributes('aria-label')).toMatch(/^(Compactos|Compact)$/)
+    expect(analysis.attributes('aria-label')).toMatch(/^(Detallados|Detailed)$/)
     expect(spectator.attributes('aria-pressed')).toBe('true')
     await analysis.trigger('click')
     expect(layout.preset).toBe('analysis')
     expect(w.find('[data-testid="layout-analysis"]').attributes('aria-pressed')).toBe('true')
 
-    // Tecla L (registro de atajos del replay).
-    const run = findShortcut(new KeyboardEvent('keydown', { key: 'l' }), false)
+    // Tecla P (registro de atajos del replay).
+    const run = findShortcut(new KeyboardEvent('keydown', { key: 'p' }), false)
     expect(run).not.toBeNull()
-    run!(new KeyboardEvent('keydown', { key: 'l' }))
+    run!(new KeyboardEvent('keydown', { key: 'p' }))
     expect(layout.preset).toBe('spectator')
 
     // Servicio de la paleta (engine/commands/builtin/layout.ts).
@@ -226,15 +228,15 @@ describe('cambio de diseño en la cabecera', () => {
     layout.setPreset('spectator')
   })
 
-  it('forma compacta (táctil por debajo de 1360 px): un botón que alterna, pulsado con «Análisis», con su nombre y la tecla L', async () => {
+  it('forma compacta (táctil por debajo de 1360 px): un botón que alterna, pulsado con «Análisis», con su nombre y la tecla P', async () => {
     const layout = useLayoutStore()
     layout.setPreset('spectator')
     const w = await mountSuspended(TzLayoutSwitch)
     const toggle = () => w.find('[data-testid="layout-toggle"]')
     expect(toggle().element.tagName).toBe('BUTTON')
-    expect(toggle().attributes('aria-label')).toMatch(/^(Diseño «Análisis»|“Analysis” layout)$/)
-    expect(toggle().attributes('aria-keyshortcuts')).toBe('L')
-    expect(toggle().attributes('title')).toMatch(/Espectador|Spectator/)
+    expect(toggle().attributes('aria-label')).toMatch(/^(Paneles detallados|Detailed panels)$/)
+    expect(toggle().attributes('aria-keyshortcuts')).toBe('P')
+    expect(toggle().attributes('title')).toMatch(/compactos|compact/)
     expect(toggle().attributes('aria-pressed')).toBe('false')
     await toggle().trigger('click')
     expect(layout.preset).toBe('analysis')

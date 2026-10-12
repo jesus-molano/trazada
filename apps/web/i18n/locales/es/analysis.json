@@ -31,7 +31,7 @@
       "clearFollowing": "Quitar la selección de {driver} y dejar de seguirlo"
     },
     "legend": "Pilotos: mostrar u ocultar su serie",
-    "legendHint": "Marca o desmarca un piloto para mostrar u ocultar su línea. Para elegir uno, haz clic en su línea o usa «Elegir piloto», arriba.",
+    "legendHint": "Cada piloto de abajo es un interruptor: encendido, su línea se ve; apagado (tachado), se oculta. Para destacar a uno, haz clic en su línea o usa «Elegir piloto», arriba.",
     "legendAll": "Mostrar todos",
     "legendNone": "Ocultar todos",
     "howToRead": "Cómo leer la gráfica",

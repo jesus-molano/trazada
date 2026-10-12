@@ -1,7 +1,7 @@
 /**
  * Atajos con el foco donde lo deja el uso normal (fixture de Spa, libres 1): tras pulsar el timeline, elegir rival en
  * el desplegable de la comparación o marcar la casilla de las banderas azules, Esc sigue cerrando lo de encima y los
- * atajos de una tecla (T, coma y punto, «/», espacio) siguen funcionando. Por eso aquí nunca se hace clic en el título
+ * atajos de una tecla (L, coma y punto, «/», espacio) siguen funcionando. Por eso aquí nunca se hace clic en el título
  * antes de las teclas: el foco se queda en el control.
  */
 import { expect, type Page, test } from '@playwright/test'
@@ -46,18 +46,18 @@ test('tras un clic en el timeline, Esc cierra la hoja de análisis', async ({ pa
   await expect(page.getByTestId('analysis-sheet')).toHaveCount(0)
 })
 
-test('tras un clic en el timeline, la T enciende y apaga la realización automática y Esc la apaga', async ({ page }) => {
+test('tras un clic en el timeline, la L enciende y apaga la realización automática y Esc la apaga', async ({ page }) => {
   await openScene(page)
   // A unos 150 s del extracto hay coches en pista y parejas cerca (tv.spec.ts).
   await clickTimeline(page, 0.28)
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await expect(timeline(page)).toBeFocused()
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => tvActive(page)).toBe(false)
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('overview')
 
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   // Un salto con el timeline no la apaga; Esc sí, con el foco aún en él.
   await clickTimeline(page, 0.3)
@@ -115,7 +115,7 @@ test('tras un clic en el timeline, el punto salta al momento siguiente, el espac
   await expect.poll(() => time(page)).toBe(ahead[1])
 })
 
-test('tras un clic en la casilla de las banderas azules: el espacio reproduce (sin desmarcarla) y la T sigue', async ({ page }) => {
+test('tras un clic en la casilla de las banderas azules: el espacio reproduce (sin desmarcarla) y la L sigue', async ({ page }) => {
   await openScene(page)
   await page.evaluate((t) => window.__trazada!.seek(window.__trazada!.startMs + t), 150_000)
   await twoFrames(page)
@@ -131,7 +131,7 @@ test('tras un clic en la casilla de las banderas azules: el espacio reproduce (s
   await page.keyboard.press(' ')
   await expect.poll(() => playing(page)).toBe(false)
 
-  await page.keyboard.press('t')
+  await page.keyboard.press('l')
   await expect.poll(() => mode(page), { timeout: 5000 }).toBe('tv')
   await page.keyboard.press('Escape')
   await expect.poll(() => tvActive(page)).toBe(false)

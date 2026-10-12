@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import { parseSessionId } from '~/data/session-id'
 import { installDebugHandle } from '~/replay/debug'
 import {
@@ -34,6 +35,26 @@ useReplayShortcuts()
 const root = ref<HTMLElement | null>(null)
 const { widths, ranges, vars: layoutVars, resizable } = useReplayLayout()
 
+/**
+ * Ventana del mapa (D50): empieza justo después de la clasificación, que se ensancha con sus columnas extra (las de
+ * «Detallados» y las de otras funciones): se mide al cambiar de tamaño y se escribe directo en la raíz de la página
+ * (así lo ven el escenario y la cabecera, con el chip de la realización), sin pasar por Vue. Con estado reactivo, cada medida durante el arrastre del asa rehacía la página, y su
+ * `:style` volvía a poner el ancho guardado encima del que escribe el asa: el panel no crecía hasta soltar.
+ */
+const lbComp = ref<ComponentPublicInstance | null>(null)
+let lbObserver: ResizeObserver | null = null
+watch(lbComp, (c) => {
+  lbObserver?.disconnect()
+  lbObserver = null
+  const el = c?.$el as HTMLElement | undefined
+  if (!(el instanceof HTMLElement) || typeof ResizeObserver === 'undefined') return
+  lbObserver = new ResizeObserver(() =>
+    root.value?.style.setProperty('--replay-window-left', `${el.offsetLeft + el.offsetWidth}px`),
+  )
+  lbObserver.observe(el)
+})
+onBeforeUnmount(() => lbObserver?.disconnect())
+
 /** Prioridad del título en la cabecera (D44): lo secundario se acorta antes que el título (useHeaderFit). */
 const bar = ref<HTMLElement | null>(null)
 const titleEl = ref<HTMLElement | null>(null)
@@ -55,6 +76,14 @@ const title = computed(() => {
   return mounted.value && parsed.value ? `${parsed.value.season} · ${t(`session.${parsed.value.type}`)}` : t('replay.title')
 })
 useHead({ title })
+/** El título en dos partes: el Gran Premio y, en el color secundario, «· Sprint · 2026» (D50). */
+const titleParts = computed<[string, string]>(() => {
+  const m = session.manifest
+  if (!m) return [title.value, '']
+  return [m.session.event, ` · ${t(`session.${m.session.type}`)} · ${m.session.season}`]
+})
+/** Piezas del hueco replay-header de un grupo de la cabecera (las que no dicen grupo, a «Escena y cámara»). */
+const headerOf = (group: string) => REPLAY_HEADER.filter((h) => (h.module.group ?? 'scene') === group)
 
 /** `?bench=1`: bench de rendimiento (docs/PERFORMANCE.md). */
 const benchMode = computed(() => route.query.bench === '1')
@@ -162,38 +191,66 @@ onBeforeUnmount(() => {
       justo debajo, sobre el mapa).
     -->
     <header ref="bar" class="tz-replay__bar">
-      <TzBrandBar />
-      <h1 ref="titleEl" class="tz-replay__title" :title="title" data-testid="replay-title">{{ title }}</h1>
-      <p
-        v-if="session.status === 'ready'"
-        class="tz-replay__status"
-        role="status"
-        data-testid="replay-status"
-        data-state="ready"
-      >
-        <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1920 px, también «Listo» y el detalle. -->
-        <TzHint plain :label="readyName" :text="readyName" testid="replay-status-detail" :title="readyName">
-          <template #button>
-            <span class="tz-replay__dot" aria-hidden="true" />
-            <span class="tz-replay__ready">{{ t('replay.ready') }}</span>
-            <span class="tz-replay__detail tz-tabular" aria-hidden="true">{{ readyDetail }}</span>
-          </template>
-        </TzHint>
-      </p>
-      <!-- Avisos de calidad del pipeline (quality.notes del manifest) y, desde 2026, el del reglamento (por la temporada). -->
-      <TzSessionNotes
-        v-if="session.status === 'ready'"
-        :key="`notes-${session.id}`"
-        :notes="session.manifest?.quality.notes"
-        :season="session.manifest?.session.season"
-      />
-      <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
-      <!-- Botones y chips de otras funciones (hueco components/replay-header/, D29). -->
-      <template v-if="playback.attached">
-        <component :is="h.component" v-for="h in REPLAY_HEADER" :key="`${h.name}-${session.id}`" />
-      </template>
-      <!-- La escena teletransporta aquí sus herramientas (altura, separación y etiquetas "Estimado"). -->
-      <div id="tz-scene-tools" class="tz-replay__tools" />
+      <!-- 1 · Sesión: ← Trazada, el título («Gran Premio» y, en secundario, «· Sprint · 2026») y el punto de estado. -->
+      <div class="tz-hgroup is-session" role="group" :aria-label="t('replay.groups.session')" data-group="session">
+        <TzBrandBar />
+        <h1 ref="titleEl" class="tz-replay__title" :title="title" data-testid="replay-title">
+          <span class="tz-replay__event">{{ titleParts[0] }}</span><span class="tz-replay__sub">{{ titleParts[1] }}</span>
+        </h1>
+        <p
+          v-if="session.status === 'ready'"
+          class="tz-replay__status"
+          role="status"
+          data-testid="replay-status"
+          data-state="ready"
+        >
+          <!-- Un punto que se pulsa para ver el detalle de la carga; desde 1920 px, también «Listo» y el detalle. -->
+          <TzHint plain :label="readyName" :text="readyName" testid="replay-status-detail" :title="readyName">
+            <template #button>
+              <span class="tz-replay__dot" aria-hidden="true" />
+              <span class="tz-replay__ready">{{ t('replay.ready') }}</span>
+              <span class="tz-replay__detail tz-tabular" aria-hidden="true">{{ readyDetail }}</span>
+            </template>
+          </TzHint>
+        </p>
+      </div>
+      <!--
+        2 · Condiciones de la sesión (lecturas): estado de pista, meteorología y avisos. Si no caben en la fila (varias
+        banderas a la vez) o por debajo de 1360 px, bajan juntas a una segunda fila a lo ancho (nivel 4 de useHeaderFit).
+      -->
+      <div class="tz-hgroup is-conditions" role="group" :aria-label="t('replay.groups.conditions')" data-group="conditions">
+        <TzTrackStatus v-if="playback.attached" :key="`ts-${session.id}`" />
+        <template v-if="playback.attached">
+          <component :is="h.component" v-for="h in headerOf('conditions')" :key="`${h.name}-${session.id}`" />
+        </template>
+        <!-- Avisos de calidad del pipeline (quality.notes del manifest) y, desde 2026, el del reglamento (por la temporada). -->
+        <TzSessionNotes
+          v-if="session.status === 'ready'"
+          :key="`notes-${session.id}`"
+          :notes="session.manifest?.quality.notes"
+          :season="session.manifest?.session.season"
+        />
+      </div>
+      <!-- 3 · Vista: «Paneles: Compactos | Detallados» y la hoja «Análisis». -->
+      <div class="tz-hgroup is-view" role="group" :aria-label="t('replay.groups.view')" data-group="view">
+        <template v-if="playback.attached">
+          <component :is="h.component" v-for="h in headerOf('view')" :key="`${h.name}-${session.id}`" />
+        </template>
+      </div>
+      <!-- 4 · Escena y cámara: la escena teletransporta aquí sus herramientas (altura, separar coches, capas, cámara, ⓘ). -->
+      <div class="tz-hgroup is-scene" role="group" :aria-label="t('replay.groups.scene')" data-group="scene">
+        <div id="tz-scene-tools" class="tz-replay__tools" />
+        <template v-if="playback.attached">
+          <component :is="h.component" v-for="h in headerOf('scene')" :key="`${h.name}-${session.id}`" />
+        </template>
+      </div>
+      <!-- 5 · Ayuda e idioma. -->
+      <div class="tz-hgroup is-help" role="group" :aria-label="t('replay.groups.help')" data-group="help">
+        <template v-if="playback.attached">
+          <component :is="h.component" v-for="h in headerOf('help')" :key="`${h.name}-${session.id}`" />
+        </template>
+        <TzLangToggle />
+      </div>
     </header>
 
     <div v-if="session.status === 'loading' || session.status === 'error'" class="tz-replay__center">
@@ -206,7 +263,13 @@ onBeforeUnmount(() => {
       los mide para encuadrar, D42).
     -->
     <div v-if="playback.attached" class="tz-replay__stage">
-      <TzLeaderboard :key="`lb-${session.id}`" class="tz-replay__lb" :preset="layout.preset">
+      <!--
+        Ventana del mapa (D50, «marco continuo»): el hueco entre las columnas, con radio 18 px y un filo de 1 px; fuera de
+        ella, el cromo (una sombra del color de fondo, estática: nunca se repinta). Cabecera, columnas y dock van por
+        encima, así que la interfaz rodea al mapa como el bisel de un monitor; el texto sigue plano y nítido.
+      -->
+      <div class="tz-replay__window" aria-hidden="true" data-testid="map-window" />
+      <TzLeaderboard ref="lbComp" :key="`lb-${session.id}`" class="tz-replay__lb" :preset="layout.preset">
         <TzResizeHandle
           v-if="resizable"
           class="tz-replay__resize is-lb"
@@ -264,20 +327,36 @@ onBeforeUnmount(() => {
  */
 .tz-replay {
   --replay-side-w: var(--tz-panel-w);
-  --replay-over-right: calc(var(--tz-space-6) + var(--replay-side-w) + var(--tz-space-3));
+  /* Separación entre la ventana del mapa y lo que la rodea (columnas y dock). */
+  --replay-window-gap: 10px;
   /*
-   * Hasta la clasificación (su ancho, más el de sus columnas extra —las de «Análisis», `--replay-lb-more`— y el
-   * margen), sin pisarla.
+   * Borde derecho de la clasificación (con sus columnas extra), relativo al escenario: el script lo mide y lo escribe
+   * en línea; esto es lo que vale hasta la primera medida.
    */
-  --replay-over-max: calc(
-    100% - var(--replay-over-right) - var(--replay-lb-w, var(--tz-panel-w)) - var(--replay-lb-more, 0px) - var(--tz-space-12) -
-      var(--tz-space-6)
-  );
+  --replay-window-left: calc(var(--replay-lb-w, var(--tz-panel-w)) + var(--replay-lb-more, 0px));
+  /*
+   * Lo que flota dentro de la ventana, bajo la cabecera (relativo a ella): el chip de la realización arriba a la
+   * izquierda y las etiquetas «Estimado» de la escena arriba a la derecha (margen de la página + columna + separación +
+   * aire), en la misma fila; con el chip, cada lado tiene como mucho la mitad del ancho y no se pisan.
+   */
+  --replay-over-left: calc(var(--tz-space-4) + var(--replay-window-left) + var(--replay-window-gap) + var(--tz-space-3));
+  --replay-over-right: calc(var(--tz-space-4) + var(--replay-side-w) + var(--replay-window-gap) + var(--tz-space-3));
+  --replay-over-top: var(--tz-space-3);
+  --replay-over-max: calc(100% - var(--replay-over-left) - var(--replay-over-right));
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  /*
+   * Todo el replay se pulsa o se arrastra (filas, coches, mapa, timeline): nada se selecciona por accidente. Se puede
+   * seleccionar lo que se lee para copiarlo (el texto original de dirección de carrera) y los campos de texto.
+   */
+  user-select: none;
+}
+
+.tz-replay :is(input, textarea, [contenteditable='true']) {
+  user-select: text;
 }
 
 /*
@@ -289,13 +368,42 @@ onBeforeUnmount(() => {
  */
 .tz-replay__bar {
   position: relative;
-  z-index: var(--tz-z-panels);
+  /* Por encima del marco del mapa (que pinta el cromo alrededor de su ventana, D50). */
+  z-index: calc(var(--tz-z-panels) + 1);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--tz-space-2) var(--tz-space-3);
-  padding: var(--tz-space-3) var(--tz-space-6) var(--tz-space-2);
+  padding: var(--tz-space-3) var(--tz-space-4);
   pointer-events: none;
+}
+
+/*
+ * Grupos por función (D50), de izquierda a derecha: sesión; condiciones; (hueco); vista; escena y cámara; ayuda. Cada
+ * grupo es un role=group con su nombre (para los lectores de pantalla; sin rótulo visible, como en la lámina) y un
+ * filete vertical separa escena y ayuda. Sin cajas.
+ */
+.tz-hgroup {
+  /* Sin posición propia: las etiquetas «Estimado» de la escena se colocan respecto a la cabecera. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-2);
+}
+
+.tz-replay__bar > .is-session {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* El hueco flexible: vista, escena y ayuda, a la derecha. */
+.tz-replay__bar > .is-view {
+  margin-left: auto;
+}
+
+.tz-replay__bar > .is-scene,
+.tz-replay__bar > .is-help {
+  padding-left: var(--tz-space-3);
+  border-left: 1px solid var(--tz-border);
 }
 
 .tz-replay__bar > * {
@@ -308,9 +416,9 @@ onBeforeUnmount(() => {
   z-index: var(--tz-z-header);
 }
 
-/* Con el chip de la realización automática (centrado bajo la cabecera), las etiquetas «Estimado» bajan una fila. */
+/* Con el chip de la realización automática, a la izquierda, las etiquetas «Estimado» se quedan con la otra mitad. */
 .tz-replay__bar:has([data-testid='tv-chip']) {
-  --replay-over-top: calc(var(--tz-space-12) + var(--tz-space-2));
+  --replay-over-max: calc((100% - var(--replay-over-left) - var(--replay-over-right) - var(--tz-space-3)) / 2);
 }
 
 /*
@@ -322,14 +430,14 @@ onBeforeUnmount(() => {
   --replay-over-display: none;
 }
 
-/* Base 0 y crece hasta su texto: cede sitio antes que nadie (con «…» y el texto entero en su título). */
+/* Base 0 y crece hasta su texto: cede sitio antes que nadie (con «…» y el texto entero en su título). 16/600 (D50). */
 .tz-replay__title {
   flex: 1 1 0;
   min-width: min(6em, 100%);
   max-width: max-content;
   margin: 0;
   overflow: hidden;
-  font-size: var(--tz-text-xl);
+  font-size: var(--tz-text-lg);
   font-weight: var(--tz-weight-semibold);
   line-height: var(--tz-leading-tight);
   text-overflow: ellipsis;
@@ -340,7 +448,12 @@ onBeforeUnmount(() => {
  * Estado de pista: entero, con sus chips en una línea (nunca encoge hasta su chip más ancho: sería una columna de chips
  * que alarga la cabecera); como mucho, el ancho de la cabecera, y entonces sus chips pasan a otra línea, en horizontal.
  */
-.tz-replay__bar > [data-testid='track-status'] {
+.tz-replay__sub {
+  font-weight: var(--tz-weight-medium);
+  color: var(--tz-text-muted);
+}
+
+.is-conditions > [data-testid='track-status'] {
   flex: none;
   max-width: 100%;
 }
@@ -350,12 +463,13 @@ onBeforeUnmount(() => {
  * pista pasa a una fila propia, debajo de todo lo demás y a todo el ancho (sus chips, en horizontal), y lo demás vuelve
  * a la primera fila, con el título.
  */
-.tz-replay__bar[data-fit~='4'] > [data-testid='track-status'] {
+.tz-replay__bar[data-fit~='4'] > .is-conditions {
   order: 99;
   flex: 1 0 100%;
+  flex-wrap: wrap;
 }
 
-/* Portátiles (< 1360 px): huecos más justos entre los elementos de la cabecera. */
+/* Portátiles y tablet (< 1360 px): huecos más justos; las condiciones bajan a su fila solo si no caben (nivel 4). */
 @media (width < 1360px) {
   .tz-replay__bar {
     column-gap: var(--tz-space-2);
@@ -367,15 +481,16 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
+/* Lectura (D50): parece texto hasta que se pasa por encima. */
 .tz-replay__status :deep(.tz-hint__trigger) {
   gap: var(--tz-space-2);
   height: 28px;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
   font-size: var(--tz-text-sm);
-  font-weight: var(--tz-weight-semibold);
+  font-weight: var(--tz-weight-medium);
   white-space: nowrap;
 }
 
@@ -419,8 +534,9 @@ onBeforeUnmount(() => {
  * el 4, el estado de pista en su fila, arriba):
  *   1 → las formas de por debajo de 1920 px (estado sin «Listo», avisos con la cifra, «Cómo se dibuja» y meteorología
  *       sin lo de 1920, «≈ Estimado» corto);
- *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, meteorología solo con el suyo);
- *   3 → las de por debajo de 1360 px («Altura» y «Separar coches» con su icono, huecos más justos y el cambio de
+ *   2 → las de por debajo de 1600 px (botones y menús solo con su icono, también «Altura» y «Separar coches»;
+ *       meteorología solo con el suyo);
+ *   3 → las de por debajo de 1360 px (huecos más justos y el cambio de
  *       diseño compacto: en táctil, un solo botón que alterna; con ratón, más estrecho, como el botón «?»).
  * Lo que se acorta sigue en el nombre accesible y en el título de cada control. «Estimado» y las banderas, siempre.
  * Un elemento nuevo de la cabecera (hueco replay-header) se suma sin tocar esto: su texto largo lleva
@@ -492,13 +608,13 @@ onBeforeUnmount(() => {
   column-gap: var(--tz-space-2);
 }
 
-.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label),
-.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-text) {
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__label),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__toggle-text) {
   display: none;
 }
 
-.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__label-icon),
-.tz-replay__bar[data-fit~='3'] :deep(.tz-tools__toggle-icon) {
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__label-icon),
+.tz-replay__bar[data-fit~='2'] :deep(.tz-tools__toggle-icon) {
   display: inline-block;
 }
 
@@ -530,9 +646,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.tz-replay__tools {
-  margin-left: auto;
-}
 
 .tz-replay__stage {
   /* 1 si los paneles van en una franja inferior (tablet vertical): la escena encuadra por encima. */
@@ -541,12 +654,30 @@ onBeforeUnmount(() => {
   z-index: var(--tz-z-panels);
   flex: 1 1 auto;
   min-height: 0;
-  margin: 0 var(--tz-space-6) var(--tz-space-3);
+  margin: 0 var(--tz-space-4) var(--replay-window-gap);
   pointer-events: none;
 }
 
 .tz-replay__stage > * {
   pointer-events: auto;
+}
+
+.tz-replay__window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--replay-window-left) + var(--replay-window-gap));
+  right: calc(var(--replay-side-w) + var(--replay-window-gap));
+  border-radius: var(--tz-radius-xl);
+  box-shadow:
+    0 0 0 4000px var(--tz-bg),
+    inset 0 0 0 1px var(--tz-canvas-edge);
+  pointer-events: none !important;
+}
+
+/* Con la hoja de análisis abierta, la ventana es la hoja (mismo radio): el marco no hace falta. */
+.tz-replay:has([data-testid='analysis-sheet']) .tz-replay__window {
+  display: none;
 }
 
 /* Columna derecha: telemetría (si hay coche seleccionado) y, debajo, dirección de carrera. */
@@ -642,8 +773,14 @@ onBeforeUnmount(() => {
  */
 @media (width <= 900px) and (orientation: portrait) {
   .tz-replay {
+    --replay-over-left: var(--tz-space-6);
     --replay-over-right: var(--tz-space-6);
     --replay-over-max: calc(100% - 2 * var(--tz-space-6));
+  }
+
+  /* Sin ventana en vertical: el mapa va arriba y los paneles en la franja de abajo. */
+  .tz-replay__window {
+    display: none;
   }
 
   .tz-replay__stage {

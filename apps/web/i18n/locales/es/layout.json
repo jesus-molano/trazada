@@ -1,13 +1,13 @@
 {
   "layout": {
     "switch": {
-      "label": "Diseño de los paneles",
-      "spectator": "Espectador",
-      "analysis": "Análisis",
-      "spectatorHint": "Diseño Espectador: el mapa primero, con los paneles compactos (tecla L)",
-      "analysisHint": "Diseño Análisis: clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande (tecla L)",
-      "toggle": "Diseño «Análisis»",
-      "toggleHint": "Alterna entre los diseños «Análisis» (pulsado) y «Espectador» (tecla L)"
+      "label": "Paneles",
+      "spectator": "Compactos",
+      "analysis": "Detallados",
+      "spectatorHint": "Paneles compactos: el mapa primero (tecla P)",
+      "analysisHint": "Paneles detallados: clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande (tecla P)",
+      "toggle": "Paneles detallados",
+      "toggleHint": "Alterna entre paneles detallados (pulsado) y compactos (tecla P)"
     },
     "resize": {
       "lb": "Ancho de la clasificación",
@@ -39,19 +39,19 @@
     },
     "cmd": {
       "spectator": {
-        "title": "Diseño Espectador",
-        "detail": "El mapa primero, con los paneles compactos"
+        "title": "Paneles compactos",
+        "detail": "El mapa primero, con la clasificación y la telemetría justas"
       },
       "analysis": {
-        "title": "Diseño Análisis",
+        "title": "Paneles detallados",
         "detail": "Clasificación con mejor y última vuelta y entradas en boxes, y telemetría más grande"
       },
-      "already": "Ya estás en este diseño",
+      "already": "Ya tienes estos paneles",
       "reset": {
         "title": "Restablecer el ancho de los paneles",
         "detail": {
-          "spectator": "Vuelven al ancho por defecto del diseño Espectador",
-          "analysis": "Vuelven al ancho por defecto del diseño Análisis"
+          "spectator": "Vuelven al ancho por defecto de los paneles compactos",
+          "analysis": "Vuelven al ancho por defecto de los paneles detallados"
         },
         "none": "Los paneles ya tienen su ancho por defecto",
         "portrait": "En vertical, los paneles van en la franja de abajo y no tienen ancho"

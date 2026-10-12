@@ -35,8 +35,9 @@ vi.mock('~/slots/replay', async () => {
   const { collectSlot } = await import('~/slots/collect')
   return {
     REPLAY_HEADER: collectSlot({
-      'replay-header/TzWeatherChip.vue': { default: await fake('TzWeatherChip'), order: 2 },
-      'replay-header/TzAnalysisButton.vue': { default: await fake('TzAnalysisButton'), order: 1 },
+      'replay-header/TzWeatherChip.vue': { default: await fake('TzWeatherChip'), order: 2, group: 'conditions' },
+      'replay-header/TzAnalysisButton.vue': { default: await fake('TzAnalysisButton'), order: 1, group: 'view' },
+      'replay-header/TzSceneExtra.vue': { default: await fake('TzSceneExtra'), order: 3 },
     }),
     REPLAY_OVERLAYS: collectSlot({ 'replay-overlays/TzSummaryCard.vue': { default: await fake('TzSummaryCard'), order: 1 } }),
   }
@@ -80,11 +81,15 @@ describe('huecos de la página del replay', () => {
     usePlaybackStore().attach(createReplayRuntime(await loadFixture()))
     await nextTick()
     const bar = w.find('header.tz-replay__bar').element
-    expect(fakes(bar)).toEqual(['TzAnalysisButton', 'TzWeatherChip'])
-    // Entre el estado de pista y las herramientas de la escena (que la escena teletransporta al final).
-    const children = [...bar.children]
-    const tools = children.findIndex((e) => e.id === 'tz-scene-tools')
-    expect(children.findIndex((e) => e.getAttribute('data-fake') === 'TzWeatherChip')).toBe(tools - 1)
+    // Cada pieza en su grupo (D50): condiciones, vista y, sin grupo, con la escena.
+    expect(fakes(bar)).toEqual(['TzWeatherChip', 'TzAnalysisButton', 'TzSceneExtra'])
+    const group = (name: string) => bar.querySelector(`[data-group="${name}"]`)!
+    expect(group('conditions').querySelector('[data-fake="TzWeatherChip"]')).not.toBeNull()
+    expect(group('view').querySelector('[data-fake="TzAnalysisButton"]')).not.toBeNull()
+    // Detrás de las herramientas de la escena (que la escena teletransporta a #tz-scene-tools).
+    const scene = [...group('scene').children]
+    const tools = scene.findIndex((e) => e.id === 'tz-scene-tools')
+    expect(scene.findIndex((e) => e.getAttribute('data-fake') === 'TzSceneExtra')).toBe(tools + 1)
     // Los superpuestos van fuera de la cabecera, detrás del dock.
     const page = w.find('.tz-replay').element
     const overlay = page.querySelector('[data-fake="TzSummaryCard"]')!

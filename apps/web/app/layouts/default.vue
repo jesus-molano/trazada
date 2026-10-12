@@ -51,23 +51,6 @@ async function toggleLocale() {
   background: var(--tz-surface-1);
 }
 
-/*
- * Piano bajo la marca (D47): diez bloques rojo/blanco sobre el borde de la cabecera. Decorativo (sin texto ni
- * eventos) y en uno de sus únicos sitios (bajo la marca, aquí y en la del replay, y en la pestaña activa del
- * análisis); lo vigila tokens.test.ts. Con colores forzados desaparece, y no pasa nada: no dice nada que no diga la
- * marca.
- */
-.tz-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: var(--tz-space-6);
-  width: calc(10 * var(--tz-kerb-block));
-  height: 3px;
-  background: var(--tz-kerb);
-  pointer-events: none;
-}
-
 /* Marca: rótulo condensado en mayúsculas, como la rotulación pintada de un muro de boxes. */
 .tz-brand {
   font-family: var(--tz-font-display);

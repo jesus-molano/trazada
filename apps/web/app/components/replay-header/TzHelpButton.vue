@@ -15,6 +15,7 @@ const tips = useTipsStore()
 <script lang="ts">
 /** Hueco `replay-header` (D29): el último botón (detrás del cambio de diseño), junto a las herramientas de la escena. */
 export const order = 40
+export const group = 'help'
 </script>
 
 <template>
@@ -41,17 +42,19 @@ export const order = 40
   align-items: center;
   height: 28px;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
   cursor: pointer;
   transition:
-    border-color var(--tz-dur-fast) var(--tz-ease-standard),
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard),
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
 .tz-help-btn[aria-expanded='true'] {
-  border-color: var(--tz-accent);
+  border-color: transparent;
   background: var(--tz-accent-soft);
   color: var(--tz-accent-strong);
 }
@@ -66,7 +69,8 @@ export const order = 40
   }
 
   .tz-help-btn:hover {
-    border-color: var(--tz-accent);
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
   }
 }
 

@@ -412,6 +412,8 @@ function kindLabel(e: RaceControlEvent): string {
 /* El texto original (en inglés), en Barlow 12,5 secundario: se lee mejor que en mono (D50). */
 .tz-rc__text {
   grid-column: 2;
+  /* Se puede copiar (la página del replay no deja seleccionar lo demás). */
+  user-select: text;
   margin: 3px 0 0;
   font-size: 12.5px;
   line-height: 1.35;

@@ -1,6 +1,6 @@
 /**
- * Diseño del replay desde la paleta (ítem 15, con la paleta del ítem 14): «diseño análisis», «modo espectador»,
- * «spectator layout», «cambiar de diseño» (al otro) y «restablecer anchos» (los del diseño actual, a su valor por
+ * Diseño del replay desde la paleta (ítem 15, con la paleta del ítem 14): «paneles detallados», «compactos», y los
+ * nombres de antes de D50 («diseño análisis», «modo espectador», «spectator layout»), «cambiar de diseño» (al otro) y «restablecer anchos» (los del diseño actual, a su valor por
  * defecto). Solo cambian cómo se reparten los paneles, nunca un dato. Lo que ya está así sale deshabilitado con el
  * motivo; en tablet vertical no hay anchos que restablecer (los paneles van en la franja de abajo) y se dice.
  *
@@ -31,6 +31,11 @@ declare module '../types' {
 
 const PRESET_WORDS: Readonly<Record<LayoutPreset, readonly Phrase[]>> = {
   spectator: phrases(
+    'paneles compactos',
+    'compactos',
+    'compacto',
+    'compact panels',
+    'compact',
     'diseño espectador',
     'modo espectador',
     'vista espectador',
@@ -39,7 +44,13 @@ const PRESET_WORDS: Readonly<Record<LayoutPreset, readonly Phrase[]>> = {
     'spectator mode',
     'spectator',
   ),
-  analysis: phrases('diseño analisis', 'modo analisis', 'vista analisis', 'analisis', 'analysis layout', 'analysis mode', 'analysis'),
+  analysis: phrases(
+    'paneles detallados',
+    'detallados',
+    'detallado',
+    'detailed panels',
+    'detailed',
+    'diseño analisis', 'modo analisis', 'vista analisis', 'analisis', 'analysis layout', 'analysis mode', 'analysis'),
 }
 /** Sin decir cuál: al otro diseño. */
 const TOGGLE = phrases('cambiar diseño', 'cambiar de diseño', 'otro diseño', 'diseño', 'switch layout', 'change layout', 'toggle layout', 'layout')

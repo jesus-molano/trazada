@@ -336,11 +336,11 @@ function compareRole(car: string): 'a' | 'b' | null {
   flex-direction: column;
   width: var(--lb-w);
   max-height: 100%;
-  padding: var(--tz-space-2);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-lg);
+  padding: var(--tz-space-2) 0;
+  /* Sobre el cromo, sin caja propia (D50): el mapa va en su ventana, al lado. */
+  border: 0;
+  border-radius: 0;
   background: var(--tz-overlay);
-  box-shadow: var(--tz-shadow-panel);
 }
 
 .tz-lb__head {
@@ -371,8 +371,13 @@ function compareRole(car: string): 'a' | 'b' | null {
   contain: layout paint;
 }
 
+/* Hoja de tiempos (D50): filetes finos entre filas. */
 .tz-lb__row {
   position: relative;
+}
+
+.tz-lb__row + .tz-lb__row {
+  border-top: 1px solid var(--tz-row-rule);
 }
 
 /* Reordenación (FLIP): solo transform y solo cuando se anima (move-class `tz-lb-still`, sin transición, si no). */
@@ -459,15 +464,9 @@ function compareRole(car: string): 'a' | 'b' | null {
   }
 }
 
-/*
- * Fila elegida: un tinte del color del equipo (≤ --tz-team-tint) y su filo a la izquierda; sin color-mix, la superficie
- * lisa. El texto sigue en los colores del tema: el color de equipo nunca es color de texto.
- */
+/* Fila elegida: una placa de tono (D50), sin franja del equipo, tinte ni contorno: su marca de equipo ya lo dice. */
 .is-selected .tz-lb__btn {
   background: var(--tz-surface-3);
-  background: color-mix(in oklab, var(--team) var(--tz-team-tint), var(--tz-surface-2));
-  outline: 1px solid var(--tz-border-strong);
-  box-shadow: inset 3px 0 0 var(--team);
 }
 
 .is-nosignal .tz-lb__tla,
@@ -486,18 +485,20 @@ function compareRole(car: string): 'a' | 'b' | null {
   color: var(--tz-text-muted);
 }
 
-/* Posición en la condensada, como en una torre de tiempos pintada. */
+/* Posición en la condensada 700, bien contrastada (D50, de «Grafismo de TV»). */
 .tz-lb__pos {
   font-family: var(--tz-font-display);
-  font-weight: var(--tz-weight-semibold);
-  color: var(--tz-text-muted);
+  font-size: var(--tz-text-md);
+  font-weight: var(--tz-weight-bold);
+  color: var(--tz-text);
   text-align: end;
 }
 
+/* Marca de equipo de 3×14 junto a la sigla: es un dato, no el borde de la fila. */
 .tz-lb__team {
-  width: 4px;
-  height: 16px;
-  border-radius: var(--tz-radius-sm);
+  width: 3px;
+  height: 14px;
+  border-radius: 1px;
   background: var(--team);
 }
 
@@ -525,22 +526,28 @@ function compareRole(car: string): 'a' | 'b' | null {
   fill: currentColor;
 }
 
+/* «sin señal», «PIT»…: rótulos tipográficos, sin cajita (D50). «sin señal», en cursiva tenue. */
 .tz-lb__chip {
-  padding: 0 4px;
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-sm);
   font-size: var(--tz-text-2xs);
+  font-style: italic;
   color: var(--tz-text-muted);
   white-space: nowrap;
 }
 
 .tz-lb__chip--pit {
-  border-color: var(--tz-pit);
+  font-family: var(--tz-font-display);
+  font-style: normal;
+  font-weight: var(--tz-weight-bold);
+  letter-spacing: var(--tz-tracking-display);
   color: var(--tz-pit);
 }
 
 /* Comparación (ítem 1): «A» y «B» con la letra (y su texto oculto); el color de cada uno solo en el borde. */
 .tz-lb__role {
+  padding: 0 4px;
+  border: 1px solid var(--tz-border-strong);
+  border-radius: var(--tz-radius-sm);
+  font-style: normal;
   font-weight: var(--tz-weight-semibold);
   color: var(--tz-text);
 }

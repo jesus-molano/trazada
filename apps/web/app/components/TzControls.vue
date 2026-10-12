@@ -89,9 +89,11 @@ const widestLap = Math.max(totalLaps ?? 0, rt.markers.laps.at(-1)?.lap ?? 0)
   min-width: 32px;
   height: 32px;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
+  /* Fantasma (D50): sin contorno; tono al pasar por encima. */
+  border: 1px solid transparent;
   border-radius: var(--tz-radius-md);
   background: transparent;
+  color: var(--tz-text-muted);
   cursor: pointer;
   transition:
     background-color var(--tz-dur-fast) var(--tz-ease-standard),
@@ -110,10 +112,11 @@ const widestLap = Math.max(totalLaps ?? 0, rt.markers.laps.at(-1)?.lap ?? 0)
   transform: scale(var(--tz-press-scale));
 }
 
-/* Reproducir/pausa: placa cuadrada maciza de pintura (D47), con el icono relleno. */
+/* Reproducir/pausa: placa cuadrada maciza de pintura de 40 px con radio 12 (D47, D50), con el icono relleno. */
 .tz-control--play {
   width: 40px;
   height: 40px;
+  border-radius: var(--tz-radius-lg);
   border-color: var(--tz-accent);
   background: var(--tz-accent);
   color: var(--tz-accent-on);
@@ -128,9 +131,19 @@ const widestLap = Math.max(totalLaps ?? 0, rt.markers.laps.at(-1)?.lap ?? 0)
   grid-area: 1 / 1;
 }
 
+/* Velocidades como un segmentado: pista de tono y la elegida en placa (D50). */
 .tz-rates {
   display: inline-flex;
-  gap: var(--tz-space-1);
+  gap: var(--tz-space-0-5);
+  padding: var(--tz-space-0-5);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-2);
+}
+
+.tz-rates .tz-control {
+  height: 28px;
+  min-width: 30px;
+  border-radius: var(--tz-radius-pill);
 }
 
 .tz-rate {
@@ -147,7 +160,8 @@ const widestLap = Math.max(totalLaps ?? 0, rt.markers.laps.at(-1)?.lap ?? 0)
 
 @media (hover: hover) {
   .tz-control:hover:not([aria-pressed='true'], .tz-control--play) {
-    border-color: var(--tz-accent);
+    background: var(--tz-surface-3);
+    color: var(--tz-text);
   }
 
   .tz-control--play:hover {

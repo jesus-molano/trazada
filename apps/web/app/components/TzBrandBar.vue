@@ -1,14 +1,10 @@
 <script setup lang="ts">
 /**
  * Marca compacta del replay (D44): el replay no lleva la cabecera global (layouts/replay.vue), así que su cabecera
- * empieza por la marca, «← TRAZADA» (vuelve al selector), con el piano debajo (D47: solo bajo la marca y en la pestaña
- * activa del análisis), y el cambio de idioma. Ocupa una sola fila de la cabecera, a la altura de sus chips.
+ * empieza por la marca, «← Trazada» (vuelve al selector). Limpia, sin el piano (D50); el idioma va en el grupo «Ayuda»
+ * (TzLangToggle).
  */
-const { t, locale, setLocale } = useI18n()
-
-async function toggleLocale() {
-  await setLocale(locale.value === 'es' ? 'en' : 'es')
-}
+const { t } = useI18n()
 </script>
 
 <template>
@@ -23,15 +19,6 @@ async function toggleLocale() {
       <TzIcon name="back" size="sm" />
       <span class="tz-brandbar__word">{{ t('app.name') }}</span>
     </NuxtLink>
-    <button
-      type="button"
-      class="tz-brandbar__lang"
-      :aria-label="t('app.switchLanguage')"
-      data-testid="lang-toggle"
-      @click="toggleLocale"
-    >
-      {{ t('app.otherLocaleShort') }}
-    </button>
   </div>
 </template>
 
@@ -65,46 +52,11 @@ async function toggleLocale() {
   color: var(--tz-text-muted);
 }
 
-/* Piano (kerb) bajo la palabra: decorativo, rojo siempre en pareja con el blanco. */
-.tz-brandbar__brand::after {
-  content: '';
-  position: absolute;
-  right: var(--tz-space-1);
-  bottom: 0;
-  left: calc(var(--tz-icon-sm) + var(--tz-space-1));
-  height: 3px;
-  background: var(--tz-kerb);
-  pointer-events: none;
-}
-
-.tz-brandbar__lang {
-  position: relative;
-  height: 28px;
-  padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-pill);
-  background: var(--tz-overlay);
-  font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
-  cursor: pointer;
-  transition: border-color var(--tz-dur-fast) var(--tz-ease-standard);
-}
-
-/* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
-.tz-brandbar__lang::after {
-  content: '';
-  position: absolute;
-  inset: min(0px, calc((100% - var(--tz-hit-min)) / 2)) 0;
-}
 
 @media (hover: hover) {
   .tz-brandbar__brand:hover {
     text-decoration: none;
     color: var(--tz-accent-strong);
-  }
-
-  .tz-brandbar__lang:hover {
-    border-color: var(--tz-accent);
   }
 }
 </style>

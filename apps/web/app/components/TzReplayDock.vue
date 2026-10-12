@@ -23,16 +23,16 @@ const { t } = useI18n()
  * vista previa del timeline sale del dock hacia arriba y tiene que verse también con la hoja abierta. El dock no
  * pisa el escenario: solo sobresale esa tarjeta.
  */
+/* Sobre el cromo, sin caja propia (D50): parte del marco que rodea al mapa. */
 .tz-dock {
   position: relative;
   flex: none;
-  margin: 0 var(--tz-space-6) var(--tz-space-3);
+  margin: 0 var(--tz-space-4) var(--tz-space-2);
   z-index: calc(var(--tz-z-panels) + 2);
-  padding: var(--tz-space-2) var(--tz-space-4);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-lg);
-  background: var(--tz-overlay);
-  box-shadow: var(--tz-shadow-panel);
+  padding: var(--tz-space-1) var(--tz-space-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--tz-bg);
 }
 
 /* Una sola fila: los controles a su ancho y el timeline con el resto (sin su margen de arriba). */

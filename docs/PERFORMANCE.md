@@ -177,7 +177,7 @@ Nada de esta lista está medido: ni en el contenedor (el bench del cierre de las
 - **PC**: `pnpm local` y abrir `http://127.0.0.1:3000`. **iPad**: `pnpm local --lan` en el PC y, en el iPad, la dirección que muestra (`http://<IP del PC>:3000`). Las URL de abajo van detrás de esa dirección.
 - **Sesiones**: Libres 1 de Bélgica 2026 (`2026/10-spa-francorchamps/fp1`) y la carrera de Japón 2026 (`2026/03-suzuka/race`). Si no las tienes, se descargan con «Descargar» en la portada. Si usas otra carrera completa (`<temporada>/<ronda>-<slug>/race`), dime cuál.
 - **Navegador**: Chrome o Edge en el PC (el heap solo sale en Chromium); Safari en el iPad, donde el heap sale «sin dato». Pestaña en primer plano, sin otras pestañas pesadas y enchufado.
-- **Lo que se recuerda por navegador se fija antes de abrir la URL**: las estelas y el mapa de calor (menú «Capas») y el diseño (en la cabecera o con la tecla L). Al acabar, déjalo como lo quieras tener.
+- **Lo que se recuerda por navegador se fija antes de abrir la URL**: las estelas y el mapa de calor (menú «Capas») y el diseño (en la cabecera o con la tecla P). Al acabar, déjalo como lo quieras tener.
 - **`governor=off`** en todas las filas: con el DPR fijo, encendido y apagado se comparan en igualdad. En el iPad, una pasada más de M1 sin `governor=off` dice lo que verás de verdad (con la degradación activada).
 - El bench salta solo a un minuto de la salida (en libres, al momento con más coches en pista), elige al líder (telemetría abierta), calienta 10 s y mide 30 s. `benchRate=16` reproduce a ×16.
 

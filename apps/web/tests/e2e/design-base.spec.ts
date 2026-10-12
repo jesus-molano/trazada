@@ -44,7 +44,7 @@ test.describe('tokens de densidad', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await gotoApp(page, '/')
     expect(await tokenValue(page, '--tz-row-h')).toBe('28px')
-    expect(await tokenValue(page, '--tz-text-num-xl')).toBe('36px')
+    expect(await tokenValue(page, '--tz-text-num-xl')).toBe('58px')
     expect(await tokenValue(page, '--tz-panel-pad')).toBe('16px')
   })
 
@@ -52,7 +52,7 @@ test.describe('tokens de densidad', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await gotoApp(page, '/')
     expect(await tokenValue(page, '--tz-row-h')).toBe('24px')
-    expect(await tokenValue(page, '--tz-text-num-xl')).toBe('30px')
+    expect(await tokenValue(page, '--tz-text-num-xl')).toBe('50px')
     expect(await tokenValue(page, '--tz-panel-pad')).toBe('12px')
   })
 

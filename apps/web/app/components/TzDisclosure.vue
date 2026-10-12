@@ -129,14 +129,17 @@ onBeforeUnmount(() => {
   gap: var(--tz-space-1);
   height: 28px;
   padding: 0 var(--tz-space-2);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-sm);
-  background: var(--tz-overlay);
-  font-size: var(--tz-text-xs);
-  font-weight: var(--tz-weight-semibold);
+  border: 1px solid transparent;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-medium);
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--tz-dur-fast) var(--tz-ease-standard);
+  transition:
+    background-color var(--tz-dur-fast) var(--tz-ease-standard),
+    color var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
 /* Zona táctil de --tz-hit-min con puntero grueso, sin mover el layout. */
@@ -147,13 +150,15 @@ onBeforeUnmount(() => {
 }
 
 @media (hover: hover) {
+  /* Fantasma (D50): tono al pasar por encima, sin contorno; desplegado, relleno suave. */
   .tz-disclosure__btn:hover:not([aria-expanded='true']) {
-    border-color: var(--tz-border-strong);
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
   }
 }
 
 .tz-disclosure__btn[aria-expanded='true'] {
-  border-color: var(--tz-accent);
+  border-color: transparent;
   background: var(--tz-accent-soft);
   color: var(--tz-accent-strong);
 }
