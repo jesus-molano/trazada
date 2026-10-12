@@ -226,7 +226,8 @@ onBeforeUnmount(() => {
       </TzLeaderboard>
       <aside id="tz-replay-side" class="tz-replay__side">
         <TzTelemetry v-if="playback.selectedCar" :key="`tel-${session.id}`" :preset="layout.preset" />
-        <TzRaceControl :key="`rc-${session.id}`" />
+        <!-- Con un piloto elegido, su telemetría (con sus radios) ocupa la columna: la dirección de carrera general se oculta. -->
+        <TzRaceControl v-if="!playback.selectedCar" :key="`rc-${session.id}`" />
       </aside>
       <TzResizeHandle
         v-if="resizable"
@@ -574,9 +575,9 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 
-/* Con un coche elegido, la dirección de carrera cede sitio (se ve su último mensaje) para que quepan las gráficas. */
+/* Con un coche elegido, la dirección de carrera general no está: la telemetría tiene toda la columna. */
 .tz-replay__side:has([data-testid='telemetry']) {
-  --replay-rc-min: 104px;
+  --replay-rc-floor: 0px;
 }
 
 /* Portátiles bajos (≤ 860 px de alto): con un coche elegido, de la dirección de carrera solo queda su cabecera. */

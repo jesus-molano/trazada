@@ -161,12 +161,13 @@ test.describe('portada: identidad, iconos y estados', () => {
     await expect(lang).toHaveAccessibleName(/(inglés|Spanish)/)
   })
 
-  test('tarjetas de Gran Premio: trazado, bandera y nombre en condensada; la elegida lleva la franja de pintura', async ({ page }) => {
+  test('tarjetas de Gran Premio: trazado, bandera y nombre en Barlow; la elegida, anillo de pintura completo (D50)', async ({ page }) => {
     await gotoApp(page, '/')
     const card = page.getByTestId('event-spa-francorchamps')
     await expect(card).toHaveAttribute('aria-pressed', 'false')
-    expect(await card.locator('.tz-event__name').evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/Barlow Condensed/)
-    const stripe = /3px 0px 0px 0px inset/
+    expect(await card.locator('.tz-event__name').evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Barlow"?,/)
+    // Anillo completo de 1,5 px, nunca una franja lateral.
+    const stripe = /0px 0px 0px 1[.]5px inset/
     expect(await card.evaluate((el) => getComputedStyle(el).boxShadow)).not.toMatch(stripe)
     await card.click()
     await expect(card).toHaveAttribute('aria-pressed', 'true')
@@ -185,7 +186,7 @@ test.describe('portada: identidad, iconos y estados', () => {
     await expect(reason).toBeVisible()
     await expect(reason).toContainText(/(posición|position)/)
     await expect(reason.locator('svg[data-icon="noSignal"]')).toHaveAttribute('aria-hidden', 'true')
-    expect(await fp2.evaluate((el) => getComputedStyle(el).borderStyle)).toBe('dashed')
+    await expect(fp2).toHaveAttribute('data-state', 'unavailable')
     // Todo <svg> de la portada es un icono del registro o un trazado (dato), nunca un dibujo suelto.
     await expect(page.locator('main svg:not([data-icon]):not(.tz-outline)')).toHaveCount(0)
   })

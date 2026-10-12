@@ -10,7 +10,8 @@
  * solo con reproducción a ≤ ×4, si entran como mucho LIST_MOTION_MAX_CHANGES a la vez y sin salto del reloj; tras un
  * seek, en pausa, con reduced motion o a ×8/×16, la lista cambia al instante. El texto nunca se anima: solo la entrada.
  *
- * Radio de los equipos (D51): «Todo / Dirección de carrera / Radio» elige qué se lista; los clips van mezclados por hora
+ * Radio de los equipos (D51): «Todo / Dirección de carrera / Radio» elige qué se lista (lo que suena en directo lo lleva
+ * replay-overlays/TzRadioLive.vue, montado siempre); los clips van mezclados por hora
  * con los mensajes, también solo hasta el instante del reloj (nunca uno del futuro), con reproducir, pausa y progreso
  * (suena uno a la vez). Su hora es la de publicación: el mensaje pudo decirse unos segundos antes. «Escuchar en directo»
  * (apagado por defecto): a ×1 o ×2, cada clip suena cuando el reloj llega a él (los del coche elegido o, sin coche,
@@ -18,10 +19,9 @@
  * sesión de antes de 1.2.0, una línea pide volver a descargarla. Nada de transcripción.
  */
 import type { RaceControlEvent, RadioClip } from '@trazada/schema'
-import { manifestPath } from '~/data/session-id'
 import { duration, LIST_MOTION_MAX_CHANGES, LIST_MOTION_MAX_RATE, useReducedMotion } from '~/design/motion'
 import { formatClock } from '~/engine/format/time'
-import { clipsUpTo, clipUrl, LIVE_MAX_RATE, liveClip, radioClips, radioStatus } from '~/engine/radio/radio'
+import { clipsUpTo, radioClips, radioStatus } from '~/engine/radio/radio'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { visibleCount } from '~/engine/trackstate/TrackState'
 import { rcTint } from '~/replay/rcKinds'
@@ -39,8 +39,6 @@ const origin = clockOrigin(type, rt.session.timing, pb)
 const events = rt.raceControl
 const times = events.map((e) => e.t)
 const radio = useRadioStore()
-const player = useRadioPlayer()
-const dataUrl = useDataUrl()
 const status = radioStatus(rt.session.manifest)
 const clips = radioClips(rt.session.events)
 const clipTimes = clips.map((c) => c.t)
@@ -116,10 +114,8 @@ watch(
   (t) => {
     const now = performance.now()
     const jump = jumped(t - lastT, now - lastWall)
-    const prevT = lastT
     lastT = t
     lastWall = now
-    listenLive(prevT, t, jump)
     radioCount.value = clipsUpTo(clipTimes, t)
     const next = visibleCount(times, t)
     const added = next - count.value
@@ -135,34 +131,7 @@ watch(
     }
   },
 )
-/**
- * Escuchar en directo: con reproducción a ×1 o ×2 y sin salto, el clip más reciente publicado desde la última
- * actualización (del coche elegido o, sin coche, de todos). Lo que puso el directo se para al saltar, pausar o subir de ×2.
- */
-function listenLive(from: number, to: number, jump: boolean) {
-  if (!radio.live) return
-  if (jump || !playback.playing || playback.rate > LIVE_MAX_RATE) {
-    stopLive()
-    return
-  }
-  const i = liveClip(clips, clipTimes, from, to, playback.selectedCar)
-  const url = i >= 0 ? clipUrl(dataUrl(manifestPath(rt.session.id)), clips[i]!) : null
-  if (url) player.play(url, clips[i]!.file, true)
-}
-function stopLive() {
-  if (player.now.value?.live) player.stop()
-}
-watch(
-  () => [playback.playing, playback.rate, radio.live] as const,
-  ([playing, rate, live]) => {
-    if (!playing || rate > LIVE_MAX_RATE || !live) stopLive()
-  },
-)
-
-onBeforeUnmount(() => {
-  clearFresh()
-  player.stop()
-})
+onBeforeUnmount(clearFresh)
 
 function kindLabel(e: RaceControlEvent): string {
   const key = `rc.kind.${e.parsed.kind}`

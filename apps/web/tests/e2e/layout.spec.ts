@@ -379,7 +379,7 @@ for (const vp of VIEWPORTS.filter((v) => v.touch)) {
     test.describe(`${vp.name}, «${preset}»: telemetría con un coche elegido`, () => {
       test.use({ viewport: { width: vp.width, height: vp.height }, hasTouch: true })
 
-      test('ninguna celda ni gráfica cortada a medias; la columna derecha y la dirección de carrera no se desbordan', async ({ page }) => {
+      test('ninguna celda ni gráfica cortada a medias; la columna derecha no se desborda (sin la dirección de carrera)', async ({ page }) => {
         await resetStorage(page)
         await page.addInitScript((p) => localStorage.setItem('trazada.layout', JSON.stringify({ _v: 1, preset: p, presets: {} })), preset)
         // Lo más alto que puede ser la cabecera (banderas en su fila propia) y la telemetría (con «Estimado»).
@@ -395,7 +395,6 @@ for (const vp of VIEWPORTS.filter((v) => v.touch)) {
           page.evaluate(() => {
             const tel = document.querySelector<HTMLElement>('[data-testid="telemetry"]')!
             const side = document.querySelector<HTMLElement>('.tz-replay__side')!
-            const rc = document.querySelector<HTMLElement>('.tz-rc')!
             const box = tel.getBoundingClientRect()
             const parts = [...tel.querySelectorAll('.tz-tel__cell, .tz-chart')].map((el) => {
               const r = el.getBoundingClientRect()
@@ -410,8 +409,8 @@ for (const vp of VIEWPORTS.filter((v) => v.touch)) {
               cut: parts.filter((p) => p.state === 'cut').map((p) => p.name),
               cells: parts.filter((p) => p.cell && p.state === 'whole').length,
               side: side.scrollHeight - side.clientHeight,
-              rc: rc.scrollHeight - rc.clientHeight,
-              rcBottom: rc.getBoundingClientRect().bottom - side.getBoundingClientRect().bottom,
+              telBottom: box.bottom - side.getBoundingClientRect().bottom,
+              rc: document.querySelectorAll('.tz-rc').length,
             }
           })
         await expect.poll(async () => (await fit()).cut).toEqual([])
@@ -419,8 +418,9 @@ for (const vp of VIEWPORTS.filter((v) => v.touch)) {
         // Las seis celdas (velocidad, marcha, rpm, acelerador, freno y DRS), enteras.
         expect(f.cells).toBeGreaterThanOrEqual(6)
         expect(f.side).toBeLessThanOrEqual(0)
-        expect(f.rc).toBeLessThanOrEqual(1)
-        expect(f.rcBottom).toBeLessThanOrEqual(0.5)
+        expect(f.telBottom).toBeLessThanOrEqual(0.5)
+        // Con un piloto elegido, la dirección de carrera general no está: la telemetría tiene la columna (D50).
+        expect(f.rc).toBe(0)
         if (preset === 'analysis') {
           const cols = page.getByTestId('lb-columns')
           await expect(cols).toBeVisible()

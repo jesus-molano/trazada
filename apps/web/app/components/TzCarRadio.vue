@@ -8,11 +8,13 @@ import { formatClock } from '~/engine/format/time'
 import { clipsUpTo, radioClips, radioStatus } from '~/engine/radio/radio'
 import { clockOrigin } from '~/engine/timeline/markers'
 import { getRuntime, usePlaybackStore } from '~/stores/playback'
+import { useRadioStore } from '~/stores/radio'
 
 const props = defineProps<{ car: string }>()
 const { t } = useI18n()
 const rt = getRuntime()!
 const playback = usePlaybackStore()
+const radio = useRadioStore()
 const status = radioStatus(rt.session.manifest)
 const shown = status === 'present' || status === 'partial'
 const { playback: pb, type } = rt.session.manifest.session
@@ -31,7 +33,20 @@ const who = computed(() => rt.drivers.find((d) => d.number === props.car)?.tla ?
 
 <template>
   <section v-if="shown" class="tz-car-radio" :aria-label="t('radio.car.title')" data-testid="car-radio">
-    <h3 class="tz-panel-title tz-car-radio__title">{{ t('radio.car.title') }}</h3>
+    <div class="tz-car-radio__head">
+      <h3 class="tz-panel-title tz-car-radio__title">{{ t('radio.car.title') }}</h3>
+      <!-- El mismo interruptor que en dirección de carrera (que se oculta con un piloto elegido). -->
+      <button
+        type="button"
+        class="tz-car-radio__live"
+        :aria-pressed="radio.live"
+        :title="t('radio.liveHint')"
+        data-testid="car-radio-live"
+        @click="radio.live = !radio.live"
+      >
+        <TzIcon name="radio" size="sm" />{{ t('radio.live') }}
+      </button>
+    </div>
     <p v-if="!recent.length" class="tz-car-radio__empty">{{ t('radio.car.empty') }}</p>
     <ol v-else class="tz-car-radio__list">
       <li v-for="c in recent" :key="c.file" class="tz-car-radio__item" data-testid="car-radio-clip">
@@ -47,8 +62,43 @@ const who = computed(() => rt.drivers.find((d) => d.number === props.car)?.tla ?
   margin-top: var(--tz-space-3);
 }
 
+.tz-car-radio__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tz-space-2);
+  margin-bottom: var(--tz-space-1);
+}
+
 .tz-car-radio__title {
-  margin: 0 0 var(--tz-space-1);
+  margin: 0;
+}
+
+.tz-car-radio__live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tz-space-1);
+  min-height: var(--tz-space-8);
+  padding: 0 var(--tz-space-2);
+  border: 0;
+  border-radius: var(--tz-radius-md);
+  background: transparent;
+  color: var(--tz-text-muted);
+  font-size: var(--tz-text-xs);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .tz-car-radio__live:hover:not([aria-pressed='true']) {
+    background: var(--tz-surface-2);
+    color: var(--tz-text);
+  }
+}
+
+/* Activado: la placa maciza de pintura (D47). */
+.tz-car-radio__live[aria-pressed='true'] {
+  background: var(--tz-accent);
+  color: var(--tz-accent-on);
 }
 
 .tz-car-radio__empty {

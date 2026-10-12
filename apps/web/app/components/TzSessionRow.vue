@@ -197,7 +197,7 @@ function onAnimationEnd(event: AnimationEvent) {
     <button
       v-if="action"
       type="button"
-      class="tz-button tz-session__action"
+      class="tz-button tz-button--quiet tz-session__action"
       :class="{ 'tz-button--quiet': action.quiet }"
       :title="action.title"
       :aria-label="action.label"
@@ -241,10 +241,10 @@ function onAnimationEnd(event: AnimationEvent) {
   align-items: center;
   gap: var(--tz-space-2) var(--tz-space-3);
   min-height: var(--tz-space-12);
-  padding: var(--tz-space-3) var(--tz-space-4);
-  border: 1px solid var(--tz-border);
+  padding: var(--tz-space-2) var(--tz-space-1);
+  border: 0;
   border-radius: var(--tz-radius-md);
-  background: var(--tz-surface-1);
+  background: transparent;
   color: var(--tz-text);
   transition:
     background-color var(--tz-dur-fast) var(--tz-ease-standard),
@@ -252,9 +252,11 @@ function onAnimationEnd(event: AnimationEvent) {
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-/* Lista para ver: toda la fila es el enlace al replay, con el icono de abrir a la derecha. */
-.tz-session.is-link {
-  box-shadow: var(--tz-shadow-panel);
+/* Lista para ver: toda la fila es el enlace al replay, con el icono de abrir a la derecha; tono al pasar por encima. */
+@media (hover: hover) {
+  .tz-session.is-link:hover {
+    background: var(--tz-surface-2);
+  }
 }
 
 .tz-session.is-link:active {
@@ -266,10 +268,8 @@ function onAnimationEnd(event: AnimationEvent) {
   animation: tz-flash var(--tz-dur-flash) var(--tz-ease-standard);
 }
 
-/* No se puede abrir (sin posiciones, entrada no válida o aún por celebrarse): texto tenue y contorno discontinuo. */
+/* No se puede abrir (sin posiciones, entrada no válida o aún por celebrarse): texto tenue. */
 .tz-session.is-disabled {
-  border-style: dashed;
-  border-color: var(--tz-border-strong);
   background: transparent;
   color: var(--tz-text-faint);
   cursor: not-allowed;
@@ -281,19 +281,17 @@ function onAnimationEnd(event: AnimationEvent) {
 
 .tz-session.is-running,
 .tz-session.is-queued {
-  border-color: var(--tz-accent);
+  background: var(--tz-surface-2);
 }
 
 .tz-session.is-error {
-  border-color: var(--tz-danger);
+  background: var(--tz-surface-2);
 }
 
 .tz-session__name {
   flex: 1;
-  font-family: var(--tz-font-display);
   font-size: var(--tz-text-md);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: var(--tz-tracking-display);
 }
 
 .tz-session__size,

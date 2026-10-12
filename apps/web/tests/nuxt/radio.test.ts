@@ -7,6 +7,7 @@
 import type { RaceControlEvent, RadioClip } from '@trazada/schema'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import TzRadioLive from '~/components/replay-overlays/TzRadioLive.vue'
 import TzRadioLane from '~/components/timeline-lanes/TzRadioLane.vue'
 import TzCarRadio from '~/components/TzCarRadio.vue'
 import TzRaceControl from '~/components/TzRaceControl.vue'
@@ -175,6 +176,8 @@ describe('radio en el panel de dirección de carrera', () => {
     const playback = usePlaybackStore()
     playback.attach(rt)
     const w = await mountSuspended(TzRaceControl)
+    // Lo que suena en directo va aparte (montado siempre: con un piloto elegido, el panel se oculta).
+    await mountSuspended(TzRadioLive)
     expect(w.find('[data-testid="radio-live"]').attributes('aria-pressed')).toBe('false') // apagado por defecto
     await w.find('[data-testid="radio-live"]').trigger('click')
     at(1100, true)

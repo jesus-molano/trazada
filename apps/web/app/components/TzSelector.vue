@@ -35,6 +35,46 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unsubscribe?.()
   if (clock) clearInterval(clock)
+  browseObserver?.disconnect()
+  narrowQuery?.removeEventListener('change', onNarrow)
+})
+
+/**
+ * Portada estrecha (< 1100 px, D50): el panel de sesiones se abre a lo ancho justo debajo de la fila de la tarjeta
+ * tocada, sin desplazar la página (el foco va a su título). Para colocarlo hace falta saber cuántas tarjetas caben por
+ * fila: se mide al cambiar de tamaño (estado grueso), nunca por frame.
+ */
+const NARROW_QUERY = '(width < 1100px)'
+const narrow = ref(false)
+const columns = ref(1)
+const browse = ref<HTMLElement | null>(null)
+let narrowQuery: MediaQueryList | null = null
+let browseObserver: ResizeObserver | null = null
+function onNarrow() {
+  narrow.value = !!narrowQuery?.matches
+  measureColumns()
+}
+function measureColumns() {
+  const el = browse.value
+  if (!el || !narrow.value) return
+  columns.value = Math.max(1, getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length)
+}
+onMounted(() => {
+  narrowQuery = window.matchMedia(NARROW_QUERY)
+  narrowQuery.addEventListener('change', onNarrow)
+  onNarrow()
+  if (typeof ResizeObserver !== 'undefined') {
+    browseObserver = new ResizeObserver(measureColumns)
+    watch(
+      browse,
+      (el, old) => {
+        if (old) browseObserver?.unobserve(old)
+        if (el) browseObserver?.observe(el)
+        measureColumns()
+      },
+      { immediate: true },
+    )
+  }
 })
 
 const season = computed<number>(() => {
@@ -73,8 +113,23 @@ function selectSeason(s: number) {
 }
 function selectEvent(e: BrowseEvent) {
   animateLists.value = true
-  void router.replace({ query: { season: String(season.value), event: eventKey(e) } })
+  void router.replace({ query: { season: String(season.value), event: eventKey(e) } }).then(async () => {
+    // El foco, al título del panel (que ya es aria-live), sin mover la página: en estrecho se abre justo debajo.
+    await nextTick()
+    sessionsHeading.value?.focus({ preventScroll: true })
+  })
 }
+
+/** Orden en la rejilla estrecha: las tarjetas en pares y el panel justo detrás de la última de la fila elegida. */
+const selectedIndex = computed(() => (selectedEvent.value ? events.value.findIndex((e) => e.key === selectedEvent.value!.key) : -1))
+const panelOrder = computed(() => {
+  const n = events.value.length
+  const i = selectedIndex.value
+  if (i < 0) return 2 * n + 1
+  const cols = columns.value
+  return 2 * Math.min(n - 1, Math.floor(i / cols) * cols + cols - 1) + 1
+})
+const cardStyle = (i: number) => ({ ...enterStep(i), order: narrow.value ? 2 * i : undefined })
 
 function viewOf(e: BrowseEvent, s: BrowseSession) {
   const job = manager.jobsByKey.get(jobKey({ season: season.value, round: e.round, session: s.session })) ?? null
@@ -231,7 +286,7 @@ const queueText = computed(() => {
         {{ t('selector.emptySeason', { season }) }}
       </p>
 
-      <div v-else-if="events.length > 0" class="tz-browse">
+      <div v-else-if="events.length > 0" ref="browse" class="tz-browse" :class="{ 'is-narrow': narrow }">
         <section class="tz-events" :aria-label="t('selector.events', { season })">
           <div class="tz-heading-row">
             <h2 class="tz-heading">{{ t('selector.events', { season }) }}</h2>
@@ -248,7 +303,7 @@ const queueText = computed(() => {
           </div>
           <!-- Una lista por temporada: al cambiar de temporada, las tarjetas entran escalonadas (tz-enter). -->
           <ul :key="season" role="list" class="tz-event-list" :class="{ 'is-entering': animateLists }">
-            <li v-for="(e, i) in events" :key="e.key" :style="enterStep(i)">
+            <li v-for="(e, i) in events" :key="e.key" :style="cardStyle(i)">
               <button
                 type="button"
                 class="tz-event"
@@ -287,22 +342,39 @@ const queueText = computed(() => {
           </ul>
         </section>
 
-        <section class="tz-sessions" :aria-label="t('selector.sessions')">
-          <div class="tz-heading-row">
-            <h2 ref="sessionsHeading" class="tz-heading" tabindex="-1" aria-live="polite">
-              {{ selectedEvent ? selectedEvent.event : t('selector.sessions') }}
-            </h2>
-            <button
-              v-if="eventMissing.length > 1"
-              type="button"
-              class="tz-button tz-button--quiet tz-manager__action"
-              :title="t('manager.downloadHint')"
-              data-testid="download-event"
-              @click="enqueueBulk(eventMissing)"
-            >
-              <TzIcon name="download" size="sm" />{{ t('manager.downloadEvent', eventMissing.length) }}
-            </button>
+        <section
+          class="tz-sessions"
+          :aria-label="t('selector.sessions')"
+          :style="narrow ? { order: panelOrder } : undefined"
+          data-testid="sessions-panel"
+        >
+          <div class="tz-heading-row tz-sessions__head">
+            <div class="tz-sessions__title">
+              <h2 ref="sessionsHeading" class="tz-heading" tabindex="-1" aria-live="polite">
+                {{ selectedEvent ? selectedEvent.event : t('selector.sessions') }}
+              </h2>
+              <p v-if="selectedEvent" class="tz-sessions__meta">
+                <span class="tz-tabular">{{ t('selector.round', { round: selectedEvent.round }) }}</span>
+                <template v-if="eventMeta(selectedEvent)"> · {{ eventMeta(selectedEvent) }}</template>
+              </p>
+            </div>
+            <TzTrackOutline
+              v-if="selectedEvent"
+              class="tz-sessions__outline"
+              :d="outlineFor(season, selectedEvent.round, selectedEvent.slug)"
+            />
           </div>
+          <!-- Las que faltan del Gran Premio, a lo ancho del panel. -->
+          <button
+            v-if="eventMissing.length > 1"
+            type="button"
+            class="tz-button tz-button--quiet tz-manager__action tz-sessions__all"
+            :title="t('manager.downloadHint')"
+            data-testid="download-event"
+            @click="enqueueBulk(eventMissing)"
+          >
+            <TzIcon name="download" size="sm" />{{ t('manager.downloadEvent', eventMissing.length) }}
+          </button>
           <p v-if="!selectedEvent" class="tz-selector__state is-empty">{{ t('selector.pickEvent') }}</p>
           <!-- Una lista por Gran Premio: al elegir otro, sus sesiones entran con un fundido escalonado. -->
           <ul v-else :key="selectedEvent.key" role="list" class="tz-session-list" :class="{ 'is-entering': animateLists }">
@@ -374,23 +446,26 @@ const queueText = computed(() => {
   list-style: none;
 }
 
+/* Temporadas como un segmentado (D50): pista de tono, cifras en mono y la elegida en placa maciza de pintura. */
 .tz-seasons ul {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--tz-space-2);
+  gap: var(--tz-space-0-5);
+  padding: var(--tz-space-0-5);
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-2);
 }
 
-/* Temporada: placa de rótulo; la elegida, placa maciza de pintura (placa = activado, D47). */
 .tz-season {
   position: relative;
-  padding: var(--tz-space-1) var(--tz-space-4);
-  border: 1px solid var(--tz-border-strong);
-  border-radius: var(--tz-radius-md);
+  padding: var(--tz-space-1) var(--tz-space-3);
+  border: 0;
+  border-radius: var(--tz-radius-pill);
   background: transparent;
-  font-family: var(--tz-font-display);
-  font-size: var(--tz-text-lg);
-  font-weight: var(--tz-weight-semibold);
-  letter-spacing: var(--tz-tracking-display);
+  color: var(--tz-text-muted);
+  font-family: var(--tz-font-mono);
+  font-size: var(--tz-text-sm);
+  font-weight: var(--tz-weight-medium);
   cursor: pointer;
   transition:
     background-color var(--tz-dur-fast) var(--tz-ease-standard),
@@ -407,7 +482,6 @@ const queueText = computed(() => {
 }
 
 .tz-season.is-active {
-  border-color: var(--tz-accent);
   background: var(--tz-accent);
   color: var(--tz-accent-on);
 }
@@ -417,32 +491,105 @@ const queueText = computed(() => {
   transform: scale(var(--tz-press-scale));
 }
 
+/*
+ * Escritorio (D50): la rejilla de Grandes Premios a la izquierda y el panel de sesiones fijo a la derecha (380 px,
+ * sticky): con un Gran Premio de abajo elegido, sus «Descargar» siguen a la vista.
+ */
 .tz-browse {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: var(--tz-space-6);
   align-items: start;
 }
 
-@media (width < 800px) {
-  .tz-browse {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.tz-sessions {
+  position: sticky;
+  top: var(--tz-space-4);
+  display: grid;
+  gap: var(--tz-space-3);
+  padding: var(--tz-space-4);
+  border-radius: var(--tz-radius-sheet);
+  background: var(--tz-surface-1);
 }
 
-/* Rótulo de columna (h2: condensada en mayúsculas desde base.css). */
+.tz-sessions__head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.tz-sessions__title {
+  display: grid;
+  gap: var(--tz-space-1);
+  min-width: 0;
+}
+
+.tz-sessions__title .tz-heading {
+  font-size: var(--tz-text-lg);
+  color: var(--tz-text);
+}
+
+.tz-sessions__meta {
+  margin: 0;
+  font-size: var(--tz-text-xs);
+  color: var(--tz-text-muted);
+}
+
+.tz-sessions__meta .tz-tabular {
+  font-family: var(--tz-font-mono);
+}
+
+.tz-sessions__outline {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  color: var(--tz-text-muted);
+}
+
+.tz-sessions__all {
+  justify-content: center;
+  width: 100%;
+}
+
+/*
+ * Estrecho (< 1100 px, tablet en vertical): una sola rejilla; las tarjetas en orden y el panel de sesiones, a lo
+ * ancho, justo detrás de la fila de la tarjeta elegida (el orden lo pone el componente). Sin desplazar la página.
+ */
+.tz-browse.is-narrow {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--tz-space-3);
+  /* Las tarjetas de una fila, igual de altas aunque un nombre ocupe dos líneas. */
+  align-items: stretch;
+}
+
+.tz-browse.is-narrow > .tz-events,
+.tz-browse.is-narrow .tz-event-list {
+  display: contents;
+}
+
+.tz-browse.is-narrow .tz-events > .tz-heading-row {
+  grid-column: 1 / -1;
+  order: -1;
+}
+
+.tz-browse.is-narrow .tz-sessions {
+  position: static;
+  grid-column: 1 / -1;
+  animation: tz-enter var(--tz-dur-base) var(--tz-ease-enter) backwards;
+}
+
+/* Rótulo de columna: Barlow 13/600 en caja de frase (D50). */
 .tz-heading {
   margin: 0 0 var(--tz-space-3);
   font-size: var(--tz-text-sm);
   font-weight: var(--tz-weight-semibold);
-  letter-spacing: var(--tz-tracking-caps);
-  text-transform: uppercase;
   color: var(--tz-text-muted);
 }
 
+/* 4 tarjetas por fila a 1440 px y 5 a 1920 (D50). */
 .tz-event-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: var(--tz-space-3);
 }
 
@@ -467,10 +614,9 @@ const queueText = computed(() => {
   /* Todas las tarjetas de una fila, igual de altas aunque algún nombre ocupe dos líneas. */
   height: 100%;
   padding: var(--tz-space-3) var(--tz-space-4);
-  border: 1px solid var(--tz-border);
-  border-radius: var(--tz-radius-md);
+  border: 0;
+  border-radius: var(--tz-radius-lg);
   background: var(--tz-surface-1);
-  box-shadow: var(--tz-shadow-panel);
   text-align: start;
   cursor: pointer;
   transition:
@@ -479,13 +625,10 @@ const queueText = computed(() => {
     transform var(--tz-dur-fast) var(--tz-ease-standard);
 }
 
-/* La elegida: borde y franja de pintura a la izquierda (el estado lo dice también aria-pressed). */
+/* La elegida: tono alto y anillo de pintura completo de 1,5 px; nunca una franja lateral (D50). */
 .tz-event.is-active {
-  border-color: var(--tz-accent);
-  background: var(--tz-surface-2);
-  box-shadow:
-    inset 3px 0 0 var(--tz-accent),
-    var(--tz-shadow-panel);
+  background: var(--tz-surface-3);
+  box-shadow: inset 0 0 0 1.5px var(--tz-accent);
 }
 
 .tz-event__round {
@@ -506,8 +649,7 @@ const queueText = computed(() => {
   /* La bandera, en la primera línea si el nombre ocupa dos. */
   align-items: first baseline;
   gap: var(--tz-space-2);
-  font-family: var(--tz-font-display);
-  font-size: var(--tz-text-lg);
+  font-size: var(--tz-text-md);
   font-weight: var(--tz-weight-semibold);
   line-height: var(--tz-leading-tight);
 }
@@ -521,7 +663,7 @@ const queueText = computed(() => {
 }
 
 .tz-event__meta {
-  font-size: var(--tz-text-sm);
+  font-size: var(--tz-text-xs);
   color: var(--tz-text-muted);
 }
 
@@ -533,7 +675,11 @@ const queueText = computed(() => {
 
 .tz-session-list {
   display: grid;
-  gap: var(--tz-space-2);
+}
+
+/* Filas de sesión con filetes (D50). */
+.tz-session-list > li + li {
+  border-top: 1px solid var(--tz-border);
 }
 
 .tz-muted {
@@ -635,9 +781,12 @@ const queueText = computed(() => {
 
 /* Hover solo con un puntero que puede «flotar»: en táctil se quedaría pegado tras tocar. */
 @media (hover: hover) {
-  .tz-season:hover:not(.is-active),
-  .tz-event:hover {
-    border-color: var(--tz-accent);
+  .tz-season:hover:not(.is-active) {
+    color: var(--tz-text);
+  }
+
+  .tz-event:hover:not(.is-active) {
+    background: var(--tz-surface-2);
   }
 
   .tz-event:hover :deep(.tz-outline) {
