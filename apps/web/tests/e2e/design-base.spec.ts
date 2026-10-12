@@ -213,20 +213,23 @@ test.describe('identidad «Asfalto y pintura» (D47)', () => {
     const style = (loc: typeof active) =>
       loc.evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, fg: getComputedStyle(el).color }))
 
-    // Sin el ratón encima (el hover no cambia la placa, pero así se mide el estado de reposo).
+    // Sin el ratón encima (el hover no cambia la placa, pero así se mide el estado de reposo). Los colores tienen
+    // transición: se espera a que acabe (a mitad, el fondo sale como rgba(…, 0.99)).
     await page.getByTestId('replay-title').click()
+    await expect.poll(async () => (await style(active)).bg).toBe(paint)
+    await expect.poll(async () => (await style(inactive)).bg).toBe('rgba(0, 0, 0, 0)')
+    await expect.poll(async () => (await style(active)).fg).toBe(on)
     const plate = await style(active)
-    expect(plate.bg).toBe(paint)
-    expect(plate.fg).toBe(on)
     expect(contrast(plate.fg, plate.bg)).toBeGreaterThanOrEqual(4.5)
-    expect((await style(inactive)).bg).toBe('rgba(0, 0, 0, 0)')
 
     // Al elegir la otra, la placa pasa con ella.
     await inactive.click()
     await page.getByTestId('replay-title').click()
     await expect(group.locator('button[aria-pressed="true"]')).toHaveCount(1)
-    const swapped = await style(group.locator('button[aria-pressed="true"]'))
-    expect(swapped.bg).toBe(paint)
+    const pressed = group.locator('button[aria-pressed="true"]')
+    await expect.poll(async () => (await style(pressed)).bg).toBe(paint)
+    await expect.poll(async () => (await style(pressed)).fg).toBe(on)
+    const swapped = await style(pressed)
     expect(contrast(swapped.fg, swapped.bg)).toBeGreaterThanOrEqual(4.5)
   })
 })

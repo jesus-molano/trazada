@@ -403,7 +403,8 @@ describe('la cola nunca se queda bloqueada', () => {
     expect(windowsTreeKill(1234)).toEqual(['taskkill', ['/pid', '1234', '/T', '/F']])
   })
 
-  it('si un nieto sigue con las tuberías abiertas tras matar al hijo, el trabajo termina igualmente', async () => {
+  // En un Windows de verdad, taskkill /T sí mata al nieto: la emulación solo vale fuera de Windows.
+  it.skipIf(process.platform === 'win32')('si un nieto sigue con las tuberías abiertas tras matar al hijo, el trabajo termina igualmente', async () => {
     // Emula Windows sin taskkill: solo muere el proceso hijo y el nieto conserva stdout/stderr abiertos.
     const root = mkdtempSync(join(tmpdir(), 'trazada-tree-'))
     const data = join(root, 'data')
