@@ -86,7 +86,7 @@ onBeforeUnmount(() => lbObserver?.disconnect())
 /** Prioridad del título en la cabecera (D44): lo secundario se acorta antes que el título (useHeaderFit). */
 const bar = ref<HTMLElement | null>(null)
 const titleEl = ref<HTMLElement | null>(null)
-useHeaderFit(bar, titleEl)
+useHeaderFit(bar, titleEl, () => session.status === 'ready')
 
 const id = computed(() => (typeof route.query.s === 'string' ? route.query.s : ''))
 const parsed = computed(() => parseSessionId(id.value))

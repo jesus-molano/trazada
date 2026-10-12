@@ -70,3 +70,30 @@ describe('prioridad del título en la cabecera (D44)', () => {
     expect(fitAttribute(4)).toBe('1 2 3 4')
   })
 })
+
+describe('desde el nivel actual (tarea 1: menos layouts forzados)', () => {
+  it('el mismo nivel que desde cero, con menos medidas', () => {
+    for (let fromLevel = 0; fromLevel <= HEADER_FIT_MAX; fromLevel++) {
+      for (let current = 0; current <= HEADER_FIT_MAX; current++) {
+        const fresh = header(fromLevel)
+        const expected = chooseLevel(HEADER_FIT_MAX, fresh.apply, fresh.measure)
+        const h = header(fromLevel)
+        expect(chooseLevel(HEADER_FIT_MAX, h.apply, h.measure, current), `cabe desde ${fromLevel}, ahora ${current}`).toBe(expected)
+        // Lo último aplicado es el nivel elegido.
+        expect(h.current).toBe(expected)
+      }
+    }
+  })
+
+  it('sin cambios (cabe con el actual y no con el de debajo): dos medidas, no cinco', () => {
+    const h = header(3)
+    expect(chooseLevel(HEADER_FIT_MAX, h.apply, h.measure, 3)).toBe(3)
+    expect(h.applied).toEqual([3, 2, 3])
+  })
+
+  it('si ya no cabe ni con el actual, sube desde él (con el alto más bajo si no cabe ninguno)', () => {
+    const h = header(HEADER_FIT_MAX + 1, [60, 60, 56, 56, 56])
+    expect(chooseLevel(HEADER_FIT_MAX, h.apply, h.measure, 2)).toBe(HEADER_FIT_MAX)
+    expect(h.applied[0]).toBe(2)
+  })
+})

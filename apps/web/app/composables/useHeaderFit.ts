@@ -18,7 +18,15 @@ import { chooseLevel, fitAttribute, HEADER_FIT_MAX, type HeaderFit } from '~/eng
 /** Un elemento está en otra fila si su borde de arriba queda más abajo que esto del de la primera (px). */
 const ROW_TOLERANCE_PX = 12
 
-export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElement | null>): Readonly<Ref<number>> {
+/**
+ * `enabled`: mientras dé `false` (la sesión cargando: la cabecera cambia a cada paso y aún no lleva lo que la parte),
+ * no se mide; al pasar a `true`, una medida. Cada nivel probado fuerza un layout de toda la página (tarea 1 del PLAN).
+ */
+export function useHeaderFit(
+  bar: Ref<HTMLElement | null>,
+  title: Ref<HTMLElement | null>,
+  enabled: () => boolean = () => true,
+): Readonly<Ref<number>> {
   const level = ref(0)
   let raf = 0
   let resize: ResizeObserver | null = null
@@ -58,8 +66,9 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
 
   function measure() {
     raf = 0
-    if (!bar.value || !title.value) return
-    level.value = chooseLevel(HEADER_FIT_MAX, apply, fit)
+    if (!bar.value || !title.value || !enabled()) return
+    // Desde el nivel actual: con la cabecera igual que antes, una o dos medidas en vez de hasta cinco.
+    level.value = chooseLevel(HEADER_FIT_MAX, apply, fit, level.value)
   }
 
   function schedule() {
@@ -89,6 +98,10 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
       for (const chip of status.children) resize.observe(chip)
     }
   }
+
+  watch(enabled, (on) => {
+    if (on) schedule()
+  })
 
   onMounted(() => {
     if (typeof ResizeObserver === 'undefined' || typeof MutationObserver === 'undefined' || !bar.value) return

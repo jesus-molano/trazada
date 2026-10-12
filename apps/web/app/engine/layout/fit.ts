@@ -28,10 +28,30 @@ const SAME_HEIGHT_PX = 2
  * escena) y, a igual alto, el más alto de nivel: lo más compacto (el título se acorta con «…» si aun así no cabe) y, si
  * la fila se parte igual, el estado de pista en la suya en lugar de partir la fila por cualquier sitio.
  */
-export function chooseLevel(max: number, apply: (level: number) => void, measure: () => HeaderFit): number {
+export function chooseLevel(
+  max: number,
+  apply: (level: number) => void,
+  measure: () => HeaderFit,
+  from = 0,
+): number {
+  // Desde el nivel actual (tarea 1 del PLAN: cada nivel probado fuerza un layout de toda la página). Un nivel más alto
+  // nunca ocupa más: si con `from` cabe, se baja mientras siga cabiendo; si no, los de debajo tampoco caben y se sube.
+  if (from > 0 && from <= max) {
+    apply(from)
+    if (measure().fits) {
+      let level = from
+      while (level > 0) {
+        apply(level - 1)
+        if (!measure().fits) break
+        level--
+      }
+      if (level > 0) apply(level)
+      return level
+    }
+  }
   let best = 0
   let bestHeight = Number.POSITIVE_INFINITY
-  for (let level = 0; level <= max; level++) {
+  for (let level = from > 0 && from <= max ? from : 0; level <= max; level++) {
     apply(level)
     const m = measure()
     if (m.fits) return level
