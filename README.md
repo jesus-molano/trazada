@@ -8,7 +8,7 @@ Replay y análisis de carreras: circuito en 3D con todos los coches en movimient
 
 ## Cómo se ve
 
-Es una app para usar en tu PC (no hay web pública), así que aquí van unas capturas. Muestran el extracto de prueba que viene con los tests: nueve minutos reales de Libres 1 de Spa 2026, con la clasificación y los mensajes de dirección de carrera de ese momento (ver [`DATA_NOTICE.md`](DATA_NOTICE.md)). En la portada, el calendario es el real de la temporada; las sesiones de Bélgica marcadas DEV o «no disponible» son variantes de prueba de los tests.
+Es una app para usar en tu PC (no hay web pública), así que aquí van unas capturas. La del replay es una carrera completa descargada en local (Barcelona 2026, vuelta 41, con el coche de seguridad virtual); las demás muestran el extracto de prueba que viene con los tests: nueve minutos reales de Libres 1 de Spa 2026, con la clasificación y los mensajes de dirección de carrera de ese momento (ver [`DATA_NOTICE.md`](DATA_NOTICE.md)). En la portada, el calendario es el real de la temporada; las sesiones de Bélgica marcadas DEV o «no disponible» son variantes de prueba de los tests.
 
 **Portada**: arriba y en grande, el Gran Premio del momento (el del fin de semana desde el día de los primeros libres; si no, el último), con su trazado y sus sesiones; debajo, «Seguir viendo» y el calendario de cada temporada, con la bandera y el trazado de cada Gran Premio. Cada sesión ya disputada se descarga con un clic, en tu PC.
 
@@ -16,7 +16,7 @@ Es una app para usar en tu PC (no hay web pública), así que aquí van unas cap
 
 **Replay**: el circuito en 3D con todos los coches en movimiento (con el relieve de la pista, el sentido de la marcha, la meta y los boxes), la clasificación en vivo (gaps, neumáticos, boxes), la dirección de carrera con la radio de los equipos, las banderas por sector y el timeline con sus marcas.
 
-![Replay de Libres 1 en Spa](docs/img/replay.webp)
+![Replay de la carrera de Barcelona 2026 con el coche de seguridad virtual: curvas numeradas, banderas, radios y la clasificación](docs/img/replay.webp)
 
 **Siguiendo a un coche**: monoplaza 3D genérico con el color de su equipo y el compuesto en los neumáticos, cámara de seguimiento con zoom (rueda o pellizco), telemetría y gráficas de los últimos segundos.
 

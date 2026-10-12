@@ -9,7 +9,7 @@
  * `pnpm local`, con el gestor) en el puerto 4390, o en `README_PORT` si ese está ocupado.
  */
 import { type ChildProcess, spawn } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -94,9 +94,42 @@ test('portada: calendario de la temporada con banderas, trazados y descargas', a
   }
 })
 
-test('replay: vista general con clasificación, dirección de carrera y timeline', async ({ page, baseURL }) => {
-  await openReplay(page, baseURL!)
-  await shot(page, 'replay')
+/**
+ * La captura principal, con una carrera completa descargada en `data/` (si está): Barcelona 2026, vuelta 41, con el
+ * coche de seguridad virtual y una doble amarilla, radios y banderas azules en dirección de carrera, y el mapa acercado a
+ * las curvas 1–9 (números de curva, coches, pit lane, meta). Sin esa sesión, la vista general del extracto de los tests.
+ */
+const REAL_DATA = resolve(here, '../../../../data')
+const REAL_SESSION = '2026/07-barcelona/race'
+
+test('replay: un trozo del circuito con números de curva, banderas, radios y la clasificación', async ({ page, baseURL }) => {
+  if (!existsSync(join(REAL_DATA, 'v1/sessions', REAL_SESSION, 'manifest.json'))) {
+    await openReplay(page, baseURL!)
+    await shot(page, 'replay')
+    return
+  }
+  const port = Number(process.env.README_PORT ?? 4390) + 1
+  const base = `http://127.0.0.1:${port}`
+  const server: ChildProcess = spawn(process.execPath, [resolve(here, 'readme-server.mjs'), '--port', String(port), '--data', REAL_DATA], { stdio: 'ignore' })
+  try {
+    await expect.poll(async () => (await fetch(`${base}/`).catch(() => null))?.status ?? 0, { timeout: 15_000 }).toBe(200)
+    await spanish(page, base)
+    await markTipsSeen(page)
+    await page.goto(`${base}/replay?s=${REAL_SESSION}`)
+    await expect.poll(async () => (await page.evaluate(() => window.__trazada?.scene.ready)) ?? false, { timeout: 60_000 }).toBe(true)
+    await page.evaluate(() => window.__trazada!.seek(window.__trazada!.startMs + 66.5 * 60_000))
+    await expect(page.getByTestId('track-status')).toContainText(/Coche de seguridad virtual/)
+    // Acercar el mapa a las curvas 1–9, donde van más coches.
+    await page.mouse.move(560, 470)
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.wheel(0, -250)
+      await page.waitForTimeout(120)
+    }
+    await page.waitForTimeout(900)
+    await shot(page, 'replay')
+  } finally {
+    server.kill()
+  }
 })
 
 test('siguiendo a un coche: modelo 3D, telemetría y gráficas', async ({ page, baseURL }) => {
