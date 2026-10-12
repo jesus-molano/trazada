@@ -7,6 +7,13 @@
  * Vista previa (ítem 16, `TzTimelinePreview`): al pasar el ratón (o el lápiz), al arrastrar con el dedo y con el foco
  * del teclado (sobre el cabezal), una tarjeta con lo que pasaba en ese instante. Se recalcula como mucho una vez por
  * frame de pantalla y solo mientras el puntero se mueve (nada por frame del reloj); Esc la oculta.
+ *
+ * Zoom y desplazamiento (pendiente 4 del PLAN): la pista se ensancha `zoom` veces dentro de su marco y se desplaza con
+ * `transform`; todo lo de dentro (marcas, ventanas, carriles) va en % de la duración, así que se estira solo, y el
+ * instante bajo el puntero se sigue midiendo con la caja de la pista. Rueda: acercar o alejar en el cursor; Mayús + rueda
+ * o la rueda horizontal: desplazar; + y − con el foco; botones (también en táctil) y una barra con lo que se ve, que se
+ * arrastra. Como mucho, `MIN_WINDOW_MS` a la vista. Reproduciendo, si el cabezal sale de la vista, la vista pasa
+ * página (salvo unos segundos después de moverla a mano). Todo directo al DOM: el zoom cambia solo con el usuario.
  */
 import { SEEK_STEP_LARGE_MS, SEEK_STEP_MS } from '~/composables/useReplayShortcuts'
 import { formatClock } from '~/engine/format/time'
@@ -24,7 +31,9 @@ const isRace = type === 'race' || type === 'sprint'
 const origin = clockOrigin(type, rt.session.timing, pb)
 const tla = new Map(rt.drivers.map((d) => [d.number, d.tla]))
 
+const frame = ref<HTMLElement | null>(null)
 const track = ref<HTMLElement | null>(null)
+const thumb = ref<HTMLElement | null>(null)
 const head = ref<HTMLElement | null>(null)
 const fill = ref<HTMLElement | null>(null)
 const dragging = ref(false)
@@ -54,6 +63,100 @@ function label(ms: number): string {
 
 const valueText = computed(() => label(playback.timeMs))
 const valueNow = computed(() => Math.round((playback.timeMs - clock.startMs) / 1000))
+
+// --- Zoom y desplazamiento ---
+/** Lo mínimo que se ve con el zoom al máximo (y como mucho ×64). */
+const MIN_WINDOW_MS = 120_000
+const MAX_ZOOM = Math.max(1, Math.min(64, clock.duration / MIN_WINDOW_MS))
+/** Tras mover la vista a mano, cuánto tiempo no la mueve el cabezal al reproducir (ms). */
+const MANUAL_HOLD_MS = 5000
+/** Acercar o alejar con un botón o una tecla. */
+const ZOOM_STEP = 2
+/** Ampliación (estado grueso: cambia solo con el usuario) y comienzo de lo que se ve (fracción de la sesión). */
+const zoom = ref(1)
+let offset = 0
+let manualUntil = 0
+const zoomLabel = computed(() => `×${zoom.value < 10 ? Math.round(zoom.value * 10) / 10 : Math.round(zoom.value)}`)
+
+/** Escribe la vista en el DOM: ancho y desplazamiento de la pista y la barra de lo que se ve. */
+function applyView() {
+  const el = track.value
+  if (el) {
+    el.style.width = zoom.value > 1 ? `${(zoom.value * 100).toFixed(3)}%` : ''
+    el.style.transform = zoom.value > 1 ? `translateX(${(-offset * 100).toFixed(4)}%)` : ''
+  }
+  if (thumb.value) {
+    thumb.value.style.left = `${(offset * 100).toFixed(3)}%`
+    thumb.value.style.width = `${(100 / zoom.value).toFixed(3)}%`
+  }
+}
+
+function setView(z: number, start: number, manual = true) {
+  const nz = Math.min(MAX_ZOOM, Math.max(1, z))
+  offset = Math.min(1 - 1 / nz, Math.max(0, start))
+  if (nz !== zoom.value) {
+    zoom.value = nz
+    hidePreview()
+  }
+  if (manual) manualUntil = performance.now() + MANUAL_HOLD_MS
+  applyView()
+}
+
+/** Cambia el zoom dejando fijo el instante que está en `at` (fracción del ancho del marco, 0…1). */
+function zoomAround(factor: number, at: number) {
+  const t = offset + at / zoom.value
+  const nz = Math.min(MAX_ZOOM, Math.max(1, zoom.value * factor))
+  setView(nz, t - at / nz)
+}
+
+/** Fracción del marco donde cae el cabezal (para los botones y las teclas: el zoom va hacia él si se ve). */
+function headAt(): number {
+  const f = (playback.timeMs - clock.startMs) / clock.duration
+  const at = (f - offset) * zoom.value
+  return at >= 0 && at <= 1 ? at : 0.5
+}
+
+const zoomIn = () => zoomAround(ZOOM_STEP, headAt())
+const zoomOut = () => zoomAround(1 / ZOOM_STEP, headAt())
+const zoomReset = () => setView(1, 0)
+
+function onWheel(event: WheelEvent) {
+  const r = frame.value?.getBoundingClientRect()
+  if (!r || !(r.width > 0)) return
+  event.preventDefault()
+  const horizontal = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)
+  if (horizontal) {
+    const d = event.shiftKey && event.deltaX === 0 ? event.deltaY : event.deltaX
+    if (zoom.value > 1) setView(zoom.value, offset + d / r.width / zoom.value)
+    return
+  }
+  const at = Math.min(1, Math.max(0, (event.clientX - r.left) / r.width))
+  zoomAround(Math.exp(-event.deltaY * 0.002), at)
+}
+
+/** La barra de lo que se ve: arrastrar desplaza la vista; un toque fuera del pulgar la centra ahí. */
+let pan: { pointer: number; x: number; from: number; moved: boolean } | null = null
+function onScrollDown(event: PointerEvent) {
+  if (zoom.value <= 1) return
+  const bar = event.currentTarget as HTMLElement
+  bar.setPointerCapture?.(event.pointerId)
+  pan = { pointer: event.pointerId, x: event.clientX, from: offset, moved: false }
+}
+function onScrollMove(event: PointerEvent) {
+  if (!pan || event.pointerId !== pan.pointer) return
+  const w = (event.currentTarget as HTMLElement).getBoundingClientRect().width
+  const dx = event.clientX - pan.x
+  if (Math.abs(dx) > 3) pan.moved = true
+  if (pan.moved && w > 0) setView(zoom.value, pan.from + dx / w)
+}
+function onScrollUp(event: PointerEvent) {
+  if (!pan || event.pointerId !== pan.pointer) return
+  const moved = pan.moved
+  pan = null
+  if (moved) return
+  const r = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  if (r.width > 0) setView(zoom.value, (event.clientX - r.left) / r.width - 0.5 / zoom.value)
+}
 
 function fractionAt(clientX: number): number {
   const r = track.value!.getBoundingClientRect()
@@ -88,12 +191,14 @@ let raf = 0
 let pending: { clientX: number; from: CardSource } | null = null
 
 function showAt(ms: number, from: CardSource) {
-  const width = track.value?.getBoundingClientRect().width ?? 0
-  if (!(width > 0)) return
+  const r = track.value?.getBoundingClientRect()
+  const fr = frame.value?.getBoundingClientRect()
+  if (!r || !fr || !(r.width > 0)) return
   const f = (ms - clock.startMs) / clock.duration
-  const toleranceMs = (MARKER_PX / width) * clock.duration
+  // Con zoom, la pista es más ancha que su marco y está desplazada: la tarjeta se coloca y se recorta en el marco.
+  const toleranceMs = (MARKER_PX / r.width) * clock.duration
   source = from
-  preview.value = { at: previewModel().at(ms, toleranceMs), x: f * width, width }
+  preview.value = { at: previewModel().at(ms, toleranceMs), x: r.left - fr.left + f * r.width, width: fr.width }
   previewShown.value = true
 }
 
@@ -205,6 +310,16 @@ function onKeydown(event: KeyboardEvent) {
     }
     return
   }
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault()
+    zoomIn()
+    return
+  }
+  if (event.key === '-') {
+    event.preventDefault()
+    zoomOut()
+    return
+  }
   if (keyboardFocus && source === null) source = 'focus'
   const step = event.shiftKey ? SEEK_STEP_LARGE_MS : SEEK_STEP_MS
   const actions: Record<string, () => void> = {
@@ -230,6 +345,11 @@ onMounted(() => {
     const f = (timeMs - clock.startMs) / clock.duration
     if (head.value) head.value.style.transform = `translateX(${(f * 100).toFixed(3)}%)`
     if (fill.value) fill.value.style.transform = `scaleX(${f.toFixed(5)})`
+    // Con zoom, si el cabezal sale de la vista (reproduciendo o tras un salto), la vista pasa página hasta él.
+    if (zoom.value > 1 && !dragging.value && performance.now() > manualUntil) {
+      const span = 1 / zoom.value
+      if (f < offset || f > offset + span) setView(zoom.value, f - span * 0.1, false)
+    }
   })
 })
 onBeforeUnmount(() => {
@@ -242,7 +362,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="tz-timeline">
     <!-- Marco de la pista: la tarjeta de la vista previa va fuera del slider (sus hijos son presentacionales). -->
-    <div class="tz-timeline__frame">
+    <div ref="frame" class="tz-timeline__frame" :class="{ 'is-zoomed': zoom > 1 }" @wheel="onWheel">
     <div
       ref="track"
       class="tz-timeline__track"
@@ -339,6 +459,52 @@ onBeforeUnmount(() => {
       :width="preview.width"
       :visible="previewShown"
     />
+    <!-- Lo que se ve con zoom: arrastrar desplaza la vista. -->
+    <div
+      v-show="zoom > 1"
+      class="tz-timeline__scroll"
+      aria-hidden="true"
+      data-testid="timeline-scroll"
+      @pointerdown="onScrollDown"
+      @pointermove="onScrollMove"
+      @pointerup="onScrollUp"
+      @pointercancel="onScrollUp"
+    >
+      <div ref="thumb" class="tz-timeline__thumb" />
+    </div>
+    </div>
+    <div class="tz-timeline__zoom" role="group" :aria-label="t('timeline.zoom.label')" :title="t('timeline.zoom.hint')">
+      <button
+        type="button"
+        class="tz-iconbtn tz-timeline__zoombtn"
+        :aria-label="t('timeline.zoom.out')"
+        :disabled="zoom <= 1"
+        data-testid="timeline-zoom-out"
+        @click="zoomOut"
+      >
+        <TzIcon name="zoomOut" size="sm" />
+      </button>
+      <!-- Su hueco se reserva siempre (oculto sin zoom): al acercar, la pista no cambia de ancho. -->
+      <button
+        type="button"
+        class="tz-timeline__zoomlevel tz-tabular"
+        :class="{ 'is-idle': zoom <= 1 }"
+        :aria-label="t('timeline.zoom.reset', { z: zoomLabel })"
+        data-testid="timeline-zoom-reset"
+        @click="zoomReset"
+      >
+        {{ zoomLabel }}
+      </button>
+      <button
+        type="button"
+        class="tz-iconbtn tz-timeline__zoombtn"
+        :aria-label="t('timeline.zoom.in')"
+        :disabled="zoom >= MAX_ZOOM"
+        data-testid="timeline-zoom-in"
+        @click="zoomIn"
+      >
+        <TzIcon name="zoomIn" size="sm" />
+      </button>
     </div>
   </div>
 </template>
@@ -346,11 +512,75 @@ onBeforeUnmount(() => {
 <style scoped>
 /* Debajo de los controles (en una fila con ellos desde 1280 px: TzReplayDock le quita este margen). */
 .tz-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tz-space-2);
   padding-top: var(--tz-space-3);
 }
 
 .tz-timeline__frame {
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Con zoom, la pista (más ancha) se recorta en el marco; la tarjeta de la vista previa sigue saliendo por arriba. */
+.tz-timeline__frame.is-zoomed {
+  overflow-x: clip;
+}
+
+/* Lo que se ve de la sesión con zoom: una barra fina bajo la pista; el pulgar se arrastra. */
+.tz-timeline__scroll {
+  position: relative;
+  height: 10px;
+  margin-top: 2px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.tz-timeline__scroll::before {
+  content: '';
+  position: absolute;
+  inset: 4px 0;
+  border-radius: var(--tz-radius-pill);
+  background: var(--tz-surface-2);
+}
+
+.tz-timeline__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  min-width: 6px;
+  border-radius: var(--tz-radius-pill);
+  background: var(--tz-text-faint);
+}
+
+.tz-timeline__zoom {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--tz-space-0-5);
+}
+
+.tz-timeline__zoombtn {
+  width: 28px;
+  height: 28px;
+}
+
+.tz-timeline__zoomlevel.is-idle {
+  visibility: hidden;
+}
+
+.tz-timeline__zoomlevel {
+  min-width: 36px;
+  height: 28px;
+  padding: 0 var(--tz-space-1);
+  border: 0;
+  border-radius: var(--tz-radius-md);
+  background: var(--tz-surface-2);
+  color: var(--tz-text);
+  font-size: var(--tz-text-xs);
+  cursor: pointer;
 }
 
 .tz-timeline__track {

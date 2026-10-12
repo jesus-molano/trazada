@@ -26,8 +26,8 @@
       },
       "timeline": {
         "title": "The timeline",
-        "body": "Click or drag to go to another moment. Hovering shows a preview of what was happening then: the lap, the leader (or the best lap, outside races), flags and nearby marks. Space plays or pauses; ← and → move {seconds} s.",
-        "bodyTouch": "Tap or drag to go to another moment; meanwhile a preview shows what was happening then: the lap, the leader (or the best lap, outside races) and flags. Two fingers sideways on the map also move the clock."
+        "body": "Click or drag to go to another moment. Hovering shows a preview of what was happening then: the lap, the leader (or the best lap, outside races), flags and nearby marks. Space plays or pauses; ← and → move {seconds} s. The wheel (or the + and − buttons) zooms in to see events better; Shift + wheel scrolls it.",
+        "bodyTouch": "Tap or drag to go to another moment; meanwhile a preview shows what was happening then: the lap, the leader (or the best lap, outside races) and flags. Two fingers sideways on the map also move the clock. The + and − buttons zoom in to see events better."
       },
       "estimated": {
         "title": "What does “Estimated” mean?",

@@ -26,8 +26,8 @@
       },
       "timeline": {
         "title": "La línea de tiempo",
-        "body": "Haz clic o arrastra para ir a otro instante. Al pasar el puntero, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y las marcas cercanas. Espacio reproduce o pausa; ← y → mueven {seconds} s.",
-        "bodyTouch": "Toca o arrastra para ir a otro instante; mientras, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera) y las banderas. Dos dedos en horizontal sobre el mapa también mueven el reloj."
+        "body": "Haz clic o arrastra para ir a otro instante. Al pasar el puntero, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera), las banderas y las marcas cercanas. Espacio reproduce o pausa; ← y → mueven {seconds} s. Con la rueda (o los botones + y −) la acercas para ver mejor los eventos; Mayús + rueda la desplaza.",
+        "bodyTouch": "Toca o arrastra para ir a otro instante; mientras, una vista previa dice qué pasaba entonces: la vuelta, el líder (o la mejor vuelta, fuera de carrera) y las banderas. Dos dedos en horizontal sobre el mapa también mueven el reloj. Con los botones + y − la acercas para ver mejor los eventos."
       },
       "estimated": {
         "title": "¿Qué es «Estimado»?",

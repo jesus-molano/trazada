@@ -58,6 +58,8 @@ import {
   TriangleAlert,
   Video,
   Wind,
+  ZoomIn,
+  ZoomOut,
   X,
 } from '@lucide/vue'
 
@@ -110,6 +112,8 @@ export const ICONS = {
   compare: ArrowLeftRight,
   ghost: Ghost,
   analysis: ChartLine,
+  zoomIn: ZoomIn,
+  zoomOut: ZoomOut,
   more: Ellipsis,
   summary: ListOrdered,
   // Paneles del replay (ítem 15, D50): «Compactos» (el mapa primero) y «Detallados» (más columnas)

@@ -235,6 +235,13 @@
   },
   "timeline": {
     "label": "Línea de tiempo de la sesión",
+    "zoom": {
+      "label": "Zoom de la línea de tiempo",
+      "hint": "Rueda: acercar o alejar · Mayús + rueda: desplazar · + y − con la línea de tiempo enfocada",
+      "in": "Acercar la línea de tiempo",
+      "out": "Alejar la línea de tiempo",
+      "reset": "Ver toda la sesión (ahora {z})"
+    },
     "atLap": "Vuelta {lap} · {time}",
     "lapStart": "Inicio de la vuelta {lap}",
     "pit": "Entrada en el pit lane: {tla}",

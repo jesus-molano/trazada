@@ -235,6 +235,13 @@
   },
   "timeline": {
     "label": "Session timeline",
+    "zoom": {
+      "label": "Timeline zoom",
+      "hint": "Wheel: zoom in or out · Shift + wheel: scroll · + and − with the timeline focused",
+      "in": "Zoom in on the timeline",
+      "out": "Zoom out of the timeline",
+      "reset": "Show the whole session (now {z})"
+    },
     "atLap": "Lap {lap} · {time}",
     "lapStart": "Start of lap {lap}",
     "pit": "Pit lane entry: {tla}",
