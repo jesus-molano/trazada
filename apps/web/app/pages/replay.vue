@@ -916,8 +916,10 @@ onBeforeUnmount(() => {
     --replay-over-max: calc(100% - 2 * var(--tz-space-3));
   }
 
+  /* Opaca: en móvil no hay ventana del mapa y la escena ocupa toda la pantalla por detrás. */
   .tz-replay__bar {
     padding: var(--tz-space-2) var(--tz-space-3);
+    background: var(--tz-bg);
   }
 
   /* Solo el Gran Premio: el resto del título sigue en su `title`. */
@@ -947,13 +949,55 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  .tz-replay__bar[data-more='open'] > :is(.is-view, .is-scene, .is-help) {
+  /*
+   * Abierta («⋯»): un panel bajo la fila del título con una fila por grupo (condiciones, vista, escena y cámara, ayuda),
+   * su rótulo encima (el nombre del grupo) y un filete; los botones, con su texto, que aquí cabe.
+   */
+  .tz-replay__bar[data-more='open'] > :is(.is-conditions, .is-view, .is-scene, .is-help) {
     order: 100;
     flex: 1 0 100%;
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--tz-space-2);
     margin-left: 0;
-    padding-left: 0;
+    padding: var(--tz-space-2) 0 var(--tz-space-1);
     border-left: 0;
+    border-top: 1px solid var(--tz-border);
+  }
+
+  .tz-replay__bar[data-more='open'] > :is(.is-conditions, .is-view, .is-scene, .is-help)::before {
+    content: attr(aria-label);
+    flex: 1 0 100%;
+    color: var(--tz-text-faint);
+    font-size: var(--tz-text-2xs);
+  }
+
+  .tz-replay__bar[data-more='open'] :deep(:is(.tz-tools__menu-text, .tz-analysis-btn__text, .tz-tools__label, .tz-tools__toggle-text, .tz-tv-btn__text, .tz-notes__word)) {
+    display: inline;
+  }
+
+  .tz-replay__bar[data-more='open'] :deep(.tz-tools) {
+    justify-content: flex-start;
+  }
+
+  .tz-replay__bar[data-more='open'] :deep(:is(.tz-tools__label-icon, .tz-tools__toggle-icon)) {
+    display: none;
+  }
+
+  /*
+   * Los desplegables (capas, cámara, «Cómo se dibuja», meteorología, avisos), a lo ancho bajo la cabecera: anclados a
+   * su botón, con hasta 460 px, se salían de la pantalla.
+   */
+  .tz-replay__bar :deep(.tz-disclosure) {
+    position: static;
+  }
+
+  .tz-replay__bar :deep(.tz-disclosure__panel) {
+    top: 100%;
+    right: var(--tz-space-3);
+    left: var(--tz-space-3);
+    width: auto;
+    max-height: 60vh;
   }
 
   /* Con la hoja no hay paneles que elegir. */
