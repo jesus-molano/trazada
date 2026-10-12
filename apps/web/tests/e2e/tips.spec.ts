@@ -225,6 +225,8 @@ for (const vp of [
       const middles = await page.evaluate(() =>
         [...document.querySelector('.tz-replay__bar')!.children]
           .filter((c) => getComputedStyle(c).position !== 'absolute')
+          // Las condiciones, por debajo de 1360 px, van en su propia fila a propósito (D50).
+          .filter((c) => getComputedStyle(c).flexBasis !== '100%')
           .map((c) => c.getBoundingClientRect())
           .filter((r) => r.height > 0)
           .map((r) => Math.round(r.top + r.height / 2)),

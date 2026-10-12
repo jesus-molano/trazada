@@ -917,11 +917,7 @@ Alcance: diseños «Espectador» y «Análisis» con paneles de ancho ajustable 
 
 Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su verificación.
 
-1. **e2e de la cabecera nueva (D50) que siguen en rojo**:
-   - `layout.spec.ts` «girar la tablet» (los dos): tras pasar de 768×1024 a 1024×768, la cabecera y los paneles acaban igual que al abrir en horizontal (mismo alto, mismo borde de la ventana), pero el encuadre se queda con un hueco libre más bajo arriba (`free.y1` 0,568 frente a 0,666). La escena no reencuadra por cambios de alto de la cabecera (a propósito, `INSET_SOURCES` en `TzScene.vue`); probar un último encuadre dos frames después de que cambie el tamaño del lienzo **no** lo arregló: la causa es otra (mirar qué mide `insets()` en el momento del giro: `scene-estimated`, la ventana o el dock).
-   - `weather.spec.ts:106` (a 1680 px, las piezas anchas de la meteo ocultas): revisar el nivel de `data-fit` a 1680 con la cabecera por grupos.
-   - Pasar después `a11y`, `palette`, `tips`, `analysis`, `leaderboard` y `playback` (tocan nombres y teclas que han cambiado).
-   - `tests/unit/local-server.test.ts` falla a veces **solo en Windows** al borrar el directorio temporal (EPERM: el nieto lo tiene como directorio de trabajo); no viene de esta tanda.
+1. ~~**e2e de la cabecera nueva (D50) que seguían en rojo**~~ (hecho el 2026-10-12). «Girar la tablet»: el encuadre de la apertura se hacía con la cabecera aún en una fila (56 px), antes de que entraran los avisos y el estado de pista y pasara a dos (92 px); la barra no reencuadra, así que la vista de abrir y la de girar no coincidían. Vuelve la regla de la lámina: por debajo de 1360 px, las condiciones siempre en su fila (con alto mínimo, la cabecera tiene su alto definitivo desde el primer frame), y `useHeaderFit` no cuenta lo que va en su propia fila al decidir si la primera cabe. El resto eran tests que leían la estructura de antes (el padre del título, el nivel 4, la tecla L, la dirección de carrera con un coche elegido). Queda: `tests/unit/local-server.test.ts` falla a veces **solo en Windows** al borrar el directorio temporal (EPERM: el nieto lo tiene como directorio de trabajo); no viene de esta tanda.
 2. **Resto de D50**:
    - Estado de pista: solo SC/VSC/roja en placa; las banderas de sector con glifo y texto.
    - Avisos de la sesión como lista numerada.
@@ -939,6 +935,7 @@ Lo que queda de la sesión del 2026-10-12, en orden. Cada punto, su commit y su 
 4. **Timeline con zoom y desplazamiento** para ver mejor los eventos.
 5. **Tarea 1: rendimiento al abrir una sesión** (`perf.spec`).
 6. **Aviso «hay una versión nueva, recarga»** cuando falta un chunk de una build anterior («Failed to fetch dynamically imported module»).
+6b. **Marca y favicon** (pedido el 2026-10-12): un título de «Trazada» en la cabecera más propio y acorde a «Herramienta pro» (sin el piano, que no le gusta; sin tipografía ni nada oficial de F1) y un favicon a juego (SVG con los tokens, más los tamaños de PNG que hagan falta; sin peticiones externas).
 7. **Cierre**: Playwright completo, CI en verde, docs (BRIEF, PLAN, PERFORMANCE, README) al día con D50–D54.
 8. **Del usuario**: excluir `http://127.0.0.1:3000/*` en Vimium (o las teclas l, p, c, g, t…); cambiar la rama por defecto de GitHub a `main` y después borrar `ccr-b997f50f-6uesh6`.
 

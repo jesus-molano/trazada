@@ -199,10 +199,11 @@ test.describe('timeline', () => {
   test('con prefers-reduced-motion, transition-duration y animation-duration valen 0 s en todo el documento', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await openReplay(page)
+    // Plegar y desplegar la dirección de carrera antes de elegir coche: con uno elegido, su telemetría ocupa la columna.
+    await page.getByTestId('race-control-toggle').click()
+    await page.getByTestId('race-control-toggle').click()
     await page.locator('[data-testid="leaderboard"] [data-car]').nth(2).getByRole('button').click()
     await expect(page.getByTestId('telemetry')).toBeVisible()
-    await page.getByTestId('race-control-toggle').click()
-    await page.getByTestId('race-control-toggle').click()
     await page.getByTestId('layout-analysis').click()
     await page.getByTestId('play-toggle').click()
     await page.waitForTimeout(300)

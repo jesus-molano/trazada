@@ -32,12 +32,19 @@ export function useHeaderFit(bar: Ref<HTMLElement | null>, title: Ref<HTMLElemen
     return { fits: fits(), height: bar.value?.offsetHeight ?? 0 }
   }
 
+  /**
+   * Lo que va en su propia fila a propósito (las condiciones por debajo de 1360 px o en el nivel 4, a todo el ancho):
+   * no cuenta para saber si la primera fila cabe. Si contara, la cabecera nunca «cabría» y lo secundario pasaría a su
+   * forma más corta sin necesidad.
+   */
+  const ownRow = (el: HTMLElement) => getComputedStyle(el).flexBasis === '100%'
+
   function fits(): boolean {
     const b = bar.value
     const t = title.value
     if (!b || !t) return true
     if (t.scrollWidth > t.clientWidth + 1) return false
-    const items = [...b.children].filter(inFlow)
+    const items = [...b.children].filter(inFlow).filter((e) => !ownRow(e))
     if (items.length < 2) return true
     const top = Math.min(...items.map((e) => e.offsetTop))
     return items.every((e) => e.offsetTop < top + ROW_TOLERANCE_PX)

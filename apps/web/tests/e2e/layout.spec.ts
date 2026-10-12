@@ -199,20 +199,23 @@ function titleFit(page: Page) {
 
 /**
  * Centro vertical de cada hijo de la primera fila de la cabecera (lo que flota debajo, como el chip de la realización,
- * no): desde D50, sus cinco grupos (sesión, condiciones, vista, escena y ayuda). En el nivel 4, las condiciones van en
- * su propia fila, debajo, y la primera es la del resto.
+ * no): desde D50, sus cinco grupos (sesión, condiciones, vista, escena y ayuda). Las condiciones van en su propia fila,
+ * debajo y a todo el ancho, por debajo de 1360 px o en el nivel 4; entonces la primera fila es la del resto.
  */
 function barRowMiddles(page: Page) {
-  return page.evaluate(() => {
-    const bar = document.querySelector('.tz-replay__bar')!
-    const ownRow = (bar.getAttribute('data-fit') ?? '').split(' ').includes('4')
-    return [...bar.children]
+  return page.evaluate(() =>
+    [...document.querySelector('.tz-replay__bar')!.children]
       .filter((c) => getComputedStyle(c).position !== 'absolute')
-      .filter((c) => !(ownRow && (c as HTMLElement).dataset.group === 'conditions'))
+      .filter((c) => getComputedStyle(c).flexBasis !== '100%')
       .map((c) => c.getBoundingClientRect())
       .filter((r) => r.height > 0)
-      .map((r) => Math.round(r.top + r.height / 2))
-  })
+      .map((r) => Math.round(r.top + r.height / 2)),
+  )
+}
+
+/** ¿Las condiciones van en su propia fila (por debajo de 1360 px o en el nivel 4)? */
+function conditionsOwnRow(page: Page) {
+  return page.evaluate(() => getComputedStyle(document.querySelector('.tz-replay__bar > [data-group="conditions"]')!).flexBasis === '100%')
 }
 
 for (const vp of [
@@ -236,9 +239,9 @@ for (const vp of [
       await expect(page.getByTestId('analysis-button')).toBeVisible()
       await expect(page.getByTestId('scene-tools')).toBeVisible()
 
-      // Como en la lámina de D50: por debajo de 1360 px, si no caben, las condiciones bajan a su fila (nivel 4).
-      const ownRow = (await titleFit(page)).levels.includes('4')
-      if (vp.width >= 1360) expect(ownRow).toBe(false)
+      // Como en la lámina de D50: por debajo de 1360 px, las condiciones van en su fila; desde 1360, solo si no caben.
+      const ownRow = await conditionsOwnRow(page)
+      expect(ownRow).toBe(vp.width < 1360)
       const middles = await barRowMiddles(page)
       expect(middles.length).toBe(ownRow ? 4 : 5)
       expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(4)
@@ -311,7 +314,7 @@ function headerBoxes(page: Page) {
     }
     const bar = document.querySelector<HTMLElement>('.tz-replay__bar')!
     const status = bar.querySelector('[data-testid="track-status"]')!
-    // El grupo de las condiciones (D50): es lo que baja a su propia fila en el nivel 4.
+    // El grupo de las condiciones (D50): es lo que baja a su propia fila (por debajo de 1360 px o en el nivel 4).
     const row = status.closest('[data-group]') ?? status
     const title = bar.querySelector('[data-testid="replay-title"]')!
     const cs = getComputedStyle(bar)
@@ -320,6 +323,7 @@ function headerBoxes(page: Page) {
       inner: bar.clientWidth - Number.parseFloat(cs.paddingLeft) - Number.parseFloat(cs.paddingRight),
       status: box(status),
       row: box(row),
+      ownRow: getComputedStyle(row).flexBasis === '100%',
       title: box(title),
       level: bar.getAttribute('data-fit') ?? '',
       chips: [...status.children].filter((c) => c.getBoundingClientRect().width > 0).map(box),
@@ -355,7 +359,7 @@ for (const vp of VIEWPORTS) {
       const tops = withFlags.chips.map((c) => Math.round(c.y + c.h / 2))
       expect(withFlags.chips.length).toBeGreaterThanOrEqual(4)
       expect(Math.max(...tops) - Math.min(...tops), JSON.stringify(withFlags.chips)).toBeLessThanOrEqual(4)
-      if (withFlags.level.split(' ').includes('4')) {
+      if (withFlags.ownRow) {
         // En su propia fila: debajo del título y a todo el ancho de la cabecera.
         expect(withFlags.row.y).toBeGreaterThanOrEqual(withFlags.title.y + withFlags.title.h)
         expect(Math.abs(withFlags.row.w - withFlags.inner)).toBeLessThanOrEqual(1)
@@ -376,8 +380,8 @@ for (const vp of VIEWPORTS) {
       const without = await headerBoxes(page)
       expect(withFlags.bar.h - without.bar.h).toBeLessThanOrEqual(40)
       // Sin banderas, el estado de pista (solo «Estimado») vuelve a la fila del título; por debajo de 1360 px, las
-      // condiciones pueden seguir en la suya (D50: en la tablet, dos filas).
-      if (vp.width >= 1360) expect(without.level.split(' ')).not.toContain('4')
+      // condiciones siguen en la suya (D50).
+      expect(without.ownRow).toBe(vp.width < 1360)
     })
   })
 }
@@ -647,13 +651,13 @@ test.describe('diseños «Espectador» y «Análisis» (ítem 15)', () => {
       await expect(page.getByTestId('lb-columns')).toBeVisible()
     })
 
-    test('mantener pulsada la L (repetición automática del teclado) cambia el diseño una sola vez', async ({ page }) => {
+    test('mantener pulsada la P (repetición automática del teclado) cambia los paneles una sola vez', async ({ page }) => {
       await open(page)
       await page.getByTestId('replay-title').click()
       // Cada `down` de una tecla ya pulsada llega con `repeat`, como al mantenerla. Un número par: si cada repetición
-      // alternara, volvería a «Espectador».
-      for (let i = 0; i < 6; i++) await page.keyboard.down('l')
-      await page.keyboard.up('l')
+      // alternara, volvería a «Compactos».
+      for (let i = 0; i < 6; i++) await page.keyboard.down('p')
+      await page.keyboard.up('p')
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
       await expect(page.locator('.tz-replay')).toHaveAttribute('data-layout', 'analysis')
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('trazada.layout') ?? 'null'))

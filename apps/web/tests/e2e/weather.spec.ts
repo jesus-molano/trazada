@@ -97,7 +97,7 @@ function header(page: Page): Promise<{ level: string; titleWhole: boolean }> {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
     const title = document.querySelector<HTMLElement>('[data-testid="replay-title"]')!
     return {
-      level: title.parentElement!.getAttribute('data-fit') ?? '',
+      level: title.closest('.tz-replay__bar')!.getAttribute('data-fit') ?? '',
       titleWhole: title.scrollWidth <= title.clientWidth + 1,
     }
   })

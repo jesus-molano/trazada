@@ -469,10 +469,21 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-/* Portátiles y tablet (< 1360 px): huecos más justos; las condiciones bajan a su fila solo si no caben (nivel 4). */
+/*
+ * Portátiles y tablet (< 1360 px), como en la lámina de D50: huecos más justos y las condiciones siempre en su fila, a
+ * todo el ancho. Con su alto mínimo, la cabecera tiene su alto definitivo desde el primer frame, antes de que entren los
+ * avisos y el estado de pista: la escena encuadra una vez con él y no tiene que moverse después (la barra no reencuadra).
+ */
 @media (width < 1360px) {
   .tz-replay__bar {
     column-gap: var(--tz-space-2);
+  }
+
+  .tz-replay__bar > .is-conditions {
+    order: 99;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    min-height: 28px;
   }
 }
 

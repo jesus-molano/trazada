@@ -213,9 +213,11 @@ test.describe('iPad Air horizontal', () => {
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches || matchMedia('(hover: none)').matches)
     test.skip(!coarse, 'esta emulación no informa de puntero grueso ni de hover: none')
     await expect(page.getByTestId('replay-dock').getByTestId('palette-button')).toBeVisible()
-    // En la cabecera, con el botón de la realización automática, la partía en dos filas (46 px menos de escena).
+    // En la cabecera, con el botón de la realización automática, la partía en dos filas (46 px menos de escena). Las
+    // condiciones, por debajo de 1360 px, van en su propia fila a propósito (D50): no cuentan.
     const tops = await page.evaluate(() =>
       [...document.querySelector('.tz-replay__bar')!.children]
+        .filter((c) => getComputedStyle(c).flexBasis !== '100%')
         .map((c) => c.getBoundingClientRect())
         .filter((r) => r.height > 0)
         .map((r) => Math.round(r.top + r.height / 2)),
